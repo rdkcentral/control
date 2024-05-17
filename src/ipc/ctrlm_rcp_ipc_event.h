@@ -111,7 +111,7 @@ public:
 
     virtual json_t *to_json() const;
 
-    char              *to_string() const;
+    std::string        to_string() const;
     uint8_t            get_api_revision() const                             { return api_revision_; }
     bool               get_result() const                                   { return (result_ == CTRLM_IARM_CALL_RESULT_SUCCESS) ? true : false; }
     void               set_result(ctrlm_iarm_call_result_t result)          { result_ = result; }

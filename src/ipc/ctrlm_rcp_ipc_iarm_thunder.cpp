@@ -114,18 +114,7 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_status(const ctrlm_rcp_ipc_net_status_t &n
         return(false);
     }
 
-    json_t *ret = json_object();
-    int err = 0;
-
-    err |= json_object_set_new_nocheck(ret, STATUS, net_status.to_json());
-
-    if (err) {
-        XLOGD_ERROR("JSON object set error");
-        json_decref(ret);
-        return(false);
-    }
-
-    return broadcast_iarm_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_RCU_STATUS, ret);
+    return broadcast_iarm_event<ctrlm_main_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_RCU_STATUS, net_status.to_string().c_str());
 }
 
 bool ctrlm_rcp_ipc_iarm_thunder_t::on_validation_status(const ctrlm_rcp_ipc_validation_status_t &validation_status) const

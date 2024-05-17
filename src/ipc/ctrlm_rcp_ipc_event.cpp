@@ -135,9 +135,12 @@ void ctrlm_rcp_ipc_net_status_t::populate_status(const ctrlm_obj_network_t &netw
     }
 }
 
-char *ctrlm_rcp_ipc_net_status_t::to_string() const
+std::string ctrlm_rcp_ipc_net_status_t::to_string() const
 {
-    return json_dumps(to_json(), JSON_ENCODE_ANY);
+    char *json_str = json_dumps(to_json(), JSON_ENCODE_ANY);
+    std::string copy = json_str;
+    free(json_str);
+    return copy;
 }
 
 ctrlm_rcp_ipc_upgrade_status_t::~ctrlm_rcp_ipc_upgrade_status_t()

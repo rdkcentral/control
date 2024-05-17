@@ -297,7 +297,7 @@ typedef struct {
 //
 // The payload MUST be a NULL terminated JSON String.
 typedef struct {
-   unsigned char  api_revision;
+   unsigned char  api_revision = CTRLM_VOICE_IARM_BUS_API_REVISION;
    char           result[CTRLM_VOICE_IARM_CALL_RESULT_LEN_MAX];
    char           payload[];
 } ctrlm_voice_iarm_call_json_t;
@@ -312,7 +312,7 @@ typedef struct {
 //
 // The payload MUST be a NULL terminated JSON String.
 typedef struct {
-   unsigned char  api_revision;
+   unsigned char  api_revision = CTRLM_VOICE_IARM_BUS_API_REVISION;
    char           payload[];
 } ctrlm_voice_iarm_event_json_t;
 

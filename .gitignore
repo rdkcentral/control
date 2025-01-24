@@ -1,0 +1,36 @@
+# files produced by the build
+ctrlm_config_default.h
+ctrlm_config.json
+
+# Temp Files
+*~
+*.orig
+singletask.lock
+oe-logs
+oe-workdir
+/Debug/
+.cproject
+.project
+/.settings/
+/cpc/
+
+/Debug_xi6/
+
+# Autotools files
+Makefile.in
+aclocal.m4
+ar-lib
+autom4te.cache/
+compile
+config.guess
+config.h.in
+config.sub
+configure
+depcomp
+install-sh
+ltmain.sh
+m4/
+missing
+src/Makefile.in
+src/voice/ipc/ctrlm_voice_ipc_request_type.c
+src/ctrlm_config_default.c

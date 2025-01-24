@@ -1,0 +1,20 @@
+%language=ANSI-C
+%struct-type
+%includes
+%define lookup-function-name voice_session_request_type_handler_get
+%{
+#include "ctrlm_voice_ipc_request_type.h"
+%}
+struct voice_session_request_type_handler_s;
+%%
+ptt_transcription,     ctrlm_voice_ipc_request_supported_ptt_transcription
+ptt_audio_file,        ctrlm_voice_ipc_request_supported_ptt_audio_file
+mic_transcription,     ctrlm_voice_ipc_request_supported_mic_transcription
+mic_audio_file,        ctrlm_voice_ipc_request_supported_mic_audio_file
+mic_stream_default,    ctrlm_voice_ipc_request_supported_mic_stream_default
+mic_stream_single,     ctrlm_voice_ipc_request_supported_mic_stream_single
+mic_stream_multi,      ctrlm_voice_ipc_request_supported_mic_stream_multi
+mic_tap_stream_single, ctrlm_voice_ipc_request_supported_mic_tap_stream_single
+mic_tap_stream_multi,  ctrlm_voice_ipc_request_supported_mic_tap_stream_multi
+mic_factory_test,      ctrlm_voice_ipc_request_supported_mic_factory_test
+%%

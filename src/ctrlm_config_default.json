@@ -1,0 +1,322 @@
+{
+   "ctrlm_global" : {
+      "minidump_path"                    : "/opt/minidumps",
+      "db_path"                          : "/opt/ctrlm.sql",
+      "thread_monitor_period"            :        60,
+      "thread_monitor_minidump"          :      true,
+      "authservice_poll_period"          :         5,
+      "authservice_fast_poll_period"     :      1000,
+      "authservice_fast_max_retries"     :        25,
+      "keycode_logging_poll_period"      :        30,
+      "keycode_logging_max_retries"      :         5,
+      "url_auth_service"                 : "",
+      "timeout_recently_booted"          :   1800000,
+      "timeout_line_of_sight"            :     10000,
+      "timeout_autobind"                 :      1200,
+      "timeout_button_binding"           :    600000,
+      "timeout_screen_bind"              :    600000,
+      "timeout_one_touch_autobind"       :    600000,
+      "mask_key_codes"                   :     false,
+      "mask_pii"                         : [true, false],
+      "crash_recovery_threshold"         :         2,
+      "device_id"                        : "",
+      "telemetry_report_interval"        :    900000,
+      "validation_config" : {
+         "app_based_validation"          :     false,
+         "timeout_config_complete"       :      5000,
+         "ctrlm" : {
+            "max_attempts"               :         5,
+            "timeout_initial"            :     30000,
+            "timeout_subsequent"         :     10000,
+            "timeout_ignore_abort"       :      1000
+         }
+      }
+   },
+   "network_rf4ce" : {
+      "user_string"                      : "COMCAST",
+      "timeout_key_release"              :       500,
+      "short_rf_retry_period"            :    100000,
+      "utterance_duration_max"           :     10000,
+      "voice_data_retry_max"             :         0,
+      "voice_csma_backoff_max"           :         4,
+      "voice_data_backoff_exp_min"       :         0,
+      "voice_command_encryption"         :         0,
+      "rib_update_check_interval"        :        24,
+      "auto_check_validation_period"     :       500,
+      "link_lost_wait_time"              :     10000,
+      "update_polling_period"            :        24,
+      "data_request_wait_time"           :      3000,
+      "data_request_timeout"             :    450000,
+      "audio_profiles_target"            :         1,
+      "class_inc_line_of_sight"          :         2,
+      "class_inc_recently_booted"        :         1,
+      "class_inc_binding_button"         :        15,
+      "class_inc_xr"                     :         6,
+      "class_inc_bind_table_empty"       :         0,
+      "binding_state_timeout"            :        30,
+      "host_decryption"                  :     false,
+      "single_channel_rsp"               :      true,
+      "ff_rsp_idle_time"                 :        15,
+      "discovery_config" : {
+         "enable"                        :      true,
+         "require_line_of_sight"         :     false
+      },
+      "autobind_config" : {
+         "enable"                        :      true,
+         "qty_pass"                      :         3,
+         "qty_fail"                      :         2
+      },
+      "binding_menu_mode" : {
+         "class_increment"               :         0,
+         "discovery_config" : {
+            "enable"                     :      true,
+            "require_line_of_sight"      :     false
+         },
+         "autobind_config" : {
+            "enable"                     :      true,
+            "qty_pass"                   :         3,
+            "qty_fail"                   :         2
+         }
+      },
+      "pairing_blackout" : {
+         "enable"                        :      true,
+         "pairing_fail_threshold"        :        10,
+         "blackout_reboot_threshold"     :        20,
+         "blackout_time"                 :        30,
+         "force_blackout_settings"       :     false
+      },
+      "mfg_test" : {
+         "enable"                        :     false,
+         "mic_delay"                     :      3000,
+         "mic_duration"                  :      4000,
+         "sweep_delay"                   :      5000,
+         "haptic_delay"                  :      2000,
+         "haptic_duration"               :      1000,
+         "reset_delay"                   :      6000
+      },
+      "dpi_pattern"                      :         0,
+      "polling" : {
+         "target" : {
+            "methods"                    :         1,
+            "fmr_controllers_max"        :         1
+         },
+         "hb_generic_config" : {
+            "uptime_multiplier"          :         3,
+            "hb_time_to_save"            :      1800
+         },
+         "default" : {
+            "methods"                    :         0,
+            "heartbeat" : {
+               "trigger"                 :         0,
+               "kp_counter"              :         0,
+               "time_interval"           :         0
+            },
+            "mac" : {
+               "time_interval"           :      5000
+            }
+         },
+         "xr11v2" : {
+            "methods"                    :         0,
+            "heartbeat" : {
+               "trigger"                 :         1,
+               "kp_counter"              :         0,
+               "time_interval"           :  86400000
+            },
+            "mac" : {
+               "time_interval"           :      5000
+            }
+         },
+         "xr15v1" : {
+            "methods"                    :         1,
+            "heartbeat" : {
+               "trigger"                 :         1,
+               "kp_counter"              :         0,
+               "time_interval"           :  86400000
+            },
+            "mac" : {
+               "time_interval"           :      5000
+            }
+         },
+         "xr15v2" : {
+            "methods"                    :         1,
+            "heartbeat" : {
+               "trigger"                 :         1,
+               "kp_counter"              :         0,
+               "time_interval"           :  86400000
+            },
+            "mac" : {
+               "time_interval"           :      5000
+            }
+         },
+         "xr16v1" : {
+            "methods"                    :         3,
+            "heartbeat" : {
+               "trigger"                 :         1,
+               "kp_counter"              :         0,
+               "time_interval"           :  86400000
+            },
+            "mac" : {
+               "time_interval"           :      5000
+            }
+         },
+         "xr19v1" : {
+            "methods"                    :         0,
+            "heartbeat" : {
+               "trigger"                 :         1,
+               "kp_counter"              :         0,
+               "time_interval"           :      3000
+            }
+         },
+         "xrav1" : {
+            "methods"                    :         1,
+            "heartbeat" : {
+               "trigger"                 :         1,
+               "kp_counter"              :         0,
+               "time_interval"           :  86400000
+            },
+            "mac" : {
+               "time_interval"           :      5000
+            }
+         }
+      },
+      "asb" : {
+         "enable"                        :     false,
+         "derivation_methods"            :       128,
+         "fallback_threshold"            :         1,
+         "force_settings"                :     false
+      },
+      "voice" : {
+         "stream_begin"                  :         1,
+         "stream_offset"                 :     -1600
+      },
+      "device_update" : {
+         "session_timeout"               :    259200
+      },
+      "dsp" : {
+         "flags"                         :         0,
+         "vad_threshold"                 :       128,
+         "no_vad_threshold"              :       128,
+         "vad_hang_time"                 :        15,
+         "initial_eos_timeout"           :        35,
+         "eos_timeout"                   :        50,
+         "initial_speech_delay"          :         8,
+         "primary_keyword_sensitivity"   :         32,
+         "secondary_keyword_sensitivity" :         32,
+         "beamformer_type"               :         1,
+         "noise_reduction_aggressiveness":        11,
+         "dynamic_gain_target_level"     :       -12,
+         "ic_atten_update"               :       255,
+         "ic_detect"                     :       15,
+         "force_settings"                :     false
+      },
+      "rsp_time": {
+         "xrc"                           :     150,
+         "xvp"                           :     500,
+         "xdiu"                          :     155
+      }
+   },
+   "network_ble" : {
+      "timeouts": {
+         "discovery": 15000,
+         "pair": 15000,
+         "setup": 60000,
+         "unpair": 20000
+      }
+   },
+   "network_ip" : {
+   },
+   "voice" : {
+      "enable"                           :      true,
+      "url_vrex"                         : "",
+      "url_src_ptt"                      : "",
+      "url_src_ff"                       : "",
+      "url_src_mic_tap"                  : "",
+      "vrex_request_timeout"             :        30,
+      "enable_sat"                       :      true,
+      "enable_mtls"                      :      true,
+      "require_secure_url"               :      true,
+      "sat_request_timeout"              :         5,
+      "minimum_duration"                 :       300,
+      "ffv_leading_samples"              :      1600,
+      "timeout_packet_initial"           :      3200,
+      "timeout_packet_subsequent"        :       250,
+      "bitrate_minimum"                  :        64,
+      "time_threshold"                   :      1000,
+      "timeout_stats"                    :      3000,
+      "app_id_http"                      : "",
+      "app_id_ws"                        : "",
+      "aspect_ratio"                     : "",
+      "language"                         : "eng-USA",
+      "save_last_utterance"              : [false, true],
+      "utterance_use_curtail"            :     false,
+      "utterance_file_qty_max"           :         2,
+      "utterance_file_size_max"          :    640044,
+      "utterance_path"                   : "/opt/logs/rf4ce_adpcm_header_vrex.raw",
+      "force_voice_settings"             :     false,
+      "vrex_response_timeout"            :     10000,
+      "keyword_detect_sensitivity"       :       0.3,
+      "opus_encoder_params"              : "4080084410",
+      "packet_loss_threshold"            :         5,
+      "vrex_test_flag"                   :     false,
+      "vrex_wuw_bypass_success_flag"     :     false,
+      "vrex_wuw_bypass_failure_flag"     :     false,
+      "force_toggle_fallback"            :     false,
+      "audio_mode"                       :         1,
+      "audio_timing"                     :         0,
+      "audio_confidence_threshold"       :       0.5,
+      "audio_ducking_type"               :         0,
+      "audio_ducking_level"              :       0.5,
+      "audio_ducking_beep"               :     false,
+      "dst_params_standby" : {
+         "connect_check_interval"        :       200,
+         "timeout_connect"               :     15000,
+         "timeout_inactivity"            :     15000,
+         "timeout_session"               :     15000,
+         "ipv4_fallback"                 :      true,
+         "backoff_delay"                 :       100
+      },
+      "dst_params_low_latency" : {
+         "connect_check_interval"        :        10,
+         "timeout_connect"               :      2000,
+         "timeout_inactivity"            :     10000,
+         "timeout_session"               :      5000,
+         "ipv4_fallback"                 :      true,
+         "backoff_delay"                 :        50
+      },
+      "par_voice_eos_method"             :         1,
+      "par_voice_eos_timeout"            :      2500,
+      "server_hosts"                     :        []
+   },
+   "device_update" : {
+      "dir_root"                         : "/srv/device_update/",
+      "dir_temp"                         : "/tmp/device_update/",
+      "check_locations"                  :         0,
+      "xconf_json_file_path"             : "/tmp/",
+      "check_poll_time_image"            :     14400,
+      "check_poll_time_download"         :       120,
+      "check_poll_time_load"             :       120,
+      "interactive_download"             :     false,
+      "interactive_load"                 :     false,
+      "non_interactive" : {
+         "download" : {
+            "background_download"        :      true,
+            "percent_increment"          :        10,
+            "load_immediately"           :     false
+         },
+         "load" : {
+            "time_after_inactive"        :         5,
+            "load_before_hour"           :         4
+         }
+      },
+      "device_update_dirs" : [
+         "XR11v2",
+         "XR15v1",
+         "XR15v2",
+         "XR16v1",
+         "XR19v1",
+         "XRAv1"
+      ]
+   },
+   "vsdk" : {
+   }
+}

@@ -32,6 +32,9 @@
          }
       }
    },
+   "ir" : {
+      "input_device_name"                : ""
+   },
    "network_rf4ce" : {
       "user_string"                      : "COMCAST",
       "timeout_key_release"              :       500,

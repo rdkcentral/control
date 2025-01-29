@@ -198,3 +198,6 @@ add_custom_command( OUTPUT ctrlm_config_default.h ${CMAKE_CURRENT_SOURCE_DIR}/sr
 add_custom_command( OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/voice/ipc/ctrlm_voice_ipc_request_type.c
    COMMAND gperf --output-file=${CMAKE_CURRENT_SOURCE_DIR}/src/voice/ipc/ctrlm_voice_ipc_request_type.c ${CMAKE_CURRENT_SOURCE_DIR}/src/voice/ipc/ctrlm_voice_ipc_request_type.hash
    VERBATIM)
+
+add_custom_target( ctrlm_config
+   DEPENDS ${CMAKE_BINARY_DIR}/ctrlm_config.json.template)

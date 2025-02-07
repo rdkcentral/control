@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 ## [1.0.3] - 2025-02-07
 
 ### Changed
+- check that a file descriptor is valid before FD_SET()
 - standardize use of singleton pattern ctrlm
 - speed up BLE auto pairing and surface failures immediately
 - move IR device input name to runtime config file

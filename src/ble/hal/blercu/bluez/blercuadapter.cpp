@@ -1230,6 +1230,10 @@ bool BleRcuAdapterBluez::addDevice(const BleAddress &address)
 
     XLOGD_INFO("requesting bluez pair %s", device->address().toString().c_str());
 
+
+    device->addPairingErrorSlot(Slot<const std::string&>(m_isAlive,
+            std::bind(&BleRcuAdapterBluez::onDevicePairingError, this, address, std::placeholders::_1)));
+
     device->pair(0);
 
     return true;
@@ -1636,6 +1640,7 @@ void BleRcuAdapterBluez::onRemoveDeviceReply(PendingReply<> *reply)
         XLOGD_DEBUG("remove device request successful");
     }
 }
+
 // -----------------------------------------------------------------------------
 /*!
     \internal
@@ -1651,6 +1656,19 @@ void BleRcuAdapterBluez::onDeviceNameChanged(const BleAddress &address,
     XLOGD_INFO("renamed device %s to %s", address.toString().c_str(), name.c_str());
 
     m_deviceNameChangedSlots.invoke(address, name);
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    \internal
+
+    Event signaled by an \l{BleRcuDevice} when a pairing request returns an error.
+
+ */
+void BleRcuAdapterBluez::onDevicePairingError(const BleAddress &address,
+                                             const std::string &error)
+{
+    m_devicePairingErrorSlots.invoke(address, error);
 }
 
 // -----------------------------------------------------------------------------
@@ -1689,7 +1707,7 @@ void BleRcuAdapterBluez::onDevicePairedChanged(const BleAddress &address,
 void BleRcuAdapterBluez::onDeviceReadyChanged(const BleAddress &address,
                                               bool ready)
 {
-    XLOGD_INFO("device with address %s is %s ready", address.toString().c_str(), ready ? "" : "NOT");
+    XLOGD_INFO("device with address %s is %sREADY", address.toString().c_str(), ready ? "" : "NOT ");
 
     map<BleAddress, shared_ptr<BleRcuDeviceBluez>>::const_iterator it = m_devices.find(address);
 

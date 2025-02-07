@@ -107,6 +107,10 @@ public:
     {
         m_deviceNameChangedSlots.addSlot(func);
     }
+    inline void addDevicePairingErrorSlot(const Slot<const BleAddress&, const std::string&> &func)
+    {
+        m_devicePairingErrorSlots.addSlot(func);
+    }
     inline void addDevicePairingChangedSlot(const Slot<const BleAddress&, bool> &func)
     {
         m_devicePairingChangedSlots.addSlot(func);
@@ -131,6 +135,7 @@ protected:
     Slots<const BleAddress&, const std::string&>    m_deviceFoundSlots;
     Slots<const BleAddress&>                        m_deviceRemovedSlots;
     Slots<const BleAddress&, const std::string&>    m_deviceNameChangedSlots;
+    Slots<const BleAddress&, const std::string&>    m_devicePairingErrorSlots;
     Slots<const BleAddress&, bool>                  m_devicePairingChangedSlots;
     Slots<const BleAddress&, bool>                  m_deviceReadyChangedSlots;
 

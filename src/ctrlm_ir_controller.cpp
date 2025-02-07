@@ -85,20 +85,21 @@ void ctrlm_ir_controller_t::destroy_instance() {
     }
 }
 
-ctrlm_ir_controller_t::ctrlm_ir_controller_t() :
-   last_key_time_(std::make_shared<ctrlm_uint64_db_attr_t>("Last Keypress Time", 0, "", "last_key_time")),
-   last_key_code_(std::make_shared<ctrlm_uint64_db_attr_t>("Last Keypress Code", CTRLM_KEY_CODE_INVALID, "", "last_key_code")),
-   last_key_time_flush_(0),
-   mask_key_codes_(true),
-   key_thread_msgq_(XR_MQ_INVALID),
-   scan_code_(0)
+ctrlm_ir_controller_t::ctrlm_ir_controller_t()
+   : input_device_name_(JSON_STR_VALUE_IR_INPUT_DEVICE_NAME)
+   , last_key_time_(std::make_shared<ctrlm_uint64_db_attr_t>("Last Keypress Time", 0, "", "last_key_time"))
+   , last_key_code_(std::make_shared<ctrlm_uint64_db_attr_t>("Last Keypress Code", CTRLM_KEY_CODE_INVALID, "", "last_key_code"))
+   , last_key_time_flush_(0)
+   , mask_key_codes_(true)
+   , key_thread_msgq_(XR_MQ_INVALID)
+   , scan_code_(0)
 {
 
    key_thread_.running = false;
 
-   string input_device_name(IR_INPUT_DEVICE_NAME);
+   read_config();
 
-   if (input_device_name.empty()) {
+   if (input_device_name_.empty()) {
       XLOGD_WARN("IR input device name is empty, not starting key monitor thread...");
    } else {
 
@@ -126,10 +127,26 @@ ctrlm_ir_controller_t::~ctrlm_ir_controller_t() {
    ctrlm_utils_message_queue_close(&key_thread_msgq_);
 }
 
+
+bool ctrlm_ir_controller_t::read_config() {
+   bool ret = false;
+   ctrlm_config_string_t name("ir.input_device_name");
+   if(name.get_config_value(this->input_device_name_)) {
+      XLOGD_INFO("IR input device name from config file: <%s>", this->input_device_name_.c_str());
+      ret = true;
+   } else {
+      XLOGD_WARN("Failed to read from config, using IR input device name default: <%s>", this->input_device_name_.c_str());
+   }
+   return(ret);
+}
+
 std::string ctrlm_ir_controller_t::name_get(void) {
    return "INFRARED_CONTROLLER";
 }
 
+std::string ctrlm_ir_controller_t::input_device_name_get(void) {
+   return input_device_name_;
+}
 
 xr_mq_t ctrlm_ir_controller_t::key_thread_msgq_get() const {
    return  key_thread_msgq_;
@@ -247,7 +264,8 @@ static int ctrlm_ir_open_key_input_device(string name) {
       DIR *dir_p = opendir(keyInputBaseDir.c_str());
       if (NULL == dir_p) {
          int errsv = errno;
-         XLOGD_ERROR("Failed to open key input device dir at path <%s>: error = <%d>, <%s>", keyInputBaseDir.c_str(), errsv, strerror(errsv));
+         XLOGD_ERROR("Failed to open key input device dir at path <%s>: error = <%d>, <%s>", 
+               keyInputBaseDir.c_str(), errsv, strerror(errsv));
          return -1;
       }
 
@@ -259,15 +277,18 @@ static int ctrlm_ir_open_key_input_device(string name) {
             int input_fd = open(keyInputFilename.c_str(), O_RDONLY|O_NONBLOCK);
             if (input_fd < 0) {
                int errsv = errno;
-               XLOGD_WARN("Failed to open key input device at path <%s>: error = <%d>, <%s>", keyInputFilename.c_str(), errsv, strerror(errsv));
+               XLOGD_WARN("Failed to open key input device at path <%s>: error = <%d>, <%s>", 
+                     keyInputFilename.c_str(), errsv, strerror(errsv));
             } else {
                struct libevdev *evdev = NULL;   
                int rc = libevdev_new_from_fd(input_fd, &evdev);
                if (rc < 0) {
                   XLOGD_ERROR("Failed to init libevdev (%s)", strerror(-rc));   //on failure, rc is negative errno
                } else {
-                  XLOGD_DEBUG("Input device <%s> name: <%s> ID: bus %#x vendor %#x product %#x, phys = <%s>, unique = <%s>",keyInputFilename.c_str(),
-                     libevdev_get_name(evdev),libevdev_get_id_bustype(evdev),libevdev_get_id_vendor(evdev),libevdev_get_id_product(evdev),libevdev_get_phys(evdev),libevdev_get_uniq(evdev));
+                  XLOGD_INFO("Input device <%s> name: <%s> ID: bus %#x vendor %#x product %#x, phys = <%s>, unique = <%s>",
+                        keyInputFilename.c_str(),
+                        libevdev_get_name(evdev),libevdev_get_id_bustype(evdev),libevdev_get_id_vendor(evdev),
+                        libevdev_get_id_product(evdev),libevdev_get_phys(evdev),libevdev_get_uniq(evdev));
                
                   if (name.compare(libevdev_get_name(evdev)) == 0) {
                      libevdev_free(evdev);
@@ -310,20 +331,29 @@ void* ctrlm_ir_key_monitor_thread(void *data) {
    struct input_event event;
    errno_t safec_rc = -1;
    int input_device_fd = -1;
+   int input_device_retry_cnt = 0;
+   int input_device_retry_max = 10;
+   
    fd_set rfds;
    int nfds = -1;
    bool running = true;
    char msg[CTRLM_IR_KEY_MSG_QUEUE_MSG_SIZE_MAX];
    xr_mq_t msgq = ir_controller->key_thread_msgq_get();
 
-   string input_device_name(IR_INPUT_DEVICE_NAME);
+   string input_device_name = ir_controller->input_device_name_get();
 
    do {
       if (input_device_fd < 0) {
          if (0 > (input_device_fd = ctrlm_ir_open_key_input_device(input_device_name))) {
             // failed to open the key input device, maybe ctrlm started before the device was created.  Wait a bit and try again.
-            ctrlm_timeout_destroy(&g_retry_input_open_timer_tag);
-            g_retry_input_open_timer_tag = ctrlm_timeout_create(5 * 1000, ctrlm_ir_retry_input_open, &msgq);
+            if (input_device_retry_cnt < input_device_retry_max) {
+               // retry a couple times in case the IR input device hasn't been created yet
+               input_device_retry_cnt++;
+               ctrlm_timeout_destroy(&g_retry_input_open_timer_tag);
+               g_retry_input_open_timer_tag = ctrlm_timeout_create(5 * 1000, ctrlm_ir_retry_input_open, &msgq);
+            } else {
+               XLOGD_FATAL("Failed to find IR input device and reached max number of retries, remote pairing might not work!");
+            }
          }
       }
 
@@ -383,6 +413,7 @@ void* ctrlm_ir_key_monitor_thread(void *data) {
                 // Receiving error ENODEV 19 "No such device" means the input device is no longer valid,
                 // so close fd and re-open
                 XLOGD_ERROR("error = <%d>, <%s>, closing and reopening device...", errsv, strerror(errsv));
+                input_device_retry_cnt = 0;
                 if (input_device_fd >= 0) {
                     close(input_device_fd);
                     input_device_fd = -1;

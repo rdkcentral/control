@@ -126,9 +126,10 @@ public:
    void                             setUpgradePaused(bool paused);
    bool                             getUpgradePaused();
    bool                             getUpgradePauseSupported(void);
-   void                             setUpgradeError(std::string error_str);
    bool                             getUpgradeStuck();
    bool                             needsBLEConnParamUpdateBeforeOTA(ctrlm_hal_ble_connection_params_t &connParams);
+
+   virtual void                     set_upgrade_error(const std::string &error_str);
 
    void                             setSupportedIrdbs(ctrlm_irdb_vendor_t* vendors, int num_supported);
    std::vector<ctrlm_irdb_vendor_t> getSupportedIrdbs() const;

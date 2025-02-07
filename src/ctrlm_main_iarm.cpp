@@ -25,7 +25,7 @@
 #include "irMgr.h"
 #include "pwrMgr.h"
 #include "sysMgr.h"
-#ifdef ENABLE_DEEP_SLEEP
+#ifdef DEEP_SLEEP_ENABLED
 #include "deepSleepMgr.h"
 #endif
 #include "comcastIrKeyCodes.h"
@@ -839,7 +839,7 @@ ctrlm_power_state_t ctrlm_main_iarm_call_get_power_state(void) {
     err = IARM_Bus_Call(IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_API_GetPowerState, (void *)&param, sizeof(param));
     if(err == IARM_RESULT_SUCCESS) {
         power_state = ctrlm_iarm_power_state_map(param.curState);
-        #ifdef ENABLE_DEEP_SLEEP
+        #ifdef DEEP_SLEEP_ENABLED
         //If ctrlm restarts with system STANDBY state, set to ON, will receive a DEEP_SLEEP or ON message shortly
         if(power_state == CTRLM_POWER_STATE_STANDBY) {
             power_state = CTRLM_POWER_STATE_ON;
@@ -853,7 +853,7 @@ ctrlm_power_state_t ctrlm_main_iarm_call_get_power_state(void) {
     return power_state;
 }
 
-#ifdef ENABLE_DEEP_SLEEP
+#ifdef DEEP_SLEEP_ENABLED
 gboolean ctrlm_main_iarm_networked_standby(void) {
    IARM_Bus_PWRMgr_NetworkStandbyMode_Param_t param = {0};
    IARM_Result_t res = IARM_Bus_Call(IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_API_GetNetworkStandbyMode, (void *)&param, sizeof(param));

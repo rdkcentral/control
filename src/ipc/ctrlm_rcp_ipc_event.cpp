@@ -42,7 +42,8 @@ ctrlm_rcp_ipc_controller_status_t::ctrlm_rcp_ipc_controller_status_t(const ctrlm
     avr_irdb_code_(controller.get_irdb_entry_id_name_avr()),
     wakeup_key_code_((CTRLM_KEY_CODE_INVALID == controller.get_last_wakeup_key()) ? -1 : controller.get_last_wakeup_key()),
     wakeup_config_(controller.get_wakeup_config()),
-    wakeup_custom_list_(controller.get_wakeup_custom_list())
+    wakeup_custom_list_(controller.get_wakeup_custom_list()),
+    upgrade_session_id_(controller.get_upgrade_session_uuid())
 {
 }
 
@@ -55,21 +56,22 @@ json_t *ctrlm_rcp_ipc_controller_status_t::to_json() const
     json_t *remote_data = json_object();
     int err             = 0;
 
-    err |= json_object_set_new_nocheck(remote_data, MAC_ADDRESS,     json_string(ieee_address_.to_string().c_str()));
-    err |= json_object_set_new_nocheck(remote_data, CONNECTED,       json_boolean(connected_));
-    err |= json_object_set_new_nocheck(remote_data, NAME,            json_string(name_.c_str()));
-    err |= json_object_set_new_nocheck(remote_data, REMOTE_ID,       json_integer(controller_id_));
-    err |= json_object_set_new_nocheck(remote_data, DEVICE_ID,       json_integer(device_id_));
-    err |= json_object_set_new_nocheck(remote_data, MAKE,            json_string(manufacturer_.c_str()));
-    err |= json_object_set_new_nocheck(remote_data, MODEL,           json_string(model_.c_str()));
-    err |= json_object_set_new_nocheck(remote_data, HW_VERSION,      json_string(hardware_version_.c_str()));
-    err |= json_object_set_new_nocheck(remote_data, SW_VERSION,      json_string(software_version_.c_str()));
-    err |= json_object_set_new_nocheck(remote_data, BTL_VERSION,     json_string(bootloader_version_.c_str()));
-    err |= json_object_set_new_nocheck(remote_data, SERIAL_NUMBER,   json_string(serial_number_.c_str()));
-    err |= json_object_set_new_nocheck(remote_data, BATTERY_PERCENT, json_integer(battery_level_));
-    err |= json_object_set_new_nocheck(remote_data, TV_IR_CODE,      json_string(tv_irdb_code_.c_str()));
-    err |= json_object_set_new_nocheck(remote_data, AMP_IR_CODE,     json_string(avr_irdb_code_.c_str()));
-    err |= json_object_set_new_nocheck(remote_data, WAKEUP_KEY_CODE, json_integer(wakeup_key_code_));
+    err |= json_object_set_new_nocheck(remote_data, MAC_ADDRESS,        json_string(ieee_address_.to_string().c_str()));
+    err |= json_object_set_new_nocheck(remote_data, CONNECTED,          json_boolean(connected_));
+    err |= json_object_set_new_nocheck(remote_data, NAME,               json_string(name_.c_str()));
+    err |= json_object_set_new_nocheck(remote_data, REMOTE_ID,          json_integer(controller_id_));
+    err |= json_object_set_new_nocheck(remote_data, DEVICE_ID,          json_integer(device_id_));
+    err |= json_object_set_new_nocheck(remote_data, MAKE,               json_string(manufacturer_.c_str()));
+    err |= json_object_set_new_nocheck(remote_data, MODEL,              json_string(model_.c_str()));
+    err |= json_object_set_new_nocheck(remote_data, HW_VERSION,         json_string(hardware_version_.c_str()));
+    err |= json_object_set_new_nocheck(remote_data, SW_VERSION,         json_string(software_version_.c_str()));
+    err |= json_object_set_new_nocheck(remote_data, BTL_VERSION,        json_string(bootloader_version_.c_str()));
+    err |= json_object_set_new_nocheck(remote_data, SERIAL_NUMBER,      json_string(serial_number_.c_str()));
+    err |= json_object_set_new_nocheck(remote_data, BATTERY_PERCENT,    json_integer(battery_level_));
+    err |= json_object_set_new_nocheck(remote_data, TV_IR_CODE,         json_string(tv_irdb_code_.c_str()));
+    err |= json_object_set_new_nocheck(remote_data, AMP_IR_CODE,        json_string(avr_irdb_code_.c_str()));
+    err |= json_object_set_new_nocheck(remote_data, WAKEUP_KEY_CODE,    json_integer(wakeup_key_code_));
+    err |= json_object_set_new_nocheck(remote_data, UPGRADE_SESSION_ID, json_string(upgrade_session_id_.c_str()));
 
     std::string config_str = ctrlm_rcu_wakeup_config_str(wakeup_config_);
     std::transform(config_str.begin(), config_str.end(), config_str.begin(), [](unsigned char c) {return std::tolower(c);});
@@ -143,6 +145,41 @@ void ctrlm_rcp_ipc_net_status_t::populate_status(const ctrlm_obj_network_t &netw
 }
 
 char *ctrlm_rcp_ipc_net_status_t::to_string() const
+{
+    return json_dumps(to_json(), JSON_ENCODE_ANY);
+}
+
+ctrlm_rcp_ipc_upgrade_status_t::~ctrlm_rcp_ipc_upgrade_status_t()
+{
+}
+
+void ctrlm_rcp_ipc_upgrade_status_t::populate_status(const ctrlm_obj_controller_t &rcu)
+{
+    session_id        = rcu.get_upgrade_session_uuid();
+    ieee_address_     = rcu.ieee_address_get();
+    percent_complete_ = rcu.get_upgrade_progress();
+    state_            = rcu.get_upgrade_state();
+    error_msg_        = rcu.get_upgrade_error();
+}
+
+json_t *ctrlm_rcp_ipc_upgrade_status_t::to_json() const
+{
+    json_t *status = json_object();
+    int err        = 0;
+
+    err |= json_object_set_new_nocheck(status, UPGRADE_SESSION_ID, json_string(session_id.c_str()));
+    err |= json_object_set_new_nocheck(status, MAC_ADDRESS,        json_string(ieee_address_.to_string().c_str()));
+    err |= json_object_set_new_nocheck(status, PERCENT_COMPLETE,   json_integer(percent_complete_));
+    err |= json_object_set_new_nocheck(status, UPGRADE_STATE,      json_string(ctrlm_rcu_upgrade_state_str(state_)));
+
+    if (!error_msg_.empty()) {
+        err |= json_object_set_new_nocheck(status, ERROR_STRING, json_string(error_msg_.c_str()));
+    }
+
+    return (err) ? NULL : status;
+}
+
+char *ctrlm_rcp_ipc_upgrade_status_t::to_string() const
 {
     return json_dumps(to_json(), JSON_ENCODE_ANY);
 }

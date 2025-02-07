@@ -27,6 +27,8 @@
 #include "ctrlm_ipc.h"
 #include "ctrlm_utils.h"
 #include "ctrlm_rcp_ipc_event.h"
+#include "ctrlm_config_types.h"
+#include "ctrlm_config_default.h"
 
 namespace rcp_json_keys
 {
@@ -38,6 +40,12 @@ namespace rcp_json_keys
     constexpr char const* SOURCE_KEY_CODE      = "sourceKeyCode";
     constexpr char const* SCREENBIND_MODE      = "bIsScreenBindMode";
     constexpr char const* REMOTE_KEYPAD_CONFIG = "remoteKeypadConfig";
+    constexpr char const* FILENAME             = "fileName";
+    constexpr char const* FILETYPE             = "fileType";
+    constexpr char const* PERCENT_INCREMENT    = "percentIncrement";
+    constexpr char const* SESSION_ID           = "sessionId";
+    constexpr char const* SESSION_ID_LIST      = "sessionIdList";
+    constexpr char const* MAC_ADDRESS_LIST     = "macAddressList";
     constexpr char const* SUCCESS              = "success";
 }
 
@@ -48,7 +56,9 @@ private:
 
     static std::mutex                                    instance_mutex_;
     static std::atomic_bool                              atomic_running_;
-    static std::unique_ptr<ctrlm_rcp_ipc_iarm_thunder_t> instance_;
+    static bool                                          thunder_device_update_enabled_;
+
+    void configure(void);
 
 public:
     ~ctrlm_rcp_ipc_iarm_thunder_t();
@@ -62,6 +72,7 @@ public:
     void deregister_ipc() const override;
 
     bool on_status(const ctrlm_rcp_ipc_net_status_t &net_status) const;
+    bool on_firmware_update_progress(const ctrlm_rcp_ipc_upgrade_status_t &upgrade_status) const;
 
 protected:
     static IARM_Result_t start_pairing(void *arg);
@@ -70,6 +81,10 @@ protected:
     static IARM_Result_t find_my_remote(void *arg);
     static IARM_Result_t factory_reset(void *arg);
     static IARM_Result_t write_rcu_wakeup_config(void *arg);
+    static IARM_Result_t start_fw_update(void *arg);
+    static IARM_Result_t cancel_fw_update(void *arg);
+    static IARM_Result_t status_fw_update(void *arg);
+    static IARM_Result_t unpair(void *arg);
 
     template <typename T1, typename T2>
     static void sync_send_netw_handler_to_main_queue(T1 params, ctrlm_msg_handler_network_t handler)

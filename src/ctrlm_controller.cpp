@@ -24,6 +24,7 @@
 #include "ctrlm_network.h"
 #include "ctrlm_utils.h"
 #include "ctrlm_database.h"
+#include <uuid/uuid.h>
 
 using namespace std;
 
@@ -330,4 +331,82 @@ ctrlm_rcu_wakeup_config_t ctrlm_obj_controller_t::get_wakeup_config() const {
 std::vector<uint16_t> ctrlm_obj_controller_t::get_wakeup_custom_list() const {
     XLOGD_WARN("not implemented.");
     return {};
+}
+
+void ctrlm_obj_controller_t::set_upgrade_progress(uint8_t progress) {
+    upgrade_progress_ = progress;
+    ctrlm_rcu_upgrade_state_t previous_state = get_upgrade_state();
+    ctrlm_rcu_upgrade_state_t new_state = CTRLM_RCU_UPGRADE_STATE_INVALID;
+
+    if (upgrade_progress_ >= 0 && upgrade_progress_ < 100) { // pending
+       new_state = CTRLM_RCU_UPGRADE_STATE_PENDING;
+       set_upgrade_error(""); // clear error messaging if pending
+
+    } else if (upgrade_progress_ == 100) {
+       new_state = CTRLM_RCU_UPGRADE_STATE_SUCCESS;
+
+    } else if (upgrade_progress_ == 255) {
+       // set state to canceled if it was pending
+       if (previous_state == CTRLM_RCU_UPGRADE_STATE_PENDING) {
+          new_state = CTRLM_RCU_UPGRADE_STATE_CANCELED;
+       } else {
+          new_state = CTRLM_RCU_UPGRADE_STATE_IDLE;
+       }
+       set_upgrade_increment(-1);
+    }
+    set_upgrade_state(new_state);
+}
+
+uint8_t ctrlm_obj_controller_t::get_upgrade_progress() const {
+    return upgrade_progress_;
+}
+
+void ctrlm_obj_controller_t::set_upgrade_state(ctrlm_rcu_upgrade_state_t state) {
+    upgrade_state_ = state;
+}
+
+ctrlm_rcu_upgrade_state_t ctrlm_obj_controller_t::get_upgrade_state() const {
+    return upgrade_state_;
+}
+
+void ctrlm_obj_controller_t::set_upgrade_error(const std::string &error_str) {
+    XLOGD_WARN("not implemented.");
+}
+
+std::string ctrlm_obj_controller_t::get_upgrade_error() const {
+    return upgrade_error_msg_;
+}
+
+void ctrlm_obj_controller_t::set_upgrade_session_uuid(bool generate) {
+    if (!generate) {
+        upgrade_session_uuid_.clear();
+        return;
+    }
+
+    uuid_t session_uuid;
+    char   tmp[37];
+
+    uuid_generate(session_uuid);
+    uuid_unparse(session_uuid, tmp);
+
+    upgrade_session_uuid_ = std::string(tmp);
+}
+
+std::string ctrlm_obj_controller_t::get_upgrade_session_uuid() const {
+    return upgrade_session_uuid_;
+}
+
+void ctrlm_obj_controller_t::set_upgrade_increment(uint8_t increment) {
+    if (increment == 0) { // cannot be 0 as modulo 0 is undefined behavior
+        increment = -1;
+    }
+    upgrade_increment_ = increment;
+}
+
+uint8_t ctrlm_obj_controller_t::get_upgrade_increment() const {
+    return upgrade_increment_;
+}
+
+bool ctrlm_obj_controller_t::is_upgrade_progress_at_increment() const {
+    return ((upgrade_progress_ % upgrade_increment_ == 0) || (upgrade_progress_ == 100));
 }

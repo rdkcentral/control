@@ -272,7 +272,7 @@ typedef struct {
    gboolean                           local_conf;
    guint                              telemetry_report_interval;
    ctrlm_ir_controller_t             *ir_controller;
-#ifdef ENABLE_DEEP_SLEEP
+#ifdef DEEP_SLEEP_ENABLED
    gboolean                           wake_with_voice_allowed;
 #endif
 } ctrlm_global_t;
@@ -575,7 +575,7 @@ int main(int argc, char *argv[]) {
    g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_UNKNOWN;
    g_ctrlm.last_key_info.is_screen_bind_mode  = false;
    g_ctrlm.last_key_info.remote_keypad_config = CTRLM_REMOTE_KEYPAD_CONFIG_INVALID;
-#ifdef ENABLE_DEEP_SLEEP
+#ifdef DEEP_SLEEP_ENABLED
    g_ctrlm.wake_with_voice_allowed            = false;
 #endif
    errno_t safec_rc = strcpy_s(g_ctrlm.last_key_info.source_name, sizeof(g_ctrlm.last_key_info.source_name), ctrlm_rcu_ir_remote_types_str(g_ctrlm.last_key_info.last_ir_remote_type));
@@ -2115,9 +2115,6 @@ gboolean ctrlm_networks_pre_init(json_t *json_obj_net_rf4ce, json_t *json_config
    g_ctrlm.network_type[network_id]       = g_ctrlm.networks[network_id]->type_get();
    #endif
 
-   #ifdef CTRLM_NETWORK_IP
-   ctrlm_ip_network_create();
-   #endif
    vendor_network_opts_t vendor_network_opts;
    vendor_network_opts.ignore_mask    = 0;
    vendor_network_opts.mask_key_codes = g_ctrlm.mask_pii;
@@ -2653,7 +2650,7 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             if( (old_state == CTRLM_POWER_STATE_DEEP_SLEEP) && (dqm->new_state != CTRLM_POWER_STATE_DEEP_SLEEP) ) {
                XLOGD_INFO("power_state_change: wake DB and networks");
-               #ifdef ENABLE_DEEP_SLEEP
+               #ifdef DEEP_SLEEP_ENABLED
                g_ctrlm.wake_with_voice_allowed = true;
                #endif
                ctrlm_db_power_state_change(true);
@@ -2668,7 +2665,7 @@ gpointer ctrlm_main_thread(gpointer param) {
                }
             }
 
-            #ifdef ENABLE_DEEP_SLEEP
+            #ifdef DEEP_SLEEP_ENABLED
             //Wake with voice? Handle NSM voice, do not change power state
             if(dqm->new_state == CTRLM_POWER_STATE_ON) {
                bool wake_with_voice_allowed = g_ctrlm.wake_with_voice_allowed;
@@ -2688,7 +2685,7 @@ gpointer ctrlm_main_thread(gpointer param) {
             g_ctrlm.power_state = dqm->new_state;
 
             XLOGD_INFO("Enter power state <%s>", ctrlm_power_state_str(g_ctrlm.power_state));
-            #ifdef ENABLE_DEEP_SLEEP
+            #ifdef DEEP_SLEEP_ENABLED
             if(g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP) {
                XLOGD_INFO("NSM is <%s>",  ctrlm_main_iarm_networked_standby()?"ENABLED":"DISABLED");
             }

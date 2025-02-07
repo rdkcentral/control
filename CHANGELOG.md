@@ -16,7 +16,28 @@ All notable changes to this project will be documented in this file.
 
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
+
+## [1.0.3] - 2025-02-07
+
+### Changed
+- check that a file descriptor is valid before FD_SET()
+- standardize use of singleton pattern ctrlm
+- speed up BLE auto pairing and surface failures immediately
+- move IR device input name to runtime config file
+- Make writeAdvertisingConfig synchronous
+- Remove legacy ipcontrol certs
+- remove legacy url_vrex config field
+- Add ctrlm Support for XRA BLE key - QAM
+- ControlMgr crash pairWithMacHash when going to deepsleep
+
+### Added
+- RemoteControl plugin methods to pair and unpair targetted RCU devices based on MAC
+- RemoteControl plugin methods to trigger RCU firmware upgrade and report status of upgrade
+- ctrlm-factory added to this repo, its no longer a separate repo
+
+
 ## [1.0.2] - 2024-12-06
+
 ### Changed
 - ctrlm IR uinput device match exact name, simplify IR-initiated BLE pairing event handling
 - Check for Invalid avDevType

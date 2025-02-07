@@ -73,7 +73,6 @@ public:
     int hidrawWaitPollTimeout() const;
     int hidrawWaitLimitTimeout() const;
 
-    // ConfigModelSettings modelSettings(uint32_t oui) const;
     ConfigModelSettings modelSettings(std::string name) const;
     std::vector<ConfigModelSettings> modelSettings() const;
 

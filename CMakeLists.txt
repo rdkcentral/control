@@ -141,6 +141,7 @@ include_directories( ${CMAKE_CURRENT_BINARY_DIR}
                      ${CMAKE_SYSROOT}/usr/include/rdk/ds
                      ${CMAKE_SYSROOT}/usr/include/rdk/ds-rpc
                      ${CMAKE_SYSROOT}/usr/include/rdk/ds-hal
+                     ${CMAKE_SYSROOT}/usr/include/rdk/halif/ds-hal
                      ${CMAKE_SYSROOT}/usr/include/WPEFramework
                      ${CMAKE_SYSROOT}/usr/include/breakpad
                    )

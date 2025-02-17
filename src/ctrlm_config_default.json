@@ -221,16 +221,17 @@
    "network_ble" : {
       "timeouts": {
          "discovery": 15000,
-         "pair": 15000,
+         "pair": 20000,
          "setup": 60000,
          "unpair": 20000
-      }
+      },
+      "models": [
+      ]
    },
    "network_ip" : {
    },
    "voice" : {
       "enable"                           :      true,
-      "url_vrex"                         : "",
       "url_src_ptt"                      : "",
       "url_src_ff"                       : "",
       "url_src_mic_tap"                  : "",
@@ -318,6 +319,10 @@
          "XR16v1",
          "XR19v1",
          "XRAv1"
+      ],
+      "methods" : [
+         "XCONF",
+         "THUNDER"
       ]
    },
    "vsdk" : {

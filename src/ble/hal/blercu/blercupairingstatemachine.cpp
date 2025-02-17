@@ -41,9 +41,11 @@ BleRcuPairingStateMachine::BleRcuPairingStateMachine(const shared_ptr<const Conf
                                                      const shared_ptr<BleRcuAdapter> &adapter)
     : m_isAlive(make_shared<bool>(true))
     , m_adapter(adapter)
+    , m_isAutoPairing(false)
     , m_pairingCode(-1)
     , m_pairingMacHash(-1)
     , m_discoveryTimeout(config->discoveryTimeout())
+    , m_discoveryTimeoutDefault(config->discoveryTimeout())
     , m_pairingTimeout(config->pairingTimeout())
     , m_setupTimeout(config->setupTimeout())
     , m_unpairingTimeout(config->upairingTimeout())
@@ -55,7 +57,10 @@ BleRcuPairingStateMachine::BleRcuPairingStateMachine(const shared_ptr<const Conf
     // constructs a list of name printf style formats for searching for device names that match
     for (const ConfigModelSettings &model : config->modelSettings()) {
         if (!model.disabled()) {
-            m_pairingPrefixFormats.push_back(model.pairingNameFormat());
+            if (!model.pairingNameFormat().empty()) {
+                m_pairingPrefixFormats.push_back(model.pairingNameFormat());
+            }
+            m_supportedPairingNames.push_back(model.scanNameMatcher());
         }
     }
 
@@ -79,6 +84,8 @@ BleRcuPairingStateMachine::BleRcuPairingStateMachine(const shared_ptr<const Conf
             std::bind(&BleRcuPairingStateMachine::onDevicePairingChanged, this, std::placeholders::_1, std::placeholders::_2)));
     m_adapter->addPoweredChangedSlot(Slot<bool>(m_isAlive,
             std::bind(&BleRcuPairingStateMachine::onAdapterPoweredChanged, this, std::placeholders::_1)));
+    m_adapter->addDevicePairingErrorSlot(Slot<const BleAddress&, const std::string&>(m_isAlive,
+            std::bind(&BleRcuPairingStateMachine::onDevicePairingError, this, std::placeholders::_1, std::placeholders::_2)));
 }
 
 BleRcuPairingStateMachine::~BleRcuPairingStateMachine()
@@ -119,14 +126,16 @@ void BleRcuPairingStateMachine::setupStateMachine()
 
     // add the transitions       From State           ->                Event                  ->   To State
     m_stateMachine.addTransition(RunningSuperState,                     AdapterPoweredOffEvent,     FinishedState);
-
+    
     m_stateMachine.addTransition(StartingDiscoveryState,                DiscoveryStartedEvent,      DiscoveringState);
     m_stateMachine.addTransition(DiscoverySuperState,                   DeviceFoundEvent,           StoppingDiscoveryState);
     m_stateMachine.addTransition(DiscoverySuperState,                   DiscoveryStartTimeoutEvent, FinishedState);
     m_stateMachine.addTransition(DiscoverySuperState,                   DiscoveryStoppedEvent,      FinishedState);
+    m_stateMachine.addTransition(DiscoverySuperState,                   CancelRequestEvent,         FinishedState);
 
     m_stateMachine.addTransition(StoppingDiscoveryState,                DiscoveryStoppedEvent,      EnablePairableState);
     m_stateMachine.addTransition(StoppingDiscoveryState,                PairingTimeoutEvent,        FinishedState);
+    m_stateMachine.addTransition(StoppingDiscoveryState,                PairingErrorEvent,          FinishedState);
     m_stateMachine.addTransition(StoppingDiscoveryState,                DiscoveryStopTimeoutEvent,  FinishedState);
 
     m_stateMachine.addTransition(EnablePairableState,                   PairableEnabledEvent,       PairingState);
@@ -136,7 +145,9 @@ void BleRcuPairingStateMachine::setupStateMachine()
     m_stateMachine.addTransition(PairingSuperState,                     DeviceUnpairedEvent,        FinishedState);
     m_stateMachine.addTransition(PairingSuperState,                     DeviceRemovedEvent,         FinishedState);
     m_stateMachine.addTransition(EnablePairableState,                   PairingTimeoutEvent,        UnpairingState);
+    m_stateMachine.addTransition(EnablePairableState,                   PairingErrorEvent,          FinishedState);
     m_stateMachine.addTransition(PairingState,                          PairingTimeoutEvent,        UnpairingState);
+    m_stateMachine.addTransition(PairingState,                          PairingErrorEvent,          FinishedState);
     m_stateMachine.addTransition(SetupState,                            SetupTimeoutEvent,          UnpairingState);
 
     m_stateMachine.addTransition(UnpairingState,                        DeviceUnpairedEvent,        FinishedState);
@@ -181,42 +192,103 @@ bool BleRcuPairingStateMachine::isRunning() const
 
 // -----------------------------------------------------------------------------
 /*!
+    Returns \c true if the state machine is currently running the auto pairing
+    operation.
+
+    This special state is needed because auto pairing consists of running a scan for
+    an undeterminate amount of time until one of the supported devices listed in the 
+    config file is found.  We want to be able to cancel this operation if another 
+    pair request comes in that targets a specific device (like pairWithCode or
+    pairWithMacHash)
+
+ */
+bool BleRcuPairingStateMachine::isAutoPairing() const
+{
+    return isRunning() && m_isAutoPairing;
+}
+
+
+// -----------------------------------------------------------------------------
+/*!
     Starts the state machine using the supplied \a pairingCode and
     \a namePrefixes.
 
  */
-void BleRcuPairingStateMachine::start(uint8_t filterByte, uint8_t pairingCode)
+void BleRcuPairingStateMachine::startAutoWithTimeout(int timeoutMs)
 {
-    // FIXME: use the filterByte to narrow the search to a certain RCU model
-    // Q_UNUSED(filterByte);
-
     // sanity check the statemachine is not already running
     if (m_stateMachine.isRunning()) {
         XLOG_WARN("state machine already running");
         return;
     }
 
+    m_discoveryTimeout = timeoutMs;
+    m_isAutoPairing = true;
+
     // clear the target device
     m_targetAddress.clear();
+
+    // clear the pairing code and mac hash
+    m_pairingCode = -1;
+    m_pairingMacHash = -1;
+
+    // create list of supported remotes regex to match to the name of the device
+    m_targetedPairingNames.clear();
+
+    for (const auto &name : m_supportedPairingNames) {
+        // add to the list to use for compare when a device is found
+        m_targetedPairingNames.push_back(name);
+    }
+
+    // start the state machine
+    m_stateMachine.start();
+
+    m_pairingAttempts++;
+    m_pairingSucceeded = false;
+    XLOGD_INFO("Started auto pairing procedure");
+}
+
+
+// -----------------------------------------------------------------------------
+/*!
+    Starts the state machine using the supplied \a pairingCode and
+    \a namePrefixes.
+
+ */
+void BleRcuPairingStateMachine::startWithCode(uint8_t pairingCode)
+{
+    // sanity check the statemachine is not already running
+    if (m_stateMachine.isRunning()) {
+        XLOG_WARN("state machine already running");
+        return;
+    }
+
+    m_discoveryTimeout = m_discoveryTimeoutDefault;
+    m_isAutoPairing = false;
+
+    // clear the target device
+    m_targetAddress.clear();
+
+    // clear the list of addresses to filter for
+    m_pairingMacList.clear();
 
     // store the pairing code
     m_pairingCode = pairingCode;
     m_pairingMacHash = -1;
 
     // create list of supported remotes regex to match to the name of the device
-    m_supportedPairingNames.clear();
+    m_targetedPairingNames.clear();
 
     char nameWithCode[100];
 
-    vector<string>::const_iterator it = m_pairingPrefixFormats.begin();
-    for (; it != m_pairingPrefixFormats.end(); ++it) {
+    for (const auto &pairingFormat : m_pairingPrefixFormats) {
         // construct the wildcard match
-        snprintf(nameWithCode, sizeof(nameWithCode), it->c_str(), pairingCode);
+        snprintf(nameWithCode, sizeof(nameWithCode), pairingFormat.c_str(), pairingCode);
 
         XLOGD_INFO("added pairing regex for supported remote '%s'", nameWithCode);
 
         // add to the list to use for compare when a device is found
-        m_supportedPairingNames.push_back(std::regex(nameWithCode, std::regex_constants::ECMAScript));
+        m_targetedPairingNames.push_back(std::regex(nameWithCode, std::regex_constants::ECMAScript));
     }
 
     // start the state machine
@@ -233,16 +305,16 @@ void BleRcuPairingStateMachine::start(uint8_t filterByte, uint8_t pairingCode)
     \a namePrefixes.
 
  */
-void BleRcuPairingStateMachine::startMacHash(uint8_t filterByte, uint8_t macHash)
+void BleRcuPairingStateMachine::startWithMacHash(uint8_t macHash)
 {
-    // FIXME: use the filterByte to narrow the search to a certain RCU model
-    // Q_UNUSED(filterByte);
-
     // sanity check the statemachine is not already running
     if (m_stateMachine.isRunning()) {
         XLOGD_WARN("state machine already running");
         return;
     }
+
+    m_discoveryTimeout = m_discoveryTimeoutDefault;
+    m_isAutoPairing = false;
 
     // clear the target device
     m_targetAddress.clear();
@@ -250,12 +322,14 @@ void BleRcuPairingStateMachine::startMacHash(uint8_t filterByte, uint8_t macHash
     // clear the pairing code
     m_pairingCode = -1;
 
+    // clear the list of addresses to filter for
+    m_pairingMacList.clear();
+
     // store the MAC hash
     m_pairingMacHash = macHash;
 
-    // clear the maps, we are trying to pair to a specific device using a hash
-    // of the MAC address instead
-    m_supportedPairingNames.clear();
+    // clear the maps, we are trying to pair to a specific device using a hash of the MAC address
+    m_targetedPairingNames.clear();
 
     // start the state machine
     m_stateMachine.start();
@@ -279,6 +353,9 @@ void BleRcuPairingStateMachine::start(const BleAddress &target, const string &na
         return;
     }
 
+    m_discoveryTimeout = m_discoveryTimeoutDefault;
+    m_isAutoPairing = false;
+
     // set the target device
     m_targetAddress = target;
 
@@ -286,9 +363,12 @@ void BleRcuPairingStateMachine::start(const BleAddress &target, const string &na
     m_pairingCode = -1;
     m_pairingMacHash = -1;
 
+    // clear the list of addresses to filter for
+    m_pairingMacList.clear();
+
     // set the pairing prefix map to contain just the one name match
-    m_supportedPairingNames.clear();
-    m_supportedPairingNames.push_back(std::regex(name, std::regex_constants::ECMAScript));
+    m_targetedPairingNames.clear();
+    m_targetedPairingNames.push_back(std::regex(name, std::regex_constants::ECMAScript));
 
     // start the state machine
     m_stateMachine.start();
@@ -300,6 +380,46 @@ void BleRcuPairingStateMachine::start(const BleAddress &target, const string &na
 
 // -----------------------------------------------------------------------------
 /*!
+    Starts the state machine for pairing using the supplied \a list of addresses
+
+ */
+void BleRcuPairingStateMachine::startWithMacList(const std::vector<BleAddress> &macList)
+{
+    // sanity check
+    if (m_stateMachine.isRunning()) {
+        XLOGD_ERROR("scanner already running");
+        return;
+    }
+
+    // clear the target device
+    m_targetAddress.clear();
+
+    // store the pairing code
+    m_pairingCode = -1;
+    m_pairingMacHash = -1;
+
+    // create list of supported remotes regex to match to the name of the device
+    m_supportedPairingNames.clear();
+
+    // set the list of addresses to filter for
+    m_pairingMacList = macList;
+
+    // start the state machine
+    m_stateMachine.start();
+
+    m_pairingAttempts++;
+    m_pairingSucceeded = false;
+
+    XLOGD_INFO("starting pairing with a list of target addresses:");
+    for (const auto &address : macList) {
+        XLOGD_INFO("<%s>", address.toString().c_str());
+    }
+
+}
+
+
+// -----------------------------------------------------------------------------
+/*!
     Stops the state machine by posting a cancel message to it.
 
     The stop may be asynchronous, you can either poll on the isRunning() call or
@@ -308,8 +428,16 @@ void BleRcuPairingStateMachine::start(const BleAddress &target, const string &na
  */
 void BleRcuPairingStateMachine::stop()
 {
-    // TODO: implement
-    XLOGD_ERROR("cancel pairing not implemented");
+    // sanity check
+    if (!m_stateMachine.isRunning()) {
+        XLOGD_INFO("pairing state machine not running");
+        return;
+    }
+
+    XLOGD_INFO("cancelling pairing");
+
+    // post a cancel event and let the state-machine clean up
+    m_stateMachine.postEvent(CancelRequestEvent);
 }
 
 // -----------------------------------------------------------------------------
@@ -425,8 +553,10 @@ void BleRcuPairingStateMachine::onEnteredStoppingDiscoveryStartedExternally()
  */
 void BleRcuPairingStateMachine::onEnteredStartDiscoveryState()
 {
-    // start a timer for timing out the discovery
-    m_stateMachine.postDelayedEvent(DiscoveryStartTimeoutEvent, m_discoveryTimeout);
+    // start a timer for timing out the discovery, if -1 it should run forever so no timeout
+    if (m_discoveryTimeout > 0) {
+        m_stateMachine.postDelayedEvent(DiscoveryStartTimeoutEvent, m_discoveryTimeout);
+    }
 
     // tell anyone who cares that pairing has started
     m_startedSlots.invoke();
@@ -610,6 +740,8 @@ void BleRcuPairingStateMachine::onEnteredPairingState()
         XLOGD_ERROR("Entered pairing state, so a target device is expected but its null");
     }
 
+    m_pairingSlots.invoke();
+
     // request the manager to pair with the device
     m_adapter->addDevice(m_targetAddress);
 }
@@ -727,17 +859,18 @@ void BleRcuPairingStateMachine::processDevice(const BleAddress &address,
                                               const string &name)
 {
     // Iterate through list of supported remotes and compare names
-    vector<regex>::const_iterator it_name = m_supportedPairingNames.begin();
-    for (; it_name != m_supportedPairingNames.end(); ++it_name) {
+    vector<regex>::const_iterator it_name = m_targetedPairingNames.begin();
+    for (; it_name != m_targetedPairingNames.end(); ++it_name) {
         if (std::regex_match(name.c_str(), *it_name)) {
-            XLOGD_INFO("Pairing state machine matched remote name successfully, name: %s, address: %s", name.c_str(), address.toString().c_str());
+            XLOGD_INFO("Device (%s, %s) has a name targeted for pairing!", 
+                    name.c_str(), address.toString().c_str());
             break;
         }
     }
 
-    if (it_name == m_supportedPairingNames.end()) {
+    if (it_name == m_targetedPairingNames.end()) {
         // Device not found through conventional means, see if we are pairing based on MAC hash
-        // Because if we are pairing based on MAC hash, m_supportedPairingNames is first cleared
+        // Because if we are pairing based on MAC hash, m_targetedPairingNames is first cleared
         if (m_pairingMacHash != -1) {
             // Check if MAC hash matches
             int macHash = 0;
@@ -745,15 +878,34 @@ void BleRcuPairingStateMachine::processDevice(const BleAddress &address,
                 macHash += (int)address[i];
             }
             macHash &= 0xFF;
-            XLOGD_INFO("Validating device based on MAC hash, requested MAC hash = 0x%02X", m_pairingMacHash);
-            XLOGD_INFO("MAC hash of this device = 0x%02X, name: %s, address: %s", macHash, name.c_str(), address.toString().c_str());
+            XLOGD_INFO("Pairing based on MAC hash, requested MAC hash = 0x%02X, this device = 0x%02X (%s, %s)", 
+                    m_pairingMacHash, macHash, name.c_str(), address.toString().c_str());
             if (m_pairingMacHash != macHash) {
                 return;
+            }
+        // Device not found through conventional means or MAC hash so let's check a mac address list
+        // Pairing via a mac address list clears supported names and the pairing mac hash
+        } else if (m_pairingMacList.size() != 0) {
+            if (m_pairingMacList.size() != 0) {
+                // check if the mac address matches any of the ones in the filter list (if it exists)
+                bool found = false;
+                for (const auto &filterAddress : m_pairingMacList) {
+                    if (address == filterAddress) {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    XLOGD_DEBUG("device with address %s is not in the mac address filter list - ignoring", address.toString().c_str());
+                    return;
+                }
             }
         } else {
             // log an error if we don't already have a target device
             if (m_targetAddress.isNull()) {
-                XLOGD_WARN("odd, don't have a name prefix for device %s", address.toString().c_str());
+                XLOGD_INFO("Device (%s, %s) not targeted for pairing, ignoring...", 
+                        name.c_str(), address.toString().c_str());
             }
             return;
         }
@@ -765,15 +917,20 @@ void BleRcuPairingStateMachine::processDevice(const BleAddress &address,
         // is the device currently paired? if so we have to remove (unpair)
         // it and then remain in the current state
         if (m_adapter->isDevicePaired(address)) {
+            if (m_adapter->isDeviceConnected(address)) {
+                XLOGD_INFO("Ignoring device (%s, %s)... it is currently paired and connected, no need to re-pair.", 
+                        name.c_str(), address.toString().c_str());
+                return;
+            }
 
-            XLOGD_INFO("found target device %s but it's currently paired, will unpair and wait till it shows up in a scan again", 
-                    address.toString().c_str());
+            XLOGD_INFO("Found target device (%s, %s) but it's currently paired.  Will unpair and wait till it shows up in a scan again.", 
+                    name.c_str(), address.toString().c_str());
 
             m_adapter->removeDevice(address);
             return;
         }
 
-        XLOGD_INFO("found target device %s", address.toString().c_str());
+        XLOGD_INFO("Found target device (%s, %s)", name.c_str(), address.toString().c_str());
 
         // store the target address
         m_targetAddress = address;
@@ -783,8 +940,8 @@ void BleRcuPairingStateMachine::processDevice(const BleAddress &address,
         // this may happen if two remotes have the same pairing prefix,
         // in such situations we stick with the first one we found, there
         // is no way to know which is the correct device to pair to
-        XLOGD_WARN("device added with correct pairing prefix, however it's address doesn't match previously found device.");
-        XLOGD_WARN("(prev: %s, new: %s %s)", m_targetAddress.toString().c_str(), address.toString().c_str(), name.c_str());
+        XLOGD_WARN("Device (%s, %s) is targeted for pairing, but we already have a target (%s).  Keeping previous target.",
+                name.c_str(), address.toString().c_str(), m_targetAddress.toString().c_str());
         return;
     }
 
@@ -858,6 +1015,29 @@ void BleRcuPairingStateMachine::onDeviceNameChanged(const BleAddress &address,
             address.toString().c_str(), name.c_str(), m_targetAddress.toString().c_str());
 
     processDevice(address, name);
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    Slot expected to be called from outside this object to indicate that
+    a new device has changed it's name.
+
+    The \a address and new \a name of the device should be supplied, these
+    are checked to see if they match the pairing target.
+
+ */
+void BleRcuPairingStateMachine::onDevicePairingError(const BleAddress &address,
+                                                    const string &error)
+{
+    if (!m_stateMachine.isRunning()) {
+        return;
+    }
+
+    XLOGD_ERROR("Device (%s) pairing failed, shutting down state machine...", address.toString().c_str());
+
+    // stop the pairing and setup timeout timers
+    m_stateMachine.cancelDelayedEvents(PairingTimeoutEvent);
+    m_stateMachine.postEvent(PairingErrorEvent);
 }
 
 // -----------------------------------------------------------------------------

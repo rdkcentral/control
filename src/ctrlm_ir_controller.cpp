@@ -359,8 +359,10 @@ void* ctrlm_ir_key_monitor_thread(void *data) {
 
       // Needs to be reinitialized before each call to select() because select() will modify these variables
       FD_ZERO(&rfds);
-      FD_SET(msgq,  &rfds);
-      FD_SET(input_device_fd,  &rfds);
+      FD_SET(msgq, &rfds);
+      if (input_device_fd >= 0) {
+         FD_SET(input_device_fd, &rfds);
+      }
       nfds = msgq;
       nfds = MAX(nfds, input_device_fd);
       nfds++;
@@ -402,7 +404,7 @@ void* ctrlm_ir_key_monitor_thread(void *data) {
          }
       }
 
-      if (FD_ISSET(input_device_fd, &rfds)) {
+      if (input_device_fd >= 0 && FD_ISSET(input_device_fd, &rfds)) {
          safec_rc = memset_s ((void*) &event, sizeof(event), 0, sizeof(event));
          ERR_CHK(safec_rc);
          ret = read(input_device_fd, (void*)&event, sizeof(event));

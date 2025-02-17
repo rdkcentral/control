@@ -30,6 +30,7 @@
 #include <xr_mq.h>
 #include <map>
 #include <linux/input.h>
+#include <uuid/uuid.h>
 
 // dsMgr includes
 #include "host.hpp"
@@ -43,6 +44,7 @@
 #include "dsMgr.h"
 #include "dsRpc.h"
 #include "dsDisplay.h"
+#include <regex>
 // end dsMgr includes
 
 #define BLOCK_SIZE     (1024 * 4 * 10) /* bytes */
@@ -1299,7 +1301,7 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_F22,           {"Accessibility",        "Accessibility"}},
    {KEY_F8,            {"Voice",                "Voice"}},
    {KEY_ESC,           {"Dismiss",              "Dismiss"}},
-   {KEY_F9,            {"Info",                 "Info"}},
+   {KEY_F9,            {"Quick Access Menu",    "Quick Access Menu"}},
    {KEY_BATTERY,       {"Battery Low",          "Battery Low"}},
    {KEY_F16,           {"Plus",                 "Plus"}},
    {KEY_F13,           {"Option",               "Option"}},
@@ -1349,7 +1351,7 @@ const char *ctrlm_linux_key_code_str(uint16_t code, bool mask) {
    }
 }
 
-#ifdef ENABLE_DEEP_SLEEP
+#ifdef DEEP_SLEEP_ENABLED
 const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason) {
     switch(wakeup_reason) {
         case DEEPSLEEP_WAKEUPREASON_IR:               return("IR");
@@ -2372,3 +2374,35 @@ const char *ctrlm_rf_pair_state_str(ctrlm_rf_pair_state_t state)
     }
 }
 
+const char *ctrlm_rcu_upgrade_state_str(ctrlm_rcu_upgrade_state_t state)
+{
+    switch(state) {
+        case CTRLM_RCU_UPGRADE_STATE_SUCCESS:  return("SUCCESS");
+        case CTRLM_RCU_UPGRADE_STATE_IDLE:     return("IDLE");
+        case CTRLM_RCU_UPGRADE_STATE_PENDING:  return("PENDING");
+        case CTRLM_RCU_UPGRADE_STATE_CANCELED: return("CANCELED");
+        case CTRLM_RCU_UPGRADE_STATE_ERROR:    return("ERROR");
+        case CTRLM_RCU_UPGRADE_STATE_INVALID:  return("INVALID");
+        default:                               return("INVALID_TYPE");
+    }
+}
+
+bool ctrlm_utils_is_valid_uuid(const std::string &uuid) {
+    uuid_t tmp;
+    return (uuid_parse(uuid.c_str(), tmp) == 0);
+}
+
+bool ctrlm_file_type_matches(const char *path, const char* filetype) {
+    std::string filepath(path);
+    size_t dot_position = filepath.find_last_of('.');
+
+    if (dot_position == std::string::npos) {
+        // No dot so no file extension
+        return false;
+    }
+
+    // Get extension string from position after '.' to end
+    std::string extension = filepath.substr(dot_position + 1);
+
+    return (std::string(filetype) == extension);
+}

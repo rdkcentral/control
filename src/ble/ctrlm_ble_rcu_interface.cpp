@@ -102,9 +102,8 @@ ctrlm_ble_rcu_interface_t::~ctrlm_ble_rcu_interface_t()
 void ctrlm_ble_rcu_interface_t::shutdown()
 {
     if (m_controller && m_adapter) {
-        XLOGD_INFO("Cancelling pairing and scanning state machines...");
+        XLOGD_INFO("Cancelling pairing state machine...");
         m_controller->cancelPairing();
-        m_controller->cancelScanning();
 
         XLOGD_INFO("Checking if bluez adapter is trying to discover...");
         if (m_adapter->isDiscovering()) {
@@ -202,8 +201,15 @@ void ctrlm_ble_rcu_interface_t::setGMainLoop(GMainLoop* main_loop)
 std::vector<uint64_t> ctrlm_ble_rcu_interface_t::registerDevices()
 {
     XLOGD_INFO("Get list of currently connected devices, and register RCU Device interface DBus signal handlers...");
-    auto devices = m_controller->managedDevices();
+
     vector<uint64_t> ret;
+
+    if (!m_controller) {
+        XLOGD_ERROR("m_controller is NULL!!!");
+        return ret;
+    }
+
+    auto devices = m_controller->managedDevices();
 
     for (auto const &device : devices) {
         XLOGD_INFO("Setting up BLE interface for %s", device.toString().c_str());
@@ -628,6 +634,11 @@ ctrlm_hal_ble_rcu_data_t ctrlm_ble_rcu_interface_t::getAllDeviceProperties(uint6
     errno_t safec_rc = memset_s(&ret, sizeof(ret), 0, sizeof(ret)); ERR_CHK(safec_rc);
 
     ret.ieee_address = ieee_address;
+
+    if (!m_controller) {
+        XLOGD_ERROR("m_controller is NULL!!!");
+        return ret;
+    }
     
     shared_ptr<BleRcuDevice> device = m_controller->managedDevice(ieee_address);
 
@@ -687,7 +698,12 @@ ctrlm_hal_ble_rcu_data_t ctrlm_ble_rcu_interface_t::getAllDeviceProperties(uint6
 
 bool ctrlm_ble_rcu_interface_t::pairWithCode(unsigned int code)
 {
-    if (!m_controller->startPairing(0, (uint8_t) code)) {
+    if (!m_controller) {
+        XLOGD_ERROR("m_controller is NULL!!!");
+        return false;
+    }
+
+    if (!m_controller->startPairingWithCode((uint8_t) code)) {
         BleRcuError error = m_controller->lastError();
 
         // Remote will continually send out IR pairing signals until the BLE pair request
@@ -705,7 +721,12 @@ bool ctrlm_ble_rcu_interface_t::pairWithCode(unsigned int code)
 
 bool ctrlm_ble_rcu_interface_t::pairWithMacHash(unsigned int code)
 {
-    if (!m_controller->startPairingMacHash(0, (uint8_t) code)) {
+    if (!m_controller) {
+        XLOGD_ERROR("m_controller is NULL!!!");
+        return false;
+    }
+
+    if (!m_controller->startPairingWithMacHash((uint8_t) code)) {
         BleRcuError error = m_controller->lastError();
 
         // Remote will continually send out IR pairing signals until the BLE pair request
@@ -721,18 +742,38 @@ bool ctrlm_ble_rcu_interface_t::pairWithMacHash(unsigned int code)
     return true;
 }
 
-bool ctrlm_ble_rcu_interface_t::startScanning(int timeoutMs)
+bool ctrlm_ble_rcu_interface_t::pairWithMacAddrs(const std::vector<uint64_t> &macAddrList)
 {
-    XLOGD_INFO("starting BLE scan with timeout %dms", timeoutMs);
     if (m_controller) {
-        if (!m_controller->startScanning(timeoutMs)) {
+        std::vector<BleAddress> addresses;
+
+        for (const auto &mac : macAddrList) {
+            addresses.push_back(BleAddress(mac));
+        }
+        if (!m_controller->startPairingWithList(addresses)) {
             BleRcuError error = m_controller->lastError();
-            XLOGD_ERROR("controller failed to start scan, %s: %s", error.name().c_str(), error.message().c_str());
+            XLOGD_ERROR("controller failed to start pairing, %s: %s", error.name().c_str(), error.message().c_str());
             return false;
         }
         return true;
     }
     return false;
+}
+
+bool ctrlm_ble_rcu_interface_t::pairAutoWithTimeout(int timeoutMs)
+{
+    if (!m_controller) {
+        XLOGD_ERROR("m_controller is NULL!!!");
+        return false;
+    }
+
+    XLOGD_INFO("Starting BLE auto pairing procedure with timeout %dms.  Will attempt to pair with the first discovered supported device.", timeoutMs);
+    if (!m_controller->startPairingAutoWithTimeout(timeoutMs)) {
+        BleRcuError error = m_controller->lastError();
+        XLOGD_ERROR("controller failed to start scan, %s: %s", error.name().c_str(), error.message().c_str());
+        return false;
+    }
+    return true;
 }
 
 bool ctrlm_ble_rcu_interface_t::unpairDevice(uint64_t ieee_address)
@@ -847,18 +888,26 @@ bool ctrlm_ble_rcu_interface_t::writeAdvertisingConfig(uint64_t ieee_address,
                                                        int *customList,
                                                        int customListSize)
 {
+    // This method will wait for the operation to complete, so init a semaphore
+    sem_t semaphore;
+    
+    bool success = false;
+    
     BleAddress address(ieee_address);
 
     // lambda invoked when the request returns
-    auto replyHandler = [this, address](PendingReply<> *reply) mutable
+    auto replyHandler = [this, &semaphore, &success, address](PendingReply<> *reply) mutable
         {
             // check for errors (only for logging)
             if (reply->isError()) {
                 XLOGD_ERROR("%s: writeAdvertisingConfig failed due to <%s>", 
                         address.toString().c_str(), reply->errorMessage().c_str());
+                success = false;
             } else {
                 XLOGD_INFO("successfully wrote RCU advertising config on remote %s", address.toString().c_str());
+                success = true;
             }
+            sem_post(&semaphore);
         };
 
 
@@ -867,6 +916,8 @@ bool ctrlm_ble_rcu_interface_t::writeAdvertisingConfig(uint64_t ieee_address,
     if (m_controller) {
         const auto device = m_controller->managedDevice(address);
         if (device) {
+
+            sem_init(&semaphore, 0, 0);
 
             vector<uint8_t> listConverted;
             if (config == CTRLM_RCU_WAKEUP_CONFIG_CUSTOM && customList != NULL) {
@@ -877,13 +928,13 @@ bool ctrlm_ble_rcu_interface_t::writeAdvertisingConfig(uint64_t ieee_address,
             }
             device->writeAdvertisingConfig((uint8_t)config, listConverted, PendingReply<>(m_isAlive, replyHandler));
 
-            return true;
-        } else {
-            return false;
+
+            // Wait for the result semaphore to be signaled
+            sem_wait(&semaphore);
+            sem_destroy(&semaphore);
         }
-    } else {
-        return false;
     }
+    return success;
 }
 
 
@@ -1365,9 +1416,15 @@ bool ctrlm_ble_rcu_interface_t::cancelUpgrade(uint64_t ieee_address)
 
 std::vector<uint64_t> ctrlm_ble_rcu_interface_t::getManagedDevices()
 {
+    vector<uint64_t> ret;
+
+    if (!m_controller) {
+        XLOGD_ERROR("m_controller is NULL!!!");
+        return ret;
+    }
+
     XLOGD_INFO("Get list of currently managed devices");
     auto devices = m_controller->managedDevices();
-    vector<uint64_t> ret;
 
     for (auto const &device : devices) {
         ret.push_back(device.toUInt64());

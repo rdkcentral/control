@@ -22,7 +22,9 @@
 #include <glib.h>
 #include "libIBus.h"
 #include "libIBusDaemon.h"
+#ifdef USE_DEPRECATED_IRMGR
 #include "irMgr.h"
+#endif
 #include "pwrMgr.h"
 #include "sysMgr.h"
 #ifdef ENABLE_DEEP_SLEEP
@@ -130,9 +132,11 @@ void ctrlm_main_iarm_terminate(void) {
    // Change to stopped or terminated state, so we do not accept new calls
    g_atomic_int_set(&running, 0);
 
+#ifdef USE_DEPRECATED_IRMGR
    // IARM Events that we are listening to from other processes
    IARM_Bus_RemoveEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_IRKEY, ctrlm_event_handler_ir);
    IARM_Bus_RemoveEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_CONTROL, ctrlm_event_handler_ir);
+#endif
 
    // Unregister calls that can be invoked by IARM bus clients
    //for(index = 0; index < sizeof(ctrlm_iarm_calls)/sizeof(ctrlm_iarm_call_t); index++) {

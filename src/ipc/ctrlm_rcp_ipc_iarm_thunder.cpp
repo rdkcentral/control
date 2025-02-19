@@ -20,7 +20,6 @@
 #include "algorithm"
 #include "ctrlm_rcp_ipc_iarm_thunder.h"
 #include "ctrlm_network.h"
-#include "irMgr.h"
 #include "ctrlm_log.h"
 
 using namespace rcp_json_keys;
@@ -290,7 +289,7 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_last_keypress(void *arg)
     err |= json_object_set_new_nocheck(ret, CONTROLLER_ID,        json_integer(key_info.controller_id));
     err |= json_object_set_new_nocheck(ret, TIMESTAMP,            json_integer(key_info.timestamp));
     err |= json_object_set_new_nocheck(ret, SOURCE_NAME,          json_string(key_info.source_name));
-    err |= json_object_set_new_nocheck(ret, SOURCE_TYPE,          json_string((key_info.source_type == IARM_BUS_IRMGR_KEYSRC_RF) ? "RF" : "IR"));
+    err |= json_object_set_new_nocheck(ret, SOURCE_TYPE,          json_string((key_info.source_type == CTRLM_KEY_SOURCE_RF) ? "RF" : (key_info.source_type == CTRLM_KEY_SOURCE_IR) ? "IR" : "INVALID"));
     err |= json_object_set_new_nocheck(ret, SOURCE_KEY_CODE,      json_integer(key_info.source_key_code));
     err |= json_object_set_new_nocheck(ret, SCREENBIND_MODE,      json_boolean(key_info.is_screen_bind_mode));
     err |= json_object_set_new_nocheck(ret, REMOTE_KEYPAD_CONFIG, json_integer(key_info.remote_keypad_config));

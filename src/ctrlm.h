@@ -489,7 +489,7 @@ gboolean ctrlm_main_iarm_call_chip_status_get(ctrlm_main_iarm_call_chip_status_t
 
 ctrlm_power_state_t ctrlm_main_iarm_call_get_power_state(void);
 ctrlm_power_state_t ctrlm_main_get_power_state(void);
-#ifdef ENABLE_DEEP_SLEEP
+#ifdef DEEP_SLEEP_ENABLED
 gboolean ctrlm_main_iarm_networked_standby(void);
 gboolean ctrlm_main_iarm_wakeup_reason_voice(void);
 #endif

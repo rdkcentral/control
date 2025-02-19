@@ -53,20 +53,16 @@ BleRcuControllerImpl::BleRcuControllerImpl(const shared_ptr<const ConfigSettings
     , m_config(config)
     , m_adapter(adapter)
     , m_pairingStateMachine(config, m_adapter)
-    , m_scannerStateMachine(config, m_adapter)
     , m_lastError(BleRcuError::NoError)
     , m_maxManagedDevices(1)
     , m_state(Initialising)
-    , m_ignoreScannerSignal(false)
+    , m_ignorePairingFailure(false)
 {
 
-    // connect to the started signal so we can send pairing state notifications
-    m_pairingStateMachine.addStartedSlot(Slot<>(m_isAlive, std::bind(&BleRcuControllerImpl::onStartedPairing, this)));
-        
-    // connect to the finished signal of the pairing statemachine, use to update our list of managed devices
+    // connect to the pairing state machine signals so we can send pairing state notifications
+    m_pairingStateMachine.addStartedSlot(Slot<>(m_isAlive, std::bind(&BleRcuControllerImpl::onStartedSearching, this)));
+    m_pairingStateMachine.addPairingSlot(Slot<>(m_isAlive, std::bind(&BleRcuControllerImpl::onStartedPairing, this)));
     m_pairingStateMachine.addFinishedSlot(Slot<>(m_isAlive, std::bind(&BleRcuControllerImpl::onFinishedPairing, this)));
-
-    // connect to the failed signal so we can send pairing state notifications
     m_pairingStateMachine.addFailedSlot(Slot<>(m_isAlive, std::bind(&BleRcuControllerImpl::onFailedPairing, this)));
 
     // connect to the manager's device pairing change signals
@@ -80,15 +76,6 @@ BleRcuControllerImpl::BleRcuControllerImpl(const shared_ptr<const ConfigSettings
     // connect to the manager's initialised signal
     adapter->addPoweredInitializedSlot(Slot<>(m_isAlive, std::bind(&BleRcuControllerImpl::onInitialized, this)));
 
-
-    // connect to the scanner signals
-    m_scannerStateMachine.addStartedSlot(Slot<>(m_isAlive, std::bind(&BleRcuControllerImpl::onStartedScanning, this)));
-    m_scannerStateMachine.addFinishedSlot(Slot<>(m_isAlive, std::bind(&BleRcuControllerImpl::onFinishedScanning, this)));
-    m_scannerStateMachine.addFailedSlot(Slot<>(m_isAlive, std::bind(&BleRcuControllerImpl::onFailedScanning, this)));
-    
-    // connect to the signal emitted when the scanner found an RCU device in pairing mode
-    m_scannerStateMachine.addFoundPairableDeviceSlot(Slot<const BleAddress&, const std::string&>(m_isAlive, 
-            std::bind(&BleRcuControllerImpl::onFoundPairableDevice, this, std::placeholders::_1, std::placeholders::_2)));
 
     // schedule the controller to synchronise the list of managed devices at
     // start-up in the next idle time of the event loop
@@ -163,7 +150,7 @@ BleRcuError BleRcuControllerImpl::lastError() const
 
     Returns \c true if pairing is currently in progress.
 
-    \see startPairing()
+    \see startPairingWithCode()
  */
 bool BleRcuControllerImpl::isPairing() const
 {
@@ -176,19 +163,52 @@ bool BleRcuControllerImpl::isPairing() const
 
     Returns the current or last 8-bit pairing code used.
 
-    If startPairing() has never been called \c -1 will be returned. Or if
+    If startPairingWithCode() has never been called \c -1 will be returned. Or if
     pairing was started after a scan then \c -1 will also be returned.
 
-    \see startPairing()
+    \see startPairingWithCode()
  */
 int BleRcuControllerImpl::pairingCode() const
 {
     return m_pairingStateMachine.pairingCode();
 }
 
+
 // -----------------------------------------------------------------------------
 /*!
-    \fn bool BleRcuController::startPairing(uint8_t pairingCode)
+    \fn void BleRcuControllerImpl::startPairingAutoWithTimeout()
+
+    Starts the scanner looking for RCUs in pairing mode.  The scan will run for
+    \a timeoutMs milliseconds, or until cancelled if less than zero.
+
+    The scanner won't start if the pairing state machine is already running.
+ */
+bool BleRcuControllerImpl::startPairingAutoWithTimeout(int timeoutMs)
+{
+    m_ignorePairingFailure = false;
+
+    // check we're not currently pairing
+    if (m_pairingStateMachine.isRunning()) {
+        m_lastError = BleRcuError(BleRcuError::General, "currently performing pairing, cannot start new scan");
+        return false;
+    }
+
+    // check that the manager has powered on the adapter, without this we
+    // obviously can't scan. The only time the adaptor should (legitimately) be
+    // unavailable is right at start-up
+    if (!m_adapter->isAvailable() || !m_adapter->isPowered()) {
+        m_lastError = BleRcuError(BleRcuError::General, "Adaptor not available or not powered");
+        return false;
+    }
+
+    // start the pairing process
+    m_pairingStateMachine.startAutoWithTimeout(timeoutMs);
+    return true;
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    \fn bool BleRcuController::startPairingWithCode(uint8_t pairingCode)
 
     Attempts to start the pairing procedure looking for devices that identify
     with the given \a filterByte and \a pairingCode.  Both these byte values
@@ -207,23 +227,21 @@ int BleRcuControllerImpl::pairingCode() const
 
     \see cancelPairing(), isPairing() & pairingCode()
  */
-bool BleRcuControllerImpl::startPairing(uint8_t filterByte, uint8_t pairingCode)
+bool BleRcuControllerImpl::startPairingWithCode(uint8_t pairingCode)
 {
-    m_ignoreScannerSignal = false;
-
-    // if currently scanning then we have to cancel that first before processing
-    // the IR pairing request (nb - pairing request can only come to this
-    // function from an IR event)
-    if (m_scannerStateMachine.isRunning()) {
-        m_scannerStateMachine.stop();
-
-        XLOGD_WARN("received IR pairing request in scanning mode, disabling scanner and when stopped will start IR pairing");
-        return false;
-    }
-
     if (m_pairingStateMachine.isRunning()) {
-        XLOGD_DEBUG("requested pairing in already pairing state, ignoring request");
-        m_lastError = BleRcuError(BleRcuError::Busy, "Already in pairing state");
+        if (m_pairingStateMachine.isAutoPairing()) {
+
+            XLOGD_WARN("received targeted pairing request in auto pair mode, cancelling auto pair first...");
+            
+            m_ignorePairingFailure = true;
+            m_pairingStateMachine.stop();
+
+            m_lastError = BleRcuError(BleRcuError::Busy, "Cancelling auto pair operation, send another request.");
+        } else {
+            XLOGD_DEBUG("requested pairing while currently running a pairing operation, ignoring request");
+            m_lastError = BleRcuError(BleRcuError::Busy, "Already in pairing state");
+        }
         return false;
     }
 
@@ -236,13 +254,13 @@ bool BleRcuControllerImpl::startPairing(uint8_t filterByte, uint8_t pairingCode)
     }
 
     // start the pairing process
-    m_pairingStateMachine.start(filterByte, pairingCode);
+    m_pairingStateMachine.startWithCode(pairingCode);
     return true;
 }
 
 // -----------------------------------------------------------------------------
 /*!
-    \fn bool BleRcuController::startPairingMacHash(uint8_t macHash)
+    \fn bool BleRcuController::startPairingWithMacHash(uint8_t macHash)
 
     Attempts to start the pairing procedure looking for a device that has
     a MAC address matching the supplied MAC hash.
@@ -263,28 +281,21 @@ bool BleRcuControllerImpl::startPairing(uint8_t filterByte, uint8_t pairingCode)
 
     \see cancelPairing(), isPairing() & pairingCode()
  */
-bool BleRcuControllerImpl::startPairingMacHash(uint8_t filterByte, uint8_t macHash)
+bool BleRcuControllerImpl::startPairingWithMacHash(uint8_t macHash)
 {
-    // if currently scanning then we have to cancel that first before processing
-    // the IR pairing request (nb - pairing request can only come to this
-    // function from an IR event)
-    if (m_scannerStateMachine.isRunning()) {
-        XLOGD_WARN("received IR pairing request in scanning mode, disabling scanner and when stopped will start IR pairing");
-        
-        // When the scanner state machine is stopped without any remotes being paired,
-        // it surfaces a failed status.  In this case, we simply want to stop the scanning
-        // state machine without broadcasting a FAILED status and continue immediately with
-        // IR pairing.
-        m_ignoreScannerSignal = true;
-        m_scannerStateMachine.stop();
-
-        return false;
-    }
-
-
     if (m_pairingStateMachine.isRunning()) {
-        XLOGD_DEBUG("requested pairing in already pairing state, ignoring request");
-        m_lastError = BleRcuError(BleRcuError::Busy, "Already in pairing state");
+        if (m_pairingStateMachine.isAutoPairing()) {
+
+            XLOGD_WARN("received targeted pairing request in auto pair mode, cancelling auto pair first...");
+            
+            m_ignorePairingFailure = true;
+            m_pairingStateMachine.stop();
+
+            m_lastError = BleRcuError(BleRcuError::Busy, "Cancelling auto pair operation, send another request.");
+        } else {
+            XLOGD_DEBUG("requested pairing while currently running a pairing operation, ignoring request");
+            m_lastError = BleRcuError(BleRcuError::Busy, "Already in pairing state");
+        }
         return false;
     }
 
@@ -297,8 +308,58 @@ bool BleRcuControllerImpl::startPairingMacHash(uint8_t filterByte, uint8_t macHa
     }
 
     // start the pairing process
-    m_pairingStateMachine.startMacHash(filterByte, macHash);
+    m_pairingStateMachine.startWithMacHash(macHash);
 
+    return true;
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    \fn bool BleRcuController::startPairingWithList(std::vector<BleAddress> macAddrList)
+
+    Attempts to start the pairing procedure looking for devices that identify
+    with the given \a mac address list.
+
+    If the controller is currently in pairing mode this method will fail and
+    return \c false.  If the bluetooth adaptor is not available or not powered
+    then this function will also fail and return \c false.
+
+    If \c false is returned use BleRcuController::lastError() to get the failure
+    reason.
+
+    \note This object doesn't actually run the pairing procedure, instead it
+    just starts and stops the \l{BleRcuPairingStateMachine} object.
+
+    \see cancelPairing(), isPairing() & pairingCode()
+ */
+bool BleRcuControllerImpl::startPairingWithList(const std::vector<BleAddress> &macAddrList)
+{
+    if (m_pairingStateMachine.isRunning()) {
+        if (m_pairingStateMachine.isAutoPairing()) {
+
+            XLOGD_WARN("received targeted pairing request in auto pair mode, cancelling auto pair first...");
+            
+            m_ignorePairingFailure = true;
+            m_pairingStateMachine.stop();
+
+            m_lastError = BleRcuError(BleRcuError::Busy, "Cancelling auto pair operation, send another request.");
+        } else {
+            XLOGD_DEBUG("requested pairing while currently running a pairing operation, ignoring request");
+            m_lastError = BleRcuError(BleRcuError::Busy, "Already in pairing state");
+        }
+        return false;
+    }
+
+    // check that the manager has powered on the adapter, without this we
+    // obviously can't scan / pair / etc. The only time the adaptor should
+    // (legitimately) be unavailable is right at start-up
+    if (!m_adapter->isAvailable() || !m_adapter->isPowered()) {
+        m_lastError = BleRcuError(BleRcuError::General, "Adaptor not available or not powered");
+        return false;
+    }
+
+    // start the pairing process
+    m_pairingStateMachine.startWithMacList(macAddrList);
     return true;
 }
 
@@ -308,7 +369,7 @@ bool BleRcuControllerImpl::startPairingMacHash(uint8_t filterByte, uint8_t macHa
 
     Cancels the pairing procedure if running.
 
-    \see startPairing(), isPairing() & pairingCode()
+    \see startPairingWithCode(), isPairing() & pairingCode()
  */
 bool BleRcuControllerImpl::cancelPairing()
 {
@@ -317,82 +378,6 @@ bool BleRcuControllerImpl::cancelPairing()
     }
 
     m_pairingStateMachine.stop();
-    return true;
-}
-
-// -----------------------------------------------------------------------------
-/*!
-    \fn bool BleRcuController::isScanning() const
-
-    Returns \c true if scanning is currently in progress.
-
-    \see startScanning()
- */
-bool BleRcuControllerImpl::isScanning() const
-{
-    return m_scannerStateMachine.isRunning();
-}
-
-// -----------------------------------------------------------------------------
-/*!
-    \fn void BleRcuController::startScanning()
-
-    Starts the scanner looking for RCUs in pairing mode.  The scan will run for
-    \a timeoutMs milliseconds, or until cancelled if less than zero.
-
-    The scanner won't start if the pairing state machine is already running.
-
-    \see cancelScanning() & isScanning()
- */
-bool BleRcuControllerImpl::startScanning(int timeoutMs)
-{
-    m_ignoreScannerSignal = false;
-
-    // check we're not currently pairing
-    if (m_pairingStateMachine.isRunning()) {
-        m_lastError = BleRcuError(BleRcuError::General, "currently performing pairing, cannot start new scan");
-        return false;
-    }
-
-    // check we're not already scanning
-    if (m_scannerStateMachine.isRunning()) {
-        m_lastError = BleRcuError(BleRcuError::General, "already scanning, new scan request aborted");
-        return false;
-    }
-
-    // check that the manager has powered on the adapter, without this we
-    // obviously can't scan. The only time the adaptor should (legitimately) be
-    // unavailable is right at start-up
-    if (!m_adapter->isAvailable() || !m_adapter->isPowered()) {
-        m_lastError = BleRcuError(BleRcuError::General, "Adaptor not available or not powered");
-        return false;
-    }
-
-    // start the scanning process
-    if (m_state != Searching) {
-        m_state = Searching;
-        m_stateChangedSlots.invoke(m_state);
-    }
-
-    m_scannerStateMachine.start(timeoutMs);
-    return true;
-}
-
-// -----------------------------------------------------------------------------
-/*!
-    \fn void BleRcuController::cancelScanning()
-
-    Cancels the current scanning process.
-
-    \see startScanning()
- */
-bool BleRcuControllerImpl::cancelScanning()
-{
-    if (!m_scannerStateMachine.isRunning()) {
-        return false;
-    }
-
-    m_scannerStateMachine.stop();
     return true;
 }
 
@@ -610,6 +595,18 @@ bool BleRcuControllerImpl::unpairDevice(const BleAddress &address) const
 
     Queued slot called when the pairing state machine has started.
  */
+void BleRcuControllerImpl::onStartedSearching()
+{
+    m_state = Searching;
+    m_stateChangedSlots.invoke(m_state);
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    \internal
+
+    Queued slot called when the pairing state machine has started.
+ */
 void BleRcuControllerImpl::onStartedPairing()
 {
     // a queued event so check the state
@@ -619,7 +616,7 @@ void BleRcuControllerImpl::onStartedPairing()
     m_pairingStateChangedSlots.invoke(pairing);
 
     m_state = Pairing;
-    m_stateChangedSlots.invoke(Pairing);
+    m_stateChangedSlots.invoke(m_state);
 }
 
 // -----------------------------------------------------------------------------
@@ -644,7 +641,7 @@ void BleRcuControllerImpl::onFinishedPairing()
     m_pairingStateChangedSlots.invoke(pairing);
 
     m_state = Complete;
-    m_stateChangedSlots.invoke(Complete);
+    m_stateChangedSlots.invoke(m_state);
 }
 
 // -----------------------------------------------------------------------------
@@ -657,6 +654,20 @@ void BleRcuControllerImpl::onFinishedPairing()
  */
 void BleRcuControllerImpl::onFailedPairing()
 {
+    if (m_ignorePairingFailure) {
+        m_ignorePairingFailure = false;
+
+        // When the auto pair procedure is stopped without any remotes being paired,
+        // it surfaces a failed status.  If we purposefully stop the auto pair procedure
+        // then we don't want to surface a failure status.
+        XLOGD_WARN("pairing procedure failed, but ignoring...");
+
+        m_state = Idle;
+        m_stateChangedSlots.invoke(m_state);
+
+        return;
+    }
+
     // a queued event so check the state
     const bool pairing = m_pairingStateMachine.isRunning();
 
@@ -669,7 +680,7 @@ void BleRcuControllerImpl::onFailedPairing()
     m_pairingStateChangedSlots.invoke(pairing);
 
     m_state = Failed;
-    m_stateChangedSlots.invoke(Failed);
+    m_stateChangedSlots.invoke(m_state);
 }
 
 
@@ -702,7 +713,7 @@ void BleRcuControllerImpl::onInitialized()
 {
     if (m_state == Initialising) {
         m_state = Idle;
-        m_stateChangedSlots.invoke(Idle);
+        m_stateChangedSlots.invoke(m_state);
     }
 }
 
@@ -755,73 +766,4 @@ void BleRcuControllerImpl::onDeviceReadyChanged(const BleAddress &address,
     if (ready && !m_pairingStateMachine.isRunning()) {
         syncManagedDevices();
     }
-}
-
-// -----------------------------------------------------------------------------
-/*!
-    \internal
-
-    Queued slot called when the scanner state machine indicates it has started.
- */
-void BleRcuControllerImpl::onStartedScanning()
-{
-    m_scanningStateChangedSlots.invoke(true);
-}
-
-// -----------------------------------------------------------------------------
-/*!
-    \internal
-
-    Queued slot called when the scanner state machine indicates it has stopped.
-    This may be because it was cancelled, found a target device or timed out.
- */
-void BleRcuControllerImpl::onFinishedScanning()
-{
-    m_scanningStateChangedSlots.invoke(false);
-}
-
-// -----------------------------------------------------------------------------
-/*!
-    \internal
-
-    Queued slot called when the scanner state machine indicates it has failed to
-    find a device from scanning. This may be because it was cancelled, found a
-    target device or timed out.
- */
-void
-BleRcuControllerImpl::onFailedScanning()
-{
-    if (m_ignoreScannerSignal) {
-        m_ignoreScannerSignal = false;
-    } else {
-        m_state = Failed;
-        m_stateChangedSlots.invoke(Failed);
-    }
-}
-
-// -----------------------------------------------------------------------------
-/*!
-    \internal
-
-    Queued slot called when the scanner state machine found an RCU that was in
-    'pairing' mode.
-
-    This triggers us to start the pairing state machine targeting the device
-    with the given address.
-
- */
-void BleRcuControllerImpl::onFoundPairableDevice(const BleAddress &address,
-                                                 const string &name)
-{
-    XLOGD_INFO("found %s RCU device in pairing mode, kicking off the pairing state machine", 
-            address.toString().c_str());
-
-    // sanity check (needed?)
-    if (m_pairingStateMachine.isRunning()) {
-        XLOGD_WARN("found target device in scan but pairing state machine already running?");
-        return;
-    }
-
-    // start pairing the device
-    m_pairingStateMachine.start(address, name);
 }

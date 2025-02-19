@@ -527,10 +527,21 @@ void ctrlm_obj_network_ble_t::req_process_start_pairing(void *data, int size) {
       XLOGD_FATAL("Network is not ready!");
    } else {
       if (ble_rcu_interface_) {
-         if (!ble_rcu_interface_->startScanning(dqm->params->timeout * 1000)) {
-            XLOGD_ERROR("failed to start BLE remote scan");
+         bool ret = true;
+         if (dqm->params->ieee_address_list.size() == 0) {
+            if(!ble_rcu_interface_->pairAutoWithTimeout(dqm->params->timeout * 1000)) {
+               XLOGD_ERROR("failed to start BLE remote scan");
+               ret = false;
+            }
          } else {
-            dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+            XLOGD_INFO("Starting pairing with a list of mac addresses! Pairing with first available...");
+            if(!ble_rcu_interface_->pairWithMacAddrs(dqm->params->ieee_address_list)) {
+               XLOGD_ERROR("failed to start BLE remote scan");
+               ret = false;
+            }
+         }
+         if (ret) {
+             dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
          }
       }
    }
@@ -1152,6 +1163,8 @@ void ctrlm_obj_network_ble_t::req_process_upgrade_controllers(void *data, int si
          controller.second->setUpgradeAttempted(false);
          controller.second->setUpgradePaused(false);
          controller.second->ota_failure_cnt_session_clear();
+         controller.second->set_upgrade_progress(-1);
+         controller.second->set_upgrade_session_uuid(false);
       }
    }
 
@@ -1188,7 +1201,7 @@ void ctrlm_obj_network_ble_t::req_process_upgrade_controllers(void *data, int si
                      // Mark that an upgrade was attempted for the remote.  If there is a failure, it will retry only
                      // a couple times to prevent continuously failing upgrade attempts.
                      controller.second->setUpgradeAttempted(true);
-
+                     controller.second->set_upgrade_session_uuid();
 
                      if (ble_rcu_interface_) {
                         ble_rcu_interface_->startUpgrade(controller.second->ieee_address_get().get_value(), 
@@ -1283,6 +1296,201 @@ void ctrlm_obj_network_ble_t::req_process_network_managed_upgrade(void *data, in
    }
 }
 
+void ctrlm_obj_network_ble_t::req_process_start_controller_upgrade(void *data, int size) {
+   XLOGD_DEBUG("Enter...");
+   THREAD_ID_VALIDATE();
+   ctrlm_main_queue_msg_start_controller_upgrade_t *dqm = (ctrlm_main_queue_msg_start_controller_upgrade_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_start_controller_upgrade_t));
+
+   dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
+
+   if (!ready_) {
+      XLOGD_FATAL("Network is not ready!");
+      if(dqm->semaphore) {
+         sem_post(dqm->semaphore);
+      }
+      return;
+   }
+
+   if (!ctrlm_file_exists(dqm->params->filename.c_str())) {
+      XLOGD_ERROR("<%s> does not exist, exiting...", dqm->params->filename.c_str());
+      if(dqm->semaphore) {
+         sem_post(dqm->semaphore);
+      }
+      return;
+   }
+
+   if (!ctrlm_file_type_matches(dqm->params->filename.c_str(), dqm->params->filetype.c_str()) &&
+       !dqm->params->filetype.empty()) {
+      XLOGD_ERROR("The file <%s> does not match the provided filetype %s, exiting...", dqm->params->filename.c_str(), dqm->params->filetype.c_str());
+      if(dqm->semaphore) {
+         sem_post(dqm->semaphore);
+      }
+      return;
+   }
+
+   // Start firmware upgrades
+   for (const auto &it : controllers_) {
+      if ((dqm->params->ieee_address > 0) &&
+          (dqm->params->ieee_address != it.second->ieee_address_get().get_value())) {
+         // If this request came with a MAC address then skip RCUs with non-matching MAC addresses
+         continue;
+      }
+
+      it.second->set_upgrade_session_uuid();
+      it.second->set_upgrade_increment(dqm->params->percent_increment);
+
+      if (ble_rcu_interface_) {
+         ble_rcu_interface_->startUpgrade(it.second->ieee_address_get().get_value(),
+                                          dqm->params->filename);
+      }
+      dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+   }
+
+   // Record all upgrade session UUIDs
+   for (const auto &it : controllers_) {
+      std::string uuid = it.second->get_upgrade_session_uuid();
+      if (!uuid.empty()) {
+          dqm->params->upgrade_sessions->push_back(uuid);
+      }
+   }
+
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
+}
+
+void ctrlm_obj_network_ble_t::req_process_cancel_controller_upgrade(void *data, int size) {
+   XLOGD_DEBUG("Enter...");
+   THREAD_ID_VALIDATE();
+   ctrlm_main_queue_msg_cancel_controller_upgrade_t *dqm = (ctrlm_main_queue_msg_cancel_controller_upgrade_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_cancel_controller_upgrade_t));
+
+   dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
+
+   if (!ready_) {
+      XLOGD_FATAL("Network is not ready!");
+      if(dqm->semaphore) {
+         sem_post(dqm->semaphore);
+      }
+      return;
+   }
+
+   ctrlm_controller_id_t id = find_controller_from_upgrade_session_uuid(dqm->params->session_id);
+
+   if (!controller_exists(id)) {
+      XLOGD_WARN("The upgrade session %s is not managed by %s network",
+                  dqm->params->session_id.c_str(),
+                  name_get());
+   } else {
+      uint64_t target_address = controllers_[id]->ieee_address_get().get_value();
+
+      if (ble_rcu_interface_) {
+         if (!ble_rcu_interface_->cancelUpgrade(target_address)) {
+            XLOGD_ERROR("failed to cancel remote firmware upgrade");
+         } else {
+            controllers_[id]->set_upgrade_progress(-1);
+            dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+         }
+      }
+   }
+
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
+}
+
+void ctrlm_obj_network_ble_t::req_process_status_controller_upgrade(void *data, int size) {
+   XLOGD_DEBUG("Enter...");
+   THREAD_ID_VALIDATE();
+   ctrlm_main_queue_msg_status_controller_upgrade_t *dqm = (ctrlm_main_queue_msg_status_controller_upgrade_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_status_controller_upgrade_t));
+
+   dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR);
+
+   if (!ready_) {
+      XLOGD_FATAL("Network is not ready!");
+      if(dqm->semaphore) {
+         sem_post(dqm->semaphore);
+      }
+      return;
+   }
+
+   ctrlm_controller_id_t id = find_controller_from_upgrade_session_uuid(dqm->params->session_id);
+
+   if (!controller_exists(id)) {
+      XLOGD_WARN("The upgrade session %s is not managed by %s network",
+                  dqm->params->session_id.c_str(),
+                  name_get());
+   } else {
+      auto rcu = controllers_[id];
+      dqm->params->populate_status(*rcu);
+      dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS);
+   }
+
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
+}
+
+void ctrlm_obj_network_ble_t::req_process_unpair(void *data, int size) {
+   XLOGD_DEBUG("Enter...");
+   THREAD_ID_VALIDATE();
+   ctrlm_main_queue_msg_unpair_t *dqm = (ctrlm_main_queue_msg_unpair_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_unpair_t));
+
+   dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
+
+   if (!ready_) {
+      XLOGD_FATAL("Network is not ready!");
+   } else {
+      if (ble_rcu_interface_) {
+         bool ret = true;
+         std::vector<uint64_t> all_rcus;
+         std::vector<uint64_t> rcus_to_unpair;
+
+         for (const auto &it : controllers_) {
+            uint64_t mac_addr = it.second->ieee_address_get().get_value();
+            all_rcus.push_back(mac_addr);
+         }
+
+         if (dqm->params->ieee_address_list.size() == 0) {
+            XLOGD_INFO("Unpairing all remotes paired in the BLE network");
+            rcus_to_unpair = all_rcus;
+         } else {
+            for (const auto &mac_addr : dqm->params->ieee_address_list) {
+                if (std::find(all_rcus.begin(), all_rcus.end(), mac_addr) == all_rcus.end()) {
+                   XLOGD_INFO("The device %s is not managed by the BLE network - skipping", ctrlm_convert_mac_long_to_string(mac_addr).c_str());
+                   continue;
+                }
+                rcus_to_unpair.push_back(mac_addr);
+            }
+         }
+
+         for (const auto &mac_addr : rcus_to_unpair) {
+            if(!ble_rcu_interface_->unpairDevice(mac_addr)) {
+               XLOGD_ERROR("failed to unpair %s", ctrlm_convert_mac_long_to_string(mac_addr).c_str());
+               ret = false;
+            }
+         }
+         if (ret) {
+            dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+         }
+      }
+   }
+
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
+}
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // END - Process Requests to the network in CTRLM Main thread context
 // ==================================================================================================================================================================
@@ -1432,6 +1640,11 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   // From a controller perspective, we cannot use the CTRLM_HAL_BLE_PROPERTY_IS_UPGRADING flag above to determine if its actively upgrading.
                   // Instead, its more accurate to use the progress percentage to determine if the remote is actively receiving firmware packets.
                   controller->setUpgradeInProgress(dqm->rcu_data.upgrade_progress > 0 && dqm->rcu_data.upgrade_progress < 100);
+                  controller->set_upgrade_progress(dqm->rcu_data.upgrade_progress);
+
+                  if (controller->is_upgrade_progress_at_increment()) {
+                      iarm_event_rcu_firmware_status(*controller);
+                  }
                   report_status = false;
                   print_status = false;
                   break;
@@ -1445,7 +1658,6 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                      ctrlm_timeout_destroy(&g_ctrlm_ble_network.upgrade_controllers_timer_tag);
                      g_ctrlm_ble_network.upgrade_controllers_timer_tag = ctrlm_timeout_create(CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT, ctrlm_ble_upgrade_controllers, &id_);
                   } else {
-                     controller->setUpgradeError(string(dqm->rcu_data.upgrade_error));
                      XLOGD_ERROR("Controller <%s> OTA upgrade keeps failing and reached maximum retries.  Won't try again until a new request is sent.", controller->ieee_address_get().to_string().c_str());
 
                      // Make sure xconf config file is updated
@@ -1457,7 +1669,9 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                         ctrlm_main_queue_msg_push((gpointer)msg);
                      }
                   }
+                  controller->set_upgrade_error(dqm->rcu_data.upgrade_error);
                   controller->ota_failure_cnt_incr();
+                  iarm_event_rcu_firmware_status(*controller);
                   break;
                case CTRLM_HAL_BLE_PROPERTY_UNPAIR_REASON:
                   XLOGD_INFO("Controller <%s> notified reason for unpairing = <%s>", controller->ieee_address_get().to_string().c_str(), ctrlm_ble_unpair_reason_str(dqm->rcu_data.unpair_reason));
@@ -1804,6 +2018,7 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
                   if (!ble_rcu_interface_->cancelUpgrade(dqm->ieee_address)) {
                      XLOGD_ERROR("failed to cancel remote firmware upgrade");
                   } else {
+                     controller->set_upgrade_progress(-1);
                      controller->setUpgradePaused(true);
                   }
                }
@@ -2153,4 +2368,27 @@ std::vector<ctrlm_obj_controller_t *> ctrlm_obj_network_ble_t::get_controller_ob
 
 std::shared_ptr<ConfigSettings> ctrlm_obj_network_ble_t::getConfigSettings() {
    return(m_config);
+}
+
+ctrlm_controller_id_t ctrlm_obj_network_ble_t::find_controller_from_upgrade_session_uuid(const std::string &uuid) {
+    if (!ctrlm_utils_is_valid_uuid(uuid)) {
+        XLOGD_ERROR("Invalid UUID %s", uuid.c_str());
+        return -1;
+    }
+
+    uuid_t uuid_to_find;
+    uuid_parse(uuid.c_str(), uuid_to_find);
+
+    ctrlm_controller_id_t id = -1;
+
+    for (const auto &it : controllers_) {
+        uuid_t rcu_uuid;
+        uuid_parse(it.second->get_upgrade_session_uuid().c_str(), rcu_uuid);
+
+        if (uuid_compare(uuid_to_find, rcu_uuid) == 0) {
+            id = it.first;
+            break;
+        }
+    }
+    return id;
 }

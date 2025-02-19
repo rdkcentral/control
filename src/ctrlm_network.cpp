@@ -809,6 +809,18 @@ void ctrlm_obj_network_t::req_process_write_rcu_wakeup_config(void *data, int si
    }
 }
 
+void ctrlm_obj_network_t::req_process_unpair(void *data, int size){
+   XLOGD_WARN("request is not valid for %s network", name_get());
+   ctrlm_main_queue_msg_unpair_t *dqm = (ctrlm_main_queue_msg_unpair_t *)data;
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_unpair_t));
+
+   // post the semaphore just to ensure nothing blocks
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
+}
+
 void ctrlm_obj_network_t::req_process_polling_action_push(void *data, int size) {
    ctrlm_main_queue_msg_rcu_polling_action_t *dqm = (ctrlm_main_queue_msg_rcu_polling_action_t *)data;
    g_assert(dqm);
@@ -857,6 +869,42 @@ void ctrlm_obj_network_t::req_process_network_managed_upgrade(void *data, int si
 
 void ctrlm_obj_network_t::req_process_upgrade_controllers(void *data, int size) {
    XLOGD_WARN("not implemented for %s network", name_get());
+}
+
+void ctrlm_obj_network_t::req_process_start_controller_upgrade(void *data, int size) {
+   ctrlm_main_queue_msg_start_controller_upgrade_t *dqm = (ctrlm_main_queue_msg_start_controller_upgrade_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_start_controller_upgrade_t));
+   XLOGD_WARN("not implemented for %s network", name_get());
+
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
+}
+
+void ctrlm_obj_network_t::req_process_cancel_controller_upgrade(void *data, int size) {
+   ctrlm_main_queue_msg_cancel_controller_upgrade_t *dqm = (ctrlm_main_queue_msg_cancel_controller_upgrade_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_cancel_controller_upgrade_t));
+   XLOGD_WARN("not implemented for %s network", name_get());
+
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
+}
+
+void ctrlm_obj_network_t::req_process_status_controller_upgrade(void *data, int size) {
+   ctrlm_main_queue_msg_status_controller_upgrade_t *dqm = (ctrlm_main_queue_msg_status_controller_upgrade_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_status_controller_upgrade_t));
+   XLOGD_WARN("not implemented for %s network", name_get());
+
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
 }
 
 void ctrlm_obj_network_t::factory_reset() {
@@ -957,6 +1005,21 @@ void ctrlm_obj_network_t::iarm_event_rcu_status(void) {
 
    ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
    if (!rcp_ipc->on_status(msg)) {
+       XLOGD_ERROR("Error broadcasting IARM message");
+   }
+}
+
+void ctrlm_obj_network_t::iarm_event_rcu_firmware_status(const ctrlm_obj_controller_t &rcu) {
+   XLOGD_DEBUG("Enter...");
+
+   ctrlm_rcp_ipc_upgrade_status_t msg;
+   msg.populate_status(rcu);
+
+   XLOGD_INFO("Broadcasting IARM message %s RCU %<%s> Upgrade Status....", rcu.ieee_address_get().to_string().c_str(), name_get());
+   XLOGD_DEBUG("%s", msg.to_string());
+
+   ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
+   if (!rcp_ipc->on_firmware_update_progress(msg)) {
        XLOGD_ERROR("Error broadcasting IARM message");
    }
 }

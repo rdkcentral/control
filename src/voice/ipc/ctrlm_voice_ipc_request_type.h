@@ -53,7 +53,7 @@ bool ctrlm_voice_ipc_request_supported_mic_tap_stream_single(ctrlm_voice_ipc_req
 bool ctrlm_voice_ipc_request_supported_mic_tap_stream_multi(ctrlm_voice_ipc_request_config_t *config);
 bool ctrlm_voice_ipc_request_supported_mic_factory_test(ctrlm_voice_ipc_request_config_t *config);
 
-struct voice_session_request_type_handler_s *voice_session_request_type_handler_get(register const char *str, register size_t len);
+struct voice_session_request_type_handler_s *voice_session_request_type_handler_get(const char *str, size_t len);
 
 #ifdef __cplusplus
 }

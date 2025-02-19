@@ -19,6 +19,7 @@
 #ifndef __CTRLM_CONFIG_INT_H__
 #define __CTRLM_CONFIG_INT_H__
 #include <string>
+#include <vector>
 #include <limits.h>
 
 /**
@@ -128,5 +129,24 @@ public:
     bool get_config_value(bool &value);
 };
 
+class ctrlm_config_array_t : public ctrlm_config_obj_t {
+public:
+    /**
+     * ControlMgr Config Array Constructor
+     * @param path The period seperated string which describes the objects path in the JSON config file
+     */
+    ctrlm_config_array_t(const std::string &path);
+    /**
+     * ControlMgr Config Array Destructor
+     */
+    virtual ~ctrlm_config_array_t();
 
+public:
+    /**
+     * Function that is used to get the value from the config file
+     * @param value The reference to where the value from the config file should be placed
+     * @return True if the value has been placed in value, otherwise False
+     */
+    bool get_config_array(std::vector<std::string> &array);
+};
 #endif

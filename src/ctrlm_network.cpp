@@ -27,7 +27,6 @@
 #include "ctrlm_recovery.h"
 #include "ctrlm_rcu.h"
 #include "ctrlm_rcp_ipc_iarm_thunder.h"
-#include "irMgr.h"
 
 using namespace std;
 
@@ -773,7 +772,7 @@ void ctrlm_obj_network_t::req_process_get_last_keypress(void *data, int size){
          errno_t safec_rc = strncpy_s(key_info.source_name, sizeof(key_info.source_name), ctrlm_main_ir_controller_name_get().c_str(), CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH - 1);
          ERR_CHK(safec_rc);
          key_info.source_name[CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH - 1] = '\0';
-         key_info.source_type = IARM_BUS_IRMGR_KEYSRC_IR;
+         key_info.source_type = CTRLM_KEY_SOURCE_IR;
          key_info.result = CTRLM_IARM_CALL_RESULT_SUCCESS;
 
       } else if (controller_exists(lastKeypressControllerID)) {
@@ -784,7 +783,7 @@ void ctrlm_obj_network_t::req_process_get_last_keypress(void *data, int size){
          errno_t safec_rc = strncpy_s(key_info.source_name, sizeof(key_info.source_name), lastKeypressControllerName.c_str(), CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH - 1);
          ERR_CHK(safec_rc);
          key_info.source_name[CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH - 1] = '\0';
-         key_info.source_type = IARM_BUS_IRMGR_KEYSRC_RF;
+         key_info.source_type = CTRLM_KEY_SOURCE_RF;
          key_info.result = CTRLM_IARM_CALL_RESULT_SUCCESS;
       } else {
          XLOGD_ERROR("No controller keypresses found, returning error...");

@@ -46,7 +46,6 @@
 #include <vector>
 #include <time.h>
 #include <unordered_map>
-#include "irMgr.h"   // for IARM_BUS_IRMGR_KEYSRC_
 #include "ctrlm_rcp_ipc_iarm_thunder.h"
 
 using namespace std;

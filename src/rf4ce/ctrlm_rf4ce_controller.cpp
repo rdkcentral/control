@@ -38,7 +38,6 @@
 #ifdef ASB
 #include "ctrlm_asb.h"
 #endif
-#include "irMgr.h"
 
 using namespace std;
 
@@ -2823,7 +2822,7 @@ void ctrlm_obj_controller_rf4ce_t::log_binding_for_telemetry() {
       strftime(time_binding_str, 20, "%F %T", localtime((time_t *)&time_binding));
    }
    XLOGD_INFO("Model <%s>, Binding <%s>, Remote Bound (%u,%u), Time <%s>", product_name_->to_string().c_str(), ctrlm_rcu_binding_type_str(binding_type_), network_id_get(), controller_id_get(), time_binding_str);
-   ctrlm_update_last_key_info(controller_id, IARM_BUS_IRMGR_KEYSRC_RF, 0, product_name_->to_string().c_str(), false, true);
+   ctrlm_update_last_key_info(controller_id, CTRLM_KEY_SOURCE_RF, 0, product_name_->to_string().c_str(), false, true);
 }
 
 void ctrlm_obj_controller_rf4ce_t::log_unbinding_for_telemetry() {

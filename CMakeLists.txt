@@ -343,7 +343,7 @@ add_custom_command( OUTPUT ctrlm_version_build.h
 
 add_custom_command(
    OUTPUT ${CMAKE_BINARY_DIR}/ctrlm_config.json.template
-   COMMAND python3 ${CTRLM_UTILS_JSON_COMBINE} -i ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.json -a ${CTRLM_CONFIG_JSON_VSDK}:vsdk -a ${CTRLM_CONFIG_JSON_CPC} -s ${CTRLM_CONFIG_JSON_CPC_SUB} -a ${CTRLM_CONFIG_JSON_CPC_ADD} -s ${CTRLM_CONFIG_JSON_OEM_SUB} -a ${CTRLM_CONFIG_JSON_OEM_ADD} -o ${CMAKE_BINARY_DIR}/ctrlm_config.json.template
+   COMMAND python3 ${CTRLM_UTILS_JSON_COMBINE} -i ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.json -a ${CTRLM_CONFIG_JSON_VSDK}:vsdk -a ${CTRLM_CONFIG_JSON_CPC} -s ${CTRLM_CONFIG_JSON_CPC_SUB} -a ${CTRLM_CONFIG_JSON_CPC_ADD} -s ${CTRLM_CONFIG_JSON_OEM_SUB} -a ${CTRLM_CONFIG_JSON_OEM_ADD} -s ${CTRLM_CONFIG_JSON_MAIN_SUB} -a ${CTRLM_CONFIG_JSON_MAIN_ADD} -o ${CMAKE_BINARY_DIR}/ctrlm_config.json.template
    DEPENDS src/ctrlm_config_default.json
    VERBATIM
    )

@@ -16,6 +16,11 @@ All notable changes to this project will be documented in this file.
 
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
+## [1.0.4] - 2025-02-20
+
+### Changed
+- removed references to deprecated irMgr component
+
 
 ## [1.0.3] - 2025-02-07
 

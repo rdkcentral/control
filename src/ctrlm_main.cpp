@@ -1664,6 +1664,7 @@ gboolean ctrlm_load_authservice_data(void) {
 gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, json_t **json_obj_voice, json_t **json_obj_device_update, json_t **json_obj_validation, json_t **json_obj_vsdk) {
    std::string config_fn_opt = "/opt/ctrlm_config.json";
    std::string config_fn_etc = "/etc/ctrlm_config.json";
+   std::string config_fn_etc_override = "/etc/ctrlm_config.json.OVERRIDE";
    json_t *json_obj_ctrlm;
    ctrlm_config_t *ctrlm_config = ctrlm_config_t::get_instance();
    gboolean local_conf = false;
@@ -1678,6 +1679,8 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
       local_conf = true;
    } else if(g_file_test(config_fn_etc.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_etc)) {
       XLOGD_INFO("Read configuration from <%s>", config_fn_etc.c_str());
+   } else if(g_file_test(config_fn_etc_override.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_etc_override)) {
+      XLOGD_INFO("Read configuration from <%s>", config_fn_etc_override.c_str());
    } else {
       XLOGD_WARN("Configuration error. Configuration file(s) missing, using defaults");
       return(false);

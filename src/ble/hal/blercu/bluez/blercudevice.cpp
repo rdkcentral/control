@@ -265,10 +265,9 @@ void BleRcuDeviceBluez::onPairRequestReply(PendingReply<> *reply)
         XLOGD_ERROR("%s pairing request failed with error: <%s>", 
                 m_address.toString().c_str(), reply->errorMessage().c_str());
 
-        // emit pairingError(m_address, error.message());
+        m_pairingErrorSlots.invoke(reply->errorMessage());
     } else {
         XLOGD_DEBUG("%s pairing request successful", m_address.toString().c_str());
-        // TODO: start the timer to cancel the pairing after a certain amount of time
     }
 }
 

@@ -113,6 +113,7 @@ public:
                                   const std::vector<std::string> &interfaces);
 
     void onDeviceNameChanged(const BleAddress &address, const std::string &name);
+    void onDevicePairingError(const BleAddress &address, const std::string &error);
     void onDevicePairedChanged(const BleAddress &address, bool paired);
     void onDeviceReadyChanged(const BleAddress &address, bool ready);
 

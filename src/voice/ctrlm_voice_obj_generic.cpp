@@ -243,7 +243,7 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                 routes[i].dsts[0].stream_from     = stream_from;
                 routes[i].dsts[0].stream_offset   = stream_offset;
                 routes[i].dsts[0].stream_until    = stream_until;
-                #ifdef ENABLE_DEEP_SLEEP
+                #ifdef DEEP_SLEEP_ENABLED
                 if(src == XRSR_SRC_MICROPHONE) {
                     routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                 }
@@ -277,7 +277,7 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                 routes[i].dsts[0].stream_from     = XRSR_STREAM_FROM_LIVE;
                 routes[i].dsts[0].stream_offset   = 0;
                 routes[i].dsts[0].stream_until    = XRSR_STREAM_UNTIL_END_OF_STREAM;
-                #ifdef ENABLE_DEEP_SLEEP
+                #ifdef DEEP_SLEEP_ENABLED
                 if(src == XRSR_SRC_MICROPHONE) {
                     routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                 }
@@ -324,7 +324,7 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                 routes[i].dsts[0].stream_from     = stream_from;
                 routes[i].dsts[0].stream_offset   = stream_offset;
                 routes[i].dsts[0].stream_until    = stream_until;
-                #ifdef ENABLE_DEEP_SLEEP
+                #ifdef DEEP_SLEEP_ENABLED
                 if(src == XRSR_SRC_MICROPHONE) {
                     routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                 }
@@ -351,7 +351,7 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                 routes[i].dsts[0].stream_from     = stream_from;
                 routes[i].dsts[0].stream_offset   = stream_offset;
                 routes[i].dsts[0].stream_until    = stream_until;
-                #ifdef ENABLE_DEEP_SLEEP
+                #ifdef DEEP_SLEEP_ENABLED
                 if(src == XRSR_SRC_MICROPHONE) {
                     routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                 }
@@ -376,7 +376,7 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                         routes[i].dsts[0].stream_from     = stream_from;
                         routes[i].dsts[0].stream_offset   = stream_offset;
                         routes[i].dsts[0].stream_until    = stream_until;
-                        #ifdef ENABLE_DEEP_SLEEP
+                        #ifdef DEEP_SLEEP_ENABLED
                         if(src == XRSR_SRC_MICROPHONE) {
                                 routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                         }

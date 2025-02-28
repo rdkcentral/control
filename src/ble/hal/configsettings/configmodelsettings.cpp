@@ -49,7 +49,6 @@ ConfigModelSettingsData::ConfigModelSettingsData(const ConfigModelSettingsData &
     , m_disabled(other.m_disabled)
     , m_pairingNameFormat(other.m_pairingNameFormat)
     , m_otaProductName(other.m_otaProductName)
-    // , m_filterBytes(other.m_filterBytes)
     , m_standbyMode(other.m_standbyMode)
     , m_typeZ(other.m_typeZ)
     , m_connParamUpdateBeforeOtaVersion(other.m_connParamUpdateBeforeOtaVersion)
@@ -75,27 +74,23 @@ ConfigModelSettingsData::ConfigModelSettingsData(const ConfigModelSettingsData &
     \code
         [
             {
-                "name": "EC05x",
-                "manufacturer": "Ruwido",
-                "oui": "1C:A2:B1",
-                "pairingNameFormat": "U%03hhu*",
-                "connectionParams": {
-                    "maxInterval": 15.0,
-                    "minInterval": 15.0,
-                    "latency": 332,
-                    "supervisionTimeout": 15000
-                },
+                "name": "PR3",
+                "scanNameFormat": "U-PR3 EntOS RCU",
+                "connectNameFormat": "[UP]-PR3 EntOS RCU",
+                "otaProductName": "PR3-10",
+                "standbyMode": "C",
                 "services": {
-                    "type": "dbus",
-                    "dbusServiceName": "com.ruwido.rcu",
-                    "dbusObjectPath": "/com/ruwido/rcu"
-                    "supported": [
-                        "audio",
-                        "battery",
-                        "deviceInfo",
-                        "findMe",
-                        "infrared",
-                        "touch"
+                    "type": "gatt",
+                    "required": [
+                        "Battery",
+                        "Device Info",
+                        "Immediate Alert",
+                        "RDK Voice",
+                        "RDK Infrared",
+                        "RDK Firmware Upgrade"
+                    ],
+                    "optional": [
+                        "RDK Remote Control"
                     ]
                 }
             },
@@ -107,7 +102,13 @@ ConfigModelSettingsData::ConfigModelSettingsData(const ConfigModelSettingsData &
 ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
     : m_valid(false)
     , m_disabled(false)
+    , m_pairingNameFormat("")
+    , m_otaProductName("")
+    , m_standbyMode("")
     , m_typeZ(false)
+    , m_connParamUpdateBeforeOtaVersion("")
+    , m_upgradePauseVersion("")
+    , m_upgradeStuckVersion("")
     , m_hasConnParams(false)
     , m_servicesType(ConfigModelSettings::GattServiceType)
 {
@@ -119,7 +120,7 @@ ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
     }
     m_name = json_string_value(obj);
 
-    XLOGD_DEBUG("m_name = <%s>", m_name.c_str());
+    XLOGD_INFO("Name = <%s>", m_name.c_str());
 
     // (optional) disabled field
     obj = json_object_get(json, "disabled");
@@ -132,37 +133,39 @@ ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
         }
     }
 
-    // pairingFormat field
+    // (optional) pairingFormat field
     obj = json_object_get(json, "pairingNameFormat");
     if (!obj || !json_is_string(obj)) {
-        XLOGD_ERROR("invalid 'pairingNameFormat' field");
-        return;
+        XLOGD_WARN("invalid 'pairingNameFormat' field, not fatal, continuing to parse info");
+    } else {
+        m_pairingNameFormat = json_string_value(obj);
     }
-    m_pairingNameFormat = json_string_value(obj);
 
     // scanNameFormat field
     obj = json_object_get(json, "scanNameFormat");
     if (!obj || !json_is_string(obj)) {
-        XLOGD_ERROR("invalid 'scanNameFormat' field");
+        XLOGD_ERROR("invalid 'scanNameFormat' field, this is required so returning...");
         return;
     }
     m_scanNameMatcher = std::regex(json_string_value(obj), std::regex_constants::ECMAScript);
+    XLOGD_INFO("Pairing name regex <%s>", json_string_value(obj));
     
-    // connectNameFormat field
+    // (optional) connectNameFormat field
     obj = json_object_get(json, "connectNameFormat");
     if (!obj || !json_is_string(obj)) {
-        XLOGD_ERROR("invalid 'connectNameFormat' field");
-        return;
+        XLOGD_WARN("invalid 'connectNameFormat' field, not fatal, setting to scanNameFormat");
+        m_connectNameMatcher = m_scanNameMatcher;
+    } else {
+        m_connectNameMatcher = std::regex(json_string_value(obj), std::regex_constants::ECMAScript);
     }
-    m_connectNameMatcher = std::regex(json_string_value(obj), std::regex_constants::ECMAScript);
 
-    // otaProductName field
+    // (optional) otaProductName field
     obj = json_object_get(json, "otaProductName");
     if (!obj || !json_is_string(obj)) {
-        XLOGD_ERROR("invalid 'otaProductName' field");
-        return;
+        XLOGD_WARN("invalid 'otaProductName' field, not fatal, continuing to parse info");
+    } else {
+        m_otaProductName = json_string_value(obj);
     }
-    m_otaProductName = json_string_value(obj);
 
     // (optional) typeZ field
     obj = json_object_get(json, "typeZ");
@@ -204,24 +207,7 @@ ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
         }
     }
 
-    // filterByte field
-    // {
-    //  const QJsonValue filterBytes = json["filterBytes"];
-    //  if (!filterBytes.isArray()) {
-    //      qWarning("invalid 'filterBytes' field");
-    //      return;
-    //  }
-
-    //  const QJsonArray filterByteValues = filterBytes.toArray();
-    //  for (const auto &filterByte : filterByteValues) {
-    //      if (!filterByte.isDouble())
-    //          qWarning("invalid entry in 'filterBytes' array");
-    //      else
-    //          m_filterBytes.insert(static_cast<quint8>(filterByte.toInt()));
-    //  }
-    // }
-
-    // standbyMode field
+    // (optional) standbyMode field
     obj = json_object_get(json, "standbyMode");
     if (!obj || !json_is_string(obj)) {
         XLOGD_WARN("invalid or missing 'standbyMode' field, not fatal, continuing to parse info");
@@ -229,7 +215,7 @@ ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
         m_standbyMode = json_string_value(obj);
     }
 
-    // voiceKeyCode field
+    // (optional) voiceKeyCode field
     obj = json_object_get(json, "voiceKeyCode");
     if (obj) {
         if(!json_is_integer(obj)) {
@@ -495,16 +481,6 @@ std::string ConfigModelSettings::upgradeStuckVersion() const
 {
     return d->m_upgradeStuckVersion;
 }
-
-// -----------------------------------------------------------------------------
-/*!
-    Returns the IR filter byte value that the RCU model will send when pairing.
-
- */
-// QSet<quint8> ConfigModelSettings::irFilterBytes() const
-// {
-//  return d->m_filterBytes;
-// }
 
 // -----------------------------------------------------------------------------
 /*!

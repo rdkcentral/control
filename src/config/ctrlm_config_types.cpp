@@ -131,3 +131,43 @@ bool ctrlm_config_bool_t::get_config_value(bool &value) {
     return(ret);
 }
 // end ctrlm_config_bool_t
+
+// ctrlm_config_array_t
+ctrlm_config_array_t::ctrlm_config_array_t(const std::string &path) : ctrlm_config_obj_t(path) {
+
+}
+
+ctrlm_config_array_t::~ctrlm_config_array_t() {
+
+}
+
+bool ctrlm_config_array_t::get_config_array(std::vector<std::string> &array) {
+    bool ret = false;
+    ctrlm_config_t *config = ctrlm_config_t::get_instance();
+    if(config) {
+        json_t *obj = config->json_from_path(this->path);
+        if(obj) {
+            if(json_is_array(obj)) {
+                size_t index  = 0;
+                json_t *value = NULL;
+
+                json_array_foreach(obj, index, value) {
+                   if(json_is_string(value)) {
+                       array.push_back(std::string(json_string_value(value)));
+                   } else {
+                       XLOGD_ERROR("not a string, skipping..");
+                   }
+                }
+                ret = true;
+            } else {
+                XLOGD_ERROR("config object <%s> is not an array ", this->path.c_str());
+            }
+        } else {
+            XLOGD_WARN("config object <%s> was not found", this->path.c_str());
+        }
+    } else {
+        XLOGD_ERROR("ctrlm_config_t is NULL");
+    }
+    return(ret);
+}
+// end ctrlm_config_array_t

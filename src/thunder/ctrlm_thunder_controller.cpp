@@ -37,7 +37,7 @@ using namespace Thunder;
 using namespace Controller;
 using namespace WPEFramework;
 
-ctrlm_thunder_controller_t *_instance = NULL;
+static ctrlm_thunder_controller_t *_instance = NULL;
 
 static void _on_activation_change(ctrlm_thunder_controller_t *controller, JsonObject params) {
     plugin_state_t state = PLUGIN_INVALID;

@@ -50,6 +50,14 @@ target_sources(controlMgr PRIVATE
    ctrlm_utils.cpp
    ctrlm_validation.cpp
    ctrlm_vendor_network_factory.cpp
+   json_config.cpp
+   attributes/ctrlm_attr.cpp
+   attributes/ctrlm_attr_general.cpp
+   attributes/ctrlm_attr_voice.cpp
+   attributes/ctrlm_version.cpp
+   config/ctrlm_config.cpp
+   config/ctrlm_config_attr.cpp
+   config/ctrlm_config_types.cpp
    database/ctrlm_database.cpp
    database/ctrlm_db_attr.cpp
    database/ctrlm_db_types.cpp
@@ -73,59 +81,68 @@ target_sources(controlMgr PRIVATE
    voice/ipc/ctrlm_voice_ipc_iarm_all.cpp
    voice/ipc/ctrlm_voice_ipc_iarm_legacy.cpp
    voice/ipc/ctrlm_voice_ipc_request_type.c
-)
+   )
 
 if(BLE_ENABLED)
    target_sources(controlMgr PRIVATE
-      ble/ctrlm_ble_controller.cpp 
-      ble/ctrlm_ble_iarm.cpp 
-      ble/ctrlm_ble_network.cpp 
-      ble/ctrlm_ble_utils.cpp 
-      ble/ctrlm_ble_controller_attr_version.cpp 
-      ble/ctrlm_ble_rcu_interface.cpp 
-      ble/hal/blercu/blercucontroller.cpp 
-      ble/hal/blercu/blercuerror.cpp 
-      ble/hal/blercu/blercupairingstatemachine.cpp 
-      ble/hal/blercu/blercuscannerstatemachine.cpp 
-      ble/hal/blercu/btrmgradapter.cpp 
-      ble/hal/blercu/bleservices/blercuservicesfactory.cpp 
-      ble/hal/blercu/bleservices/gatt/gatt_audiopipe.cpp 
+      ble/ctrlm_ble_controller.cpp
+      ble/ctrlm_ble_controller_attr_version.cpp
+      ble/ctrlm_ble_iarm.cpp
+      ble/ctrlm_ble_network.cpp
+      ble/ctrlm_ble_rcu_interface.cpp
+      ble/ctrlm_ble_utils.cpp
+      ble/hal/blercu/blercucontroller.cpp
+      ble/hal/blercu/blercuerror.cpp
+      ble/hal/blercu/blercupairingstatemachine.cpp
+      ble/hal/blercu/bleservices/blercuservicesfactory.cpp
+      ble/hal/blercu/btrmgradapter.cpp	  
+      ble/hal/blercu/bleservices/gatt/gatt_audiopipe.cpp
       ble/hal/blercu/bleservices/gatt/gatt_audioservice.cpp
-      ble/hal/blercu/bleservices/gatt/gatt_audioservice_rdk.cpp 
-      ble/hal/blercu/bleservices/gatt/gatt_batteryservice.cpp 
-      ble/hal/blercu/bleservices/gatt/gatt_deviceinfoservice.cpp 
-      ble/hal/blercu/bleservices/gatt/gatt_findmeservice.cpp 
-      ble/hal/blercu/bleservices/gatt/gatt_infraredservice.cpp 
-      ble/hal/blercu/bleservices/gatt/gatt_infraredsignal.cpp 
-      ble/hal/blercu/bleservices/gatt/gatt_remotecontrolservice.cpp 
-      ble/hal/blercu/bleservices/gatt/gatt_services.cpp 
-      ble/hal/blercu/bleservices/gatt/gatt_upgradeservice.cpp 
-      ble/hal/blercu/bluez/blegattcharacteristic.cpp 
-      ble/hal/blercu/bluez/blegattdescriptor.cpp 
-      ble/hal/blercu/bluez/blegattnotifypipe.cpp 
-      ble/hal/blercu/bluez/blegattprofile.cpp 
-      ble/hal/blercu/bluez/blegattservice.cpp 
-      ble/hal/blercu/bluez/blercuadapter.cpp 
-      ble/hal/blercu/bluez/blercudevice.cpp 
-      ble/hal/configsettings/configmodelsettings.cpp 
-      ble/hal/configsettings/configsettings.cpp 
-      ble/hal/dbus/dbusabstractinterface.cpp 
-      ble/hal/dbus/dbusobjectmanager.cpp 
-      ble/hal/dbus/dbusservicewatcher.cpp 
-      ble/hal/dbus/dbusutils.cpp 
-      ble/hal/dbus/dbusvariant.cpp 
-      ble/hal/dbus/gdbusabstractinterface.cpp 
-      ble/hal/utils/bleaddress.cpp 
-      ble/hal/utils/bleconnectionparameters.cpp 
-      ble/hal/utils/bleuuid.cpp 
-      ble/hal/utils/crc32.cpp 
-      ble/hal/utils/filedescriptor.cpp 
-      ble/hal/utils/audioformat.cpp 
-      ble/hal/utils/futureaggregator.cpp 
-      ble/hal/utils/fwimagefile.cpp 
-      ble/hal/utils/hcisocket.cpp 
+      ble/hal/blercu/bleservices/gatt/gatt_audioservice_rdk.cpp
+      ble/hal/blercu/bleservices/gatt/gatt_batteryservice.cpp
+      ble/hal/blercu/bleservices/gatt/gatt_deviceinfoservice.cpp
+      ble/hal/blercu/bleservices/gatt/gatt_findmeservice.cpp
+      ble/hal/blercu/bleservices/gatt/gatt_infraredservice.cpp
+      ble/hal/blercu/bleservices/gatt/gatt_infraredsignal.cpp
+      ble/hal/blercu/bleservices/gatt/gatt_remotecontrolservice.cpp
+      ble/hal/blercu/bleservices/gatt/gatt_services.cpp
+      ble/hal/blercu/bleservices/gatt/gatt_upgradeservice.cpp
+      ble/hal/blercu/bluez/blegattcharacteristic.cpp
+      ble/hal/blercu/bluez/blegattdescriptor.cpp
+      ble/hal/blercu/bluez/blegattnotifypipe.cpp
+      ble/hal/blercu/bluez/blegattprofile.cpp
+      ble/hal/blercu/bluez/blegattservice.cpp
+      ble/hal/blercu/bluez/blercuadapter.cpp
+      ble/hal/blercu/bluez/blercudevice.cpp
+      ble/hal/configsettings/configmodelsettings.cpp
+      ble/hal/configsettings/configsettings.cpp
+      ble/hal/dbus/dbusabstractinterface.cpp
+      ble/hal/dbus/dbusobjectmanager.cpp
+      ble/hal/dbus/dbusservicewatcher.cpp
+      ble/hal/dbus/dbusutils.cpp
+      ble/hal/dbus/dbusvariant.cpp
+      ble/hal/dbus/gdbusabstractinterface.cpp
+      ble/hal/utils/bleaddress.cpp
+      ble/hal/utils/bleconnectionparameters.cpp
+      ble/hal/utils/bleuuid.cpp
+      ble/hal/utils/crc32.cpp
+      ble/hal/utils/filedescriptor.cpp
+      ble/hal/utils/audioformat.cpp
+      ble/hal/utils/futureaggregator.cpp
+      ble/hal/utils/fwimagefile.cpp
+      ble/hal/utils/hcisocket.cpp
       ble/hal/utils/statemachine.cpp
       ctrlm_config_default.c
+   )
+endif()
+
+if(BUILD_FACTORY_TEST)
+   add_subdirectory(factory)
+endif()
+
+if(NOT IRDB)
+   target_sources(controlMgr PRIVATE
+      irdb/ctrlm_irdb_factory.cpp
    )
 endif()
 
@@ -154,13 +171,21 @@ if(RF4CE_ENABLED)
 
    if(RF4CE_PACKET_ANALYSIS)
       target_sources(controlMgr PRIVATE
-         ctrlm_rf4ce_voice_packet_analysis.cpp
-      )
+      ctrlm_rf4ce_voice_packet_analysis.cpp
+   )
    else()
       target_sources(controlMgr PRIVATE
-         stubs/stubs_voice_packet_analysis.cpp
-      )
+      stubs/stubs_voice_packet_analysis.cpp
+   )
    endif()
+endif()
+
+if(TELEMETRY_SUPPORT)
+   target_sources(controlMgr PRIVATE
+      telemetry/ctrlm_telemetry.cpp
+      telemetry/ctrlm_telemetry_event.cpp
+      voice/telemetry/ctrlm_voice_telemetry_events.cpp
+   )
 endif()
 
 if(THUNDER)
@@ -173,7 +198,7 @@ if(THUNDER)
       thunder/plugins/ctrlm_thunder_plugin_cec_sink.cpp
       thunder/plugins/ctrlm_thunder_plugin_cec_source.cpp
       thunder/plugins/ctrlm_thunder_plugin_display_settings.cpp
-      thunder/plugins/ctrlm_thunder_plugin_device_info.cpp 
+      thunder/plugins/ctrlm_thunder_plugin_device_info.cpp
       thunder/plugins/ctrlm_thunder_plugin_hdmi_input.cpp
       thunder/plugins/ctrlm_thunder_plugin_system.cpp
       ipc/ctrlm_rcp_ipc_iarm_thunder.cpp
@@ -181,28 +206,14 @@ if(THUNDER)
    )
 endif()
 
-if(NOT IRDB)
+if(XRSR_HTTP)
    target_sources(controlMgr PRIVATE
-      irdb/ctrlm_irdb_factory.cpp
-   )
-endif()
-
-if(TELEMETRY_SUPPORT)
-   target_sources(controlMgr PRIVATE
-      telemetry/ctrlm_telemetry.cpp
-      telemetry/ctrlm_telemetry_event.cpp
-      voice/telemetry/ctrlm_voice_telemetry_events.cpp
+      voice/endpoints/ctrlm_voice_endpoint_http.cpp
    )
 endif()
 
 if(XRSR_SDT)
    target_sources(controlMgr PRIVATE
       voice/endpoints/ctrlm_voice_endpoint_sdt.cpp
-   )
-endif()
-
-if(XRSR_HTTP)
-   target_sources(controlMgr PRIVATE
-      voice/endpoints/ctrlm_voice_endpoint_http.cpp
    )
 endif()

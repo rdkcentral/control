@@ -363,7 +363,11 @@ bool ctrlm_obj_controller_ble_t::getUpgradePaused() {
    return upgrade_paused_;
 }
 
-void ctrlm_obj_controller_ble_t::setUpgradeError(std::string error_str) {
+void ctrlm_obj_controller_ble_t::set_upgrade_error(const std::string &error_str) {
+   if (error_str.empty()) {
+      upgrade_error_msg_.clear();
+      return;
+   }
    if ( upgrade_stuck_supported_ && (*sw_revision_ < upgrade_stuck_version_) ) {
       if (error_str.find(BLE_RCU_UPGRADE_SERVICE_ERR_TIMEOUT_STR) != std::string::npos) {
          XLOGD_WARN("Controller %u received timeout error from OTA attempt, it may be in stuck state.", controller_id_get());
@@ -373,6 +377,8 @@ void ctrlm_obj_controller_ble_t::setUpgradeError(std::string error_str) {
    if (error_str.compare("Invalid hash error from RCU") == 0) {
       ota_failure_type_z_cnt_set(ota_failure_type_z_cnt_get() + 1);
    }
+   upgrade_error_msg_ = error_str;
+   set_upgrade_state(CTRLM_RCU_UPGRADE_STATE_ERROR);
 }
 
 bool ctrlm_obj_controller_ble_t::getUpgradeStuck() {

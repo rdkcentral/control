@@ -36,7 +36,7 @@
 #include "libIBus.h"
 #include "libIBusDaemon.h"
 #include <jansson.h>
-#ifdef ENABLE_DEEP_SLEEP
+#ifdef DEEP_SLEEP_ENABLED
 #include "deepSleepMgr.h"
 #endif
 
@@ -187,18 +187,20 @@ const char *ctrlm_ir_state_str(ctrlm_ir_state_t state);
 const char *ctrlm_power_state_str(ctrlm_power_state_t state);
 const char *ctrlm_device_type_str(ctrlm_device_type_t device_type);
 
-#ifdef ENABLE_DEEP_SLEEP
+#ifdef DEEP_SLEEP_ENABLED
 const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason);
 #endif
 const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config);
 
 const char *ctrlm_irdb_vendor_str(ctrlm_irdb_vendor_t vendor);
 const char *ctrlm_rf_pair_state_str(ctrlm_rf_pair_state_t state);
+const char *ctrlm_rcu_upgrade_state_str(ctrlm_rcu_upgrade_state_t state);
 
 bool        ctrlm_file_copy(const char* src, const char* dst, bool overwrite, bool follow_symbolic_link);
 bool        ctrlm_file_delete(const char* path, bool follow_symbolic_link);
 bool        ctrlm_file_get_symlink_target(const char *path, std::string &link_target);
 bool        ctrlm_file_exists(const char* path);
+bool        ctrlm_file_type_matches(const char* path, const char* filetype);
 bool        ctrlm_file_timestamp_get(const char *path, guint64 *ts);
 bool        ctrlm_file_timestamp_set(const char *path, guint64  ts);
 
@@ -247,6 +249,8 @@ std::string ctrlm_utils_time_as_string(time_t time);
 ctrlm_fmr_alarm_level_t ctrlm_utils_str_to_fmr_level(const std::string &level);
 ctrlm_rcu_wakeup_config_t ctrlm_utils_str_to_wakeup_config(const std::string &wakeup_config);
 int ctrlm_utils_custom_key_str_to_array(const std::string &custom_keys, int *custom_list);
+
+bool ctrlm_utils_is_valid_uuid(const std::string &uuid);
 
 #ifdef __cplusplus
 }

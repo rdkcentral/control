@@ -48,8 +48,14 @@ public:
    virtual ~ctrlm_ir_controller_t();
    
 
+   /**
+    * This function is used to read the IR section of the ctrlm config. 
+    */
+   bool read_config();
+
    void print_status();
 
+   std::string input_device_name_get(void);
    std::string name_get(void);
 
    /**
@@ -85,6 +91,8 @@ private:
     *  Default Constructor (Private due to it being a Singleton)
     */
    ctrlm_ir_controller_t();
+
+   std::string                             input_device_name_;
 
    std::shared_ptr<ctrlm_uint64_db_attr_t> last_key_time_;
    std::shared_ptr<ctrlm_uint64_db_attr_t> last_key_code_;

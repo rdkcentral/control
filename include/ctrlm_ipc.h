@@ -135,7 +135,10 @@
 #define CTRLM_MAIN_IARM_CALL_START_PAIR_WITH_CODE                "Main_StartPairWithCode"       ///< IARM Call to initiate searching for a remote to pair with
 #define CTRLM_MAIN_IARM_CALL_FIND_MY_REMOTE                      "Main_FindMyRemote"            ///< IARM Call to trigger the Find My Remote alarm on a specified remote
 #define CTRLM_MAIN_IARM_CALL_WRITE_RCU_WAKEUP_CONFIG             "Main_WriteAdvertisingConfig"  ///< IARM Call to write the advertising configuration on all connected remotes
-
+#define CTRLM_MAIN_IARM_CALL_START_FIRMWARE_UPDATE               "Main_StartFirmwareUpdate"     ///< IARM Call to start a firmware update session
+#define CTRLM_MAIN_IARM_CALL_CANCEL_FIRMWARE_UPDATE              "Main_CancelFirmwareUpdate"    ///< IARM Call to cancel a firmware update session
+#define CTRLM_MAIN_IARM_CALL_STATUS_FIRMWARE_UPDATE              "Main_StatusFirmwareUpdate"    ///< IARM Call to get the status of a firmware update session
+#define CTRLM_MAIN_IARM_CALL_UNPAIR                              "Main_Unpair"                  ///< IARM Call to unpair all or particular remotes
 
 #define CTRLM_MAIN_NETWORK_ID_INVALID                          (0xFF) ///< An invalid network identifier
 #define CTRLM_MAIN_CONTROLLER_ID_INVALID                       (0xFF) ///< An invalid controller identifier
@@ -299,9 +302,10 @@ typedef enum {
    CTRLM_VOICE_IARM_EVENT_JSON_SERVER_MESSAGE       = 31, ///< Generated on voice server message, payload is JSON for consumption by Thunder Plugin
    CTRLM_VOICE_IARM_EVENT_JSON_STREAM_END           = 32, ///< Generated on voice stream end, payload is JSON for consumption by Thunder Plugin
    CTRLM_VOICE_IARM_EVENT_JSON_SESSION_END          = 33, ///< Generated on voice session end, payload is JSON for consumption by Thunder Plugin
-   CTRLM_RCU_IARM_EVENT_RCU_STATUS                  = 34, ///< Generated when someting changes in the BLE remote
+   CTRLM_RCU_IARM_EVENT_RCU_STATUS                  = 34, ///< Generated when something changes in the BLE remote
    CTRLM_RCU_IARM_EVENT_RF4CE_PAIRING_WINDOW_TIMEOUT = 35, ///< Indicates that a battery milestone event occured
-   CTRLM_MAIN_IARM_EVENT_MAX                        = 36  ///< Placeholder for the last event (used in registration)
+   CTRLM_RCU_IARM_EVENT_FIRMWARE_UPDATE_PROGRESS    = 36, ///< Generated when an milestone is reached for remote firmware upgrade 
+   CTRLM_MAIN_IARM_EVENT_MAX                        = 37  ///< Placeholder for the last event (used in registration)
 } ctrlm_main_iarm_event_t;
 
 /// @brief Remote Control Key Status
@@ -312,6 +316,15 @@ typedef enum {
    CTRLM_KEY_STATUS_REPEAT  = 2, ///< Key repeat
    CTRLM_KEY_STATUS_INVALID = 3, ///< Invalid key status
 } ctrlm_key_status_t;
+
+/// @brief Remote Control Key Source
+/// @details The source of the key press, e.g. infrared, rf, etc.
+typedef enum {
+	CTRLM_KEY_SOURCE_FP = 0,   //< Key Source Front Panel
+	CTRLM_KEY_SOURCE_IR,       //< Key Source Infrared
+	CTRLM_KEY_SOURCE_RF,	      //< Key Source RF
+	CTRLM_KEY_SOURCE_INVALID   //< Invalid
+} ctrlm_key_source_t;
 
 /// @brief Data Access Type
 /// @details The type of permission for access to data in Control Manager.
@@ -445,6 +458,15 @@ typedef enum {
    CTRLM_RCU_WAKEUP_CONFIG_NONE,
    CTRLM_RCU_WAKEUP_CONFIG_INVALID
 } ctrlm_rcu_wakeup_config_t;
+
+typedef enum {
+   CTRLM_RCU_UPGRADE_STATE_SUCCESS = 0,
+   CTRLM_RCU_UPGRADE_STATE_IDLE,
+   CTRLM_RCU_UPGRADE_STATE_PENDING,
+   CTRLM_RCU_UPGRADE_STATE_CANCELED,
+   CTRLM_RCU_UPGRADE_STATE_ERROR,
+   CTRLM_RCU_UPGRADE_STATE_INVALID
+} ctrlm_rcu_upgrade_state_t;
 
 /// @brief Network Id Type
 /// @details During initialization, of the HAL network, Control Manager will assign a unique id to the network.  It must be used in all
@@ -636,7 +658,7 @@ typedef struct {
    ctrlm_network_id_t       network_id;                                         ///< IN - identifier of network on which the controller is bound
    ctrlm_iarm_call_result_t result;                                             ///< OUT - The result of the operation.
    int                      controller_id;                                      ///< OUT - The controller id of the last key press.
-   unsigned char            source_type;                                        ///< OUT - The source type of the last key press.
+   ctrlm_key_source_t       source_type;                                        ///< OUT - The source type of the last key press.
    unsigned long            source_key_code;                                    ///< OUT - The keycode of the last key press.
    long long                timestamp;                                          ///< OUT - The timestamp of the last key press.
    unsigned char            is_screen_bind_mode;                                ///< OUT - Indicates if the last key press is from a remote is in screen bind mode.

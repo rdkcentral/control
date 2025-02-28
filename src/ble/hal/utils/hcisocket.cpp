@@ -413,6 +413,13 @@ HciSocketImpl::HciSocketImpl(uint hciDeviceId, int netNsFd)
 
     XLOGD_INFO("creating new socket for HciSocket object");
 
+    // open eventfd to signal to the thread to exit
+    if (pipe(m_exitEventFds) == -1) {
+        int errsv = errno;
+        XLOGD_ERROR("failed to open exit eventfd, error = <%d>, <%s>", errsv, strerror(errsv));
+        return;
+    }
+
     // create the HCI socket, optionally in the supplied network namespace
     int sockFd = -1;
     if (netNsFd < 0) {
@@ -425,20 +432,18 @@ HciSocketImpl::HciSocketImpl(uint hciDeviceId, int netNsFd)
         return;
     }
 
-    // open eventfd to signal to the thread to exit
-    if (pipe(m_exitEventFds) == -1) {
-        int errsv = errno;
-        XLOGD_ERROR("failed to open exit eventfd, error = <%d>, <%s>", errsv, strerror(errsv));
+    // setup the hci socket
+    if (!setSocketFilter(sockFd) || !bindSocket(sockFd, hciDeviceId)) {
         close(sockFd);
         return;
     }
+    m_hciSocket = sockFd;
 
     m_socketThread.name = "ble_hci_socket";
     sem_init(&m_socketThreadSem, 0, 0);
     if (false == ctrlm_utils_thread_create(&m_socketThread, SocketThread, this)) {
         sem_destroy(&m_socketThreadSem);
         XLOGD_ERROR("failed to start hci socket thread");
-        close(sockFd);
         return;
     } else  {
         // Block until initialization is complete or a timeout occurs
@@ -446,14 +451,6 @@ HciSocketImpl::HciSocketImpl(uint hciDeviceId, int netNsFd)
         sem_wait(&m_socketThreadSem);
         sem_destroy(&m_socketThreadSem);
     }
-
-    // setup the hci socket
-    if (!setSocketFilter(sockFd) || !bindSocket(sockFd, hciDeviceId)) {
-        close(sockFd);
-        return;
-    }
-
-    m_hciSocket = sockFd;
 }
 
 HciSocketImpl::~HciSocketImpl()
@@ -1062,12 +1059,17 @@ void *SocketThread(void *data)
 
     XLOGD_INFO("Enter main loop for HCI socket thread");
     do {
+        if (FD_RECV(socketImpl->m_exitEventFds) < 0 || socketImpl->m_hciSocket < 0) {
+            XLOGD_ERROR("one of the fds is invalid, exiting thread");
+            break;
+        }
+
         // Needs to be reinitialized before each call to select() because select() will modify these variables
         FD_ZERO(&rfds);
         FD_SET(FD_RECV(socketImpl->m_exitEventFds), &rfds);
         nfds = FD_RECV(socketImpl->m_exitEventFds);
 
-        FD_SET(socketImpl->m_hciSocket,  &rfds);
+        FD_SET(socketImpl->m_hciSocket, &rfds);
         nfds = std::max(nfds, socketImpl->m_hciSocket);
         nfds++;
 

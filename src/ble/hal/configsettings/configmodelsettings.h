@@ -57,7 +57,6 @@ public:
     bool isValid() const;
 
     std::string name() const;
-    uint32_t oui() const;
 
     bool disabled() const;
 
@@ -71,8 +70,6 @@ public:
     std::string connParamUpdateBeforeOtaVersion() const;
     std::string upgradePauseVersion() const;
     std::string upgradeStuckVersion() const;
-
-    // QSet<quint8> irFilterBytes() const;
 
     std::string standbyMode() const;
     bool voiceKeyCode(uint16_t &keyCode) const;

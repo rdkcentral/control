@@ -22,10 +22,12 @@
 #include <glib.h>
 #include "libIBus.h"
 #include "libIBusDaemon.h"
+#ifdef USE_DEPRECATED_IRMGR
 #include "irMgr.h"
+#endif
 #include "pwrMgr.h"
 #include "sysMgr.h"
-#ifdef ENABLE_DEEP_SLEEP
+#ifdef DEEP_SLEEP_ENABLED
 #include "deepSleepMgr.h"
 #endif
 #include "comcastIrKeyCodes.h"
@@ -130,9 +132,11 @@ void ctrlm_main_iarm_terminate(void) {
    // Change to stopped or terminated state, so we do not accept new calls
    g_atomic_int_set(&running, 0);
 
+#ifdef USE_DEPRECATED_IRMGR
    // IARM Events that we are listening to from other processes
    IARM_Bus_RemoveEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_IRKEY, ctrlm_event_handler_ir);
    IARM_Bus_RemoveEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_CONTROL, ctrlm_event_handler_ir);
+#endif
 
    // Unregister calls that can be invoked by IARM bus clients
    //for(index = 0; index < sizeof(ctrlm_iarm_calls)/sizeof(ctrlm_iarm_call_t); index++) {
@@ -839,7 +843,7 @@ ctrlm_power_state_t ctrlm_main_iarm_call_get_power_state(void) {
     err = IARM_Bus_Call(IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_API_GetPowerState, (void *)&param, sizeof(param));
     if(err == IARM_RESULT_SUCCESS) {
         power_state = ctrlm_iarm_power_state_map(param.curState);
-        #ifdef ENABLE_DEEP_SLEEP
+        #ifdef DEEP_SLEEP_ENABLED
         //If ctrlm restarts with system STANDBY state, set to ON, will receive a DEEP_SLEEP or ON message shortly
         if(power_state == CTRLM_POWER_STATE_STANDBY) {
             power_state = CTRLM_POWER_STATE_ON;
@@ -853,7 +857,7 @@ ctrlm_power_state_t ctrlm_main_iarm_call_get_power_state(void) {
     return power_state;
 }
 
-#ifdef ENABLE_DEEP_SLEEP
+#ifdef DEEP_SLEEP_ENABLED
 gboolean ctrlm_main_iarm_networked_standby(void) {
    IARM_Bus_PWRMgr_NetworkStandbyMode_Param_t param = {0};
    IARM_Result_t res = IARM_Bus_Call(IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_API_GetNetworkStandbyMode, (void *)&param, sizeof(param));

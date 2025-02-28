@@ -52,7 +52,6 @@ public:
     std::regex m_scanNameMatcher;
     std::regex m_connectNameMatcher;
     std::string m_otaProductName;
-    // QSet<uint8_t> m_filterBytes;
     std::string m_standbyMode;
     uint16_t m_voiceKeyCode;
     bool m_voiceKeyCodePresent;

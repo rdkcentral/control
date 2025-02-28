@@ -71,13 +71,11 @@ public:
     virtual bool isPairing() const = 0;
     virtual int pairingCode() const = 0;
 
-    virtual bool startPairing(uint8_t filterByte, uint8_t pairingCode) = 0;
-    virtual bool startPairingMacHash(uint8_t filterByte, uint8_t macHash) = 0;
+    virtual bool startPairingAutoWithTimeout(int timeoutMs) = 0;
+    virtual bool startPairingWithCode(uint8_t pairingCode) = 0;
+    virtual bool startPairingWithMacHash(uint8_t macHash) = 0;
+    virtual bool startPairingWithList(const std::vector<BleAddress> &macAddrList) = 0;
     virtual bool cancelPairing() = 0;
-
-    virtual bool isScanning() const = 0;
-    virtual bool startScanning(int timeoutMs) = 0;
-    virtual bool cancelScanning() = 0;
 
     virtual std::set<BleAddress> managedDevices() const = 0;
     virtual std::shared_ptr<BleRcuDevice> managedDevice(const BleAddress &address) const = 0;
@@ -96,10 +94,6 @@ public:
     {
         m_managedDeviceRemovedSlots.addSlot(func);
     }
-    inline void addScanningStateChangedSlot(const Slot<bool> &func)
-    {
-        m_scanningStateChangedSlots.addSlot(func);
-    }
     inline void addPairingStateChangedSlot(const Slot<bool> &func)
     {
         m_pairingStateChangedSlots.addSlot(func);
@@ -112,7 +106,6 @@ public:
 protected:
     Slots<const BleAddress&> m_managedDeviceAddedSlots;
     Slots<const BleAddress&> m_managedDeviceRemovedSlots;
-    Slots<bool> m_scanningStateChangedSlots;
     Slots<bool> m_pairingStateChangedSlots;
     Slots<State> m_stateChangedSlots;
 };

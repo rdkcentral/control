@@ -54,7 +54,6 @@
 #include <zlib.h>
 #include "ctrlm_voice_obj.h"
 #include "comcastIrKeyCodes.h"
-#include "irMgr.h"
 
 #if (JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_PASS > 7) || (JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_PASS < 1)
 #error RF4CE AUTOBIND PASS THRESHOLD IS OUT OF RANGE
@@ -3930,7 +3929,7 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_end(void *data, int si
       XLOGD_ERROR("Controller object doesn't exist for controller id %u!", controller_id);
    } else {
       //Voice command will update the last key info
-      ctrlm_update_last_key_info(controller_id, IARM_BUS_IRMGR_KEYSRC_RF, KED_PUSH_TO_TALK, controllers_[controller_id]->product_name_get().c_str(), false, true);
+      ctrlm_update_last_key_info(controller_id, CTRLM_KEY_SOURCE_RF, KED_PUSH_TO_TALK, controllers_[controller_id]->product_name_get().c_str(), false, true);
 
       // Update the time last key
       controllers_[controller_id]->last_key_time_update();

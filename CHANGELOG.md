@@ -22,6 +22,18 @@ All notable changes to this project will be documented in this file.
 - removed references to deprecated irMgr component
 
 
+## [1.0.5] - 2025-02-24
+
+### Changed
+- crash at onInitializedTimer when going to deepsleep
+
+
+## [1.0.4] - 2025-02-20
+
+### Changed
+- removed references to deprecated irMgr component
+
+
 ## [1.0.3] - 2025-02-07
 
 ### Changed

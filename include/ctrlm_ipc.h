@@ -317,6 +317,15 @@ typedef enum {
    CTRLM_KEY_STATUS_INVALID = 3, ///< Invalid key status
 } ctrlm_key_status_t;
 
+/// @brief Remote Control Key Source
+/// @details The source of the key press, e.g. infrared, rf, etc.
+typedef enum {
+	CTRLM_KEY_SOURCE_FP = 0,   //< Key Source Front Panel
+	CTRLM_KEY_SOURCE_IR,       //< Key Source Infrared
+	CTRLM_KEY_SOURCE_RF,	      //< Key Source RF
+	CTRLM_KEY_SOURCE_INVALID   //< Invalid
+} ctrlm_key_source_t;
+
 /// @brief Data Access Type
 /// @details The type of permission for access to data in Control Manager.
 typedef enum {
@@ -649,7 +658,7 @@ typedef struct {
    ctrlm_network_id_t       network_id;                                         ///< IN - identifier of network on which the controller is bound
    ctrlm_iarm_call_result_t result;                                             ///< OUT - The result of the operation.
    int                      controller_id;                                      ///< OUT - The controller id of the last key press.
-   unsigned char            source_type;                                        ///< OUT - The source type of the last key press.
+   ctrlm_key_source_t       source_type;                                        ///< OUT - The source type of the last key press.
    unsigned long            source_key_code;                                    ///< OUT - The keycode of the last key press.
    long long                timestamp;                                          ///< OUT - The timestamp of the last key press.
    unsigned char            is_screen_bind_mode;                                ///< OUT - Indicates if the last key press is from a remote is in screen bind mode.

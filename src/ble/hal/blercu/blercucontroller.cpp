@@ -42,6 +42,17 @@
 using namespace std;
 
 
+class BleRcuController_userdata {
+public:
+    BleRcuController_userdata(shared_ptr<bool> isAlive_, BleRcuControllerImpl* controller_)
+        : isAlive(std::move(isAlive_))
+        , controller(controller_)
+    { }
+
+    shared_ptr<bool> isAlive;
+    BleRcuControllerImpl* controller;
+};
+
 static gboolean onInitializedTimer(gpointer user_data);
 static gboolean syncManagedDevicesTimer(gpointer user_data);
 static gboolean removeLastConnectedDeviceTimer(gpointer user_data);
@@ -79,11 +90,13 @@ BleRcuControllerImpl::BleRcuControllerImpl(const shared_ptr<const ConfigSettings
 
     // schedule the controller to synchronise the list of managed devices at
     // start-up in the next idle time of the event loop
-    g_timeout_add(0, syncManagedDevicesTimer, this);
+    BleRcuController_userdata *syncManagedDevicesTimer_userData = new BleRcuController_userdata(m_isAlive, this);
+    g_timeout_add(0, syncManagedDevicesTimer, syncManagedDevicesTimer_userData);
 
     // Check if already powered and if so signal the initialised state
     if (m_adapter->isPowered()) {
-        g_timeout_add(1000, onInitializedTimer, this);
+        BleRcuController_userdata *onInitializedTimer_userData = new BleRcuController_userdata(m_isAlive, this);
+        g_timeout_add(1000, onInitializedTimer, onInitializedTimer_userData);
     }
 }
 
@@ -422,13 +435,16 @@ shared_ptr<BleRcuDevice> BleRcuControllerImpl::managedDevice(const BleAddress &a
  */
 static gboolean syncManagedDevicesTimer(gpointer user_data)
 {
-    BleRcuControllerImpl *rcuDevice = (BleRcuControllerImpl*)user_data;
-    if (rcuDevice == nullptr) {
+    BleRcuController_userdata *userData = (BleRcuController_userdata*)user_data;
+    if (userData == nullptr) {
         XLOGD_ERROR("user_data is NULL!!!!!!!!!!");
+    } else if (*userData->isAlive == false) {
+        XLOGD_ERROR("BleRcuController object is not valid!!!!");
     } else {
-        rcuDevice->syncManagedDevices();
+        userData->controller->syncManagedDevices();
     }
     
+    delete userData;
     return false;
 }
 
@@ -493,7 +509,8 @@ void BleRcuControllerImpl::syncManagedDevices()
 
         // the following will push the call onto the event queue, didn't
         // want to do this option in the callback slot (although shouldn't be an issue)
-        g_timeout_add(0, removeLastConnectedDeviceTimer, this);
+        BleRcuController_userdata *removeLastConnectedDeviceTimer_userData = new BleRcuController_userdata(m_isAlive, this);
+        g_timeout_add(0, removeLastConnectedDeviceTimer, removeLastConnectedDeviceTimer_userData);
     }
 }
 
@@ -507,13 +524,16 @@ void BleRcuControllerImpl::syncManagedDevices()
  */
 static gboolean removeLastConnectedDeviceTimer(gpointer user_data)
 {
-    BleRcuControllerImpl *rcuDevice = (BleRcuControllerImpl*)user_data;
-    if (rcuDevice == nullptr) {
+    BleRcuController_userdata *userData = (BleRcuController_userdata*)user_data;
+    if (userData == nullptr) {
         XLOGD_ERROR("user_data is NULL!!!!!!!!!!");
+    } else if (*userData->isAlive == false) {
+        XLOGD_ERROR("BleRcuController object is not valid!!!!");
     } else {
-        rcuDevice->removeLastConnectedDevice();
+        userData->controller->removeLastConnectedDevice();
     }
     
+    delete userData;
     return false;
 }
 
@@ -694,12 +714,16 @@ void BleRcuControllerImpl::onFailedPairing()
  */
 static gboolean onInitializedTimer(gpointer user_data)
 {
-    BleRcuControllerImpl *rcuDevice = (BleRcuControllerImpl*)user_data;
-    if (rcuDevice == nullptr) {
+    BleRcuController_userdata *userData = (BleRcuController_userdata*)user_data;
+    if (userData == nullptr) {
         XLOGD_ERROR("user_data is NULL!!!!!!!!!!");
+    } else if (*userData->isAlive == false) {
+        XLOGD_ERROR("BleRcuController object is not valid!!!!");
     } else {
-        rcuDevice->onInitialized();
+        userData->controller->onInitialized();
     }
+    
+    delete userData;
     return false;
 }
 

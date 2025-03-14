@@ -501,7 +501,7 @@ const char* ctrlm_minidump_path_get();
 void        ctrlm_on_network_assert(ctrlm_network_id_t network_id);
 void        ctrlm_on_network_assert(ctrlm_network_id_t network_id, const char* assert_info);
 ctrlm_network_id_t network_id_get_next(ctrlm_network_type_t network_type);
-void        ctrlm_update_last_key_info(int controller_id, guchar source_type, guint32 source_key_code, const char *source_name, gboolean is_screen_bind_mode, gboolean write_last_key_info);
+void        ctrlm_update_last_key_info(int controller_id, ctrlm_key_source_t source_type, guint32 source_key_code, const char *source_name, gboolean is_screen_bind_mode, gboolean write_last_key_info);
 ctrlm_irdb_t* ctrlm_main_irdb_get();
 ctrlm_auth_t* ctrlm_main_auth_get();
 void          ctrlm_main_auth_start_poll();

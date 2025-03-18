@@ -17,6 +17,13 @@ All notable changes to this project will be documented in this file.
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
 
+## [1.0.6] - 2025-03-18
+
+### Added
+- custom target to build ctrlm config file only
+- additional config override file that can be provided by vendor layer
+
+
 ## [1.0.5] - 2025-02-24
 
 ### Changed

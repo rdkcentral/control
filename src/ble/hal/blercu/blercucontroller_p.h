@@ -32,7 +32,6 @@
 
 #include "blercucontroller.h"
 #include "blercupairingstatemachine.h"
-#include "blercuscannerstatemachine.h"
 
 #include <string>
 
@@ -60,14 +59,12 @@ public:
     bool isPairing() const override;
     int pairingCode() const override;
 
-    bool startPairing(uint8_t filterByte, uint8_t pairingCode) override;
-    bool startPairingMacHash(uint8_t filterByte, uint8_t macHash) override;
+    bool startPairingAutoWithTimeout(int timeoutMs) override;
+    bool startPairingWithCode(uint8_t pairingCode) override;
+    bool startPairingWithMacHash(uint8_t macHash) override;
+    bool startPairingWithList(const std::vector<BleAddress> &macAddrList) override;
 
     bool cancelPairing() override;
-
-    bool isScanning() const override;
-    bool startScanning(int timeoutMs) override;
-    bool cancelScanning() override;
 
     std::set<BleAddress> managedDevices() const override;
     std::shared_ptr<BleRcuDevice> managedDevice(const BleAddress &address) const override;
@@ -82,16 +79,12 @@ public:
 private:
 
 // private slots:
+    void onStartedSearching();
     void onStartedPairing();
     void onFinishedPairing();
     void onFailedPairing();
     void onDevicePairingChanged(const BleAddress &address, bool paired);
     void onDeviceReadyChanged(const BleAddress &address, bool ready);
-
-    void onStartedScanning();
-    void onFinishedScanning();
-    void onFailedScanning();
-    void onFoundPairableDevice(const BleAddress &address, const std::string &name);
 
 private:
     std::shared_ptr<bool> m_isAlive;
@@ -100,7 +93,6 @@ private:
     const std::shared_ptr<BleRcuAdapter> m_adapter;
 
     BleRcuPairingStateMachine m_pairingStateMachine;
-    BleRcuScannerStateMachine m_scannerStateMachine;
 
     std::set<BleAddress> m_managedDevices;
 
@@ -110,7 +102,7 @@ private:
 
     State m_state;
 
-    bool m_ignoreScannerSignal;
+    bool m_ignorePairingFailure;
 };
 
 #endif // !defined(BLERCUCONTROLLER_P_H)

@@ -95,6 +95,18 @@ public:
    virtual ctrlm_rcu_wakeup_config_t get_wakeup_config() const;
    virtual std::vector<uint16_t>     get_wakeup_custom_list() const;
 
+   virtual void                      set_upgrade_progress(uint8_t progress);
+   virtual uint8_t                   get_upgrade_progress() const;
+   virtual void                      set_upgrade_state(ctrlm_rcu_upgrade_state_t state);
+   virtual ctrlm_rcu_upgrade_state_t get_upgrade_state() const;
+   virtual void                      set_upgrade_error(const std::string &error_str);
+   virtual std::string               get_upgrade_error() const;
+   virtual void                      set_upgrade_session_uuid(bool generate = true);
+   virtual std::string               get_upgrade_session_uuid() const;
+   virtual void                      set_upgrade_increment(uint8_t increment);
+   virtual uint8_t                   get_upgrade_increment() const;
+   virtual bool                      is_upgrade_progress_at_increment() const;
+
    void                    update_voice_metrics(bool is_short_utterance, uint32_t voice_packets_sent, uint32_t voice_packets_lost);
 
 private:
@@ -122,6 +134,12 @@ protected:
    std::shared_ptr<ctrlm_uint64_db_attr_t> ota_failure_cnt_from_last_success_;
 
    int                                     device_minor_id_      = 0;
+
+   uint8_t                                 upgrade_progress_  = -1;
+   ctrlm_rcu_upgrade_state_t               upgrade_state_     = CTRLM_RCU_UPGRADE_STATE_INVALID;
+   std::string                             upgrade_error_msg_ = "";
+   std::string                             upgrade_session_uuid_ = "";
+   uint8_t                                 upgrade_increment_ = -1;
 };
 
 #endif

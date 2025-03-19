@@ -35,6 +35,8 @@ class json_config {
       bool open_for_read(const char* json_file_name, const char* json_section_name);
       bool config_object_set(json_t *json_obj);
 
+      bool config_array_get(const char* key, json_t **array) const;
+
       bool config_value_get(const char* key, bool& val, int index=-1) const;
       bool config_value_get(const char* key, int& val, int min_val=INT_MIN, int max_val=INT_MAX, int index=-1) const;
       bool config_value_get(const char* key, double& val, double min_val=0.0, double max_val=1.0, int index=-1) const;
@@ -51,6 +53,8 @@ class json_config {
       bool config_value_get(const char* key, std::vector<std::string> &val) const;
       bool config_object_get(const char* key, json_config& sub_object) const;
       json_t * current_object_get() const;
+
+      std::string json_dump_string(void) const;
 
    private:
       json_t *json_root_obj;

@@ -27,7 +27,6 @@
 #include "ctrlm_recovery.h"
 #include "ctrlm_rcu.h"
 #include "ctrlm_rcp_ipc_iarm_thunder.h"
-#include "irMgr.h"
 
 using namespace std;
 
@@ -773,7 +772,7 @@ void ctrlm_obj_network_t::req_process_get_last_keypress(void *data, int size){
          errno_t safec_rc = strncpy_s(key_info.source_name, sizeof(key_info.source_name), ctrlm_main_ir_controller_name_get().c_str(), CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH - 1);
          ERR_CHK(safec_rc);
          key_info.source_name[CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH - 1] = '\0';
-         key_info.source_type = IARM_BUS_IRMGR_KEYSRC_IR;
+         key_info.source_type = CTRLM_KEY_SOURCE_IR;
          key_info.result = CTRLM_IARM_CALL_RESULT_SUCCESS;
 
       } else if (controller_exists(lastKeypressControllerID)) {
@@ -784,7 +783,7 @@ void ctrlm_obj_network_t::req_process_get_last_keypress(void *data, int size){
          errno_t safec_rc = strncpy_s(key_info.source_name, sizeof(key_info.source_name), lastKeypressControllerName.c_str(), CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH - 1);
          ERR_CHK(safec_rc);
          key_info.source_name[CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH - 1] = '\0';
-         key_info.source_type = IARM_BUS_IRMGR_KEYSRC_RF;
+         key_info.source_type = CTRLM_KEY_SOURCE_RF;
          key_info.result = CTRLM_IARM_CALL_RESULT_SUCCESS;
       } else {
          XLOGD_ERROR("No controller keypresses found, returning error...");
@@ -803,6 +802,18 @@ void ctrlm_obj_network_t::req_process_write_rcu_wakeup_config(void *data, int si
    ctrlm_main_queue_msg_write_advertising_config_t *dqm = (ctrlm_main_queue_msg_write_advertising_config_t *)data;
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_write_advertising_config_t));
+
+   // post the semaphore just to ensure nothing blocks
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
+}
+
+void ctrlm_obj_network_t::req_process_unpair(void *data, int size){
+   XLOGD_WARN("request is not valid for %s network", name_get());
+   ctrlm_main_queue_msg_unpair_t *dqm = (ctrlm_main_queue_msg_unpair_t *)data;
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_unpair_t));
 
    // post the semaphore just to ensure nothing blocks
    if(dqm->semaphore) {
@@ -858,6 +869,42 @@ void ctrlm_obj_network_t::req_process_network_managed_upgrade(void *data, int si
 
 void ctrlm_obj_network_t::req_process_upgrade_controllers(void *data, int size) {
    XLOGD_WARN("not implemented for %s network", name_get());
+}
+
+void ctrlm_obj_network_t::req_process_start_controller_upgrade(void *data, int size) {
+   ctrlm_main_queue_msg_start_controller_upgrade_t *dqm = (ctrlm_main_queue_msg_start_controller_upgrade_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_start_controller_upgrade_t));
+   XLOGD_WARN("not implemented for %s network", name_get());
+
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
+}
+
+void ctrlm_obj_network_t::req_process_cancel_controller_upgrade(void *data, int size) {
+   ctrlm_main_queue_msg_cancel_controller_upgrade_t *dqm = (ctrlm_main_queue_msg_cancel_controller_upgrade_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_cancel_controller_upgrade_t));
+   XLOGD_WARN("not implemented for %s network", name_get());
+
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
+}
+
+void ctrlm_obj_network_t::req_process_status_controller_upgrade(void *data, int size) {
+   ctrlm_main_queue_msg_status_controller_upgrade_t *dqm = (ctrlm_main_queue_msg_status_controller_upgrade_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_status_controller_upgrade_t));
+   XLOGD_WARN("not implemented for %s network", name_get());
+
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
 }
 
 void ctrlm_obj_network_t::factory_reset() {
@@ -958,6 +1005,21 @@ void ctrlm_obj_network_t::iarm_event_rcu_status(void) {
 
    ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
    if (!rcp_ipc->on_status(msg)) {
+       XLOGD_ERROR("Error broadcasting IARM message");
+   }
+}
+
+void ctrlm_obj_network_t::iarm_event_rcu_firmware_status(const ctrlm_obj_controller_t &rcu) {
+   XLOGD_DEBUG("Enter...");
+
+   ctrlm_rcp_ipc_upgrade_status_t msg;
+   msg.populate_status(rcu);
+
+   XLOGD_INFO("Broadcasting IARM message %s RCU %<%s> Upgrade Status....", rcu.ieee_address_get().to_string().c_str(), name_get());
+   XLOGD_DEBUG("%s", msg.to_string());
+
+   ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
+   if (!rcp_ipc->on_firmware_update_progress(msg)) {
        XLOGD_ERROR("Error broadcasting IARM message");
    }
 }

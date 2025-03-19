@@ -60,6 +60,22 @@ bool json_config::config_object_set(json_t *json_obj){
    return true;
 }
 
+bool json_config::config_array_get(const char* key, json_t **array) const {
+   if (!array) {
+      XLOGD_ERROR("Array is nullptr", key);
+      return false;
+   }
+
+   *array = json_object_get(json_section_obj, key);
+   if (!*array || !json_is_array(*array)) {
+      XLOGD_INFO("%-25s - ABSENT", key);
+      return false;
+   }
+
+   XLOGD_INFO("%-25s - PRESENT", key);
+   return true;
+}
+
 bool json_config::config_value_get(const char* key, bool& val, int index) const {
 
    json_t *json_obj = json_object_get(json_section_obj, key);
@@ -222,3 +238,6 @@ json_t* json_config::current_object_get() const {
    return json_section_obj;
 }
 
+std::string json_config::json_dump_string(void) const {
+   return std::string(json_dumps(json_section_obj, JSON_COMPACT));
+}

@@ -201,7 +201,7 @@ ctrlm_voice_t::ctrlm_voice_t() {
     }
     #endif
 
-    #ifdef ENABLE_DEEP_SLEEP
+    #ifdef DEEP_SLEEP_ENABLED
     this->prefs.dst_params_standby.connect_check_interval = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL;
     this->prefs.dst_params_standby.timeout_connect        = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT;
     this->prefs.dst_params_standby.timeout_inactivity     = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY;
@@ -480,7 +480,7 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
         conf.config_value_get(JSON_FLOAT_NAME_VOICE_AUDIO_DUCKING_LEVEL,        audio_settings.ducking_level, 0.0, 1.0);
         conf.config_value_get(JSON_BOOL_NAME_VOICE_AUDIO_DUCKING_BEEP,          audio_settings.ducking_beep);
 
-        #ifdef ENABLE_DEEP_SLEEP
+        #ifdef DEEP_SLEEP_ENABLED
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL, this->prefs.dst_params_standby.connect_check_interval);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,        this->prefs.dst_params_standby.timeout_connect);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,     this->prefs.dst_params_standby.timeout_inactivity);
@@ -3876,7 +3876,7 @@ void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t e
 }
 #endif
 
-#ifdef ENABLE_DEEP_SLEEP
+#ifdef DEEP_SLEEP_ENABLED
 void ctrlm_voice_t::voice_nsm_session_request(void) {
     ctrlm_network_id_t network_id = CTRLM_MAIN_NETWORK_ID_DSP;
     ctrlm_controller_id_t controller_id = CTRLM_MAIN_CONTROLLER_ID_DSP;
@@ -3919,7 +3919,7 @@ xrsr_power_mode_t voice_xrsr_power_map(ctrlm_power_state_t ctrlm_power_state) {
 
    switch(ctrlm_power_state) {
       case CTRLM_POWER_STATE_DEEP_SLEEP:
-         #ifdef ENABLE_DEEP_SLEEP
+         #ifdef DEEP_SLEEP_ENABLED
          xrsr_power_mode = ctrlm_main_iarm_networked_standby() ? XRSR_POWER_MODE_LOW : XRSR_POWER_MODE_SLEEP;
          #else
          xrsr_power_mode = XRSR_POWER_MODE_SLEEP;
@@ -4041,7 +4041,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
 
     // All attributes that need a re-route to apply
     if(attr.get_rfc_value(JSON_INT_NAME_VOICE_MINIMUM_DURATION,                              this->prefs.utterance_duration_min) |
-    #ifdef ENABLE_DEEP_SLEEP
+    #ifdef DEEP_SLEEP_ENABLED
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL,     this->prefs.dst_params_standby.connect_check_interval) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,            this->prefs.dst_params_standby.timeout_connect) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,         this->prefs.dst_params_standby.timeout_inactivity) |

@@ -154,12 +154,17 @@ public:
    void                          req_process_get_rcu_last_wakeup_key(void *data, int size);
    void                          req_process_send_rcu_action(void *data, int size);
    void                          req_process_write_rcu_wakeup_config(void *data, int size);
+   void                          req_process_unpair(void *data, int size);
    void                          req_process_check_for_stale_remote(void *data, int size);
    void                          req_process_get_ir_protocol_support(void *data, int size);
    void                          req_process_set_ir_protocol_control(void *data, int size);
 
    virtual void                  req_process_network_managed_upgrade(void *data, int size);
    virtual void                  req_process_upgrade_controllers(void *data, int size);
+   virtual void                  req_process_start_controller_upgrade(void *data, int size);
+   virtual void                  req_process_cancel_controller_upgrade(void *data, int size);
+   virtual void                  req_process_status_controller_upgrade(void *data, int size);
+
    virtual json_t *              xconf_export_controllers();
    void                          addUpgradeImage(const ctrlm_ble_upgrade_image_info_t &image_info);
    void                          clearUpgradeImages();
@@ -195,6 +200,7 @@ private:
    ctrlm_controller_id_t                     controller_id_assign(void);
    ctrlm_controller_id_t                     get_last_used_controller(void);
    bool                                      end_voice_session_for_controller(uint64_t ieee_address, ctrlm_voice_session_end_reason_t reason, uint32_t audioDuration = 0);
+   ctrlm_controller_id_t                     find_controller_from_upgrade_session_uuid(const std::string &uuid);
 
    json_t *                                  json_config_               = NULL;
    bool                                      upgrade_in_progress_       = false;

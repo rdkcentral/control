@@ -40,12 +40,29 @@
 typedef struct : public ctrlm_network_all_ipc_result_wrapper_t {
    unsigned char            api_revision;
    unsigned int             timeout;
+   std::vector<uint64_t>    ieee_address_list;
 } ctrlm_iarm_call_StartPairing_params_t;
 
 typedef struct : public ctrlm_network_all_ipc_result_wrapper_t {
    ctrlm_fmr_alarm_level_t  level;
    unsigned int             duration;
 } ctrlm_iarm_call_FindMyRemote_params_t;
+
+typedef struct : public ctrlm_network_all_ipc_result_wrapper_t {
+   uint64_t             ieee_address;
+   uint8_t              percent_increment;
+   std::string          filetype;
+   std::string          filename;
+   std::shared_ptr<std::vector<std::string>> upgrade_sessions;
+} ctrlm_iarm_call_StartUpgrade_params_t;
+
+typedef struct : public ctrlm_network_all_ipc_result_wrapper_t {
+   std::string session_id;
+} ctrlm_iarm_call_CancelUpgrade_params_t;
+
+typedef struct : public ctrlm_network_all_ipc_result_wrapper_t {
+    std::vector<uint64_t> ieee_address_list;
+} ctrlm_iarm_call_Unpair_params_t;
 
 typedef struct {
    ctrlm_main_queue_msg_header_t header;
@@ -94,6 +111,30 @@ typedef struct {
    ctrlm_iarm_call_WriteRcuWakeupConfig_params_t *params;
    sem_t *                                        semaphore;
 } ctrlm_main_queue_msg_write_advertising_config_t;
+
+typedef struct {
+   ctrlm_main_queue_msg_header_t                    header;
+   std::shared_ptr<ctrlm_iarm_call_StartUpgrade_params_t> params;
+   sem_t *                                          semaphore;
+} ctrlm_main_queue_msg_start_controller_upgrade_t;
+
+typedef struct {
+   ctrlm_main_queue_msg_header_t                    header;
+   std::shared_ptr<ctrlm_iarm_call_CancelUpgrade_params_t> params;
+   sem_t *                                          semaphore;
+} ctrlm_main_queue_msg_cancel_controller_upgrade_t;
+
+typedef struct {
+   ctrlm_main_queue_msg_header_t                    header;
+   std::shared_ptr<ctrlm_rcp_ipc_upgrade_status_t> params;
+   sem_t *                                          semaphore;
+} ctrlm_main_queue_msg_status_controller_upgrade_t;
+
+typedef struct {
+   ctrlm_main_queue_msg_header_t                    header;
+   std::shared_ptr<ctrlm_iarm_call_Unpair_params_t> params;
+   sem_t *                                          semaphore;
+} ctrlm_main_queue_msg_unpair_t;
 
 typedef struct {
    ctrlm_main_queue_msg_header_t header;
@@ -205,6 +246,7 @@ public:
    virtual void         req_process_get_rcu_status(void *data, int size);
    virtual void         req_process_get_last_keypress(void *data, int size);
    virtual void         req_process_write_rcu_wakeup_config(void *data, int size);
+   virtual void         req_process_unpair(void *data, int size);
 
    virtual void         req_process_ir_set_code(void *data, int size);
    virtual void         req_process_ir_clear_codes(void *data, int size);
@@ -216,6 +258,9 @@ public:
    
    virtual void         req_process_network_managed_upgrade(void *data, int size);
    virtual void         req_process_upgrade_controllers(void *data, int size);
+   virtual void         req_process_start_controller_upgrade(void *data, int size);
+   virtual void         req_process_cancel_controller_upgrade(void *data, int size);
+   virtual void         req_process_status_controller_upgrade(void *data, int size);
 
    virtual bool         analyze_assert_reason(const char *assert_info );
    bool                 is_failed_state() const;
@@ -224,6 +269,7 @@ public:
    time_t               stale_remote_time_threshold_get();
 
    virtual void         iarm_event_rcu_status(void);
+   virtual void         iarm_event_rcu_firmware_status(const ctrlm_obj_controller_t &rcu);
 
    // Internal methods
 

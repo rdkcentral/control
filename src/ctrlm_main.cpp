@@ -32,7 +32,9 @@
 #include <rdkversion.h>
 #include "jansson.h"
 #include "libIBus.h"
+#ifdef USE_DEPRECATED_IRMGR
 #include "irMgr.h"
+#endif
 #include "plat_ir.h"
 #include "sysMgr.h"
 #ifdef BREAKPAD_SUPPORT
@@ -140,7 +142,7 @@ typedef struct
 
 typedef struct {
    int                         controller_id;
-   guchar                      source_type;
+   ctrlm_key_source_t          source_type;
    guint32                     source_key_code;
    long long                   timestamp;
    ctrlm_ir_remote_type        last_ir_remote_type;
@@ -168,11 +170,12 @@ typedef struct {
    char                     last_non_screenbind_remote_type[CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH];
 } ctrlm_pairing_metrics_t;
 
-static const char *key_source_names[sizeof(IARM_Bus_IRMgr_KeySrc_t)] = 
+static const char *key_source_names[sizeof(ctrlm_key_source_t)] = 
 {
    "FP",
    "IR",
-   "RF"
+   "RF",
+   "INVALID"
 };
 
 typedef struct {
@@ -272,7 +275,7 @@ typedef struct {
    gboolean                           local_conf;
    guint                              telemetry_report_interval;
    ctrlm_ir_controller_t             *ir_controller;
-#ifdef ENABLE_DEEP_SLEEP
+#ifdef DEEP_SLEEP_ENABLED
    gboolean                           wake_with_voice_allowed;
 #endif
 } ctrlm_global_t;
@@ -361,11 +364,11 @@ static void     ctrlm_stop_one_touch_autobind_(ctrlm_network_id_t network_id);
 static void     ctrlm_close_pairing_window_(ctrlm_network_id_t network_id, ctrlm_close_pairing_window_reason reason);
 static void     ctrlm_pairing_window_bind_status_set_(ctrlm_bind_status_t bind_status);
 static void     ctrlm_discovery_remote_type_set_(const char* remote_type_str);
-static void     ctrlm_controller_product_name_get(ctrlm_controller_id_t controller_id, char *source_name);
+static void     ctrlm_controller_product_name_get(ctrlm_controller_id_t controller_id, char *source_name) __attribute__((unused));  //USE_DEPRECATED_IRMGR
 static void     ctrlm_global_rfc_values_retrieved(const ctrlm_rfc_attr_t &attr);
 
-static gboolean ctrlm_timeout_line_of_sight(gpointer user_data);
-static gboolean ctrlm_timeout_autobind(gpointer user_data);
+static gboolean ctrlm_timeout_line_of_sight(gpointer user_data) __attribute__((unused));  //USE_DEPRECATED_IRMGR
+static gboolean ctrlm_timeout_autobind(gpointer user_data) __attribute__((unused)); //USE_DEPRECATED_IRMGR
 static gboolean ctrlm_timeout_binding_button(gpointer user_data);
 static gboolean ctrlm_timeout_screen_bind(gpointer user_data);
 static gboolean ctrlm_timeout_one_touch_autobind(gpointer user_data);
@@ -384,7 +387,7 @@ static void     ctrlm_property_write_shutdown_time(void);
 static guchar   ctrlm_property_write_shutdown_time(guchar *data, guchar length);
 static void     ctrlm_property_read_shutdown_time(void);
 static void     control_service_values_read_from_db();
-static void     ctrlm_check_for_key_tag(int key_tag);
+static void     ctrlm_check_for_key_tag(int key_tag) __attribute__((unused)); //USE_DEPRECATED_IRMGR
 
 #ifdef MEMORY_LOCK
 const char *memory_lock_progs[] = {
@@ -575,7 +578,7 @@ int main(int argc, char *argv[]) {
    g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_UNKNOWN;
    g_ctrlm.last_key_info.is_screen_bind_mode  = false;
    g_ctrlm.last_key_info.remote_keypad_config = CTRLM_REMOTE_KEYPAD_CONFIG_INVALID;
-#ifdef ENABLE_DEEP_SLEEP
+#ifdef DEEP_SLEEP_ENABLED
    g_ctrlm.wake_with_voice_allowed            = false;
 #endif
    errno_t safec_rc = strcpy_s(g_ctrlm.last_key_info.source_name, sizeof(g_ctrlm.last_key_info.source_name), ctrlm_rcu_ir_remote_types_str(g_ctrlm.last_key_info.last_ir_remote_type));
@@ -1661,6 +1664,7 @@ gboolean ctrlm_load_authservice_data(void) {
 gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, json_t **json_obj_voice, json_t **json_obj_device_update, json_t **json_obj_validation, json_t **json_obj_vsdk) {
    std::string config_fn_opt = "/opt/ctrlm_config.json";
    std::string config_fn_etc = "/etc/ctrlm_config.json";
+   std::string config_fn_etc_override = "/etc/ctrlm_config.json.OVERRIDE";
    json_t *json_obj_ctrlm;
    ctrlm_config_t *ctrlm_config = ctrlm_config_t::get_instance();
    gboolean local_conf = false;
@@ -1675,6 +1679,8 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
       local_conf = true;
    } else if(g_file_test(config_fn_etc.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_etc)) {
       XLOGD_INFO("Read configuration from <%s>", config_fn_etc.c_str());
+   } else if(g_file_test(config_fn_etc_override.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_etc_override)) {
+      XLOGD_INFO("Read configuration from <%s>", config_fn_etc_override.c_str());
    } else {
       XLOGD_WARN("Configuration error. Configuration file(s) missing, using defaults");
       return(false);
@@ -2115,9 +2121,6 @@ gboolean ctrlm_networks_pre_init(json_t *json_obj_net_rf4ce, json_t *json_config
    g_ctrlm.network_type[network_id]       = g_ctrlm.networks[network_id]->type_get();
    #endif
 
-   #ifdef CTRLM_NETWORK_IP
-   ctrlm_ip_network_create();
-   #endif
    vendor_network_opts_t vendor_network_opts;
    vendor_network_opts.ignore_mask    = 0;
    vendor_network_opts.mask_key_codes = g_ctrlm.mask_pii;
@@ -2653,7 +2656,7 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             if( (old_state == CTRLM_POWER_STATE_DEEP_SLEEP) && (dqm->new_state != CTRLM_POWER_STATE_DEEP_SLEEP) ) {
                XLOGD_INFO("power_state_change: wake DB and networks");
-               #ifdef ENABLE_DEEP_SLEEP
+               #ifdef DEEP_SLEEP_ENABLED
                g_ctrlm.wake_with_voice_allowed = true;
                #endif
                ctrlm_db_power_state_change(true);
@@ -2668,7 +2671,7 @@ gpointer ctrlm_main_thread(gpointer param) {
                }
             }
 
-            #ifdef ENABLE_DEEP_SLEEP
+            #ifdef DEEP_SLEEP_ENABLED
             //Wake with voice? Handle NSM voice, do not change power state
             if(dqm->new_state == CTRLM_POWER_STATE_ON) {
                bool wake_with_voice_allowed = g_ctrlm.wake_with_voice_allowed;
@@ -2688,7 +2691,7 @@ gpointer ctrlm_main_thread(gpointer param) {
             g_ctrlm.power_state = dqm->new_state;
 
             XLOGD_INFO("Enter power state <%s>", ctrlm_power_state_str(g_ctrlm.power_state));
-            #ifdef ENABLE_DEEP_SLEEP
+            #ifdef DEEP_SLEEP_ENABLED
             if(g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP) {
                XLOGD_INFO("NSM is <%s>",  ctrlm_main_iarm_networked_standby()?"ENABLED":"DISABLED");
             }
@@ -3416,7 +3419,8 @@ void ctrlm_main_iarm_call_last_key_info_get_(ctrlm_main_iarm_call_last_key_info_
    last_key_info->source_type            = g_ctrlm.last_key_info.source_type;
    last_key_info->source_key_code        = g_ctrlm.last_key_info.source_key_code;
    last_key_info->timestamp              = g_ctrlm.last_key_info.timestamp;
-   if(g_ctrlm.last_key_info.source_type == IARM_BUS_IRMGR_KEYSRC_RF) {
+
+   if(g_ctrlm.last_key_info.source_type == CTRLM_KEY_SOURCE_RF) {
       last_key_info->is_screen_bind_mode  = false;
       last_key_info->remote_keypad_config = ctrlm_get_remote_keypad_config(g_ctrlm.last_key_info.source_name);
    } else {
@@ -3428,9 +3432,9 @@ void ctrlm_main_iarm_call_last_key_info_get_(ctrlm_main_iarm_call_last_key_info_
    ERR_CHK(safec_rc);
 
    if(ctrlm_is_pii_mask_enabled()) {
-      XLOGD_INFO("controller_id <%d>, key_code <*>, key_src <%d>, timestamp <%lldms>, is_screen_bind_mode <%d>, remote_keypad_config <%d>, sourceName <%s>", last_key_info->controller_id, last_key_info->source_type, last_key_info->timestamp, last_key_info->is_screen_bind_mode, last_key_info->remote_keypad_config, last_key_info->source_name);
+      XLOGD_INFO("controller_id <%d>, key_code <*>, key_src <%s>, timestamp <%lldms>, is_screen_bind_mode <%d>, remote_keypad_config <%d>, sourceName <%s>", last_key_info->controller_id, key_source_names[last_key_info->source_type], last_key_info->timestamp, last_key_info->is_screen_bind_mode, last_key_info->remote_keypad_config, last_key_info->source_name);
    } else {
-      XLOGD_INFO("controller_id <%d>, key_code <%ld>, key_src <%d>, timestamp <%lldms>, is_screen_bind_mode <%d>, remote_keypad_config <%d>, sourceName <%s>", last_key_info->controller_id, last_key_info->source_key_code, last_key_info->source_type, last_key_info->timestamp, last_key_info->is_screen_bind_mode, last_key_info->remote_keypad_config, last_key_info->source_name);
+      XLOGD_INFO("controller_id <%d>, key_code <%ld>, key_src <%s>, timestamp <%lldms>, is_screen_bind_mode <%d>, remote_keypad_config <%d>, sourceName <%s>", last_key_info->controller_id, last_key_info->source_key_code, key_source_names[last_key_info->source_type], last_key_info->timestamp, last_key_info->is_screen_bind_mode, last_key_info->remote_keypad_config, last_key_info->source_name);
    }
 }
 
@@ -4179,6 +4183,7 @@ gboolean ctrlm_main_iarm_call_chip_status_get(ctrlm_main_iarm_call_chip_status_t
    return(true);
 }
 
+#ifdef USE_DEPRECATED_IRMGR
 void ctrlm_event_handler_ir(const char *owner, IARM_EventId_t event_id, void *data, size_t len)
 {
    IARM_Bus_IRMgr_EventData_t *ir_event = (IARM_Bus_IRMgr_EventData_t *)data;
@@ -4257,7 +4262,7 @@ void ctrlm_event_handler_ir(const char *owner, IARM_EventId_t event_id, void *da
       bool send_on_control_event                          = false;
       ctrlm_ir_remote_type old_remote_type                = g_ctrlm.last_key_info.last_ir_remote_type;
       ctrlm_remote_keypad_config old_remote_keypad_config = g_ctrlm.last_key_info.remote_keypad_config;
-      guchar last_source_type                             = g_ctrlm.last_key_info.source_type;
+      ctrlm_key_source_t last_source_type                 = g_ctrlm.last_key_info.source_type;
       gboolean  write_last_key_info                       = false;
       char last_source_name[CTRLM_RCU_RIB_ATTR_LEN_PRODUCT_NAME];
       char source_name[CTRLM_RCU_RIB_ATTR_LEN_PRODUCT_NAME];
@@ -4480,6 +4485,8 @@ void ctrlm_event_handler_ir(const char *owner, IARM_EventId_t event_id, void *da
       ctrlm_update_last_key_info(controller_id, key_src, key_code, source_name, g_ctrlm.last_key_info.is_screen_bind_mode, write_last_key_info);
    }
 }
+#endif // USE_DEPRECATED_IRMGR
+
 
 void ctrlm_check_for_key_tag(int key_tag) {
    switch(key_tag) {
@@ -5055,7 +5062,7 @@ void ctrlm_property_read_last_key_info(void) {
    }
 }
 
-void ctrlm_update_last_key_info(int controller_id, guchar source_type, guint32 source_key_code, const char *source_name, gboolean is_screen_bind_mode, gboolean write_last_key_info) {
+void ctrlm_update_last_key_info(int controller_id, ctrlm_key_source_t source_type, guint32 source_key_code, const char *source_name, gboolean is_screen_bind_mode, gboolean write_last_key_info) {
    // Get a epoch-based millisecond timestamp for this event
    long long key_time = time(NULL) * 1000LL;
    ctrlm_remote_keypad_config remote_keypad_config;
@@ -5081,7 +5088,7 @@ void ctrlm_update_last_key_info(int controller_id, guchar source_type, guint32 s
    //when the iarm call to get the last_key_info is called
    g_ctrlm.last_key_info.remote_keypad_config = remote_keypad_config;
 #else
-   if(source_type == IARM_BUS_IRMGR_KEYSRC_RF) {
+   if(source_type == CTRLM_KEY_SOURCE_RF) {
       remote_keypad_config = ctrlm_get_remote_keypad_config(g_ctrlm.last_key_info.source_name);
       is_screen_bind_mode  = false;
    } else {
@@ -5998,10 +6005,15 @@ ctrlm_telemetry_t *ctrlm_get_telemetry_obj() {
 gboolean ctrlm_start_iarm(gpointer user_data) {
    // Register iarm calls and events
    XLOGD_INFO(": Register iarm calls and events");
+
+#ifdef USE_DEPRECATED_IRMGR
    // IARM Events that we are listening to from other processes
    IARM_Bus_RegisterEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_IRKEY, ctrlm_event_handler_ir);
    IARM_Bus_RegisterEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_CONTROL, ctrlm_event_handler_ir);
+#endif
+
    ctrlm_main_iarm_init();
+
 #ifdef SYSTEMD_NOTIFY
    XLOGD_INFO("Notifying systemd of successful initialization");
    sd_notifyf(0, "READY=1\nSTATUS=ctrlm-main has successfully initialized\nMAINPID=%lu", (unsigned long)getpid());

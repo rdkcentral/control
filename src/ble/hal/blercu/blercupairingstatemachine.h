@@ -70,12 +70,15 @@ public:
 
 public:
     bool isRunning() const;
+    bool isAutoPairing() const;
     int pairingCode() const;
 
 // public slots:
-    void start(uint8_t filterByte, uint8_t pairingCode);
     void start(const BleAddress &target, const std::string &name);
-    void startMacHash(uint8_t filterByte, uint8_t macHash);
+    void startAutoWithTimeout(int timeoutMs);
+    void startWithCode(uint8_t pairingCode);
+    void startWithMacHash(uint8_t macHash);
+    void startWithMacList(const std::vector<BleAddress> &macList);
     void stop();
 
 
@@ -83,6 +86,10 @@ public:
     inline void addStartedSlot(const Slot<> &func)
     {
         m_startedSlots.addSlot(func);
+    }
+    inline void addPairingSlot(const Slot<> &func)
+    {
+        m_pairingSlots.addSlot(func);
     }
     inline void addFinishedSlot(const Slot<> &func)
     {
@@ -95,6 +102,7 @@ public:
 
 private:
     Slots<> m_startedSlots;
+    Slots<> m_pairingSlots;
     Slots<> m_finishedSlots;
     Slots<> m_failedSlots;
 
@@ -108,6 +116,7 @@ private:
     void onDeviceNameChanged(const BleAddress &address, const std::string &name);
     void onDevicePairingChanged(const BleAddress &address, bool paired);
     void onDeviceReadyChanged(const BleAddress &address, bool ready);
+    void onDevicePairingError(const BleAddress &address, const std::string &error);
 
     void onAdapterPoweredChanged(bool powered);
 
@@ -139,20 +148,24 @@ private:
 
 private:
     std::shared_ptr<bool> m_isAlive;
-    
+
     const std::shared_ptr<BleRcuAdapter> m_adapter;
 
     std::vector<std::string> m_pairingPrefixFormats;
+    std::vector<std::regex> m_supportedPairingNames;
 
+    bool m_isAutoPairing;
     int m_pairingCode;
     int m_pairingMacHash;
-    std::vector<std::regex> m_supportedPairingNames;
+    std::vector<BleAddress> m_pairingMacList;
+    std::vector<std::regex> m_targetedPairingNames;
 
     BleAddress m_targetAddress;
 
     StateMachine m_stateMachine;
 
     int m_discoveryTimeout;
+    int m_discoveryTimeoutDefault;
     int m_pairingTimeout;
     int m_setupTimeout;
     int m_unpairingTimeout;
@@ -184,7 +197,11 @@ private:
     static const Event::Type DevicePairedEvent          = Event::Type(Event::User + 13);
     static const Event::Type DeviceReadyEvent           = Event::Type(Event::User + 14);
 
-    static const Event::Type AdapterPoweredOffEvent     = Event::Type(Event::User + 15);
+    static const Event::Type CancelRequestEvent         = Event::Type(Event::User + 15);
+    
+    static const Event::Type PairingErrorEvent          = Event::Type(Event::User + 16);
+
+    static const Event::Type AdapterPoweredOffEvent     = Event::Type(Event::User + 17);
 
 };
 

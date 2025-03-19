@@ -26,6 +26,7 @@
 #include "ctrlm_database.h"
 #include <uuid/uuid.h>
 
+
 using namespace std;
 
 #define OTA_MAX_RETRIES (2)

@@ -191,6 +191,7 @@ typedef struct {
    unsigned long retry_network;    ///< Total number of network level retries during the transmission
    unsigned long cca_sense;        ///< Total number of times a packet was not send due to energy detected over the CCA threshold
    unsigned long link_quality;     ///< The average link quality of all the voice packets in the transmission.
+   signed long   voice_key_held_ms;///< The amount of time (in milliseconds) that the voice key was held down
 } ctrlm_voice_stats_session_t;
 
 typedef struct {

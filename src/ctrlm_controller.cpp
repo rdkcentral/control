@@ -370,7 +370,11 @@ ctrlm_rcu_upgrade_state_t ctrlm_obj_controller_t::get_upgrade_state() const {
 }
 
 void ctrlm_obj_controller_t::set_upgrade_error(const std::string &error_str) {
-    XLOGD_WARN("not implemented.");
+   if (error_str.empty()) {
+      upgrade_error_msg_.clear();
+      return;
+   }
+   upgrade_error_msg_ = error_str;
 }
 
 std::string ctrlm_obj_controller_t::get_upgrade_error() const {

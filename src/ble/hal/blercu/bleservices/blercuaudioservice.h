@@ -76,9 +76,10 @@ public:
         uint32_t lastError;
         uint32_t expectedPackets;
         uint32_t actualPackets;
+        int32_t  voiceKeyHeldMs;
     };
 
-    virtual void status(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets) = 0;
+    virtual void status(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs) = 0;
 
 // signals:
     inline void addStreamingChangedSlot(const Slot<bool> &func)

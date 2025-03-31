@@ -345,6 +345,8 @@ ctrlm_hal_result_t ctrlm_hal_rf4ce_ind_data(ctrlm_network_id_t network_id, ctrlm
 // Note this thread is not called in control manager's context so it can't use global state unless a mutex is put in place
 ctrlm_hal_result_t ctrlm_voice_ind_data_rf4ce(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_timestamp_t timestamp, guchar command_id, unsigned long data_length, guchar *data, ctrlm_hal_rf4ce_data_read_t cb_data_read, void *cb_data_param, unsigned char lqi, ctrlm_hal_frequency_agility_t *frequency_agility) {
    ctrlm_hal_frequency_agility_t agility_state = CTRLM_HAL_FREQUENCY_AGILITY_NO_CHANGE;
+   static bool first_audio_packet = false;
+
    ctrlm_voice_t *voice_obj = ctrlm_get_voice_obj();
    if(NULL == voice_obj) {
       XLOGD_ERROR("Voice command cannot be processed until initialization is complete.");
@@ -396,6 +398,8 @@ ctrlm_hal_result_t ctrlm_voice_ind_data_rf4ce(ctrlm_network_id_t network_id, ctr
          ERR_CHK(safec_rc);
       }
       ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::ind_process_voice_session_request, &msg, sizeof(msg), NULL, network_id);
+
+      first_audio_packet            = true;
 
       // Always disable frequency agility by default (if the session is denied for any reason, frequency agility will be enabled again)
       agility_state = CTRLM_HAL_FREQUENCY_AGILITY_DISABLE;
@@ -455,6 +459,16 @@ ctrlm_hal_result_t ctrlm_voice_ind_data_rf4ce(ctrlm_network_id_t network_id, ctr
          }
       }
    } else { // Voice fragment
+   if(first_audio_packet) {
+      ctrlm_main_queue_msg_voice_session_first_audio_packet_t msg = {0};
+
+      msg.controller_id      = controller_id;
+      msg.timestamp          = timestamp;
+
+      ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::ind_process_voice_session_first_audio_packet, &msg, sizeof(msg), NULL, network_id);
+
+      first_audio_packet            = false;
+   }
    if(NULL == data) {
       unsigned char buf[data_length] = {'\0'};
       if(data_length != cb_data_read(data_length, buf, cb_data_param)) {

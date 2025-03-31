@@ -88,6 +88,7 @@ public:
         AudioGain = 0xea01,
         AudioControl = 0xea02,
         AudioData = 0xea03,
+        AudioInfo = 0xea04,
         InfraredStandby = 0xeb01,
         InfraredCodeId = 0xeb02,
         InfraredSignal = 0xeb03,

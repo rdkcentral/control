@@ -87,6 +87,10 @@ bool GattAudioServiceRdk::start(const shared_ptr<const BleGattService> &gattServ
         XLOGD_WARN("failed to get one or more gatt characteristics");
         return false;
     }
+    
+    if(getAudioInfoCharacteristic(gattService)) {
+        updateFrameCountSupport(true);
+    }
 
     requestGainLevel();
     requestAudioCodecs();
@@ -109,6 +113,11 @@ void GattAudioServiceRdk::onEnteredIdle() {
         XLOGD_INFO("Disabling notifications for m_audioDataCharacteristic");
         m_audioDataCharacteristic->disableNotifications();
     }
+    if(m_audioInfoCharacteristic) {
+        XLOGD_INFO("Disabling notifications for m_audioInfoCharacteristic");
+        m_audioInfoCharacteristic->disableNotifications();
+        m_audioInfoCharacteristic.reset();
+    }
     m_audioGainCharacteristic.reset();
     m_audioCtrlCharacteristic.reset();
     m_audioDataCharacteristic.reset();
@@ -127,12 +136,12 @@ void GattAudioServiceRdk::onEnteredIdle() {
  */
 void GattAudioServiceRdk::onEnteredEnableNotificationsState()
 {
-    auto replyHandler = [this](PendingReply<> *reply)
+    auto replyHandlerData = [this](PendingReply<> *reply)
         {
             if (reply->isError()) {
                 // this is bad if this happens as we won't get updates, so we install a timer to 
                 // retry enabling notifications in a couple of seconds time
-                XLOGD_ERROR("failed to enable audio notifications due to <%s>", 
+                XLOGD_ERROR("failed to enable audio data notifications due to <%s>", 
                         reply->errorMessage().c_str());
 
                 setLastError(StreamingError::InternalError);
@@ -144,16 +153,31 @@ void GattAudioServiceRdk::onEnteredEnableNotificationsState()
             }
         };
 
+    auto replyHandlerInfo = [this](PendingReply<> *reply)
+        {
+            if (reply->isError()) {
+                // if this happens, we won't get audio info, but the stream can continue
+                XLOGD_WARN("failed to enable audio info notifications due to <%s>", reply->errorMessage().c_str());
+            } else {
+                XLOGD_INFO("successfully enabled audio info notifications");
+            }
+        };
+
+    if (m_audioInfoCharacteristic && !m_audioInfoCharacteristic->notificationsEnabled()) {
+        m_audioInfoCharacteristic->enableNotifications(
+            Slot<const std::vector<uint8_t> &>(getIsAlivePtr(),
+                std::bind(&GattAudioServiceRdk::onAudioInfoNotification, this, std::placeholders::_1)),
+            PendingReply<>(getIsAlivePtr(), replyHandlerInfo));
+    }
+
     if (m_audioDataCharacteristic->notificationsEnabled()) {
-        
         // notifications already enabled so post an event to the state machine
         stateMachinePostEvent(NotificationsEnabledEvent);
-
     } else {
         m_audioDataCharacteristic->enableNotifications(
                 Slot<const std::vector<uint8_t> &>(getIsAlivePtr(),
                     std::bind(&GattAudioServiceRdk::onAudioDataNotification, this, std::placeholders::_1)), 
-                PendingReply<>(getIsAlivePtr(), replyHandler));
+                PendingReply<>(getIsAlivePtr(), replyHandlerData));
     }
 
     GattAudioService::onEnteredEnableNotificationsState();
@@ -249,6 +273,27 @@ void GattAudioServiceRdk::onAudioDataNotification(const vector<uint8_t> &value)
     }
     
     GattAudioService::onAudioDataNotification(value);
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    \internal
+
+    Called when a notification is received from the Audio Data characteristic.
+
+ */
+void GattAudioServiceRdk::onAudioInfoNotification(const vector<uint8_t> &value)
+{
+    // all notifications from the audio info descriptor should be 6 bytes in size, any other size is an error
+    if (value.size() != 6) {
+        XLOGD_WARN("audio info notification not 6 bytes in size (%d bytes)", value.size());
+        return;
+    }
+    uint16_t audioFrameCount = value[0] | (value[1] << 8);
+    uint32_t audioDurationMs = value[2] | (value[3] << 8) | (value[4] << 16) | (value[5] << 24);
+    XLOGD_INFO("audio info notification: audioFrameCount <%u>, audioDurationMs <%u>", audioFrameCount, audioDurationMs);
+
+    GattAudioService::onAudioInfoReceived(audioFrameCount, audioDurationMs);
 }
 
 // -----------------------------------------------------------------------------
@@ -369,6 +414,31 @@ bool GattAudioServiceRdk::getAudioDataCharacteristic(const shared_ptr<const BleG
     m_audioDataCharacteristic = gattService->characteristic(BleUuid::AudioData);
     if (!m_audioDataCharacteristic || !m_audioDataCharacteristic->isValid()) {
         XLOGD_WARN("failed to get audio data characteristic");
+        return false;
+    }
+
+    return true;
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    \internal
+
+    Attempts to create a proxy to the GATT interface for the Audio Info
+    characteristic, returns \c true on success and \c false on failure.
+
+ */
+bool GattAudioServiceRdk::getAudioInfoCharacteristic(const shared_ptr<const BleGattService> &gattService)
+{
+    // don't re-create if we already have valid proxies
+    if (m_audioInfoCharacteristic && m_audioInfoCharacteristic->isValid()){
+        return true;
+    }
+
+    // get the chararacteristic for the audio data
+    m_audioInfoCharacteristic = gattService->characteristic(BleUuid::AudioInfo);
+    if (!m_audioInfoCharacteristic || !m_audioInfoCharacteristic->isValid()) {
+        XLOGD_WARN("failed to get audio info characteristic");
         return false;
     }
 

@@ -129,7 +129,7 @@ public:
    bool                             getUpgradeStuck();
    bool                             needsBLEConnParamUpdateBeforeOTA(ctrlm_hal_ble_connection_params_t &connParams);
 
-   virtual void                     set_upgrade_error(const std::string &error_str);
+   virtual void                     check_upgrade_error(void);
 
    void                             setSupportedIrdbs(ctrlm_irdb_vendor_t* vendors, int num_supported);
    std::vector<ctrlm_irdb_vendor_t> getSupportedIrdbs() const;

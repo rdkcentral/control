@@ -104,6 +104,7 @@ ctrlm_voice_t::ctrlm_voice_t() {
         session->transcription_in          = "";
         session->transcription             = "";
 
+        session->is_press_and_release      = false;
         session->is_session_by_file        = false;
         session->is_session_by_fifo        = false;
 
@@ -182,6 +183,7 @@ ctrlm_voice_t::ctrlm_voice_t() {
     this->prefs.vrex_wuw_bypass_success_flag = JSON_BOOL_VALUE_VOICE_VREX_WUW_BYPASS_SUCCESS_FLAG;
     this->prefs.vrex_wuw_bypass_failure_flag = JSON_BOOL_VALUE_VOICE_VREX_WUW_BYPASS_FAILURE_FLAG;
     this->prefs.force_toggle_fallback        = JSON_BOOL_VALUE_VOICE_FORCE_TOGGLE_FALLBACK;
+    this->prefs.telemetry_session_stats      = JSON_BOOL_VALUE_VOICE_TELEMETRY_SESSION_STATS;
     this->prefs.par_voice_enabled            = false;
     this->prefs.par_voice_eos_method         = JSON_INT_VALUE_VOICE_PAR_VOICE_EOS_METHOD;
     this->prefs.par_voice_eos_timeout        = JSON_INT_VALUE_VOICE_PAR_VOICE_EOS_TIMEOUT;
@@ -465,6 +467,7 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
         conf.config_value_get(JSON_BOOL_NAME_VOICE_VREX_WUW_BYPASS_SUCCESS_FLAG,this->prefs.vrex_wuw_bypass_success_flag);
         conf.config_value_get(JSON_BOOL_NAME_VOICE_VREX_WUW_BYPASS_FAILURE_FLAG,this->prefs.vrex_wuw_bypass_failure_flag);
         conf.config_value_get(JSON_BOOL_NAME_VOICE_FORCE_TOGGLE_FALLBACK,       this->prefs.force_toggle_fallback);
+        conf.config_value_get(JSON_BOOL_NAME_VOICE_TELEMETRY_SESSION_STATS,     this->prefs.telemetry_session_stats);
 
         std::string opus_encoder_params_str;
         conf.config_value_get(JSON_STR_NAME_VOICE_OPUS_ENCODER_PARAMS,          opus_encoder_params_str);
@@ -1344,7 +1347,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                                                                        ctrlm_voice_device_t device_type, ctrlm_voice_format_t format,
                                                                        voice_session_req_stream_params *stream_params,
                                                                        const char *controller_name, const char *sw_version, const char *hw_version, double voltage, bool command_status,
-                                                                       ctrlm_timestamp_t *timestamp, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param, bool use_external_data_pipe, const char *l_transcription_in, const char *audio_file_in, const uuid_t *uuid, bool low_latency, bool low_cpu_util, int audio_fd) {
+                                                                       ctrlm_timestamp_t *timestamp, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param, bool use_external_data_pipe, bool press_and_hold, const char *l_transcription_in, const char *audio_file_in, const uuid_t *uuid, bool low_latency, bool low_cpu_util, int audio_fd) {
 
     ctrlm_voice_session_t *session = &this->voice_session[voice_device_to_session_group(device_type)];
 
@@ -1366,7 +1369,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
         return(VOICE_SESSION_RESPONSE_FAILURE);
     }
 
-    if(CTRLM_VOICE_STATE_SRC_WAITING == session->state_src) {
+    if(CTRLM_VOICE_STATE_SRC_WAITING == session->state_src && !(session->controller_id == controller_id && session->requested_more_audio)) {
         // Remove controller status read timeout
         if(session->timeout_ctrl_cmd_status_read > 0) {
             g_source_remove(session->timeout_ctrl_cmd_status_read);
@@ -1378,11 +1381,13 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
         XLOGD_INFO("Waiting on the results from previous session, aborting this and continuing..");
         xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.
     }
+    bool request_new_session = true;
     if(session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING || session->state_dst != CTRLM_VOICE_STATE_DST_READY) { // Voice session is in progress
         if(session->controller_id == controller_id) { // session in progress with same controller
             if(session->requested_more_audio) { // More audio in the same session
                 XLOGD_WARN("Session in progress with same controller - src <%s> dst <%s>, sending more audio.", ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
                 session->requested_more_audio = false;
+                request_new_session = false;
             } else { // Cancel current speech router session
                 XLOGD_WARN("Session in progress with same controller - src <%s> dst <%s>, aborting this and continuing..", ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
                 xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.
@@ -1457,7 +1462,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
        }
     } else {
         XLOGD_INFO("Requesting the speech router start a session with audio fd <%d>", fds[PIPE_READ]);
-        if(session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING || session->state_dst != CTRLM_VOICE_STATE_DST_READY) {
+        if(session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING || ((session->state_dst != CTRLM_VOICE_STATE_DST_READY) && (session->state_dst != CTRLM_VOICE_STATE_DST_OPENED))) { // DST_OPENED occurs when the session is in progress and more audio is requested
             XLOGD_ERROR("unable to accept an audio fd session due to current session - state src <%s> dst <%s>.", ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
             return VOICE_SESSION_RESPONSE_BUSY;
         }
@@ -1473,23 +1478,30 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
             } // set to non-blocking
         }
 
-        request_params.type = XRSR_SESSION_REQUEST_TYPE_AUDIO_FD;
-        request_params.value.audio_fd.audio_fd     = fds[PIPE_READ];
-        request_params.value.audio_fd.audio_format = voice_format_to_xrsr(format);
-        request_params.value.audio_fd.callback     = (create_pipe) ? NULL : ctrlm_voice_data_post_processing_cb; // RF4CE does not use pipe read callback
-        request_params.value.audio_fd.user_data    = (create_pipe) ? NULL : (void *)this;
+        if(request_new_session) {
+            request_params.type = XRSR_SESSION_REQUEST_TYPE_AUDIO_FD;
+            request_params.value.audio_fd.audio_fd     = fds[PIPE_READ];
+            request_params.value.audio_fd.audio_format = voice_format_to_xrsr(format);
+            request_params.value.audio_fd.callback     = (create_pipe) ? NULL : ctrlm_voice_data_post_processing_cb; // RF4CE does not use pipe read callback
+            request_params.value.audio_fd.user_data    = (create_pipe) ? NULL : (void *)this;
 
-        if(false == xrsr_session_request(voice_device_to_xrsr(device_type), voice_format_to_xrsr(format), request_params, uuid, false, false)) {
-            XLOGD_TELEMETRY("Failed to acquire voice session");
-            this->voice_session_notify_abort(network_id, controller_id, 0, CTRLM_VOICE_SESSION_ABORT_REASON_BUSY);
-            if(create_pipe) {
-                close(fds[PIPE_WRITE]);
-                close(fds[PIPE_READ]);
+            if(false == xrsr_session_request(voice_device_to_xrsr(device_type), voice_format_to_xrsr(format), request_params, uuid, false, false)) {
+                XLOGD_TELEMETRY("Failed to acquire voice session");
+                this->voice_session_notify_abort(network_id, controller_id, 0, CTRLM_VOICE_SESSION_ABORT_REASON_BUSY);
+                if(create_pipe) {
+                    close(fds[PIPE_WRITE]);
+                    close(fds[PIPE_READ]);
+                }
+                return(VOICE_SESSION_RESPONSE_BUSY);
             }
-            return(VOICE_SESSION_RESPONSE_BUSY);
+        } else if(create_pipe) { // RF4CE controllers already have the fd so make the call to update it here for secondary audio streams
+            if(false == xrsr_session_audio_fd_set(voice_device_to_xrsr(device_type), fds[PIPE_READ], voice_format_to_xrsr(format), NULL, NULL)) {
+                XLOGD_ERROR("Failed setting audio fd");
+            }
         }
     }
 
+    session->is_press_and_release      = this->prefs.par_voice_enabled || !press_and_hold; // 'Press and Release' is enabled or controller does not support 'Press and Hold'
     session->is_session_by_text        = is_session_by_text;
     session->transcription_in          = is_session_by_text ? l_transcription_in : "";
     session->is_session_by_file        = is_session_by_file;
@@ -1761,16 +1773,16 @@ void ctrlm_voice_t::voice_session_data_post_processing(int bytes_sent, const cha
        float rx_rate = (elapsed == 0) ? 0 : (session->audio_sent_samples * 2 * 8) / elapsed;
 
        session->timeout_packet_tag = g_timeout_add(timeout, ctrlm_voice_packet_timeout, NULL);
-       XLOGD_INFO("Audio %s bytes <%lu> samples <%lu> rate <%6.2f kbps> timeout <%lu ms>", action, session->audio_sent_bytes, session->audio_sent_samples, rx_rate, timeout);
+       XLOGD_DEBUG("Audio %s bytes <%lu> samples <%lu> rate <%6.2f kbps> timeout <%lu ms>", action, session->audio_sent_bytes, session->audio_sent_samples, rx_rate, timeout);
     } else {
        #ifdef VOICE_BUFFER_STATS
        if(voice_buffer_warning_triggered) {
-          XLOGD_WARN("Audio %s bytes <%lu> samples <%lu> pkt cnt <%3u> elapsed <%8llu ms> lag <%8lld ms> (%4.2f packets)", action, session->audio_sent_bytes, session->audio_sent_samples, packets_total, session_time / 1000, session_delta / 1000, (((float)session_delta) / this->voice_packet_interval));
+          XLOGD_DEBUG("Audio %s bytes <%lu> samples <%lu> pkt cnt <%3u> elapsed <%8llu ms> lag <%8lld ms> (%4.2f packets)", action, session->audio_sent_bytes, session->audio_sent_samples, packets_total, session_time / 1000, session_delta / 1000, (((float)session_delta) / this->voice_packet_interval));
        } else {
-          XLOGD_INFO("Audio %s bytes <%lu> samples <%lu>", action, session->audio_sent_bytes, session->audio_sent_samples);
+          XLOGD_DEBUG("Audio %s bytes <%lu> samples <%lu>", action, session->audio_sent_bytes, session->audio_sent_samples);
        }
        #else
-       XLOGD_INFO("Audio %s bytes <%lu> samples <%lu>", action, session->audio_sent_bytes, session->audio_sent_samples);
+       XLOGD_DEBUG("Audio %s bytes <%lu> samples <%lu>", action, session->audio_sent_bytes, session->audio_sent_samples);
        #endif
     }
 }
@@ -1937,6 +1949,16 @@ void ctrlm_voice_t::voice_session_end(ctrlm_voice_session_t *session, ctrlm_voic
         #else
         session->stats_session.buffer_watermark  = ULONG_MAX;
         #endif
+        #ifdef TELEMETRY_SUPPORT
+        if(session->is_press_and_release) { // Use the PAR timeout value for the expected audio duration
+            voice_params_par_t params_par;
+            voice_params_par_get(&params_par);
+            stats->audio_duration = params_par.par_voice_eos_timeout;
+        }
+        if(this->prefs.telemetry_session_stats && stats->audio_duration > 0) { // Update the voice session metrics
+           session->telemetry_session_stats.update_on_key_release(stats->start_lag, stats->audio_duration, stats->time_key_down, stats->time_key_up);
+        }
+        #endif
     }
     ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::ind_process_voice_session_end, &end, sizeof(end), NULL, session->network_id);
 
@@ -1976,13 +1998,14 @@ void ctrlm_voice_t::voice_session_controller_stats_rxd_timeout() {
 
 void ctrlm_voice_t::voice_session_stats(ctrlm_voice_stats_session_t session) {
    ctrlm_voice_session_t *voice_session = &this->voice_session[VOICE_SESSION_GROUP_DEFAULT];  //
-   voice_session->stats_session.available      = session.available;
-   voice_session->stats_session.packets_total  = session.packets_total;
-   voice_session->stats_session.dropped_retry  = session.dropped_retry;
-   voice_session->stats_session.dropped_buffer = session.dropped_buffer;
-   voice_session->stats_session.retry_mac      = session.retry_mac;
-   voice_session->stats_session.retry_network  = session.retry_network;
-   voice_session->stats_session.cca_sense      = session.cca_sense;
+   voice_session->stats_session.available         = session.available;
+   voice_session->stats_session.packets_total     = session.packets_total;
+   voice_session->stats_session.dropped_retry     = session.dropped_retry;
+   voice_session->stats_session.dropped_buffer    = session.dropped_buffer;
+   voice_session->stats_session.retry_mac         = session.retry_mac;
+   voice_session->stats_session.retry_network     = session.retry_network;
+   voice_session->stats_session.cca_sense         = session.cca_sense;
+   voice_session->stats_session.voice_key_held_ms = session.voice_key_held_ms;
 
    voice_session_notify_stats();
 }
@@ -2102,8 +2125,8 @@ void ctrlm_voice_t::voice_session_stats_print(ctrlm_voice_session_t *session) {
    }
    ctrl_audio_rxd_stop = rdkx_timestamp_subtract_us(timing->ctrl_audio_rxd_final, timing->ctrl_stop);
 
-   XLOGD_INFO("ctrl rsp <%lld> first <%lld> %sfinal <%lld> stop <%lld> us", ctrl_response, ctrl_audio_rxd_first, str_keyword, ctrl_audio_rxd_final, ctrl_audio_rxd_stop);
-   XLOGD_INFO("ctrl cmd status wr <%lld> us", ctrl_cmd_status_wr);
+   XLOGD_DEBUG("ctrl rsp <%lld> first <%lld> %sfinal <%lld> stop <%lld> us", ctrl_response, ctrl_audio_rxd_first, str_keyword, ctrl_audio_rxd_final, ctrl_audio_rxd_stop);
+   XLOGD_DEBUG("ctrl cmd status wr <%lld> us", ctrl_cmd_status_wr);
 
    if(timing->connect_attempt) { // Attempted connection
       signed long long srvr_request, srvr_init_txd, srvr_disconnect;
@@ -2133,7 +2156,7 @@ void ctrlm_voice_t::voice_session_stats_print(ctrlm_voice_session_t *session) {
          }
          srvr_disconnect = rdkx_timestamp_subtract_us(timing->srvr_audio_txd_final, timing->srvr_disconnect);
 
-         XLOGD_INFO("srvr request <%lld> connect <%lld> init <%lld> first <%lld> %sfinal <%lld> disconnect <%lld> us", srvr_request, srvr_connect, srvr_init_txd, srvr_audio_txd_first, str_keyword, srvr_audio_txd_final, srvr_disconnect);
+         XLOGD_DEBUG("srvr request <%lld> connect <%lld> init <%lld> first <%lld> %sfinal <%lld> disconnect <%lld> us", srvr_request, srvr_connect, srvr_init_txd, srvr_audio_txd_first, str_keyword, srvr_audio_txd_final, srvr_disconnect);
 
          if(timing->has_keyword) {
             signed long long kwd_total, kwd_transmit, kwd_response;
@@ -2158,6 +2181,7 @@ void ctrlm_voice_t::voice_session_info(ctrlm_voice_session_t *session, ctrlm_voi
         data->controller_version_sw = session->controller_version_sw;
         data->controller_version_hw = session->controller_version_hw;
         data->controller_voltage    = session->controller_voltage;
+        data->press_and_release     = session->is_press_and_release;
         data->stb_name              = this->stb_name;
         data->ffv_leading_samples   = this->prefs.ffv_leading_samples;
         data->has_stream_params     = session->has_stream_params;
@@ -2172,6 +2196,7 @@ void ctrlm_voice_t::voice_session_info_reset(ctrlm_voice_session_t *session) {
     session->controller_name        = "";
     session->controller_version_sw  = "";
     session->controller_version_hw  = "";
+    session->is_press_and_release   = false;
     session->controller_voltage     = 0.0;
     session->has_stream_params      = false;
 }
@@ -2517,11 +2542,18 @@ void ctrlm_voice_t::voice_session_begin_callback(ctrlm_voice_session_begin_cb_t 
     session->server_ret_code                = 0;
     session->voice_device                   = xrsr_to_voice_device(session_begin->src);
     if(ctrlm_voice_device_is_mic(session->voice_device)) {
-       session->network_id       = CTRLM_MAIN_NETWORK_ID_DSP;
-       session->controller_id    = CTRLM_MAIN_CONTROLLER_ID_DSP;
-       session->network_type     = CTRLM_NETWORK_TYPE_DSP;
-       session->keyword_verified = false;
-       XLOGD_INFO("src <%s> setting network and controller to DSP", ctrlm_voice_device_str(session->voice_device));
+        session->network_id       = CTRLM_MAIN_NETWORK_ID_DSP;
+        session->controller_id    = CTRLM_MAIN_CONTROLLER_ID_DSP;
+        session->network_type     = CTRLM_NETWORK_TYPE_DSP;
+        session->keyword_verified = false;
+
+        if(!session_begin->configuration.user_initiated && !this->nsm_voice_session) { // Not user initiated from a button press or NSM.  Set the controller name, version, format
+            session->controller_name       = "FFV";
+            session->controller_version_sw = "0.0.0.0";
+            session->controller_version_hw = "0.0.0.0";
+            session->format                = xrsr_to_voice_format(session_begin->configuration.format);
+        }
+        XLOGD_INFO("src <%s> setting network and controller to DSP", ctrlm_voice_device_str(session->voice_device));
     }
     session->ipc_common_data.network_id        = session->network_id;
     session->ipc_common_data.network_type      = ctrlm_network_type_get(session->network_id);
@@ -2530,8 +2562,8 @@ void ctrlm_voice_t::voice_session_begin_callback(ctrlm_voice_session_begin_cb_t 
     session->ipc_common_data.session_id_server = session->uuid_str;
     session->ipc_common_data.voice_assistant   = is_voice_assistant(session->voice_device);
     session->ipc_common_data.device_type       = session->voice_device;
-    session->endpoint_current               = session_begin->endpoint;
-    session->end_reason                     = CTRLM_VOICE_SESSION_END_REASON_DONE;
+    session->endpoint_current                  = session_begin->endpoint;
+    session->end_reason                        = CTRLM_VOICE_SESSION_END_REASON_DONE;
 
     errno_t safec_rc = memset_s(&session->status, sizeof(session->status), 0 , sizeof(session->status));
     ERR_CHK(safec_rc);
@@ -2567,6 +2599,12 @@ void ctrlm_voice_t::voice_session_begin_callback(ctrlm_voice_session_begin_cb_t 
 
     // Update device status
     this->voice_session_set_active(session->voice_device);
+
+    #ifdef TELEMETRY_SUPPORT
+    if(this->prefs.telemetry_session_stats) {
+        session->telemetry_session_stats.update_on_session_begin(session->controller_name, session->controller_version_sw, ctrlm_voice_format_str(session->format), session->is_press_and_release, ctrlm_voice_device_is_mic(session->voice_device));
+    }
+    #endif
 
     // IARM Begin Event
     if(this->voice_ipc) {
@@ -2694,6 +2732,7 @@ void ctrlm_voice_t::voice_session_end_callback(ctrlm_voice_session_end_cb_t *ses
     metrics.short_utterance     = (stats->reason == XRSR_SESSION_END_REASON_ERROR_AUDIO_DURATION ? 1 : 0);
     metrics.packets_total       = session->packets_processed + session->packets_lost;
     metrics.packets_lost        = session->packets_lost;
+
     ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::process_voice_controller_metrics, &metrics, sizeof(metrics), NULL, session->network_id);
 
     // Send results internally to controlMgr
@@ -2743,7 +2782,14 @@ void ctrlm_voice_t::voice_session_end_callback(ctrlm_voice_session_end_cb_t *ses
         telemetry->event(ctrlm_telemetry_report_t::VOICE, vs_status_marker);
         telemetry->event(ctrlm_telemetry_report_t::VOICE, vs_end_reason_marker);
         telemetry->event(ctrlm_telemetry_report_t::VOICE, vs_xrsr_end_reason_marker);
+
+        if(this->prefs.telemetry_session_stats) {
+            if(!session->telemetry_session_stats.update_on_session_end(session_end->success, session->end_reason, stats->reason, session->server_ret_code, session->server_message, session->stats_session.voice_key_held_ms)) {
+                XLOGD_ERROR("failed to generate session stats event");
+            }
+        }
     }
+
     #endif
     session->current_vsr_err_rsp_time   = 0;
     session->current_vsr_err_rsp_window = 0;
@@ -2931,15 +2977,28 @@ void ctrlm_voice_t::voice_stream_end_callback(ctrlm_voice_stream_end_cb_t *strea
         XLOGD_INFO("src <%s> end of stream <%s>", ctrlm_voice_device_str(session->voice_device), (stats->result) ? "SUCCESS" : "FAILURE");
 
         if(session->packets_processed > 0) {
-            uint32_t stream_duration = session->packets_processed * 20; // assume 20 ms per packet
+            uint32_t stream_duration    = session->packets_processed * 20; // assume 20 ms per packet
+            uint32_t samples_per_packet = 320; // 16 kHz samples at 20 ms per packet
             if(session->format.type == CTRLM_VOICE_FORMAT_ADPCM_FRAME) {
                 uint32_t frame_duration_us = (session->format.value.adpcm_frame.size_packet - session->format.value.adpcm_frame.size_header) * 125; // 125 us per byte for ADPCM at 16 kHz
-                stream_duration = (session->packets_processed * frame_duration_us) / 1000;
+                stream_duration    = (session->packets_processed * frame_duration_us) / 1000;
+                samples_per_packet = (session->format.value.adpcm_frame.size_packet - session->format.value.adpcm_frame.size_header) * 2; // 2 samples per byte for ADPCM
             }
             XLOGD_TELEMETRY("src <%s> Packets Lost/Total <%u/%u> %.02f%% duration <%u> ms", ctrlm_voice_device_str(session->voice_device), session->packets_lost, session->packets_lost + session->packets_processed, 100.0 * ((double)session->packets_lost / (double)(session->packets_lost + session->packets_processed)), stream_duration);
-        }
-        if(samples_processed > 0) {
-            XLOGD_INFO("src <%s> Samples Lost/Total <%u/%u> %.02f%% buffered max <%u>", ctrlm_voice_device_str(session->voice_device), samples_lost, samples_lost + samples_processed, 100.0 * ((double)samples_lost / (double)(samples_lost + samples_processed)), samples_buffered_max);
+            #ifdef TELEMETRY_SUPPORT
+            if(this->prefs.telemetry_session_stats) {
+                uint32_t packets_total = session->packets_lost + session->packets_processed;
+                session->telemetry_session_stats.update_on_stream_end(stream_duration, packets_total, session->packets_lost, packets_total * samples_per_packet, session->packets_lost * samples_per_packet, decoder_failures, 0);
+            }
+            #endif
+        } else if(samples_processed > 0) {
+            uint32_t stream_duration = (samples_processed / 16); // 16 kHz samples to ms
+            XLOGD_INFO("src <%s> Samples Lost/Total <%u/%u> %.02f%% buffered max <%u> duration <%u> ms", ctrlm_voice_device_str(session->voice_device), samples_lost, samples_lost + samples_processed, 100.0 * ((double)samples_lost / (double)(samples_lost + samples_processed)), samples_buffered_max, stream_duration);
+            #ifdef TELEMETRY_SUPPORT
+            if(this->prefs.telemetry_session_stats) {
+                session->telemetry_session_stats.update_on_stream_end(stream_duration, 0, 0, samples_lost + samples_processed, samples_lost, decoder_failures, samples_buffered_max);
+            }
+            #endif
         }
         if(decoder_failures > 0) {
             XLOGD_WARN("src <%s> decoder failures <%u>", ctrlm_voice_device_str(session->voice_device), decoder_failures);
@@ -3129,6 +3188,9 @@ void ctrlm_voice_t::voice_server_return_code_callback(const uuid_t uuid, const c
         return;
     }
     session->server_ret_code = ret_code;
+    if(reason != NULL) {
+        session->server_message = reason;
+    }
 
     XLOGD_TELEMETRY("src <%s>, <%s> code <%d>, reason <%s>, power state <%s>",  \
         ctrlm_voice_device_str(session->voice_device), \
@@ -3348,6 +3410,50 @@ xrsr_audio_format_t voice_format_to_xrsr(ctrlm_voice_format_t format) {
             break;
         }
         default: {
+            break;
+        }
+    }
+    return(ret);
+}
+
+ctrlm_voice_format_t xrsr_to_voice_format(xrsr_audio_format_t format) {
+    ctrlm_voice_format_t ret = { .type = CTRLM_VOICE_FORMAT_INVALID };
+
+    switch(format.type) {
+        case XRSR_AUDIO_FORMAT_PCM: {
+            ret.type = CTRLM_VOICE_FORMAT_PCM;
+            break;
+        }
+        case XRSR_AUDIO_FORMAT_PCM_32_BIT: {
+            ret.type = CTRLM_VOICE_FORMAT_PCM_32_BIT;
+            break;
+        }
+        case XRSR_AUDIO_FORMAT_PCM_32_BIT_MULTI: {
+            ret.type = CTRLM_VOICE_FORMAT_PCM_32_BIT_MULTI;
+            break;
+        }
+        case XRSR_AUDIO_FORMAT_PCM_RAW: {
+            ret.type = CTRLM_VOICE_FORMAT_PCM_RAW;
+            break;
+        }
+        case XRSR_AUDIO_FORMAT_ADPCM_FRAME: {
+            ret.type                                          = CTRLM_VOICE_FORMAT_ADPCM_FRAME;
+            ret.value.adpcm_frame.size_packet                 = format.value.adpcm_frame.size_packet;
+            ret.value.adpcm_frame.size_header                 = format.value.adpcm_frame.size_header;
+            ret.value.adpcm_frame.offset_step_size_index      = format.value.adpcm_frame.offset_step_size_index;
+            ret.value.adpcm_frame.offset_predicted_sample_lsb = format.value.adpcm_frame.offset_predicted_sample_lsb;
+            ret.value.adpcm_frame.offset_predicted_sample_msb = format.value.adpcm_frame.offset_predicted_sample_msb;
+            ret.value.adpcm_frame.offset_sequence_value       = format.value.adpcm_frame.offset_sequence_value;
+            ret.value.adpcm_frame.sequence_value_min          = format.value.adpcm_frame.sequence_value_min;
+            ret.value.adpcm_frame.sequence_value_max          = format.value.adpcm_frame.sequence_value_max;
+            break;
+        }
+        case XRSR_AUDIO_FORMAT_OPUS: {
+            ret.type = CTRLM_VOICE_FORMAT_OPUS;
+            break;
+        }
+        case XRSR_AUDIO_FORMAT_NONE:
+        case XRSR_AUDIO_FORMAT_MAX: {
             break;
         }
     }
@@ -3891,7 +3997,7 @@ void ctrlm_voice_t::voice_nsm_session_request(void) {
     #endif
 
     this->nsm_voice_session = true;
-    voice_session_req(network_id, controller_id, device, format, NULL, "DSP", "1",  "1",  0.0,  false,  NULL,  NULL,  NULL,  false, NULL);
+    voice_session_req(network_id, controller_id, device, format, NULL, "NSM", "0.0.0.0",  "0.0.0.0",  0.0);
 
 }
 #endif
@@ -3984,6 +4090,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
     attr.get_rfc_value(JSON_BOOL_NAME_VOICE_VREX_WUW_BYPASS_SUCCESS_FLAG,this->prefs.vrex_wuw_bypass_success_flag);
     attr.get_rfc_value(JSON_BOOL_NAME_VOICE_VREX_WUW_BYPASS_FAILURE_FLAG,this->prefs.vrex_wuw_bypass_failure_flag);
     attr.get_rfc_value(JSON_BOOL_NAME_VOICE_FORCE_TOGGLE_FALLBACK,       this->prefs.force_toggle_fallback);
+    attr.get_rfc_value(JSON_BOOL_NAME_VOICE_TELEMETRY_SESSION_STATS,     this->prefs.telemetry_session_stats);
 
     std::string opus_encoder_params_str;
     if(attr.get_rfc_value(JSON_STR_NAME_VOICE_OPUS_ENCODER_PARAMS, opus_encoder_params_str)) {
@@ -4115,14 +4222,19 @@ void ctrlm_voice_t::vsdk_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
 }
 
 void ctrlm_voice_t::telemetry_report_handler() {
-    XLOGD_INFO("clearing vsr_errs");
     #ifndef TELEMETRY_SUPPORT
     XLOGD_WARN("telemetry is not enabled");
     #else
+    XLOGD_INFO("clearing vsr_errs");
     ctrlm_voice_session_t *session = &this->voice_session[VOICE_SESSION_GROUP_DEFAULT];
     sem_wait(&session->current_vsr_err_semaphore);
     this->vsr_errors.clear();
     sem_post(&session->current_vsr_err_semaphore);
+
+    if(this->prefs.telemetry_session_stats) { // Clear the session stats
+        XLOGD_INFO("clearing session stats");
+        session->telemetry_session_stats.reset_events();
+    }
     #endif
 }
 

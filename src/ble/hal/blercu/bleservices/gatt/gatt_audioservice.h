@@ -62,10 +62,13 @@ public:
     virtual void onEnteredStartStreamingState();
     virtual void onEnteredStopStreamingState();
     virtual void onAudioDataNotification(const std::vector<uint8_t> &value);
+    virtual void onAudioInfoReceived(uint16_t frameCount, uint32_t durationMs);
 
     virtual void validateFrame(const uint8_t *frame, uint32_t frameCount);
 
     void updateSequenceNumber(uint8_t sequenceNumber, uint32_t frameCount);
+
+    void updateFrameCountSupport(bool frameCountSupported);
 
     void stateMachinePostEvent(const Event::Type event);
     bool stateMachineIsIdle();
@@ -87,7 +90,7 @@ public:
     void startStreaming(Encoding encoding, PendingReply<int> &&reply, uint32_t durationMax = 0) override;
     void stopStreaming(uint32_t audioDuration, PendingReply<> &&reply) override;
 
-    void status(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets) override;
+    void status(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs) override;
 
     bool getFirstAudioDataTime(ctrlm_timestamp_t &time) override;
 
@@ -132,7 +135,9 @@ private:
     StatusInfo m_lastStats;
 
     StateMachine m_stateMachine;
-    int64_t m_timeoutEventId;
+    int64_t m_timeoutEventIdSession;
+    int64_t m_timeoutEventIdAudioInfo;
+    int64_t m_timeoutEventIdAudioLastFrame;
 
     std::mutex mAudioPipeMutex;
     std::shared_ptr<GattAudioPipe> m_audioPipe;
@@ -140,6 +145,10 @@ private:
 
     uint32_t m_missedSequences;
     uint8_t  m_lastSequenceNumber;
+    bool     m_StreamStopPending   = false;
+    bool     m_frameCountSupported = false;
+    uint16_t m_frameCount          = 0;
+    uint32_t m_audioDurationMs     = 0;
 
 public:
     static const Event::Type StartServiceRequestEvent   = Event::Type(Event::User + 1);
@@ -155,6 +164,9 @@ public:
 
     static const Event::Type GattErrorEvent             = Event::Type(Event::User + 8);
     static const Event::Type OutputPipeCloseEvent       = Event::Type(Event::User + 9);
+
+    static const Event::Type AudioInfoTimeoutEvent      = Event::Type(Event::User + 10);
+    static const Event::Type AudioLastFrameTimeoutEvent = Event::Type(Event::User + 11);
 };
 
 #endif // !defined(GATT_AUDIOSERVICE_H)

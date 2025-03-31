@@ -2014,6 +2014,25 @@ const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config) {
     }
 }
 
+#ifdef TELEMETRY_SUPPORT
+const char *ctrlm_t2_error_str(T2ERROR error) {
+    switch(error) {
+        case T2ERROR_SUCCESS:                 return("SUCCESS");
+        case T2ERROR_FAILURE:                 return("FAILURE");
+        case T2ERROR_INVALID_PROFILE:         return("INVALID_PROFILE");
+        case T2ERROR_PROFILE_NOT_FOUND:       return("PROFILE_NOT_FOUND");
+        case T2ERROR_PROFILE_NOT_SET:         return("PROFILE_NOT_SET");
+        case T2ERROR_MAX_PROFILES_REACHED:    return("MAX_PROFILES_REACHED");
+        case T2ERROR_MEMALLOC_FAILED:         return("MEMALLOC_FAILED");
+        case T2ERROR_INVALID_ARGS:            return("INVALID_ARGS");
+        case T2ERROR_INTERNAL_ERROR:          return("INTERNAL_ERROR");
+        case T2ERROR_NO_RBUS_METHOD_PROVIDER: return("NO_RBUS_METHOD_PROVIDER");
+        case T2ERROR_COMPONENT_NULL:          return("COMPONENT_NULL");
+        default:                              return("UNKNOWN");
+    }
+}
+#endif
+
 bool ctrlm_utils_calc_crc32( const char *filename, uLong *crc_ret ) {
    uLong crc = 0;
    bool status = true;
@@ -2381,6 +2400,7 @@ const char *ctrlm_rcu_upgrade_state_str(ctrlm_rcu_upgrade_state_t state)
         case CTRLM_RCU_UPGRADE_STATE_IDLE:     return("IDLE");
         case CTRLM_RCU_UPGRADE_STATE_PENDING:  return("PENDING");
         case CTRLM_RCU_UPGRADE_STATE_CANCELED: return("CANCELED");
+        case CTRLM_RCU_UPGRADE_STATE_RETRYING: return("RETRYING");
         case CTRLM_RCU_UPGRADE_STATE_ERROR:    return("ERROR");
         case CTRLM_RCU_UPGRADE_STATE_INVALID:  return("INVALID");
         default:                               return("INVALID_TYPE");

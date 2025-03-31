@@ -402,6 +402,10 @@ void ctrlm_obj_network_t::ind_process_voice_session_request(void *data, int size
   XLOGD_WARN("request is not valid for %s network", name_get());
 }
 
+void ctrlm_obj_network_t::ind_process_voice_session_first_audio_packet(void *data, int size){
+  XLOGD_WARN("request is not valid for %s network", name_get());
+}
+
 void ctrlm_obj_network_t::ind_process_voice_session_stop(void *data, int size){
   XLOGD_WARN("request is not valid for %s network", name_get());
 }
@@ -1011,6 +1015,11 @@ void ctrlm_obj_network_t::iarm_event_rcu_status(void) {
 
 void ctrlm_obj_network_t::iarm_event_rcu_firmware_status(const ctrlm_obj_controller_t &rcu) {
    XLOGD_DEBUG("Enter...");
+   ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
+
+   if (!rcp_ipc->is_thunder_device_update_enabled()) {
+       return;
+   }
 
    ctrlm_rcp_ipc_upgrade_status_t msg;
    msg.populate_status(rcu);
@@ -1018,7 +1027,6 @@ void ctrlm_obj_network_t::iarm_event_rcu_firmware_status(const ctrlm_obj_control
    XLOGD_INFO("Broadcasting IARM message %s RCU %<%s> Upgrade Status....", rcu.ieee_address_get().to_string().c_str(), name_get());
    XLOGD_DEBUG("%s", msg.to_string());
 
-   ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
    if (!rcp_ipc->on_firmware_update_progress(msg)) {
        XLOGD_ERROR("Error broadcasting IARM message");
    }

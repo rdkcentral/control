@@ -39,6 +39,9 @@
 #ifdef DEEP_SLEEP_ENABLED
 #include "deepSleepMgr.h"
 #endif
+#ifdef TELEMETRY_SUPPORT
+#include <telemetry2_0.h>
+#endif
 
 #define TIMEOUT_TAG_INVALID (0)
 
@@ -191,6 +194,10 @@ const char *ctrlm_device_type_str(ctrlm_device_type_t device_type);
 const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason);
 #endif
 const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config);
+
+#ifdef TELEMETRY_SUPPORT
+const char *ctrlm_t2_error_str(T2ERROR error);
+#endif
 
 const char *ctrlm_irdb_vendor_str(ctrlm_irdb_vendor_t vendor);
 const char *ctrlm_rf_pair_state_str(ctrlm_rf_pair_state_t state);

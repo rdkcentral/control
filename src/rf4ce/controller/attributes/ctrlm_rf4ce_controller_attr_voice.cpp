@@ -334,13 +334,14 @@ ctrlm_rf4ce_rib_attr_t::status ctrlm_rf4ce_voice_session_statistics_t::write_rib
             if(NULL != obj) {
                ctrlm_voice_stats_session_t stats_session;
 
-               stats_session.available        = 1;
-               stats_session.packets_total    = total_packets;
-               stats_session.dropped_retry    = drop_retry;
-               stats_session.dropped_buffer   = drop_buffer;
-               stats_session.retry_mac        = mac_retries;
-               stats_session.retry_network    = network_retries;
-               stats_session.cca_sense        = cca_sense;
+               stats_session.available         = 1;
+               stats_session.packets_total     = total_packets;
+               stats_session.dropped_retry     = drop_retry;
+               stats_session.dropped_buffer    = drop_buffer;
+               stats_session.retry_mac         = mac_retries;
+               stats_session.retry_network     = network_retries;
+               stats_session.cca_sense         = cca_sense;
+               stats_session.voice_key_held_ms = -1;
 
                // The following are not set here and will be ignored
                //stats_session.rf_channel       = 0;

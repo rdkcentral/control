@@ -58,6 +58,7 @@
 #endif
 #ifdef AUTH_ENABLED
 #include "ctrlm_auth.h"
+#include "ctrlm_hal_certificate.h"
 #endif
 #include "ctrlm_rfc.h"
 #include "ctrlm_telemetry.h"
@@ -259,13 +260,12 @@ typedef struct {
    vector<ctrlm_thread_monitor_t>     monitor_threads;
    int                                return_code;
    ctrlm_voice_t                     *voice_session;
-#ifdef IRDB_ENABLED
    ctrlm_irdb_t                      *irdb;
-#endif
    ctrlm_telemetry_t                 *telemetry;
    ctrlm_cs_values_t                  cs_values;
 #ifdef AUTH_ENABLED
    ctrlm_auth_t                      *authservice;
+   ctrlm_hal_certificate_t           *hal_certificate;
 #endif
 #ifdef CTRLM_THUNDER
    Thunder::DeviceInfo::ctrlm_thunder_plugin_device_info_t *thunder_device_info;
@@ -666,13 +666,14 @@ int main(int argc, char *argv[]) {
 
 #ifdef AUTH_ENABLED
    XLOGD_INFO("ctrlm_auth init");
-   g_ctrlm.authservice = ctrlm_auth_service_create(g_ctrlm.server_url_authservice);
+   g_ctrlm.authservice     = ctrlm_auth_service_create(g_ctrlm.server_url_authservice);
+   g_ctrlm.hal_certificate = ctrlm_hal_certificate_get();
 
    ctrlm_voice_cert_t device_cert;
    bool ocsp_verify_stapling = false;
    bool ocsp_verify_ca       = false;
 
-   if(!g_ctrlm.authservice->device_cert_get(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
+   if(!g_ctrlm.hal_certificate->device_cert_get(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
       XLOGD_ERROR("unable to get device certificate");
    } else {
       if(!g_ctrlm.voice_session->voice_stb_data_device_certificate_set(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
@@ -830,12 +831,10 @@ int main(int argc, char *argv[]) {
 
    vsdk_term();
 
-   #ifdef IRDB_ENABLED
    if(g_ctrlm.irdb != NULL) {
       delete g_ctrlm.irdb;
       g_ctrlm.irdb = NULL;
    }
-   #endif
 
    sem_destroy(&g_ctrlm.service_access_token_semaphore);
 
@@ -1326,10 +1325,8 @@ void ctrlm_device_type_loaded(ctrlm_device_type_t device_type) {
 
       g_ctrlm.voice_session->voice_stb_data_device_type_set(g_ctrlm.device_type);
 
-      #ifdef IRDB_ENABLED
       XLOGD_INFO("create IRDB object");
       g_ctrlm.irdb = ctrlm_irdb_create((g_ctrlm.device_type == CTRLM_DEVICE_TYPE_TV) ? true : false);
-      #endif
 
       ctrlm_main_has_device_type_set(true);
    }
@@ -1356,7 +1353,7 @@ gboolean ctrlm_main_has_device_type_get(void) {
    return(g_ctrlm.has_device_type);
 }
 
-#ifdef AUTH_ENABLED
+#if defined(AUTH_ENABLED) || defined(AUTH_THUNDER)
 void ctrlm_main_auth_start_poll() {
    ctrlm_timeout_destroy(&g_ctrlm.authservice_poll_tag);
    g_ctrlm.authservice_poll_tag = ctrlm_timeout_create(g_ctrlm.recently_booted? g_ctrlm.authservice_fast_poll_val : g_ctrlm.authservice_poll_val,
@@ -4763,11 +4760,7 @@ gboolean ctrlm_main_successful_init_get(void) {
 }
 
 ctrlm_irdb_t* ctrlm_main_irdb_get() {
-#ifdef IRDB_ENABLED
    return(g_ctrlm.irdb);
-#else
-   return(NULL);
-#endif
 }
 
 ctrlm_auth_t* ctrlm_main_auth_get() {

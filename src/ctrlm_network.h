@@ -207,6 +207,7 @@ public:
    virtual void         controller_exists(void *data, int size);
    virtual void         controller_unbind(ctrlm_controller_id_t controller_id, ctrlm_unbind_reason_t reason);
    virtual void         ind_process_voice_session_request(void *data, int size);
+   virtual void         ind_process_voice_session_first_audio_packet(void *data, int size);
    virtual void         ind_process_voice_session_stop(void *data, int size);
    virtual void         ind_process_voice_session_begin(void *data, int size);
    virtual void         ind_process_voice_session_end(void *data, int size);

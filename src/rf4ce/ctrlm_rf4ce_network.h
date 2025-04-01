@@ -310,6 +310,7 @@ public:
    void                                 ind_process_unpair(void *data, int size);     
    void                                 ind_process_data(void *data, int size);
    void                                 ind_process_voice_session_request(void *data, int size);
+   void                                 ind_process_voice_session_first_audio_packet(void *data, int size);
    void                                 ind_process_voice_session_stop(void *data, int size);
    void                                 ind_process_voice_session_end(void *data, int size);
    void                                 process_voice_controller_metrics(void *data, int size);
@@ -574,6 +575,9 @@ private:
 #endif
    static ctrlm_obj_network_rf4ce_t       *instance;
    ctrlm_rf4ce_rsp_time_t                  rsp_time_;
+
+   ctrlm_timestamp_t                       timestamp_voice_session_request_;
+   ctrlm_timestamp_t                       timestamp_voice_first_packet_;
 
    static gboolean       bind_validation_failed(gpointer user_data);
    gboolean              load_config(json_t *json_obj_net_rf4ce);

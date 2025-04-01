@@ -320,10 +320,10 @@ typedef enum {
 /// @brief Remote Control Key Source
 /// @details The source of the key press, e.g. infrared, rf, etc.
 typedef enum {
-	CTRLM_KEY_SOURCE_FP = 0,   //< Key Source Front Panel
-	CTRLM_KEY_SOURCE_IR,       //< Key Source Infrared
-	CTRLM_KEY_SOURCE_RF,	      //< Key Source RF
-	CTRLM_KEY_SOURCE_INVALID   //< Invalid
+   CTRLM_KEY_SOURCE_FP = 0,   //< Key Source Front Panel
+   CTRLM_KEY_SOURCE_IR,       //< Key Source Infrared
+   CTRLM_KEY_SOURCE_RF,       //< Key Source RF
+   CTRLM_KEY_SOURCE_INVALID   //< Invalid
 } ctrlm_key_source_t;
 
 /// @brief Data Access Type
@@ -464,6 +464,7 @@ typedef enum {
    CTRLM_RCU_UPGRADE_STATE_IDLE,
    CTRLM_RCU_UPGRADE_STATE_PENDING,
    CTRLM_RCU_UPGRADE_STATE_CANCELED,
+   CTRLM_RCU_UPGRADE_STATE_RETRYING,
    CTRLM_RCU_UPGRADE_STATE_ERROR,
    CTRLM_RCU_UPGRADE_STATE_INVALID
 } ctrlm_rcu_upgrade_state_t;
@@ -658,7 +659,7 @@ typedef struct {
    ctrlm_network_id_t       network_id;                                         ///< IN - identifier of network on which the controller is bound
    ctrlm_iarm_call_result_t result;                                             ///< OUT - The result of the operation.
    int                      controller_id;                                      ///< OUT - The controller id of the last key press.
-   ctrlm_key_source_t       source_type;                                        ///< OUT - The source type of the last key press.
+   unsigned char            source_type;                                        ///< OUT - The source type of the last key press.
    unsigned long            source_key_code;                                    ///< OUT - The keycode of the last key press.
    long long                timestamp;                                          ///< OUT - The timestamp of the last key press.
    unsigned char            is_screen_bind_mode;                                ///< OUT - Indicates if the last key press is from a remote is in screen bind mode.

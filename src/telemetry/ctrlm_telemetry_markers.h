@@ -87,6 +87,40 @@
 
 // End Voice Session Response Errors
 
+
+// Voice Session Statistics
+
+// The Voice Session Statistics Marker reports statistics for the voice session(s). The format of the marker is a json array of arrays with each event in the format below:
+//
+// [[event1], [event2], [event3], ...]
+// [<version>,<device_type>,<device_version>,<encoding>,<interaction_mode>,<time_prev_session>,<time_start_lag>,<time_stream_len_exp>,<time_stream_len_act>,<time_stream_delta>,<packets_total>,<packets_lost>,<samples_total>,<samples_lost>,<decoder_failures>,<samples_buffered_max>,<stream_ret_code>,<protocol_ret_code>,<server_ret_code>,<server_message>,<result>]
+//
+// <version>              - Version of the marker format.
+// <device_type>          - Name of the device that started the session.
+// <device_version>       - Version of the device that started the session.
+// <encoding>             - The audio encoding format (PCM,ADPCM,OPUS,etc).
+// <interaction_mode>     - Interaction mode (0 - press and hold, 1 - press and release, 2 - end of speech detection).
+// <time_prev_session>    - amount of elapsed time in ms since the previous voice session (amount of time elapsed from voice session end to session begin).
+// <time_start_lag>       - start lag time in ms (amount of time elapsed from voice key down reception to first audio packet received) or -1 if not available.
+// <time_stream_len_exp>  - expected stream length in ms (amount of time elapsed from voice key down to key up) or -1 if not available.
+// <time_stream_len_act>  - actual stream length in ms.
+// <time_stream_delta>    - delta stream length in ms (expected - actual).
+// <packets_total>        - total packets (received + lost).
+// <packets_lost>         - lost packets.
+// <samples_total>        - total samples (received + lost).
+// <samples_lost>         - lost samples.
+// <decoder_failures>     - decoder failure count.
+// <samples_buffered_max> - sample buffer high watermark.
+// <stream_ret_code>      - audio stream success/error code.
+// <protocol_ret_code>    - protocol success/error code.
+// <server_ret_code>      - server success/error code.
+// <server_message>       - server message.
+// <result>               - flag to indicate if session was successful.
+#define MARKER_VOICE_SESSION_STATS                 "ctrlm.voice.session.stats"
+#define MARKER_VOICE_SESSION_STATS_VERSION         "1"
+
+// End Voice Session Statistics
+
 //
 // End Voice Markers
 //

@@ -57,6 +57,7 @@ public:
     void onEnteredStartStreamingState() override;
     void onEnteredStopStreamingState() override;
     void onAudioDataNotification(const std::vector<uint8_t> &value) override;
+    void onAudioInfoNotification(const std::vector<uint8_t> &value);
 
     void validateFrame(const uint8_t *frame, uint32_t frameCount) override;
 
@@ -72,6 +73,7 @@ private:
     bool getAudioGainCharacteristic(const std::shared_ptr<const BleGattService> &gattService);
     bool getAudioControlCharacteristic(const std::shared_ptr<const BleGattService> &gattService);
     bool getAudioDataCharacteristic(const std::shared_ptr<const BleGattService> &gattService);
+    bool getAudioInfoCharacteristic(const std::shared_ptr<const BleGattService> &gattService);
 
     void requestGainLevel();
     void requestAudioCodecs();
@@ -84,6 +86,7 @@ private:
     std::shared_ptr<BleGattCharacteristic> m_audioGainCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_audioCtrlCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_audioDataCharacteristic;
+    std::shared_ptr<BleGattCharacteristic> m_audioInfoCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_audioCodecsCharacteristic;
 
 };

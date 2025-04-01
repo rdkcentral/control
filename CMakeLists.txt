@@ -53,10 +53,6 @@ option(FACTORY_CUSTOM_AUDIO_ANALYSIS "Factory custom audio analysis" OFF)
 option(FDC_ENABLED "Enable FDC" OFF)
 option(GIT_BRANCH, "Repository Branch" OFF)
 option(IP_ENABLED "Enable IP" OFF)
-option(IRDB "Enable IRDB" OFF)
-option(IRDB_HDMI_DISCOVERY "IRDB HDMI Discovery" OFF)
-option(IRDB_CEC_DISCOVERY "IRDB_CEC Discovery" OFF)
-option(IRDB_CEC_FLEX2 "IRDB CEC Flex2)" OFF)
 option(LOCAL_MIC "Local Microphone" OFF)
 option(LOCAL_MIC_DISABLE_VIA_PRIVACY "Use Privacy to disable microphone" OFF)
 option(MAC_POLLING "MAC polling" OFF)
@@ -152,7 +148,38 @@ add_subdirectory(src)
 # COMPILER OPTIONS
 target_compile_options(controlMgr PUBLIC -fPIC -rdynamic -Wall -Werror)
 add_compile_definitions(PUBLIC _REENTRANT _POSIX_C_SOURCE=200809L _GNU_SOURCE SYSTEMD_NOTIFY XR15_704 _REENTRANT)
-target_link_libraries(controlMgr rt pthread stdc++ sqlite3 curl gio-2.0 gobject-2.0 glib-2.0 z archive jansson dbus-1 uuid IARMBus ds nopoll ssl crypto systemd dshalcli rfcapi rdkversion secure_wrapper xr-voice-sdk evdev)
+
+target_link_libraries(
+      controlMgr
+
+      xr-voice-sdk
+      ctrlm-hal-irdb
+
+      rdkversion
+      rt
+      pthread
+      stdc++
+      sqlite3
+      curl
+      gio-2.0
+      gobject-2.0
+      glib-2.0
+      z
+      archive
+      jansson
+      dbus-1
+      uuid
+      IARMBus
+      ds
+      nopoll
+      ssl
+      crypto
+      systemd
+      dshalcli
+      rfcapi
+      secure_wrapper
+      evdev
+      )
 
 install(TARGETS controlMgr RUNTIME DESTINATION bin)
 
@@ -173,15 +200,23 @@ if(ASSERT_ON_WRONG_THREAD)
 endif()
 
 if(AUTH_ENABLED)
-   add_compile_definitions(AUTH_ENABLED)
-   add_compile_definitions(AUTH_ACCOUNT_ID)
-   add_compile_definitions(AUTH_DEVICE_ID)
-   add_compile_definitions(AUTH_PARTNER_ID)
-   add_compile_definitions(AUTH_SAT_TOKEN)
-
-   #By default disabled but can be enabled
-   #add_compile_definitions(AUTH_RECEIVER_ID)
-   #add_compile_definitions(AUTH_EXPERIENCE)
+   if(EXISTS ${CMAKE_SYSROOT}/usr/lib/libctrlm-hal-certificate.so)
+      add_compile_definitions(AUTH_ENABLED)
+      add_compile_definitions(AUTH_ACCOUNT_ID)
+      add_compile_definitions(AUTH_DEVICE_ID)
+      add_compile_definitions(AUTH_PARTNER_ID)
+      add_compile_definitions(AUTH_SAT_TOKEN)
+      if(AUTH_ACTIVATION_STATUS)
+         add_compile_definitions(AUTH_ACTIVATION_STATUS)
+      endif()
+      #By default disabled but can be enabled
+      #add_compile_definitions(AUTH_RECEIVER_ID)
+      #add_compile_definitions(AUTH_EXPERIENCE)
+      target_link_libraries(controlMgr ctrlm-hal-certificate)
+   else()
+      message(WARNING "ctrlm-hal-certificate library is not provided, disabling authentication")
+      unset(AUTH_ENABLED)
+   endif()
 endif()
 
 if(BLE_ENABLED)
@@ -236,19 +271,6 @@ endif()
 
 if(THUNDER)
    add_compile_definitions(CTRLM_THUNDER)
-endif()
-
-if(IRDB)
-   add_compile_definitions(IRDB_ENABLED)
-   if(IRDB_CEC_DISCOVERY)
-      add_compile_definitions(IRDB_CEC_DISCOVERY)
-   endif()
-   if(IRDB_CEC_FLEX2)
-      add_compile_definitions(IRDB_CEC_FLEX2)
-   endif()
-   if(IRDB_HDMI_DISCOVERY)
-      add_compile_definitions(IRDB_HDMI_DISCOVERY)
-   endif()
 endif()
 
 if(LOCAL_MIC)

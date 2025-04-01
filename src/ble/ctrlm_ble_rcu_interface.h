@@ -110,7 +110,7 @@ public:
     bool getAudioFormat(uint64_t ieee_address, ctrlm_hal_ble_VoiceEncoding_t encoding, AudioFormat &format);
     bool startAudioStreaming(uint64_t ieee_address, ctrlm_hal_ble_VoiceEncoding_t encoding, ctrlm_hal_ble_VoiceStreamEnd_t streamEnd, int &fd);
     bool stopAudioStreaming(uint64_t ieee_address, uint32_t audioDuration = 0);
-    bool getAudioStatus(uint64_t ieee_address, uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets);
+    bool getAudioStatus(uint64_t ieee_address, uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs);
     bool getFirstAudioDataTime(uint64_t ieee_address, ctrlm_timestamp_t &time);
 
     bool setIrControl(uint64_t ieee_address, ctrlm_irdb_vendor_t vendor);

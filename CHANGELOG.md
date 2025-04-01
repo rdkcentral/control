@@ -17,6 +17,30 @@ All notable changes to this project will be documented in this file.
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
 
+## [1.0.7] - 2025-03-31
+
+### Changed
+- Rationalize Voice Logging
+- move auth from ctrlm-cpc to ctrlm-main
+- Add ctrlm HAL certificate interace
+- Remove irMgr dependencies in controlMgr
+- create HAL interface for platform specific IRDBs
+
+### Added
+- BLE audio stream end time telemetry
+- voice stream telemetry in single line/event
+
+### Fixed
+- Type-Z OTA bug
+- Remote type changed to type-Z early
+- controlMgr maintenance time crash at onInitializedTimer
+- fix ctrlm_config.json.template issue
+- Unable to start new voice stream with conversational UI server
+- check that a file descriptor is valid before FD_SET()
+- add correct ds-hal include path
+- Logline error event rcu firmware status
+
+
 ## [1.0.6] - 2025-03-18
 
 ### Added

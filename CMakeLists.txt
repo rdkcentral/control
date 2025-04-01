@@ -43,6 +43,7 @@ option(BLE_ENABLED "Enable BLE" OFF)
 option(BLE_SERVICES "Enable BLE Services" OFF)
 option(BREAKPAD "Enable BREAKPAD" OFF)
 option(BUILD_CTRLM_FACTORY "Build Control Factory Test" OFF)
+option(IRDB_STUB "Use IRDB stub implementation" OFF)
 option(CPC "Enable CPC" OFF)
 option(DISABLE_BLE_VOICE "Disable BLE voice" OFF)
 option(DEEPSLEEP_CLOSE_DB "Deep Sleep Close DB" OFF)
@@ -153,7 +154,6 @@ target_link_libraries(
       controlMgr
 
       xr-voice-sdk
-      ctrlm-hal-irdb
 
       rdkversion
       rt
@@ -197,6 +197,14 @@ endif()
 
 if(ASSERT_ON_WRONG_THREAD)
    add_comile_definitions(ASSERT_ON_WRONG_THREAD)
+endif()
+
+
+if(EXISTS ${CMAKE_SYSROOT}/usr/lib/libctrlm-hal-irdb.so)
+   target_link_libraries(controlMgr ctrlm-hal-irdb)
+else()
+   message(WARNING "ctrlm-hal-irdb library is not provided, using stub implementation")
+   set(IRDB_STUB ON)
 endif()
 
 if(AUTH_ENABLED)

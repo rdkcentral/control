@@ -35,11 +35,6 @@ public:
     bool                  clear_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id);
     bool                  initialize_irdb();
     ctrlm_irdb_vendor_t   get_vendor();
-
-protected:
-    bool                  get_ir_codes_by_infoframe(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, unsigned char *infoframe, size_t infoframe_len);
-    bool                  get_ir_codes_by_edid(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, unsigned char *edid, size_t edid_len);
-    bool                  get_ir_codes_by_cec(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, const std::string &osd, unsigned int vendor_id, unsigned int logical_address);
 };
 
 #endif

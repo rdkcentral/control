@@ -21,7 +21,6 @@
 #include "ctrlm_irdb_stub.h"
 #include "ctrlm_irdb_ipc_iarm_thunder.h"
 
-
 ctrlm_irdb_stub_t::ctrlm_irdb_stub_t(ctrlm_irdb_mode_t mode, bool platform_tv) : ctrlm_irdb_t(mode, platform_tv) {
     XLOGD_INFO("registering for IARM Thunder calls");
     this->ipc = new ctrlm_irdb_ipc_iarm_thunder_t();
@@ -38,21 +37,6 @@ bool ctrlm_irdb_stub_t::get_manufacturers(ctrlm_irdb_manufacturer_list_t &manufa
 }
 
 bool ctrlm_irdb_stub_t::get_models(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, ctrlm_irdb_manufacturer_t manufacturer, const std::string &prefix) {
-    XLOGD_ERROR("not implemented");
-    return(false);
-}
-
-bool ctrlm_irdb_stub_t::get_ir_codes_by_infoframe(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, unsigned char *infoframe, size_t infoframe_len) {
-    XLOGD_ERROR("not implemented");
-    return(false);
-}
-
-bool ctrlm_irdb_stub_t::get_ir_codes_by_edid(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, unsigned char *edid, size_t edid_len) {
-    XLOGD_ERROR("not implemented");
-    return(false);
-}
-
-bool ctrlm_irdb_stub_t::get_ir_codes_by_cec(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, const std::string &osd, unsigned int vendor_id, unsigned int logical_address) {
     XLOGD_ERROR("not implemented");
     return(false);
 }
@@ -76,11 +60,12 @@ bool ctrlm_irdb_stub_t::clear_ir_codes(ctrlm_network_id_t network_id, ctrlm_cont
     XLOGD_ERROR("not implemented");
     return(false);
 }
-    
+
 bool ctrlm_irdb_stub_t::initialize_irdb() {
     XLOGD_ERROR("not implemented");
     return(false);
 }
+
 ctrlm_irdb_vendor_t ctrlm_irdb_stub_t::get_vendor() {
     XLOGD_ERROR("not implemented");
     return(CTRLM_IRDB_VENDOR_INVALID);

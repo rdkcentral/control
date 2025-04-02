@@ -142,6 +142,15 @@ include_directories( ${CMAKE_CURRENT_BINARY_DIR}
                      ${CMAKE_SYSROOT}/usr/include/breakpad
                    )
 
+if(EXISTS ${CMAKE_SYSROOT}/usr/lib/libctrlm-hal-irdb.so)
+   target_link_libraries(controlMgr ctrlm-hal-irdb)
+   unset(IRDB_STUB)
+else()
+   message(WARNING "ctrlm-hal-irdb library is not provided, using IRDB_STUB implementation")
+   set(IRDB_STUB ON)
+endif()
+
+
 # SOURCES
 add_subdirectory(src)
 
@@ -196,14 +205,6 @@ endif()
 
 if(ASSERT_ON_WRONG_THREAD)
    add_comile_definitions(ASSERT_ON_WRONG_THREAD)
-endif()
-
-
-if(EXISTS ${CMAKE_SYSROOT}/usr/lib/libctrlm-hal-irdb.so)
-   target_link_libraries(controlMgr ctrlm-hal-irdb)
-else()
-   message(WARNING "ctrlm-hal-irdb library is not provided, using stub implementation")
-   target_compile_definitions(controlMgr PRIVATE IRDB_STUB)
 endif()
 
 if(AUTH_ENABLED)

@@ -142,6 +142,15 @@ include_directories( ${CMAKE_CURRENT_BINARY_DIR}
                      ${CMAKE_SYSROOT}/usr/include/breakpad
                    )
 
+if(EXISTS ${CMAKE_SYSROOT}/usr/lib/libctrlm-hal-irdb.so)
+   target_link_libraries(controlMgr ctrlm-hal-irdb)
+   unset(IRDB_STUB)
+else()
+   message(WARNING "ctrlm-hal-irdb library is not provided, using IRDB_STUB implementation")
+   set(IRDB_STUB ON)
+endif()
+
+
 # SOURCES
 add_subdirectory(src)
 
@@ -153,7 +162,6 @@ target_link_libraries(
       controlMgr
 
       xr-voice-sdk
-      ctrlm-hal-irdb
 
       rdkversion
       rt

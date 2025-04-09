@@ -142,7 +142,7 @@ public:
     virtual bool getAudioFormat(Encoding encoding, AudioFormat &format) const = 0;
     virtual void startAudioStreaming(uint32_t encoding, PendingReply<int> &&reply, uint32_t durationMax = 0) = 0;
     virtual void stopAudioStreaming(uint32_t audioDuration, PendingReply<> &&reply) = 0;
-    virtual void getAudioStatus(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets) = 0;
+    virtual void getAudioStatus(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs) = 0;
     virtual bool getFirstAudioDataTime(ctrlm_timestamp_t &time) = 0;
 
     virtual void addStreamingChangedSlot(const Slot<bool> &func) = 0;

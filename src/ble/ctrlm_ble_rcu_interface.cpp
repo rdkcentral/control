@@ -1107,14 +1107,15 @@ bool ctrlm_ble_rcu_interface_t::stopAudioStreaming(uint64_t ieee_address, uint32
 bool ctrlm_ble_rcu_interface_t::getAudioStatus(uint64_t ieee_address, 
                                                uint32_t &lastError, 
                                                uint32_t &expectedPackets, 
-                                               uint32_t &actualPackets)
+                                               uint32_t &actualPackets,
+                                               int32_t  &voiceKeyHeldMs)
 {
     BleAddress address(ieee_address);
 
     if (m_controller) {
         const auto device = m_controller->managedDevice(address);
         if (device) {
-            device->getAudioStatus( lastError, expectedPackets, actualPackets );
+            device->getAudioStatus( lastError, expectedPackets, actualPackets, voiceKeyHeldMs );
             return true;
         }
     }

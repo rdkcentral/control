@@ -70,6 +70,7 @@ public:
 
     bool register_ipc() const override;
     void deregister_ipc() const override;
+    bool is_thunder_device_update_enabled() const;
 
     bool on_status(const ctrlm_rcp_ipc_net_status_t &net_status) const;
     bool on_firmware_update_progress(const ctrlm_rcp_ipc_upgrade_status_t &upgrade_status) const;

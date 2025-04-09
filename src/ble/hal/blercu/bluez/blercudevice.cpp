@@ -1131,9 +1131,9 @@ void BleRcuDeviceBluez::stopAudioStreaming(uint32_t audioDuration, PendingReply<
 {
     audioService()->stopStreaming(audioDuration, std::move(reply));
 }
-void BleRcuDeviceBluez::getAudioStatus(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets)
+void BleRcuDeviceBluez::getAudioStatus(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs)
 {
-    audioService()->status(lastError, expectedPackets, actualPackets);
+    audioService()->status(lastError, expectedPackets, actualPackets, voiceKeyHeldMs);
 }
 bool BleRcuDeviceBluez::getFirstAudioDataTime(ctrlm_timestamp_t &time)
 {

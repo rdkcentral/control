@@ -46,13 +46,16 @@ GattAudioService::GattAudioService(uint8_t frameSize, uint8_t packetsPerFrame, u
     , m_frameSize(frameSize)
     , m_packetsPerFrame(packetsPerFrame)
     , m_audioFrameDuration(audioFrameDuration)
-    , m_timeoutEventId(-1)
+    , m_timeoutEventIdSession(-1)
+    , m_timeoutEventIdAudioInfo(-1)
+    , m_timeoutEventIdAudioLastFrame(-1)
     , m_emitOneTimeStreamingSignal(true)
 {
     // clear the last stats
     m_lastStats.lastError = NoError;
     m_lastStats.actualPackets = 0;
     m_lastStats.expectedPackets = 0;
+    m_lastStats.voiceKeyHeldMs = -1;
 
     // setup the state machine
     m_stateMachine.setGMainLoop(mainLoop);
@@ -98,6 +101,8 @@ void GattAudioService::init()
 
     m_stateMachine.addTransition(StreamingState,            StopStreamingRequestEvent,  StopStreamingState);
     m_stateMachine.addTransition(StreamingState,            OutputPipeCloseEvent,       StopStreamingState);
+    m_stateMachine.addTransition(StreamingState,            AudioInfoTimeoutEvent,      StopStreamingState);
+    m_stateMachine.addTransition(StreamingState,            AudioLastFrameTimeoutEvent, StopStreamingState);
 
     m_stateMachine.addTransition(StopStreamingState,        StreamingStoppedEvent,      ReadyState);
 
@@ -290,7 +295,8 @@ void GattAudioService::onEnteredStreamingState()
     // and finally start the audio pipe
     m_audioPipe->start();
 
-
+    m_frameCount      = 0;
+    m_audioDurationMs = -1;
 
     // complete the pending operation with a positive result
     if (m_startStreamingPromise) {
@@ -307,7 +313,7 @@ void GattAudioService::onEnteredStreamingState()
     }
 
     // schedule a timeout event for automatically cancelling the voice search after 30 seconds
-    m_timeoutEventId = m_stateMachine.postDelayedEvent(StopStreamingRequestEvent, 30000);
+    m_timeoutEventIdSession = m_stateMachine.postDelayedEvent(StopStreamingRequestEvent, 30000);
 
     // Once streaming data is actually received, emit the streamingChanged signal a single time
     m_emitOneTimeStreamingSignal = true;
@@ -335,19 +341,35 @@ void GattAudioService::onExitedStreamingState()
         m_lastStats.actualPackets = m_audioPipe->framesReceived() * m_packetsPerFrame;
         m_lastStats.expectedPackets = m_audioPipe->framesExpected(m_missedSequences, m_audioFrameDuration) * m_packetsPerFrame;
         m_lastStats.expectedPackets = std::max(m_lastStats.expectedPackets, m_lastStats.actualPackets);
+        m_lastStats.voiceKeyHeldMs = m_audioDurationMs;
 
-        XLOGD_INFO("audio frame stats: actual=%u, expected=%u",
-              m_lastStats.actualPackets, m_lastStats.expectedPackets);
+        XLOGD_INFO("audio frame stats: actual=%u, expected=%u voiceKeyHeld=%d ms",
+              m_lastStats.actualPackets, m_lastStats.expectedPackets, m_lastStats.voiceKeyHeldMs);
 
         // destroy the audio pipe (closes all file handles)
         m_audioPipe.reset();
     }
-    guard.unlock();
 
-    // cancel the timeout event
-    if (m_timeoutEventId >= 0) {
-        m_stateMachine.cancelDelayedEvent(m_timeoutEventId);
-        m_timeoutEventId = -1;
+    // cancel the audio info timeout event
+    if (m_timeoutEventIdAudioInfo >= 0) {
+        if(!m_stateMachine.cancelDelayedEvent(m_timeoutEventIdAudioInfo)) {
+            XLOGD_TELEMETRY("audio info timeout");
+        }
+        m_timeoutEventIdAudioInfo = -1;
+    }
+    // cancel the audio last frame timeout event
+    if (m_timeoutEventIdAudioLastFrame >= 0) {
+        if(!m_stateMachine.cancelDelayedEvent(m_timeoutEventIdAudioLastFrame)) {
+            XLOGD_TELEMETRY("audio last frame timeout");
+        }
+        m_timeoutEventIdAudioLastFrame = -1;
+    }
+    guard.unlock();
+    
+    // cancel the session timeout event
+    if (m_timeoutEventIdSession >= 0) {
+        m_stateMachine.cancelDelayedEvent(m_timeoutEventIdSession);
+        m_timeoutEventIdSession = -1;
     }
 
     // tell anyone who cares that streaming has stopped, but only if we've received actual
@@ -401,6 +423,47 @@ void GattAudioService::onAudioDataNotification(const vector<uint8_t> &value)
 /*!
     \internal
 
+    Called when the service provides frame count and stream duration.
+
+ */
+void GattAudioService::onAudioInfoReceived(uint16_t frameCount, uint32_t durationMs)
+{
+    std::unique_lock<std::mutex> guard(mAudioPipeMutex);
+    
+    // cancel the audio info timeout event
+    if (m_timeoutEventIdAudioInfo >= 0) {
+        m_stateMachine.cancelDelayedEvent(m_timeoutEventIdAudioInfo);
+        m_timeoutEventIdAudioInfo = -1;
+    }
+
+    m_frameCount      = frameCount;
+    m_audioDurationMs = durationMs;
+    
+    uint32_t frameCountMax = frameCount;
+    if(m_missedSequences >= frameCountMax) {
+        XLOGD_ERROR("missed frames greater than frame count max");
+    } else {
+        frameCountMax -= m_missedSequences; // Subtract the number of missed sequences from the frame count max
+    }
+
+    // Set the frame count max in the audio pipe
+    bool more_frames = m_audioPipe->setFrameCountMax(frameCountMax);
+    
+    if(m_StreamStopPending && !more_frames) { // if stream stop is pending and no more frames are needed, then stop the stream
+        guard.unlock();
+
+        m_stateMachine.postEvent(StopStreamingRequestEvent);
+    } else {
+        XLOGD_INFO("wait for remaining frames to arrive");
+        // Set a timeout event for receiving the remaining audio frames
+        m_timeoutEventIdAudioLastFrame = m_stateMachine.postDelayedEvent(AudioLastFrameTimeoutEvent, 500);
+    }
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    \internal
+
     Private slot called when the state machine leaves the 'streaming super'
     state. In this state we destroy the output fifo as the streaming has stopped.
  */
@@ -408,6 +471,12 @@ void GattAudioService::onExitedStreamingSuperState()
 {
     std::unique_lock<std::mutex> guard(mAudioPipeMutex);
 
+    // cancel the audio last frame timeout event
+    if (m_timeoutEventIdAudioLastFrame >= 0) {
+        m_stateMachine.cancelDelayedEvent(m_timeoutEventIdAudioLastFrame);
+        m_timeoutEventIdAudioLastFrame = -1;
+    }
+    
     // close the streaming pipe (if we haven't already)
     if (m_audioPipe) {
         m_lastStats.actualPackets = m_audioPipe->framesReceived() * m_packetsPerFrame;
@@ -471,11 +540,12 @@ void GattAudioService::startStreaming(Encoding encoding, PendingReply<int> &&rep
     }
 
     // clear the last stats
-    m_lastStats.lastError = NoError;
-    m_lastStats.actualPackets = 0;
+    m_lastStats.lastError       = NoError;
+    m_lastStats.actualPackets   = 0;
     m_lastStats.expectedPackets = 0;
-    m_missedSequences = 0;
-    m_lastSequenceNumber = 0;
+    m_missedSequences           = 0;
+    m_lastSequenceNumber        = 0;
+    m_StreamStopPending         = false;
 
     GattAudioPipe::cbFrameValidator frameValidator = std::bind(&GattAudioService::validateFrame, this, std::placeholders::_1, std::placeholders::_2);
 
@@ -527,33 +597,55 @@ void GattAudioService::stopStreaming(uint32_t audioDuration, PendingReply<> &&re
         return;
     }
 
+    bool postEvent = true;
+
     // create a promise to store the result of the streaming
     m_stopStreamingPromise = make_shared<PendingReply<>>(std::move(reply));
 
     std::unique_lock<std::mutex> guard(mAudioPipeMutex);
 
     if(m_audioPipe && audioDuration > 0) { // if the audio pipe is still alive then wait for the rest of the audio to stream
-        uint32_t frameCountMax = ((audioDuration * 1000) + m_audioFrameDuration - 1) / m_audioFrameDuration;
+        bool     frameCountReported = (m_frameCount > 0) ? true : false;
+        uint32_t frameCountMax      = 0;
+        if(frameCountReported) { // RCU reported the frame count
+            frameCountMax = m_frameCount;
+        } else { // Estimate the frame count from the audio duration
+            frameCountMax = ((audioDuration * 1000) + m_audioFrameDuration - 1) / m_audioFrameDuration;
+        }
 
         if(m_missedSequences >= frameCountMax) {
             XLOGD_ERROR("missed frames greater than frame count max");
         } else {
             frameCountMax -= m_missedSequences; // compensate for missed frames
 
-            if(m_audioPipe->setFrameCountMax(frameCountMax)) {
-                #if 0
-                // if the controller supports it, we can wait for the remaining frames to arrive and the stream will end when the frame count is reached
-                XLOGD_INFO("wait for remaining frames to arrive");
-                return;
-                #endif
+            if(m_frameCountSupported) {
+                if(!frameCountReported) {
+                    XLOGD_INFO("wait for audio info notification to arrive");
+                    postEvent = false;
+
+                    m_StreamStopPending = true;
+
+                    // The audio info descriptor could be explicitly read, but that will generate more BLE traffic and in most cases the audio info notification will arrive soon.
+                    // Instead a timeout will be used to handle any error scenarios where the audio info notification doesn't arrive.
+                    m_timeoutEventIdAudioInfo = m_stateMachine.postDelayedEvent(AudioInfoTimeoutEvent, 500);
+
+                } else if(m_audioPipe->setFrameCountMax(frameCountMax)) { // returns true if more frames are needed to complete the stream
+                    XLOGD_INFO("wait for remaining frames to arrive");
+                    postEvent = false;
+
+                    m_timeoutEventIdAudioLastFrame = m_stateMachine.postDelayedEvent(AudioLastFrameTimeoutEvent, 500);
+                }
+            } else {
+                m_audioPipe->setFrameCountMax(frameCountMax); // Set the frame count max in the audio pipe 
             }
         }
     }
     
     guard.unlock();
 
-    // post a message to the state machine
-    m_stateMachine.postEvent(StopStreamingRequestEvent);
+    if(postEvent) { // post a message to the state machine
+        m_stateMachine.postEvent(StopStreamingRequestEvent);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -582,6 +674,11 @@ void GattAudioService::updateSequenceNumber(uint8_t sequenceNumber, uint32_t fra
     m_lastSequenceNumber = sequenceNumber;
 }
 
+void GattAudioService::updateFrameCountSupport(bool frameCountSupported) {
+    m_frameCountSupported = frameCountSupported;
+    XLOGD_INFO("frame count %s", frameCountSupported ? "supported" : "not supported");
+}
+
 // -----------------------------------------------------------------------------
 /*!
     \overload
@@ -591,7 +688,7 @@ void GattAudioService::updateSequenceNumber(uint8_t sequenceNumber, uint32_t fra
     state even across the service starting / stopping.
 
  */
-void GattAudioService::status(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets)
+void GattAudioService::status(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs)
 {
     std::unique_lock<std::mutex> guard(mAudioPipeMutex);
 
@@ -607,6 +704,12 @@ void GattAudioService::status(uint32_t &lastError, uint32_t &expectedPackets, ui
         lastError = m_lastStats.lastError;
         actualPackets = m_lastStats.actualPackets;
         expectedPackets = m_lastStats.expectedPackets;
+    }
+
+    if(m_audioDurationMs > 0) {
+        voiceKeyHeldMs = m_audioDurationMs;
+    } else {
+        voiceKeyHeldMs = -1;
     }
 }
 

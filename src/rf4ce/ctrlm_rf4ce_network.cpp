@@ -3788,6 +3788,9 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
       voice_session_rsp_confirm_       = cb_confirm_voice_obj;
       voice_session_rsp_confirm_param_ = cb_confirm_param;
 
+      timestamp_voice_session_request_ = hal_timestamp;
+      timestamp_voice_first_packet_    = hal_timestamp;
+
       cb_confirm_rf4ce = ctrlm_network_rf4ce_cfm_voice_session_rsp;
       cb_confirm_param = voice_session_rsp_params_.network_id;
 
@@ -3894,6 +3897,16 @@ void ctrlm_obj_network_rf4ce_t::cfm_voice_session_rsp(void *data, int size) {
    }
 }
 
+void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_first_audio_packet(void *data, int size) {
+   THREAD_ID_VALIDATE();
+   ctrlm_main_queue_msg_voice_session_first_audio_packet_t *dqm = (ctrlm_main_queue_msg_voice_session_first_audio_packet_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_voice_session_first_audio_packet_t));
+
+   timestamp_voice_first_packet_ = dqm->timestamp;
+}
+
 void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_stop(void *data, int size) {
    THREAD_ID_VALIDATE();
    ctrlm_main_queue_msg_voice_session_stop_t *dqm = (ctrlm_main_queue_msg_voice_session_stop_t *)data;
@@ -3912,7 +3925,19 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_stop(void *data, int s
    property_get(CTRLM_HAL_NETWORK_PROPERTY_NETWORK_STATS, (void **)&network_stats);
 
    ctrlm_voice_session_end_stats_t stats;
-   stats.rf_channel = network_stats.rf_channel;
+   stats.rf_channel     = network_stats.rf_channel;
+   stats.audio_duration = 0;
+   stats.start_lag      = 0;
+
+   signed long long startAudioLag = ctrlm_timestamp_subtract_ms(timestamp_voice_session_request_, timestamp_voice_first_packet_);
+
+   if(startAudioLag < 0 || startAudioLag > UINT32_MAX) {
+      XLOGD_ERROR("invalid startAudioLag <%lld>", startAudioLag);
+      startAudioLag = 0;
+   } else { // Update the start audio lag time
+      stats.start_lag = startAudioLag;
+   }
+
 
    ctrlm_get_voice_obj()->voice_session_end(network_id_get(), dqm->controller_id, dqm->session_end_reason, &dqm->timestamp, &stats);
 }

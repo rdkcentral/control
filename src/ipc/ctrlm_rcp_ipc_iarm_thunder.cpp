@@ -96,6 +96,11 @@ void ctrlm_rcp_ipc_iarm_thunder_t::deregister_ipc() const
     turn_off(atomic_running_);
 }
 
+bool ctrlm_rcp_ipc_iarm_thunder_t::is_thunder_device_update_enabled() const
+{
+    return (thunder_device_update_enabled_);
+}
+
 bool ctrlm_rcp_ipc_iarm_thunder_t::on_status(const ctrlm_rcp_ipc_net_status_t &net_status) const
 {
     if (!is_running(atomic_running_)) {

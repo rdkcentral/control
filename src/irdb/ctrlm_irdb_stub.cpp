@@ -21,6 +21,7 @@
 #include "ctrlm_irdb_stub.h"
 #include "ctrlm_irdb_ipc_iarm_thunder.h"
 
+
 ctrlm_irdb_stub_t::ctrlm_irdb_stub_t(ctrlm_irdb_mode_t mode, bool platform_tv) : ctrlm_irdb_t(mode, platform_tv) {
     XLOGD_INFO("registering for IARM Thunder calls");
     this->ipc = new ctrlm_irdb_ipc_iarm_thunder_t();
@@ -41,22 +42,26 @@ bool ctrlm_irdb_stub_t::get_models(ctrlm_irdb_model_list_t &models, ctrlm_irdb_d
     return(false);
 }
 
-bool ctrlm_irdb_stub_t::get_ir_codes_by_infoframe(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, unsigned char *infoframe, size_t infoframe_len) {
+void ctrlm_irdb_t::on_thunder_ready() {
+    XLOGD_ERROR("not implemented");
+}
+
+bool ctrlm_irdb_t::get_ir_codes_by_infoframe(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, unsigned char *infoframe, size_t infoframe_len) {
     XLOGD_ERROR("not implemented");
     return(false);
 }
 
-bool ctrlm_irdb_stub_t::get_ir_codes_by_edid(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, unsigned char *edid, size_t edid_len) {
+bool ctrlm_irdb_t::get_ir_codes_by_edid(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, unsigned char *edid, size_t edid_len) {
     XLOGD_ERROR("not implemented");
     return(false);
 }
 
-bool ctrlm_irdb_stub_t::get_ir_codes_by_cec(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, const std::string &osd, unsigned int vendor_id, unsigned int logical_address) {
+bool ctrlm_irdb_t::get_ir_codes_by_cec(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, const std::string &osd, unsigned int vendor_id, unsigned int logical_address) {
     XLOGD_ERROR("not implemented");
     return(false);
 }
 
-bool ctrlm_irdb_stub_t::get_ir_codes_by_autolookup(ctrlm_irdb_autolookup_ranked_list_by_type_t &codes) {
+bool ctrlm_irdb_t::get_ir_codes_by_autolookup(ctrlm_irdb_autolookup_ranked_list_by_type_t &codes) {
     XLOGD_ERROR("not implemented");
     return(false);
 }
@@ -80,7 +85,6 @@ bool ctrlm_irdb_stub_t::initialize_irdb() {
     XLOGD_ERROR("not implemented");
     return(false);
 }
-
 ctrlm_irdb_vendor_t ctrlm_irdb_stub_t::get_vendor() {
     XLOGD_ERROR("not implemented");
     return(CTRLM_IRDB_VENDOR_INVALID);

@@ -205,6 +205,10 @@ typedef struct {
    ctrlm_voice_session_abort_reason_t    reason;
 } ctrlm_main_queue_msg_voice_session_request_t;
 
+typedef struct {
+   ctrlm_controller_id_t            controller_id;
+   ctrlm_timestamp_t                timestamp;
+} ctrlm_main_queue_msg_voice_session_first_audio_packet_t;
 
 typedef struct {
    ctrlm_controller_id_t            controller_id;
@@ -307,6 +311,7 @@ typedef struct {
    std::string                 opus_encoder_params_str;
    uint8_t                     opus_encoder_params[CTRLM_RCU_RIB_ATTR_LEN_OPUS_ENCODING_PARAMS];
    bool                        force_toggle_fallback;
+   bool                        telemetry_session_stats;
    #ifdef DEEP_SLEEP_ENABLED
    xrsr_dst_params_t           dst_params_standby;
    #endif
@@ -363,13 +368,18 @@ typedef struct {
    double                          controller_voltage;
    std::string                     stb_name;
    uint32_t                        ffv_leading_samples; //This was a long. We can't have that many samples and "if(stream_params->keyword_sample_begin > info.ffv_leading_samples)" evaluates to true if keyword_sample_begin is < 0 and ffv_leading_samples is long
+   bool                            press_and_release;
    bool                            has_stream_params;
    voice_session_req_stream_params stream_params;
    std::string                     rf_protocol;
 } ctrlm_voice_session_info_t;
 
 typedef struct {
-   unsigned long rf_channel;       // The rf channel that the voice session used (typically 15, 20 or 25)
+   unsigned long     rf_channel;     // The rf channel that the voice session used (typically 15, 20 or 25)
+   int32_t           start_lag;      // start lag time in ms (amount of time elapsed from voice key down reception to first audio packet received)
+   uint32_t          audio_duration; // expected stream length (amount of time elapsed from voice key down to key up)
+   rdkx_timestamp_t *time_key_down;  // timestamp of the voice key down event
+   rdkx_timestamp_t *time_key_up;    // timestamp of the voice key up event
 } ctrlm_voice_session_end_stats_t;
 
 typedef struct {
@@ -425,6 +435,7 @@ typedef struct {
 
    ctrlm_voice_session_end_reason_t end_reason;
 
+   bool                             is_press_and_release;
    bool                             is_session_by_text;
    std::string                      transcription_in;
    std::string                      transcription;
@@ -459,6 +470,10 @@ typedef struct {
    uint8_t                          last_cmd_id; // Needed for ADPCM over RF4CE, since duplicate packets are possible
    uint8_t                          next_cmd_id;
 
+   #ifdef TELEMETRY_SUPPORT
+   ctrlm_voice_telemetry_session_t  telemetry_session_stats;
+   #endif
+
 } ctrlm_voice_session_t;
 
 class ctrlm_voice_t {
@@ -468,7 +483,7 @@ class ctrlm_voice_t {
     ctrlm_voice_t();
     virtual ~ctrlm_voice_t();
 
-    ctrlm_voice_session_response_status_t voice_session_req(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_voice_device_t device_type, ctrlm_voice_format_t format, voice_session_req_stream_params *stream_params, const char *controller_name, const char *sw_version, const char *hw_version, double voltage, bool command_status=false, ctrlm_timestamp_t *timestamp=NULL, ctrlm_voice_session_rsp_confirm_t *cb_confirm=NULL, void **cb_confirm_param=NULL, bool use_external_data_pipe=false, const char *transcription_in=NULL, const char *audio_file_in=NULL, const uuid_t *uuid = NULL, bool low_latency=false, bool low_cpu_util=false, int audio_fd = -1);
+    ctrlm_voice_session_response_status_t voice_session_req(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_voice_device_t device_type, ctrlm_voice_format_t format, voice_session_req_stream_params *stream_params, const char *controller_name, const char *sw_version, const char *hw_version, double voltage, bool command_status=false, ctrlm_timestamp_t *timestamp=NULL, ctrlm_voice_session_rsp_confirm_t *cb_confirm=NULL, void **cb_confirm_param=NULL, bool use_external_data_pipe=false, bool press_and_hold=true, const char *transcription_in=NULL, const char *audio_file_in=NULL, const uuid_t *uuid = NULL, bool low_latency=false, bool low_cpu_util=false, int audio_fd = -1);
     void                                  voice_session_rsp_confirm(bool result, signed long long rsp_time, unsigned int rsp_window, const std::string &err_str, ctrlm_timestamp_t *timestamp);
     bool                                  voice_session_data(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, const char *buffer, long unsigned int length, ctrlm_timestamp_t *timestamp=NULL, uint8_t *lqi=NULL);
     bool                                  voice_session_data(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, int fd, const uuid_t *uuid=NULL);
@@ -740,6 +755,7 @@ const char *ctrlm_voice_session_response_status_str(ctrlm_voice_session_response
 const char *ctrlm_voice_session_group_str(ctrlm_voice_session_group_t group);
 const char *ctrlm_voice_cert_type_str(ctrlm_voice_cert_type_t cert_type);
 xrsr_audio_format_t voice_format_to_xrsr(ctrlm_voice_format_t format);
+ctrlm_voice_format_t xrsr_to_voice_format(xrsr_audio_format_t format);
 ctrlm_voice_device_t xrsr_to_voice_device(xrsr_src_t device);
 xrsr_src_t voice_device_to_xrsr(ctrlm_voice_device_t device);
 

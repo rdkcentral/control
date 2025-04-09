@@ -394,6 +394,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
 
          ctrlm_voice_format_t voice_format = { .type = CTRLM_VOICE_FORMAT_INVALID };
 
+         bool pressAndHoldSupport = true;
          if (ble_rcu_interface_) {
             AudioFormat audio_format;
             // Query the ble_rcu_interface to get the voice format for this controller based on the selected codec
@@ -406,7 +407,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                audio_format.getFrameInfo(adpcm_frame->size_packet, adpcm_frame->size_header);
                audio_format.getHeaderInfoAdpcm(adpcm_frame->offset_step_size_index, adpcm_frame->offset_predicted_sample_lsb, adpcm_frame->offset_predicted_sample_msb, adpcm_frame->offset_sequence_value, adpcm_frame->sequence_value_min, adpcm_frame->sequence_value_max);
 
-               bool pressAndHoldSupport = audio_format.getPressAndHoldSupport();
+               pressAndHoldSupport = audio_format.getPressAndHoldSupport();
                if(!pressAndHoldSupport) {
                   streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION;
                }
@@ -418,7 +419,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                                                                 controllers_[controller_id]->get_model().c_str(),
                                                                 controllers_[controller_id]->get_sw_revision().to_string().c_str(),
                                                                 controllers_[controller_id]->get_hw_revision().to_string().c_str(), 0.0,
-                                                                false, NULL, NULL, NULL, true);
+                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport);
          if (!controllers_[controller_id]->get_capabilities().has_capability(ctrlm_controller_capabilities_t::capability::PAR) && (VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE == voice_status)) {
             XLOGD_WARN("PAR voice is enabled but not supported by BLE controller treating as normal voice session");
             voice_status = VOICE_SESSION_RESPONSE_AVAILABLE;
@@ -461,7 +462,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
    }
 }
 
-bool ctrlm_obj_network_ble_t::end_voice_session_for_controller(uint64_t ieee_address, ctrlm_voice_session_end_reason_t reason, uint32_t audioDuration) {
+bool ctrlm_obj_network_ble_t::end_voice_session_for_controller(uint64_t ieee_address, ctrlm_voice_session_end_reason_t reason, int32_t audioDuration, int32_t startLag, rdkx_timestamp_t *keyDownTime, rdkx_timestamp_t *keyUpTime) {
    ctrlm_controller_id_t controller_id;
 
    if (!getControllerId(ieee_address, &controller_id)) {
@@ -469,7 +470,14 @@ bool ctrlm_obj_network_ble_t::end_voice_session_for_controller(uint64_t ieee_add
       return false;
    }
 
-   ctrlm_get_voice_obj()->voice_session_end(network_id_get(), controller_id, reason);
+   ctrlm_voice_session_end_stats_t stats;
+   stats.rf_channel     = 0;
+   stats.audio_duration = audioDuration;
+   stats.start_lag      = startLag;
+   stats.time_key_down  = keyDownTime;
+   stats.time_key_up    = keyUpTime;
+
+   ctrlm_get_voice_obj()->voice_session_end(network_id_get(), controller_id, reason, NULL, &stats);
 
    if (ble_rcu_interface_) {
       if (!ble_rcu_interface_->stopAudioStreaming(ieee_address, audioDuration)) {
@@ -1611,6 +1619,35 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   break;
                case CTRLM_HAL_BLE_PROPERTY_AUDIO_STREAMING:
                   controller->setAudioStreaming(dqm->rcu_data.audio_streaming);
+
+                  if(!dqm->rcu_data.audio_streaming) { // report end of stream stats
+                     if (ble_rcu_interface_) {
+                        uint32_t lastError;
+                        uint32_t expectedPackets;
+                        uint32_t actualPackets;
+                        int32_t  voiceKeyHeldMs;
+                        if (!ble_rcu_interface_->getAudioStatus(controller->ieee_address_get().get_value(), lastError, expectedPackets, actualPackets, voiceKeyHeldMs)) {
+                           XLOGD_ERROR("failed to get audio stats from BLE RCU interface");
+                        } else {
+                           // Send data to voice object
+                           ctrlm_voice_t *obj = ctrlm_get_voice_obj();
+                           if(NULL != obj) {
+                              ctrlm_voice_stats_session_t stats_session;
+               
+                              errno_t safec_rc = memset_s(&stats_session, sizeof(stats_session), 0, sizeof(stats_session));
+                              ERR_CHK(safec_rc);
+               
+                              stats_session.available         = 1;
+                              stats_session.packets_total     = expectedPackets;
+                              stats_session.dropped_buffer    = (expectedPackets - actualPackets);
+                              stats_session.voice_key_held_ms = voiceKeyHeldMs; 
+               
+                              obj->voice_session_stats(stats_session);
+                           }
+                        }
+                     }
+                  }
+               
                   report_status = false;
                   print_status = false;
                   break;
@@ -1652,13 +1689,22 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   XLOGD_ERROR("Controller <%s> firmware upgrade FAILED with error <%s>.", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.upgrade_error);
                   report_status = false;
                   print_status = false;
+                  controller->set_upgrade_error(dqm->rcu_data.upgrade_error);
                   if (controller->retry_ota()) {
                      controller->setUpgradeAttempted(false);
                      XLOGD_WARN("Upgrade failed, setting timer for %d minutes to retry.", CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT / MINUTE_IN_MILLISECONDS);
                      ctrlm_timeout_destroy(&g_ctrlm_ble_network.upgrade_controllers_timer_tag);
                      g_ctrlm_ble_network.upgrade_controllers_timer_tag = ctrlm_timeout_create(CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT, ctrlm_ble_upgrade_controllers, &id_);
+                     controller->set_upgrade_state(CTRLM_RCU_UPGRADE_STATE_RETRYING);
                   } else {
+                     controller->check_upgrade_error();
+                     controller->set_upgrade_state(CTRLM_RCU_UPGRADE_STATE_ERROR);
                      XLOGD_ERROR("Controller <%s> OTA upgrade keeps failing and reached maximum retries.  Won't try again until a new request is sent.", controller->ieee_address_get().to_string().c_str());
+
+                     // Remove any remaining retries after getting to this point
+                     if (g_ctrlm_ble_network.upgrade_controllers_timer_tag > 0) {
+                        ctrlm_timeout_destroy(&g_ctrlm_ble_network.upgrade_controllers_timer_tag);
+                     }
 
                      // Make sure xconf config file is updated
                      ctrlm_main_queue_msg_header_t *msg = (ctrlm_main_queue_msg_header_t *)g_malloc(sizeof(ctrlm_main_queue_msg_header_t));
@@ -1669,9 +1715,8 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                         ctrlm_main_queue_msg_push((gpointer)msg);
                      }
                   }
-                  controller->set_upgrade_error(dqm->rcu_data.upgrade_error);
-                  controller->ota_failure_cnt_incr();
                   iarm_event_rcu_firmware_status(*controller);
+                  controller->ota_failure_cnt_incr();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_UNPAIR_REASON:
                   XLOGD_INFO("Controller <%s> notified reason for unpairing = <%s>", controller->ieee_address_get().to_string().c_str(), ctrlm_ble_unpair_reason_str(dqm->rcu_data.unpair_reason));
@@ -2050,13 +2095,16 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
                XLOGD_INFO("CODE_VOICE_KEY button RELEASED event for device: %s (ignored for PAR session)", controller->ieee_address_get().to_string().c_str());
                XLOGD_INFO("------------------------------------------------------------------------");
             } else {
-               rdkx_timestamp_t keyUpTime, voiceStartTimeLocal, firstAudioDataTime;
+               rdkx_timestamp_t keyUpTime, keyUpTimeLocal, voiceStartTimeLocal, firstAudioDataTime;
+               ctrlm_timestamp_get_monotonic(&keyUpTimeLocal);
+               
                keyUpTime.tv_sec  = dqm->event.time.tv_sec;
                keyUpTime.tv_nsec = dqm->event.time.tv_usec * 1000;
                
                signed long long audioDurationKeys = ctrlm_timestamp_subtract_ms(controller->getVoiceStartTimeKey(), keyUpTime);
                
                bool hasStartLagTime = false;
+               int32_t startLag    = -1;
                
                if(ble_rcu_interface_) {
                   if (!ble_rcu_interface_->getFirstAudioDataTime(dqm->ieee_address, firstAudioDataTime)) {
@@ -2070,13 +2118,13 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
                if(hasStartLagTime) { // Lag from voice key down to first audio data is available
                   signed long long startAudioLag = ctrlm_timestamp_subtract_ms(voiceStartTimeLocal, firstAudioDataTime);
 
-                  if(startAudioLag < 0 || startAudioLag > UINT32_MAX || startAudioLag > audioDurationKeys) {
+                  if(startAudioLag < 0 || startAudioLag > INT32_MAX || startAudioLag > audioDurationKeys) {
                      XLOGD_ERROR("invalid startAudioLag <%lld> audioDurationKeys <%lld>", startAudioLag, audioDurationKeys);
-                     startAudioLag = 0;
+                     startAudioLag = -2;
+                     startLag      = -2;
+                  } else { // Update the start audio lag time
+                     startLag = startAudioLag;
                   }
-
-                  // Compensate for the full round trip time to start the audio on the controller
-                  audioDurationKeys -= startAudioLag;
 
                   XLOGD_INFO("------------------------------------------------------------------------");
                   XLOGD_INFO("CODE_VOICE_KEY button RELEASED event for device: %s duration <%lld ms> start lag <%lld ms>", controller->ieee_address_get().to_string().c_str(), audioDurationKeys, startAudioLag);
@@ -2087,12 +2135,12 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
                   XLOGD_INFO("------------------------------------------------------------------------");
                }
 
-               uint32_t audioDuration = 0;
-               if(audioDurationKeys >= 0 && audioDurationKeys <= UINT32_MAX) {
+               int32_t audioDuration = -1;
+               if(audioDurationKeys >= 0 && audioDurationKeys <= INT32_MAX) {
                   audioDuration = audioDurationKeys;
                }
 
-               end_voice_session_for_controller(dqm->ieee_address, CTRLM_VOICE_SESSION_END_REASON_DONE, audioDuration);
+               end_voice_session_for_controller(dqm->ieee_address, CTRLM_VOICE_SESSION_END_REASON_DONE, audioDuration, startLag, &voiceStartTimeLocal, &keyUpTimeLocal);
             }
          }
       }
@@ -2126,15 +2174,16 @@ void ctrlm_obj_network_ble_t::process_voice_controller_metrics(void *data, int s
       uint32_t lastError;
       uint32_t expectedPackets;
       uint32_t actualPackets;
+      int32_t  voiceKeyHeldMs;
       if (!ble_rcu_interface_->getAudioStatus(controllers_[controller_id]->ieee_address_get().get_value(),
-                                         lastError, expectedPackets, actualPackets)) 
+                                         lastError, expectedPackets, actualPackets, voiceKeyHeldMs)) 
       {
          XLOGD_ERROR("failed to get audio stats from BLE RCU interface");
       } else {
-         dqm->packets_total = expectedPackets;
-         dqm->packets_lost = expectedPackets - actualPackets;
-         XLOGD_INFO("Audio Stats -> error_status = <%u>, packets_received = <%u>, packets_expected = <%u>",
-               lastError, actualPackets, expectedPackets);
+         dqm->packets_total     = expectedPackets;
+         dqm->packets_lost      = expectedPackets - actualPackets;
+         XLOGD_INFO("Audio Stats -> error_status = <%u>, packets_received = <%u>, packets_expected = <%u> voice key held <%d ms>",
+               lastError, actualPackets, expectedPackets, voiceKeyHeldMs);
       }
    }
    // ctrlm_obj_network_t::process_voice_controller_metrics(dqm, sizeof(*dqm));

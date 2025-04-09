@@ -279,40 +279,36 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_ir_codes_by_auto_lookup(void *a
             XLOGD_WARN("IRDB is not initialized");
             success = false;
         } else {
-            if(irdb->can_get_ir_codes_by_autolookup()) {
-                ctrlm_irdb_autolookup_ranked_list_by_type_t cd_map;
-                if(irdb->get_ir_codes_by_autolookup(cd_map) == false) {
-                    XLOGD_ERROR("Failed getting codes");
-                    success = false;
-                } else {
-                    if(cd_map.count(CTRLM_IRDB_DEV_TYPE_TV) > 0) {
-                        // First entry in the list is the highest ranked code, so use the manufacturer and model from that entry
-                        tv_man   = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_TV].front().man.c_str());
-                        tv_model = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_TV].front().model.c_str());
-                        tv_codes = json_array();
-                        for (auto const &entry : cd_map[CTRLM_IRDB_DEV_TYPE_TV]) {
-                            json_array_append_new(tv_codes, json_string(entry.id.c_str()));
-                        }
-                        json_object_set_new(ret, "tvManufacturer", tv_man);
-                        json_object_set_new(ret, "tvModel", tv_model);
-                        json_object_set_new(ret, "tvCodes", tv_codes);
-                    }
-                    if(cd_map.count(CTRLM_IRDB_DEV_TYPE_AVR) > 0) {
-                        // First entry in the list is the highest ranked code, so use the manufacturer and model from that entry
-                        avr_man   = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_AVR].front().man.c_str());
-                        avr_model = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_AVR].front().model.c_str());
-                        avr_codes = json_array();
-                        for (auto const &entry : cd_map[CTRLM_IRDB_DEV_TYPE_AVR]) {
-                            json_array_append_new(avr_codes, json_string(entry.id.c_str()));
-                        }
-                        json_object_set_new(ret, "avrManufacturer", avr_man);
-                        json_object_set_new(ret, "avrModel", avr_model);
-                        json_object_set_new(ret, "avrCodes", avr_codes);
-                    }
-                    success = true;
-                }
+            ctrlm_irdb_autolookup_ranked_list_by_type_t cd_map;
+            if(irdb->get_ir_codes_by_autolookup(cd_map) == false) {
+                XLOGD_ERROR("Failed getting codes");
+                success = false;
             } else {
-                XLOGD_WARN("IRDB doesn't support get_ir_codes_by_autolookup");
+                if(cd_map.count(CTRLM_IRDB_DEV_TYPE_TV) > 0) {
+                    // First entry in the list is the highest ranked code, so use the manufacturer and model from that entry
+                    tv_man   = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_TV].front().man.c_str());
+                    tv_model = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_TV].front().model.c_str());
+                    tv_codes = json_array();
+                    for (auto const &entry : cd_map[CTRLM_IRDB_DEV_TYPE_TV]) {
+                        json_array_append_new(tv_codes, json_string(entry.id.c_str()));
+                    }
+                    json_object_set_new(ret, "tvManufacturer", tv_man);
+                    json_object_set_new(ret, "tvModel", tv_model);
+                    json_object_set_new(ret, "tvCodes", tv_codes);
+                }
+                if(cd_map.count(CTRLM_IRDB_DEV_TYPE_AVR) > 0) {
+                    // First entry in the list is the highest ranked code, so use the manufacturer and model from that entry
+                    avr_man   = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_AVR].front().man.c_str());
+                    avr_model = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_AVR].front().model.c_str());
+                    avr_codes = json_array();
+                    for (auto const &entry : cd_map[CTRLM_IRDB_DEV_TYPE_AVR]) {
+                        json_array_append_new(avr_codes, json_string(entry.id.c_str()));
+                    }
+                    json_object_set_new(ret, "avrManufacturer", avr_man);
+                    json_object_set_new(ret, "avrModel", avr_model);
+                    json_object_set_new(ret, "avrCodes", avr_codes);
+                }
+                success = true;
             }
         }
     }

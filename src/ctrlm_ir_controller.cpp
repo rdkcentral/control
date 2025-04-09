@@ -131,30 +131,27 @@ ctrlm_ir_controller_t::~ctrlm_ir_controller_t() {
 
 bool ctrlm_ir_controller_t::read_config() {
    bool ret = false;
-   string legacyName(JSON_STR_VALUE_IR_INPUT_DEVICE_NAME);
 
-   ctrlm_config_string_t configNameLegacy("ir.input_device_name");
-   ctrlm_config_array_t configNameList("ir.input_device_names");
+   ctrlm_config_string_t configNames("ir.input_device_name");
+   string name_list(JSON_STR_VALUE_IR_INPUT_DEVICE_NAME);
 
    input_device_names_.clear();
-   if (configNameList.get_config_array(input_device_names_)) {
-      XLOGD_INFO("Found IR input device name list with <%d> elements", input_device_names_.size());
-      for (auto const &it : input_device_names_) {
-         XLOGD_INFO("Adding IR input device name: <%s>", it.c_str());
-      }
+   if (configNames.get_config_value(name_list)) {
+      XLOGD_INFO("Config entry found for IR input device name list: <%s>", name_list.c_str());
       ret = true;
    } else {
-      XLOGD_ERROR("Could not get IR input name list, checking legacy method...");
-      if (configNameLegacy.get_config_value(legacyName)) {
-         XLOGD_INFO("Using legacy IR input device name from config file: <%s>", legacyName.c_str());
-         ret = true;
-      } else {
-         XLOGD_WARN("Failed to read from config, using IR input device name default: <%s>", legacyName.c_str());
-      }
-      if (!legacyName.empty()) {
-         input_device_names_.push_back(legacyName);
-      }
+      XLOGD_INFO("Config entry not found, using IR input device name list default: <%s>", name_list.c_str());
    }
+
+   stringstream ss(name_list);
+   while (ss.good()) {
+      string substr;
+      getline( ss, substr, ',' );
+      XLOGD_INFO("Adding IR input device name: <%s>", substr.c_str());
+      input_device_names_.push_back(substr);
+   }
+
+
    return(ret);
 }
 

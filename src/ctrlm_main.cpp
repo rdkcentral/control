@@ -2570,6 +2570,34 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
+         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_IR_LINE_OF_SIGHT: {
+            // Cancel active line of sight timer (if active)
+            ctrlm_timeout_destroy(&g_ctrlm.line_of_sight_timeout_tag);
+
+            if(!g_ctrlm.line_of_sight) {
+               ctrlm_main_iarm_event_binding_line_of_sight(TRUE);
+            }
+            // Set line of sight as active
+            g_ctrlm.line_of_sight = TRUE;
+
+            // Set a timer to clear the line of sight after a period of time
+            g_ctrlm.line_of_sight_timeout_tag = ctrlm_timeout_create(g_ctrlm.line_of_sight_timeout_val, ctrlm_timeout_line_of_sight, NULL);
+            break;
+         }
+         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_IR_AUTOBIND: {
+            // Cancel active autobind timer (if active)
+            ctrlm_timeout_destroy(&g_ctrlm.autobind_timeout_tag);
+
+            if(!g_ctrlm.autobind) {
+               ctrlm_main_iarm_event_autobind_line_of_sight(TRUE);
+            }
+            // Set autobind as active
+            g_ctrlm.autobind = TRUE;
+
+            // Set a timer to clear the autobind after a period of time
+            g_ctrlm.autobind_timeout_tag = ctrlm_timeout_create(g_ctrlm.autobind_timeout_val, ctrlm_timeout_autobind, NULL);
+            break;
+         }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_TIMEOUT_LINE_OF_SIGHT: {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_TIMEOUT_LINE_OF_SIGHT");
             g_ctrlm.line_of_sight             = FALSE;

@@ -100,18 +100,13 @@ ctrlm_ir_controller_t::ctrlm_ir_controller_t()
 
    read_config();
 
-   if (input_device_names_.empty()) {
-      XLOGD_WARN("IR input device name list is empty, not starting key monitor thread...");
+   // Create an asynchronous queue to receive incoming messages
+   if (false == ctrlm_utils_message_queue_open(&key_thread_msgq_, CTRLM_IR_KEY_MSG_QUEUE_MSG_MAX, CTRLM_IR_KEY_MSG_QUEUE_MSG_SIZE_MAX)) {
+      XLOGD_ERROR("failed to create message queue to key monitor thread");
    } else {
-
-      // Create an asynchronous queue to receive incoming messages
-      if (false == ctrlm_utils_message_queue_open(&key_thread_msgq_, CTRLM_IR_KEY_MSG_QUEUE_MSG_MAX, CTRLM_IR_KEY_MSG_QUEUE_MSG_SIZE_MAX)) {
-         XLOGD_ERROR("failed to create message queue to key monitor thread");
-      } else {
-         XLOGD_INFO("Starting key monitor thread...");
-         key_thread_.name = "ctrlm_ir_key_mon";
-         ctrlm_utils_thread_create(&key_thread_, ctrlm_ir_key_monitor_thread, this);
-      }
+      XLOGD_INFO("Starting key monitor thread...");
+      key_thread_.name = "ctrlm_ir_key_mon";
+      ctrlm_utils_thread_create(&key_thread_, ctrlm_ir_key_monitor_thread, this);
    }
 }
 

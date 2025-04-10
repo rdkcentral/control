@@ -135,20 +135,22 @@ bool ctrlm_ir_controller_t::read_config() {
    ctrlm_config_string_t configNames("ir.input_device_name");
    string name_list(JSON_STR_VALUE_IR_INPUT_DEVICE_NAME);
 
-   input_device_names_.clear();
    if (configNames.get_config_value(name_list)) {
       XLOGD_INFO("Config entry found for IR input device name list: <%s>", name_list.c_str());
       ret = true;
    } else {
       XLOGD_INFO("Config entry not found, using IR input device name list default: <%s>", name_list.c_str());
    }
-
+   
+   input_device_names_.clear();
    stringstream ss(name_list);
    while (ss.good()) {
       string substr;
       getline( ss, substr, ',' );
-      XLOGD_INFO("Adding IR input device name: <%s>", substr.c_str());
-      input_device_names_.push_back(substr);
+      if (!substr.empty()) {
+         XLOGD_INFO("Adding IR input device name: <%s>", substr.c_str());
+         input_device_names_.push_back(substr);
+      }
    }
 
 

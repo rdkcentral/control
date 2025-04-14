@@ -560,6 +560,7 @@ int main(int argc, char *argv[]) {
    //g_ctrlm.precomission_table             = g_hash_table_new(g_str_hash, g_str_equal);
    g_ctrlm.loading_db                     = false;
    g_ctrlm.return_code                    = 0;
+   g_ctrlm.irdb                           = NULL;
    g_ctrlm.power_state                    = ctrlm_main_iarm_call_get_power_state();
    g_ctrlm.auto_ack                       = true;
    g_ctrlm.local_conf                     = false;

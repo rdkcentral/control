@@ -27,7 +27,6 @@
 #include <semaphore.h>
 #include "ctrlm_hal.h"
 #include "ctrlm_ipc_key_codes.h"
-#include "ctrlm_ipc_iarm.h"
 
 typedef enum {
     CTRLM_IRDB_MODE_OFFLINE,
@@ -142,7 +141,6 @@ protected:
 protected:
     ctrlm_irdb_mode_t mode;
     bool              platform_tv;
-    ctrlm_ipc_iarm_t *ipc;
     volatile int      initialized;
 
 };

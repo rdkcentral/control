@@ -22,6 +22,7 @@
 #include <algorithm>
 #include "ctrlm_log.h"
 #include "ctrlm_utils.h"
+#include "ctrlm_irdb_ipc_iarm_thunder.h"
 
 #if defined(CTRLM_THUNDER)
 // STB Platforms
@@ -35,12 +36,13 @@
 #endif
 
 typedef struct {
+    ctrlm_ipc_iarm_t                                                    *irdb_ipc;
     #ifdef CTRLM_THUNDER
     Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t   *display_settings;
     Thunder::CEC::ctrlm_thunder_plugin_cec_t                            *cec;
     Thunder::HDMIInput::ctrlm_thunder_plugin_hdmi_input_t               *hdmi_input;
     Thunder::CECSink::ctrlm_thunder_plugin_cec_sink_t                   *cec_sink;
-    #endif
+   #endif
 } ctrlm_irdb_global_t;
 
 ctrlm_irdb_global_t g_irdb;
@@ -86,8 +88,8 @@ static void _on_thunder_ready(void *data) {
 ctrlm_irdb_t::ctrlm_irdb_t(ctrlm_irdb_mode_t mode, bool platform_tv) {
     this->mode        = mode;
     this->platform_tv = platform_tv;
-    this->ipc         = NULL;
     this->initialized = 0;
+
 #if defined(CTRLM_THUNDER)
     Thunder::Controller::ctrlm_thunder_controller_t *controller = Thunder::Controller::ctrlm_thunder_controller_t::getInstance();
     if(controller) {
@@ -100,13 +102,17 @@ ctrlm_irdb_t::ctrlm_irdb_t(ctrlm_irdb_mode_t mode, bool platform_tv) {
         XLOGD_ERROR("Thunder controller is NULL");
     }
 #endif
+
+    XLOGD_INFO("registering for IRDB IARM Thunder calls");
+    g_irdb.irdb_ipc = new ctrlm_irdb_ipc_iarm_thunder_t();
+    g_irdb.irdb_ipc->register_ipc();
 }
 
 ctrlm_irdb_t::~ctrlm_irdb_t() {
-    if(this->ipc) {
-        this->ipc->deregister_ipc();
-        delete this->ipc;
-        this->ipc = NULL;
+    if(g_irdb.irdb_ipc) {
+        g_irdb.irdb_ipc->deregister_ipc();
+       delete g_irdb.irdb_ipc;
+       g_irdb.irdb_ipc = NULL;
     }
 }
 

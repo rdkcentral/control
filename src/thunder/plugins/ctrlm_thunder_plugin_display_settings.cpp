@@ -17,7 +17,7 @@
  * limitations under the License.
 */
 #include "ctrlm_thunder_plugin_display_settings.h"
-#include "ctrlm_irdb_log.h"
+#include "ctrlm_log.h"
 #include <WPEFramework/core/core.h>
 #include <WPEFramework/websocket/websocket.h>
 #include <WPEFramework/plugins/plugins.h>

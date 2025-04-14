@@ -17,7 +17,7 @@
  * limitations under the License.
 */
 #include "ctrlm_thunder_plugin_cec.h"
-#include "ctrlm_irdb_log.h"
+#include "ctrlm_log.h"
 #include "ctrlm_thunder_helpers.h"
 #include <WPEFramework/core/core.h>
 #include <WPEFramework/websocket/websocket.h>

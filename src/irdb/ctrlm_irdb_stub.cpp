@@ -19,12 +19,9 @@
 
 #include "ctrlm_log.h"
 #include "ctrlm_irdb_stub.h"
-#include "ctrlm_irdb_ipc_iarm_thunder.h"
 
 ctrlm_irdb_stub_t::ctrlm_irdb_stub_t(ctrlm_irdb_mode_t mode, bool platform_tv) : ctrlm_irdb_t(mode, platform_tv) {
-    XLOGD_INFO("registering for IARM Thunder calls");
-    this->ipc = new ctrlm_irdb_ipc_iarm_thunder_t();
-    this->ipc->register_ipc();
+    XLOGD_ERROR("not implemented");
 }
 
 ctrlm_irdb_stub_t::~ctrlm_irdb_stub_t() {

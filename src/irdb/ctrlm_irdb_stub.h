@@ -29,7 +29,6 @@ public:
 
     bool                  get_manufacturers(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix = "");
     bool                  get_models(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, ctrlm_irdb_manufacturer_t manufacturer, const std::string &prefix = "");
-    bool                  get_ir_codes_by_autolookup(ctrlm_irdb_autolookup_ranked_list_by_type_t &codes);
     bool                  get_ir_codes_by_names(ctrlm_irdb_ir_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, ctrlm_irdb_manufacturer_t manufacturer, const ctrlm_irdb_model_t &model = "");
     bool                  set_ir_codes_by_name(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_dev_type_t type, const ctrlm_irdb_ir_entry_id_t &name);
     bool                  clear_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id);

@@ -17,6 +17,12 @@ All notable changes to this project will be documented in this file.
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
 
+## [1.0.8] - 2025-04-15
+
+### Changed
+- use list of all possible names for IR input device discovery instead of product specific config
+
+
 ## [1.0.7] - 2025-03-31
 
 ### Changed

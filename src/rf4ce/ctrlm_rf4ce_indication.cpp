@@ -495,6 +495,7 @@ ctrlm_voice_format_t ctrlm_rf4ce_audio_fmt_to_voice_fmt(ctrlm_rf4ce_audio_format
                                              ret.value.adpcm_frame.offset_predicted_sample_lsb = 2;
                                              ret.value.adpcm_frame.offset_predicted_sample_msb = 3;
                                              ret.value.adpcm_frame.offset_sequence_value       = 0;
+                                             ret.value.adpcm_frame.shift_sequence_value        = 0;
                                              ret.value.adpcm_frame.sequence_value_min          = 0x20;
                                              ret.value.adpcm_frame.sequence_value_max          = 0x3F;
                                              break;

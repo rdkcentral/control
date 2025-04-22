@@ -130,6 +130,35 @@ static int ctrlm_ble_network_factory(vendor_network_opts_t *opts, json_t *json_c
       }
    }
 
+   // If the vendor supplied model list is provided, use it.  Otherwise use the default model list.
+   const char *vendor_model_file = "/etc/vendor/remote_whitelist.json";
+
+   if(ctrlm_file_exists(vendor_model_file)) {
+      XLOGD_INFO("Using vendor model file: %s", vendor_model_file);
+
+      json_t *json_obj_vendor_models = json_load_file(vendor_model_file, JSON_REJECT_DUPLICATES, NULL);
+
+      if(json_obj_vendor_models == NULL || !json_is_array(json_obj_vendor_models)) {
+         XLOGD_ERROR("invalid vendor model file format");
+      } else {
+         // Make sure the json_obj_net_ble object is valid
+         if(json_obj_net_ble == NULL) { // Create a json object
+            json_obj_net_ble = json_object();
+         }
+         if(json_obj_net_ble == NULL) {
+            XLOGD_ERROR("invalid BLE network json object");
+         } else { // Overwrite the "models" section in the json_obj_net_ble object
+            int rc = json_object_set_new(json_obj_net_ble, "models", json_obj_vendor_models);
+            if(rc != 0) {
+               XLOGD_ERROR("failed to set vendor models in BLE network json object");
+               json_decref(json_obj_vendor_models);
+            } else {
+               XLOGD_INFO("successfully set vendor models in BLE network json object");
+            }
+         }
+      }
+   }
+
    // add network if enabled
    if ( !(opts->ignore_mask & (1 << CTRLM_NETWORK_TYPE_BLUETOOTH_LE)) ) {
       ctrlm_network_id_t network_id = network_id_get_next(CTRLM_NETWORK_TYPE_BLUETOOTH_LE);

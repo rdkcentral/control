@@ -226,6 +226,158 @@
          "unpair": 20000
       },
       "models": [
+         {
+            "name": "EC302",
+            "pairingNameFormat": "U%03hhu SkyQ EC302",
+            "scanNameFormat": "[U][0-9][0-9][0-9] SkyQ EC302",
+            "connectNameFormat": "[UP][0-9][0-9][0-9] SkyQ EC302",
+            "otaProductName": "EC302-10",
+            "standbyMode": "B",
+            "services": {
+               "type": "gatt",
+               "required": [
+                  "Battery",
+                  "Device Info",
+                  "Immediate Alert",
+                  "RDK Voice",
+                  "RDK Infrared",
+                  "RDK Firmware Upgrade"
+               ],
+               "optional": [
+                  "RDK Remote Control"
+               ]
+            }
+         },
+         {
+            "name": "PR1",
+            "scanNameFormat": "Platco PR1",
+            "otaProductName": "PR1-10",
+            "standbyMode": "C",
+            "services": {
+               "type": "gatt",
+               "required": [
+                  "Battery",
+                  "Device Info",
+                  "Immediate Alert",
+                  "RDK Voice",
+                  "RDK Infrared",
+                  "RDK Firmware Upgrade"
+               ],
+               "optional": [
+                  "RDK Remote Control"
+               ]
+            }
+         },
+         {
+            "name": "LC103",
+            "pairingNameFormat": "U%03hhu SkyQ LC103",
+            "scanNameFormat": "[U][0-9][0-9][0-9] SkyQ LC103",
+            "connectNameFormat": "[UP][0-9][0-9][0-9] SkyQ LC[12]0[23](?:-0P)?",
+            "otaProductName": "LC103-10",
+            "typeZ": true,
+            "connParamUpdateBeforeOtaVersion": "5103.3.2",
+            "upgradePauseVersion": "5103.2.4",
+            "upgradeStuckVersion": "5103.2.4",
+            "standbyMode": "C",
+            "services": {
+               "type": "gatt",
+               "required": [
+                  "Battery",
+                  "Device Info",
+                  "Immediate Alert",
+                  "RDK Voice",
+                  "RDK Infrared",
+                  "RDK Firmware Upgrade"
+               ],
+               "optional": [
+                  "RDK Remote Control"
+               ]
+            }
+         },
+         {
+            "name": "XR100",
+            "scanNameFormat": "U-Xumo XR100",
+            "connectNameFormat": "[UP]-Xumo XR100",
+            "otaProductName": "XR100-10",
+            "standbyMode": "C",
+            "services": {
+               "type": "gatt",
+               "required": [
+                  "Battery",
+                  "Device Info",
+                  "Immediate Alert",
+                  "RDK Voice",
+                  "RDK Infrared",
+                  "RDK Firmware Upgrade"
+               ],
+               "optional": [
+                  "RDK Remote Control"
+               ]
+            }
+         },
+         {
+            "name": "PR3",
+            "scanNameFormat": "U-PR3 EntOS RCU",
+            "connectNameFormat": "[UP]-PR3 EntOS RCU",
+            "otaProductName": "PR3-10",
+            "standbyMode": "C",
+            "services": {
+               "type": "gatt",
+               "required": [
+                  "Battery",
+                  "Device Info",
+                  "Immediate Alert",
+                  "RDK Voice",
+                  "RDK Infrared",
+                  "RDK Firmware Upgrade"
+               ],
+               "optional": [
+                  "RDK Remote Control"
+               ]
+            }
+         },
+         {
+            "name": "PR4",
+            "scanNameFormat": "U-PR4 EntOS RCU",
+            "connectNameFormat": "[UP]-PR4 EntOS RCU",
+            "otaProductName": "PR3-10",
+            "standbyMode": "C",
+            "services": {
+               "type": "gatt",
+               "required": [
+                  "Battery",
+                  "Device Info",
+                  "Immediate Alert",
+                  "RDK Voice",
+                  "RDK Infrared",
+                  "RDK Firmware Upgrade"
+               ],
+               "optional": [
+                  "RDK Remote Control"
+               ]
+            }
+         },
+         {
+            "name": "XRAB",
+            "scanNameFormat": "U-XRAB EOS RCU",
+            "connectNameFormat": "[UP]-XRAB EOS RCU",
+            "otaProductName": "XRAB-10",
+            "standbyMode": "C",
+            "services": {
+               "type": "gatt",
+               "required": [
+                  "Battery",
+                  "Device Info",
+                  "Immediate Alert",
+                  "RDK Voice",
+                  "RDK Infrared",
+                  "RDK Firmware Upgrade"
+               ],
+               "optional": [
+                  "RDK Remote Control"
+               ]
+            }
+         }
       ]
    },
    "network_ip" : {

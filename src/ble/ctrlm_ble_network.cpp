@@ -131,7 +131,7 @@ static int ctrlm_ble_network_factory(vendor_network_opts_t *opts, json_t *json_c
    }
 
    // If the vendor supplied model list is provided, use it.  Otherwise use the default model list.
-   const char *vendor_model_file = "/etc/vendor/remote_whitelist.json";
+   const char *vendor_model_file    = "/etc/vendor/remote_whitelist.json";
 
    if(ctrlm_file_exists(vendor_model_file)) {
       XLOGD_INFO("Using vendor model file: %s", vendor_model_file);
@@ -159,6 +159,35 @@ static int ctrlm_ble_network_factory(vendor_network_opts_t *opts, json_t *json_c
       }
    }
 
+   // If the vendor supplied timeouts are provided, use them.  Otherwise use the default timeouts.
+   const char *vendor_timeouts_file = "/etc/vendor/remote_timeouts.json";
+
+   if(ctrlm_file_exists(vendor_timeouts_file)) {
+      XLOGD_INFO("Using vendor timeouts file: %s", vendor_timeouts_file);
+
+      json_t *json_obj_vendor_timeouts = json_load_file(vendor_timeouts_file, JSON_REJECT_DUPLICATES, NULL);
+
+      if(json_obj_vendor_timeouts == NULL || !json_is_array(json_obj_vendor_timeouts)) {
+         XLOGD_ERROR("invalid vendor timeouts file format");
+      } else {
+         // Make sure the json_obj_net_ble object is valid
+         if(json_obj_net_ble == NULL) { // Create a json object
+            json_obj_net_ble = json_object();
+         }
+         if(json_obj_net_ble == NULL) {
+            XLOGD_ERROR("invalid BLE network json object");
+         } else { // Overwrite the "timeouts" section in the json_obj_net_ble object
+            int rc = json_object_set_new(json_obj_net_ble, "timeouts", json_obj_vendor_timeouts);
+            if(rc != 0) {
+               XLOGD_ERROR("failed to set vendor timeouts in BLE network json object");
+               json_decref(json_obj_vendor_timeouts);
+            } else {
+               XLOGD_INFO("successfully set vendor timeouts in BLE network json object");
+            }
+         }
+      }
+   }
+   
    // add network if enabled
    if ( !(opts->ignore_mask & (1 << CTRLM_NETWORK_TYPE_BLUETOOTH_LE)) ) {
       ctrlm_network_id_t network_id = network_id_get_next(CTRLM_NETWORK_TYPE_BLUETOOTH_LE);

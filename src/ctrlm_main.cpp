@@ -34,6 +34,7 @@
 #include "libIBus.h"
 #ifdef USE_DEPRECATED_IRMGR
 #include "irMgr.h"
+#include "plat_ir.h"
 #endif
 #include "sysMgr.h"
 #ifdef BREAKPAD_SUPPORT

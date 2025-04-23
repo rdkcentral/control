@@ -35,7 +35,6 @@
 #ifdef USE_DEPRECATED_IRMGR
 #include "irMgr.h"
 #endif
-#include "plat_ir.h"
 #include "sysMgr.h"
 #ifdef BREAKPAD_SUPPORT
 #include "client/linux/handler/exception_handler.h"

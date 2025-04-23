@@ -4482,8 +4482,6 @@ void ctrlm_event_handler_ir(const char *owner, IARM_EventId_t event_id, void *da
       ctrlm_update_last_key_info(controller_id, key_src, key_code, source_name, g_ctrlm.last_key_info.is_screen_bind_mode, write_last_key_info);
    }
 }
-#endif // USE_DEPRECATED_IRMGR
-
 
 void ctrlm_check_for_key_tag(int key_tag) {
    switch(key_tag) {
@@ -4525,6 +4523,7 @@ void ctrlm_check_for_key_tag(int key_tag) {
       XLOGD_DEBUG("key_tag <%s>", ctrlm_rcu_ir_remote_types_str(g_ctrlm.last_key_info.last_ir_remote_type));
    }
 }
+#endif // USE_DEPRECATED_IRMGR
 
 gboolean ctrlm_timeout_line_of_sight(gpointer user_data) {
    XLOGD_INFO("Timeout - Line of sight.");

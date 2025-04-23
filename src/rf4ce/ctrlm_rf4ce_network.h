@@ -519,11 +519,7 @@ private:
 
    ctrlm_rf4ce_mfg_test_t              mfg_test_;
 
-#if __GLIBC__ == 2 && __GLIBC_MINOR__ < 35
-   volatile gint              binding_in_progress_;
-#else
-   gint                       binding_in_progress_;
-#endif
+   gint                                binding_in_progress_;
    guint                               binding_in_progress_tag_;
    guint                               binding_in_progress_timeout_;
 

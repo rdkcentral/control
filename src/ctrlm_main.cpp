@@ -387,8 +387,9 @@ static void     ctrlm_property_write_shutdown_time(void);
 static guchar   ctrlm_property_write_shutdown_time(guchar *data, guchar length);
 static void     ctrlm_property_read_shutdown_time(void);
 static void     control_service_values_read_from_db();
+#ifdef USE_DEPRECATED_IRMGR
 static void     ctrlm_check_for_key_tag(int key_tag) __attribute__((unused)); //USE_DEPRECATED_IRMGR
-
+#endif
 #ifdef MEMORY_LOCK
 const char *memory_lock_progs[] = {
 "/usr/bin/controlMgr",

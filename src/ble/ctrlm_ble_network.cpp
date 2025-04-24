@@ -56,6 +56,9 @@ using namespace std;
 #define CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT    (MINUTE_IN_MILLISECONDS * 5)    // 5 minutes
 #define CTRLM_BLE_UPGRADE_PAUSE_TIMEOUT       (MINUTE_IN_MILLISECONDS * 2)    // 2 minutes
 
+#define CTRLM_VENDOR_BLE_REMOTE_WHITELIST_FILE "/etc/vendor/input/ble_remote_whitelist.json"
+#define CTRLM_VENDOR_BLE_NETWORK_TIMEOUTS_FILE "/etc/vendor/input/ble_network_timeouts.json"
+
 typedef struct {
    guint upgrade_controllers_timer_tag;
    guint upgrade_pause_timer_tag;
@@ -131,7 +134,7 @@ static int ctrlm_ble_network_factory(vendor_network_opts_t *opts, json_t *json_c
    }
 
    // If the vendor supplied model list is provided, use it.  Otherwise use the default model list.
-   const char *vendor_model_file    = "/etc/vendor/remote_whitelist.json";
+   const char *vendor_model_file = CTRLM_VENDOR_BLE_REMOTE_WHITELIST_FILE;
 
    if(ctrlm_file_exists(vendor_model_file)) {
       XLOGD_INFO("Using vendor model file: %s", vendor_model_file);
@@ -148,19 +151,22 @@ static int ctrlm_ble_network_factory(vendor_network_opts_t *opts, json_t *json_c
          if(json_obj_net_ble == NULL) {
             XLOGD_ERROR("invalid BLE network json object");
          } else { // Overwrite the "models" section in the json_obj_net_ble object
-            int rc = json_object_set_new(json_obj_net_ble, "models", json_obj_vendor_models);
+            int rc = json_object_set_new(json_obj_net_ble, JSON_ARRAY_NAME_NETWORK_BLE_MODELS, json_obj_vendor_models);
             if(rc != 0) {
                XLOGD_ERROR("failed to set vendor models in BLE network json object");
-               json_decref(json_obj_vendor_models);
             } else {
                XLOGD_INFO("successfully set vendor models in BLE network json object");
             }
          }
       }
+      if(json_obj_vendor_models != NULL) {
+         json_decref(json_obj_vendor_models);
+         json_obj_vendor_models = NULL;
+      }
    }
 
    // If the vendor supplied timeouts are provided, use them.  Otherwise use the default timeouts.
-   const char *vendor_timeouts_file = "/etc/vendor/remote_timeouts.json";
+   const char *vendor_timeouts_file = CTRLM_VENDOR_BLE_NETWORK_TIMEOUTS_FILE;
 
    if(ctrlm_file_exists(vendor_timeouts_file)) {
       XLOGD_INFO("Using vendor timeouts file: %s", vendor_timeouts_file);
@@ -176,15 +182,23 @@ static int ctrlm_ble_network_factory(vendor_network_opts_t *opts, json_t *json_c
          }
          if(json_obj_net_ble == NULL) {
             XLOGD_ERROR("invalid BLE network json object");
-         } else { // Overwrite the "timeouts" section in the json_obj_net_ble object
-            int rc = json_object_set_new(json_obj_net_ble, "timeouts", json_obj_vendor_timeouts);
-            if(rc != 0) {
-               XLOGD_ERROR("failed to set vendor timeouts in BLE network json object");
-               json_decref(json_obj_vendor_timeouts);
+         } else { // Update the "timeouts" section in the json_obj_net_ble object
+            json_t *obj_timeouts = json_object_get(json_obj_net_ble, JSON_OBJ_NAME_NETWORK_BLE_TIMEOUTS);
+            if(obj_timeouts == NULL || !json_is_object(obj_timeouts)) {
+               XLOGD_ERROR("invalid BLE network timeouts object");
             } else {
-               XLOGD_INFO("successfully set vendor timeouts in BLE network json object");
+               int rc = json_object_update_existing(obj_timeouts, json_obj_vendor_timeouts);
+               if(rc != 0) {
+                  XLOGD_ERROR("failed to update vendor timeouts in BLE network json object");
+               } else {
+                  XLOGD_INFO("successfully updated vendor timeouts in BLE network json object");
+               }
             }
          }
+      }
+      if(json_obj_vendor_timeouts != NULL) {
+         json_decref(json_obj_vendor_timeouts);
+         json_obj_vendor_timeouts = NULL;
       }
    }
    

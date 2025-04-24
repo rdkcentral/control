@@ -269,6 +269,42 @@
             }
          },
          {
+            "name": "Tatlow RDK",
+            "scanNameFormat": "Tatlow RDK",
+            "standbyMode": "C",
+            "services": {
+               "type": "gatt",
+               "required": [
+                  "Battery",
+                  "Device Info",
+                  "Immediate Alert",
+                  "RDK Voice",
+                  "RDK Infrared",
+                  "RDK Firmware Upgrade"
+               ],
+               "optional": [
+               ]
+            }
+         },
+         {
+            "name": "Lima M1 RDK",
+            "scanNameFormat": "Lima M1 RDK",
+            "standbyMode": "C",
+            "services": {
+               "type": "gatt",
+               "required": [
+                  "Battery",
+                  "Device Info",
+                  "Immediate Alert",
+                  "RDK Voice",
+                  "RDK Infrared",
+                  "RDK Firmware Upgrade"
+               ],
+               "optional": [
+               ]
+            }
+         },
+         {
             "name": "LC103",
             "pairingNameFormat": "U%03hhu SkyQ LC103",
             "scanNameFormat": "[U][0-9][0-9][0-9] SkyQ LC103",

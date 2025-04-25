@@ -151,14 +151,32 @@ std::shared_ptr<ConfigSettings> ConfigSettings::parseJson(json_t *jsonConfig)
         timeouts = parseTimeouts(timeoutsObj);
     }
 
+    json_t *obj_network_ble = NULL;
+
     // find the vendor details array
     json_t *modelArray = json_object_get(jsonConfig, "models");
     if (!modelArray || !json_is_array(modelArray)) {
-        XLOGD_ERROR( "missing or invalid 'models' field in config");
-        return std::shared_ptr<ConfigSettings>();
+        XLOGD_WARN( "missing or invalid 'models' field in config (using defaults)");
+        
+        obj_network_ble = json_loads(DEFAULT_CONFIG::json(), JSON_DECODE_ANY, NULL);
+        if (!obj_network_ble || !json_is_object(obj_network_ble)) {
+            if(!obj_network_ble) {
+                XLOGD_ERROR("invalid default config buffer");
+            } else {
+                XLOGD_ERROR("default config buffer is not a json object");
+                json_decref(obj_network_ble);
+            }
+            return std::shared_ptr<ConfigSettings>();
+        }
+    
+        modelArray = json_object_get(obj_network_ble, "models");
+        if((!modelArray || !json_is_array(modelArray))) {
+            XLOGD_ERROR("missing or invalid 'models' field in default config");
+            json_decref(obj_network_ble);
+            return std::shared_ptr<ConfigSettings>();
+        }
     }
     size_t array_size = json_array_size(modelArray);
-
 
     vector<ConfigModelSettings> models;
 
@@ -172,6 +190,10 @@ std::shared_ptr<ConfigSettings> ConfigSettings::parseJson(json_t *jsonConfig)
             }
             models.push_back(std::move(modelSettings));
         }
+    }
+
+    if(obj_network_ble != NULL) {
+        json_decref(obj_network_ble);
     }
 
     // finally return the config

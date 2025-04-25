@@ -156,6 +156,7 @@ static int ctrlm_ble_network_factory(vendor_network_opts_t *opts, json_t *json_c
                XLOGD_ERROR("failed to set vendor models in BLE network json object");
             } else {
                XLOGD_INFO("successfully set vendor models in BLE network json object");
+               json_obj_vendor_models = NULL;
             }
          }
       }
@@ -173,7 +174,7 @@ static int ctrlm_ble_network_factory(vendor_network_opts_t *opts, json_t *json_c
 
       json_t *json_obj_vendor_timeouts = json_load_file(vendor_timeouts_file, JSON_REJECT_DUPLICATES, NULL);
 
-      if(json_obj_vendor_timeouts == NULL || !json_is_array(json_obj_vendor_timeouts)) {
+      if(json_obj_vendor_timeouts == NULL || !json_is_object(json_obj_vendor_timeouts)) {
          XLOGD_ERROR("invalid vendor timeouts file format");
       } else {
          // Make sure the json_obj_net_ble object is valid
@@ -183,16 +184,18 @@ static int ctrlm_ble_network_factory(vendor_network_opts_t *opts, json_t *json_c
          if(json_obj_net_ble == NULL) {
             XLOGD_ERROR("invalid BLE network json object");
          } else { // Update the "timeouts" section in the json_obj_net_ble object
+            int rc = 0;
             json_t *obj_timeouts = json_object_get(json_obj_net_ble, JSON_OBJ_NAME_NETWORK_BLE_TIMEOUTS);
             if(obj_timeouts == NULL || !json_is_object(obj_timeouts)) {
-               XLOGD_ERROR("invalid BLE network timeouts object");
+               rc = json_object_set_new(json_obj_net_ble, JSON_OBJ_NAME_NETWORK_BLE_TIMEOUTS, json_obj_vendor_timeouts);
             } else {
-               int rc = json_object_update_existing(obj_timeouts, json_obj_vendor_timeouts);
-               if(rc != 0) {
-                  XLOGD_ERROR("failed to update vendor timeouts in BLE network json object");
-               } else {
-                  XLOGD_INFO("successfully updated vendor timeouts in BLE network json object");
-               }
+               rc = json_object_update(obj_timeouts, json_obj_vendor_timeouts);
+            }
+            if(rc != 0) {
+               XLOGD_ERROR("failed to update vendor timeouts in BLE network json object");
+            } else {
+               XLOGD_INFO("successfully updated vendor timeouts in BLE network json object");
+               json_obj_vendor_timeouts = NULL;
             }
          }
       }

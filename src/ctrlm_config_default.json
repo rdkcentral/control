@@ -223,7 +223,9 @@
          "discovery": 15000,
          "pair": 20000,
          "setup": 60000,
-         "unpair": 20000
+         "unpair": 20000,
+         "hidrawPoll": 20000,
+         "hidrawLimit": 65000
       },
       "models": [
          {

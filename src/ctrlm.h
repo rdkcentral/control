@@ -488,8 +488,11 @@ void     ctrlm_main_iarm_call_control_service_start_pairing_mode_(ctrlm_main_iar
 gboolean ctrlm_main_iarm_call_control_service_end_pairing_mode(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 gboolean ctrlm_main_iarm_call_chip_status_get(ctrlm_main_iarm_call_chip_status_t *status);
 
+ctrlm_power_state_t ctrlm_main_get_system_power_state(void);
+ctrlm_power_state_t ctrlm_main_get_internal_power_state(void);
+#ifdef USE_IARM_POWER_MANAGER
 ctrlm_power_state_t ctrlm_main_iarm_call_get_power_state(void);
-ctrlm_power_state_t ctrlm_main_get_power_state(void);
+#endif
 #ifdef DEEP_SLEEP_ENABLED
 gboolean ctrlm_main_iarm_networked_standby(void);
 gboolean ctrlm_main_iarm_wakeup_reason_voice(void);

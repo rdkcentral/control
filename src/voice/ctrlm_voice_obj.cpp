@@ -376,7 +376,7 @@ void ctrlm_voice_t::voice_sdk_open(json_t *json_obj_vsdk) {
 
    //HAL is not available to query mute state because xrsr is not open, so use stored status.
    bool privacy = this->voice_is_privacy_enabled();
-   ctrlm_power_state_t ctrlm_power_state = ctrlm_main_get_power_state();
+   ctrlm_power_state_t ctrlm_power_state = ctrlm_main_get_internal_power_state();
    xrsr_power_mode_t   xrsr_power_mode   = voice_xrsr_power_map(ctrlm_power_state);
 
    if(!xrsr_open(host_name, routes, &kw_config, &capture_config, xrsr_power_mode, privacy, this->mask_pii, json_obj_vsdk)) {
@@ -1647,8 +1647,8 @@ bool ctrlm_voice_t::voice_session_audio_stream_start(std::string &session_id) {
 void ctrlm_voice_t::voice_session_rsp_confirm(bool result, signed long long rsp_time, unsigned int rsp_window, const std::string &err_str, ctrlm_timestamp_t *timestamp) {
    ctrlm_voice_session_t *session = &this->voice_session[VOICE_SESSION_GROUP_DEFAULT]; // this is for PTT only
    if(session->state_src != CTRLM_VOICE_STATE_SRC_STREAMING) {
-       if(ctrlm_main_get_power_state() == CTRLM_POWER_STATE_DEEP_SLEEP) {
-           XLOGD_WARN("missed voice session response window after waking from <%s>", ctrlm_power_state_str(ctrlm_main_get_power_state()));
+       if(ctrlm_main_get_internal_power_state() == CTRLM_POWER_STATE_DEEP_SLEEP) {
+           XLOGD_WARN("missed voice session response window after waking from <%s>", ctrlm_power_state_str(ctrlm_main_get_internal_power_state()));
        } else {
            XLOGD_ERROR("No voice session in progress");
        }
@@ -3208,7 +3208,7 @@ void ctrlm_voice_t::voice_server_return_code_callback(const uuid_t uuid, const c
         (ret_code == 0) ? "success" : "error", \
         ret_code, \
         ((reason == NULL) ? "NULL" : reason), \
-        ((ctrlm_main_get_power_state() == CTRLM_POWER_STATE_ON) ? "FPM" : "NSM"));
+        ((ctrlm_main_get_internal_power_state() == CTRLM_POWER_STATE_ON) ? "FPM" : "NSM"));
 
 }
 // Callback Interface Implementation End

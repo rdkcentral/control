@@ -55,6 +55,9 @@
 #include "ctrlm_ir_controller.h"
 #ifdef CTRLM_THUNDER
 #include "ctrlm_thunder_plugin_device_info.h"
+#ifndef USE_IARM_POWER_MANAGER
+#include "ctrlm_thunder_powermanager.h"
+#endif
 #endif
 #ifdef AUTH_ENABLED
 #include "ctrlm_auth.h"
@@ -269,6 +272,9 @@ typedef struct {
 #endif
 #ifdef CTRLM_THUNDER
    Thunder::DeviceInfo::ctrlm_thunder_plugin_device_info_t *thunder_device_info;
+   #ifndef USE_IARM_POWER_MANAGER
+   ctrlm_thunder_powermanager_t *power_manager;
+   #endif
 #endif
    ctrlm_power_state_t                power_state;
    gboolean                           auto_ack;
@@ -561,7 +567,7 @@ int main(int argc, char *argv[]) {
    //g_ctrlm.precomission_table             = g_hash_table_new(g_str_hash, g_str_equal);
    g_ctrlm.loading_db                     = false;
    g_ctrlm.return_code                    = 0;
-   g_ctrlm.power_state                    = ctrlm_main_iarm_call_get_power_state();
+   g_ctrlm.power_state                    = ctrlm_main_get_system_power_state();
    g_ctrlm.auto_ack                       = true;
    g_ctrlm.local_conf                     = false;
    g_ctrlm.telemetry                      = NULL;
@@ -698,6 +704,13 @@ int main(int argc, char *argv[]) {
       }
    }
 #endif // AUTH_ENABLED
+
+#ifdef CTRLM_THUNDER
+#ifndef USE_IARM_POWER_MANAGER
+g_ctrlm.power_manager = ctrlm_thunder_powermanager_create();
+g_ctrlm.power_manager->get_power_state(g_ctrlm.power_state);
+#endif
+#endif
 
    g_ctrlm.voice_session->voice_stb_data_stb_name_set(g_ctrlm.stb_name);
    g_ctrlm.voice_session->voice_stb_data_pii_mask_set(g_ctrlm.mask_pii);
@@ -2673,8 +2686,16 @@ gpointer ctrlm_main_thread(gpointer param) {
             //Wake with voice? Handle NSM voice, do not change power state
             if(dqm->new_state == CTRLM_POWER_STATE_ON) {
                bool wake_with_voice_allowed = g_ctrlm.wake_with_voice_allowed;
+               bool wakeup_reason_voice = false; 
+
                g_ctrlm.wake_with_voice_allowed = false;
-               if( (wake_with_voice_allowed == true) && (ctrlm_main_iarm_wakeup_reason_voice() == true) ) {
+               #ifdef USE_IARM_POWER_MANAGER
+               wakeup_reason_voice = ctrlm_main_iarm_wakeup_reason_voice();
+               #else
+               g_ctrlm.power_manager->get_wakeup_reason_voice(wakeup_reason_voice);
+               #endif
+
+               if((wake_with_voice_allowed == true) && (wakeup_reason_voice == true)) {
                   if( g_ctrlm.voice_session->nsm_voice_session == true ) {
                      XLOGD_INFO("Handling NSM voice session, ignore ON");
                   } else {
@@ -2691,7 +2712,13 @@ gpointer ctrlm_main_thread(gpointer param) {
             XLOGD_INFO("Enter power state <%s>", ctrlm_power_state_str(g_ctrlm.power_state));
             #ifdef DEEP_SLEEP_ENABLED
             if(g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP) {
-               XLOGD_INFO("NSM is <%s>",  ctrlm_main_iarm_networked_standby()?"ENABLED":"DISABLED");
+               bool nsm = false;
+               #ifdef USE_IARM_POWER_MANAGER
+               nsm = ctrlm_main_iarm_networked_standby();
+               #else
+               g_ctrlm.power_manager->get_networked_standby_mode(nsm);
+               #endif
+               XLOGD_INFO("NSM is <%s>", nsm?"ENABLED":"DISABLED");
             }
             #endif
 
@@ -5819,6 +5846,17 @@ gboolean ctrlm_power_state_change(ctrlm_power_state_t power_state) {
    return(true);
 }
 
+ctrlm_power_state_t ctrlm_main_get_system_power_state(void) {
+   #ifdef USE_IARM_POWER_MANAGER
+   return ctrlm_main_iarm_call_get_power_state();
+   #else
+   ctrlm_power_state_t power_state;
+
+   g_ctrlm.power_manager->get_power_state(power_state);
+   return power_state;
+   #endif
+}
+
 ctrlm_controller_id_t ctrlm_last_used_controller_get(ctrlm_network_type_t network_type) {
    if (network_type == CTRLM_NETWORK_TYPE_RF4CE) {
       return g_ctrlm.last_key_info.controller_id;
@@ -6014,7 +6052,7 @@ gboolean ctrlm_start_iarm(gpointer user_data) {
    return false;
 }
 
-ctrlm_power_state_t ctrlm_main_get_power_state(void) {
+ctrlm_power_state_t ctrlm_main_get_internal_power_state(void) {
    return(g_ctrlm.power_state);
 }
 

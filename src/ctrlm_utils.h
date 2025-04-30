@@ -237,8 +237,6 @@ void        ctrlm_archive_extract_ble_tmp_dir_make(const std::string &tmp_dir_pa
 bool        ctrlm_archive_extract_ble_check_dir_exists(const std::string &path);
 std::string ctrlm_xml_tag_text_get(const std::string &xml, const std::string &tag);
 
-ctrlm_power_state_t ctrlm_iarm_power_state_map(IARM_Bus_PowerState_t iarm_power_state);
-
 bool ctrlm_utils_calc_crc32( const char *filename, uLong *crc_ret );
 bool ctrlm_utils_move_file_to_secure_nvm(const char *path);
 

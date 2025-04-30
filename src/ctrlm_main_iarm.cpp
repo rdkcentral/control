@@ -63,8 +63,11 @@ static IARM_Result_t ctrlm_main_iarm_call_chip_status_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_audio_capture_start(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_audio_capture_stop(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_power_state_change(void *arg);
+static ctrlm_power_state_t ctrlm_iarm_power_state_map(IARM_Bus_PowerState_t iarm_power_state);
 #if CTRLM_HAL_RF4CE_API_VERSION >= 10  && !defined(CTRLM_DPI_CONTROL_NOT_SUPPORTED)
+#ifdef USE_IARM_POWER_MANAGER
 static IARM_Result_t ctrlm_event_handler_power_pre_change(void* pArgs);
+#endif
 #endif
 
 typedef struct {
@@ -101,7 +104,9 @@ ctrlm_iarm_call_t ctrlm_iarm_calls[] = {
    {CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_STOP,                 ctrlm_main_iarm_call_audio_capture_stop                 },
    {CTRLM_MAIN_IARM_CALL_POWER_STATE_CHANGE,                 ctrlm_main_iarm_call_power_state_change                 },
 #if CTRLM_HAL_RF4CE_API_VERSION >= 10 && !defined(CTRLM_DPI_CONTROL_NOT_SUPPORTED)
+#ifdef USE_IARM_POWER_MANAGER
    {IARM_BUS_COMMON_API_PowerPreChange,                      ctrlm_event_handler_power_pre_change                    },
+#endif
 #endif
 };
 
@@ -684,6 +689,7 @@ IARM_Result_t ctrlm_main_iarm_call_chip_status_get(void *arg) {
 }
 
 #if CTRLM_HAL_RF4CE_API_VERSION >= 10 && !defined(CTRLM_DPI_CONTROL_NOT_SUPPORTED)
+#ifdef USE_IARM_POWER_MANAGER
 IARM_Result_t ctrlm_event_handler_power_pre_change(void* pArgs)
 {
     const IARM_Bus_CommonAPI_PowerPreChange_Param_t* pParams = (const IARM_Bus_CommonAPI_PowerPreChange_Param_t*) pArgs;
@@ -702,7 +708,7 @@ IARM_Result_t ctrlm_event_handler_power_pre_change(void* pArgs)
        g_assert(0);
        return IARM_RESULT_OOM;
     }
-
+XLOGD_INFO("iarm power pre change");
     msg->header.type = CTRLM_MAIN_QUEUE_MSG_TYPE_POWER_STATE_CHANGE;
     msg->new_state = ctrlm_iarm_power_state_map(pParams->newState);
     XLOGD_DEBUG("Power State mapped to <%s>", ctrlm_power_state_str(msg->new_state));
@@ -710,6 +716,7 @@ IARM_Result_t ctrlm_event_handler_power_pre_change(void* pArgs)
 
     return IARM_RESULT_SUCCESS;
 }
+#endif
 #endif
 
 IARM_Result_t ctrlm_main_iarm_call_voice_session_begin(void *arg) {
@@ -894,3 +901,15 @@ gboolean ctrlm_main_iarm_wakeup_reason_voice(void) {
    return true;
 }
 #endif
+
+ctrlm_power_state_t ctrlm_iarm_power_state_map(IARM_Bus_PowerState_t iarm_power_state) {
+
+   switch(iarm_power_state) {
+      case IARM_BUS_PWRMGR_POWERSTATE_ON:                  return CTRLM_POWER_STATE_ON;
+      case IARM_BUS_PWRMGR_POWERSTATE_STANDBY:
+      case IARM_BUS_PWRMGR_POWERSTATE_STANDBY_LIGHT_SLEEP: return CTRLM_POWER_STATE_STANDBY;
+      case IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP:
+      case IARM_BUS_PWRMGR_POWERSTATE_OFF:                 return CTRLM_POWER_STATE_DEEP_SLEEP;
+      default:                                             return CTRLM_POWER_STATE_ON;
+   }
+}

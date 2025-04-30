@@ -208,6 +208,13 @@ if(THUNDER)
          auth/ctrlm_thunder_plugin_authservice.cpp
       )
   endif()
+
+  if(NOT USE_IARM_POWER_MANAGER)
+         target_sources(controlMgr PRIVATE
+	 thunder/ctrlm_thunder_powermanager.cpp
+	 thunder/ctrlm_thunder_plugin_powermanager.cpp
+   )
+   endif()
 endif()
 
 if(XRSR_HTTP)

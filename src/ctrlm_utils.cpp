@@ -1990,20 +1990,6 @@ std::string ctrlm_xml_tag_text_get(const std::string &xml, const std::string &ta
    return xml.substr(idx, idx2 - idx);
 }
 
-ctrlm_power_state_t ctrlm_iarm_power_state_map(IARM_Bus_PowerState_t iarm_power_state) {
-    ctrlm_power_state_t ctrlm_power_state = CTRLM_POWER_STATE_ON;
-
-    switch(iarm_power_state) {
-       case IARM_BUS_PWRMGR_POWERSTATE_ON:                  ctrlm_power_state = CTRLM_POWER_STATE_ON;          break;
-       case IARM_BUS_PWRMGR_POWERSTATE_STANDBY:
-       case IARM_BUS_PWRMGR_POWERSTATE_STANDBY_LIGHT_SLEEP: ctrlm_power_state = CTRLM_POWER_STATE_STANDBY;     break;
-       case IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP:
-       case IARM_BUS_PWRMGR_POWERSTATE_OFF:                 ctrlm_power_state = CTRLM_POWER_STATE_DEEP_SLEEP;  break;
-    }
-
-    return ctrlm_power_state;
-}
-
 const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config) {
     switch(config) {
         case CTRLM_RCU_WAKEUP_CONFIG_ALL:       return("ALL");

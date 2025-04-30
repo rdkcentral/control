@@ -16,6 +16,7 @@ ctrlm_thunder_powermanager_t::~ctrlm_thunder_powermanager_t() {
 
 bool ctrlm_thunder_powermanager_t::is_ready() {
    bool ret = false;
+
    if(this->plugin == NULL) {
       XLOGD_WARN("plugin not yet available");
    } else {
@@ -29,6 +30,7 @@ bool ctrlm_thunder_powermanager_t::is_ready() {
 }
 
 void ctrlm_thunder_powermanager_t::get_power_state(ctrlm_power_state_t &power_state) {
+
    if(this->plugin == NULL) {
       XLOGD_WARN("plugin not yet available");
    } else {

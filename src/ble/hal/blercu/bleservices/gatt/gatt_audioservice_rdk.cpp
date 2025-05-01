@@ -41,13 +41,15 @@
 // The duration of audio in a single packet is 96 bytes * 2 samples/byte / 16 samples/msec * 1000 usec/msec = 12000 usec
 #define AUDIO_PACKET_DURATION_USEC (12000)
 
-#define AUDIO_FRAME_SIZE (100)
+#define AUDIO_FRAME_SIZE           (100)
+
+#define AUDIO_SEQ_NUM_MAX          (0xFF)
 
 using namespace std;
 
 const BleUuid GattAudioServiceRdk::m_serviceUuid(BleUuid::RdkVoice);
 
-GattAudioServiceRdk::GattAudioServiceRdk(GMainLoop* mainLoop) : GattAudioService(AUDIO_FRAME_SIZE, 5, AUDIO_PACKET_DURATION_USEC, mainLoop)
+GattAudioServiceRdk::GattAudioServiceRdk(GMainLoop* mainLoop) : GattAudioService(AUDIO_FRAME_SIZE, 5, AUDIO_PACKET_DURATION_USEC, AUDIO_SEQ_NUM_MAX, mainLoop)
 {
 }
 
@@ -547,7 +549,7 @@ bool GattAudioServiceRdk::audioFormat(Encoding encoding, AudioFormat &format) co
 {
     if(encoding == Encoding::ADPCM_FRAME) {
         format.setFrameInfo(AUDIO_FRAME_SIZE, 4);
-        format.setHeaderInfoAdpcm(1, 2, 3, 0, 0, 0xFF);
+        format.setHeaderInfoAdpcm(1, 2, 3, 0, 0, 0, 0xFF);
         format.setPressAndHoldSupport(true);
         return(true);
     } else if(encoding == Encoding::PCM16) {

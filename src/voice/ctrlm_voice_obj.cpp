@@ -3392,6 +3392,7 @@ xrsr_audio_format_t voice_format_to_xrsr(ctrlm_voice_format_t format) {
             ret.value.adpcm_frame.offset_predicted_sample_lsb = format.value.adpcm_frame.offset_predicted_sample_lsb;
             ret.value.adpcm_frame.offset_predicted_sample_msb = format.value.adpcm_frame.offset_predicted_sample_msb;
             ret.value.adpcm_frame.offset_sequence_value       = format.value.adpcm_frame.offset_sequence_value;
+            ret.value.adpcm_frame.shift_sequence_value        = format.value.adpcm_frame.shift_sequence_value;
             ret.value.adpcm_frame.sequence_value_min          = format.value.adpcm_frame.sequence_value_min;
             ret.value.adpcm_frame.sequence_value_max          = format.value.adpcm_frame.sequence_value_max;
             break;

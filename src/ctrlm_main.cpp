@@ -567,6 +567,12 @@ int main(int argc, char *argv[]) {
    //g_ctrlm.precomission_table             = g_hash_table_new(g_str_hash, g_str_equal);
    g_ctrlm.loading_db                     = false;
    g_ctrlm.return_code                    = 0;
+   #ifdef CTRLM_THUNDER
+   #ifndef USE_IARM_POWER_MANAGER
+   g_ctrlm.power_manager = ctrlm_thunder_powermanager_create();
+   g_ctrlm.power_manager->get_power_state(g_ctrlm.power_state);
+   #endif
+   #endif
    g_ctrlm.power_state                    = ctrlm_main_get_system_power_state();
    g_ctrlm.auto_ack                       = true;
    g_ctrlm.local_conf                     = false;
@@ -704,13 +710,6 @@ int main(int argc, char *argv[]) {
       }
    }
 #endif // AUTH_ENABLED
-
-#ifdef CTRLM_THUNDER
-#ifndef USE_IARM_POWER_MANAGER
-g_ctrlm.power_manager = ctrlm_thunder_powermanager_create();
-g_ctrlm.power_manager->get_power_state(g_ctrlm.power_state);
-#endif
-#endif
 
    g_ctrlm.voice_session->voice_stb_data_stb_name_set(g_ctrlm.stb_name);
    g_ctrlm.voice_session->voice_stb_data_pii_mask_set(g_ctrlm.mask_pii);

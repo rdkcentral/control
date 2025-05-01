@@ -43,8 +43,8 @@ public:
     void setFrameInfo(uint8_t sizeFrame, uint8_t sizeHeader);
     bool getFrameInfo(uint8_t &sizeFrame, uint8_t &sizeHeader) const;
 
-    void setHeaderInfoAdpcm(uint8_t offsetStepSizeIndex, uint8_t offsetPredictedSampleLsb, uint8_t offsetPredictedSampleMsb, uint8_t offsetSequenceValue, uint8_t sequenceValueMin, uint8_t sequenceValueMax);
-    bool getHeaderInfoAdpcm(uint8_t &offsetStepSizeIndex, uint8_t &offsetPredictedSampleLsb, uint8_t &offsetPredictedSampleMsb, uint8_t &offsetSequenceValue, uint8_t &sequenceValueMin, uint8_t &sequenceValueMax) const;
+    void setHeaderInfoAdpcm(uint8_t offsetStepSizeIndex, uint8_t offsetPredictedSampleLsb, uint8_t offsetPredictedSampleMsb, uint8_t offsetSequenceValue, uint8_t shiftSequenceValue, uint8_t sequenceValueMin, uint8_t sequenceValueMax);
+    bool getHeaderInfoAdpcm(uint8_t &offsetStepSizeIndex, uint8_t &offsetPredictedSampleLsb, uint8_t &offsetPredictedSampleMsb, uint8_t &offsetSequenceValue, uint8_t &shiftSequenceValue, uint8_t &sequenceValueMin, uint8_t &sequenceValueMax) const;
 
     void setPressAndHoldSupport(bool supported);
     bool getPressAndHoldSupport() const;
@@ -55,6 +55,7 @@ private:
     uint8_t m_offsetPredictedSampleLsb = 0;
     uint8_t m_offsetPredictedSampleMsb = 0;
     uint8_t m_offsetSequenceValue      = 0;
+    uint8_t m_shiftSequenceValue       = 0;
     uint8_t m_sequenceValueMin         = 0;
     uint8_t m_sequenceValueMax         = 0;
 

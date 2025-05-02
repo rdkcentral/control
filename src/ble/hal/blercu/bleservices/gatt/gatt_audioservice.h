@@ -47,7 +47,7 @@ class GattAudioPipe;
 class GattAudioService : public BleRcuAudioService
 {
 public:
-    GattAudioService(uint8_t frameSize, uint8_t packetsPerFrame, uint32_t audioFrameDuration, GMainLoop* mainLoop = NULL);
+    GattAudioService(uint8_t frameSize, uint8_t packetsPerFrame, uint32_t audioFrameDuration, uint8_t audioSeqNumMax, GMainLoop* mainLoop = NULL);
     ~GattAudioService();
 
 public:
@@ -124,6 +124,7 @@ private:
     const uint8_t  m_frameSize;
     const uint8_t  m_packetsPerFrame;
     const uint32_t m_audioFrameDuration;
+    const uint8_t  m_audioSeqNumMax;
     
 private:
     std::shared_ptr<PendingReply<int>> m_startStreamingPromise;

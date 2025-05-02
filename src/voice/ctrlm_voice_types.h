@@ -58,6 +58,7 @@ typedef struct {
    uint8_t offset_predicted_sample_lsb;
    uint8_t offset_predicted_sample_msb;
    uint8_t offset_sequence_value;
+   uint8_t shift_sequence_value;
    uint8_t sequence_value_min;
    uint8_t sequence_value_max;
 } ctrlm_adpcm_frame_t;

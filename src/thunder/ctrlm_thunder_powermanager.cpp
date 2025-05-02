@@ -38,7 +38,7 @@ void ctrlm_thunder_powermanager_t::get_power_state(ctrlm_power_state_t &power_st
 
 void ctrlm_thunder_powermanager_t::get_networked_standby_mode(bool networked_standby_mode) {
    if(this->plugin == NULL) {
-      XLOD_ERROR("plugin not yet available");
+      XLOGD_ERROR("plugin not yet available");
    } else {
       this->plugin->get_networked_standby_mode(networked_standby_mode);
    }

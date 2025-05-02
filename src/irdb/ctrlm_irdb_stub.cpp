@@ -20,50 +20,48 @@
 #include "ctrlm_log.h"
 #include "ctrlm_irdb_stub.h"
 
-ctrlm_irdb_stub_t::ctrlm_irdb_stub_t(ctrlm_irdb_mode_t mode, bool platform_tv) : ctrlm_irdb_t(mode, platform_tv) {
-    XLOGD_ERROR("not implemented");
-}
 
-ctrlm_irdb_stub_t::~ctrlm_irdb_stub_t() {
+const char* STUB_irdb_version() {
     XLOGD_ERROR("not implemented");
+    return("INVALID");
 }
-
-bool ctrlm_irdb_stub_t::get_manufacturers(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix) {
+bool STUB_ctrlm_irdb_open(bool platform_tv) {
     XLOGD_ERROR("not implemented");
     return(false);
 }
-
-bool ctrlm_irdb_stub_t::get_models(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, ctrlm_irdb_manufacturer_t manufacturer, const std::string &prefix) {
+bool STUB_ctrlm_irdb_close() {
     XLOGD_ERROR("not implemented");
     return(false);
 }
-
-bool ctrlm_irdb_stub_t::get_ir_codes_by_autolookup(ctrlm_irdb_autolookup_ranked_list_by_type_t &codes) {
+bool STUB_ctrlm_irdb_initialize() {
     XLOGD_ERROR("not implemented");
     return(false);
 }
-
-bool ctrlm_irdb_stub_t::get_ir_codes_by_names(ctrlm_irdb_ir_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, ctrlm_irdb_manufacturer_t manufacturer, const ctrlm_irdb_model_t &model) {
+bool STUB_ctrlm_irdb_get_manufacturers(ctrlm_irdb_manufacturer_list_t *manufacturers, ctrlm_irdb_dev_type_t type, const char *prefix) {
     XLOGD_ERROR("not implemented");
     return(false);
 }
-
-bool ctrlm_irdb_stub_t::set_ir_codes_by_name(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_dev_type_t type, const ctrlm_irdb_ir_entry_id_t &name) {
+bool STUB_ctrlm_irdb_get_models(ctrlm_irdb_model_list_t *models, ctrlm_irdb_dev_type_t type, const char *manufacturer, const char *prefix) {
     XLOGD_ERROR("not implemented");
     return(false);
 }
-
-bool ctrlm_irdb_stub_t::clear_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id) {
+bool STUB_ctrlm_irdb_get_entry_ids(ctrlm_irdb_entry_id_list_t *codes, ctrlm_irdb_dev_type_t type, const char *manufacturer, const char *model) {
     XLOGD_ERROR("not implemented");
     return(false);
 }
-
-bool ctrlm_irdb_stub_t::initialize_irdb() {
+bool STUB_ctrlm_irdb_get_ir_code_set(ctrlm_irdb_ir_code_set_t *code_set, ctrlm_irdb_dev_type_t type, const char *id) {
     XLOGD_ERROR("not implemented");
     return(false);
 }
-
-ctrlm_irdb_vendor_t ctrlm_irdb_stub_t::get_vendor() {
+bool STUB_ctrlm_irdb_get_ir_codes_by_infoframe(ctrlm_irdb_autolookup_ranked_list_t *codes, ctrlm_irdb_dev_type_t *type, unsigned char *infoframe, unsigned int infoframe_len) {
     XLOGD_ERROR("not implemented");
-    return(CTRLM_IRDB_VENDOR_INVALID);
+    return(false);
+}
+bool STUB_ctrlm_irdb_get_ir_codes_by_edid(ctrlm_irdb_autolookup_ranked_list_t *codes, ctrlm_irdb_dev_type_t *type, unsigned char *edid, unsigned int edid_len) {
+    XLOGD_ERROR("not implemented");
+    return(false);
+}
+bool STUB_ctrlm_irdb_get_ir_codes_by_cec(ctrlm_irdb_autolookup_ranked_list_t *codes, ctrlm_irdb_dev_type_t *type, const char *osd, unsigned int vendor_id, unsigned int logical_address) {
+    XLOGD_ERROR("not implemented");
+    return(false);
 }

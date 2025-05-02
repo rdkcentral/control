@@ -444,7 +444,7 @@ public:
 
    void                                 cfm_voice_session_rsp(void *data, int size);
 
-   void                                 req_process_ir_set_code(void *data, int size);
+   void                                 req_process_program_ir_codes(void *data, int size);
    void                                 req_process_ir_clear_codes(void *data, int size);
    virtual void                         req_process_start_pairing(void *data, int size) override;
    virtual void                         req_process_find_my_remote(void *data, int size);

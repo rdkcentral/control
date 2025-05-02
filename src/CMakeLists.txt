@@ -64,7 +64,8 @@ target_sources(controlMgr PRIVATE
    input_event/ctrlm_input_event_writer.cpp
    ipc/ctrlm_ipc_iarm.cpp
    ipc/ctrlm_rcp_ipc_event.cpp
-   irdb/ctrlm_irdb.cpp
+   irdb/ctrlm_irdb_stub.cpp
+   irdb/ctrlm_irdb_interface.cpp
    irdb/ipc/ctrlm_irdb_ipc_iarm_thunder.cpp
    json_config.cpp
    network/ctrlm_ir_rf_db.cpp
@@ -137,14 +138,6 @@ endif()
 
 if(BUILD_FACTORY_TEST)
    add_subdirectory(factory)
-endif()
-
-
-if(IRDB_STUB)
-   target_sources(controlMgr PRIVATE
-      irdb/ctrlm_irdb_stub.cpp
-      irdb/ctrlm_irdb_factory.cpp
-   )
 endif()
 
 if(RF4CE_ENABLED)

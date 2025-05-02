@@ -23,7 +23,8 @@
 #include <linux/input.h>
 #include "ctrlm_ipc.h"
 #include "ctrlm_ipc_ble.h"
-#include "ctrlm_irdb.h"
+#include "ctrlm_irdb_plugin.h"
+#include "ctrlm_hal.h"
 
 
 #define CTRLM_HAL_BLE_MAX_IRDBS_SUPPORTED (8)

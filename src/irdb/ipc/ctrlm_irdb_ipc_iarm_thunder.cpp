@@ -52,9 +52,9 @@ bool ctrlm_irdb_ipc_iarm_thunder_t::register_ipc() const {
 
     if(!this->register_iarm_call(CTRLM_MAIN_IARM_CALL_IR_MANUFACTURERS, get_manufacturers)) ret = false;
     if(!this->register_iarm_call(CTRLM_MAIN_IARM_CALL_IR_MODELS, get_models)) ret = false;
-    if(!this->register_iarm_call(CTRLM_MAIN_IARM_CALL_IR_CODES, get_ir_codes_by_names)) ret = false;
+    if(!this->register_iarm_call(CTRLM_MAIN_IARM_CALL_IR_CODES, get_irdb_entry_ids)) ret = false;
     if(!this->register_iarm_call(CTRLM_MAIN_IARM_CALL_IR_AUTO_LOOKUP, get_ir_codes_by_auto_lookup)) ret = false;
-    if(!this->register_iarm_call(CTRLM_MAIN_IARM_CALL_IR_SET_CODE, set_ir_codes_by_name)) ret = false;
+    if(!this->register_iarm_call(CTRLM_MAIN_IARM_CALL_IR_SET_CODE, program_ir_codes)) ret = false;
     if(!this->register_iarm_call(CTRLM_MAIN_IARM_CALL_IR_CLEAR_CODE, clear_ir_codes)) ret = false;
     if(!this->register_iarm_call(CTRLM_MAIN_IARM_CALL_IR_INITIALIZE, initialize_irdb)) ret = false;
 
@@ -100,7 +100,7 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_manufacturers(void *arg) {
     ctrlm_main_iarm_call_json_t *call_data = static_cast<ctrlm_main_iarm_call_json_t *>(arg);
     json_t *ret                            = json_object();
     json_t *payload, *manufacturers        = NULL;
-    ctrlm_irdb_t *irdb                     = ctrlm_main_irdb_get();
+    ctrlm_irdb_interface_t *irdb           = ctrlm_main_irdb_get();
     bool success                           = false;
     ctrlm_ir_device_type_t ir_dev_type     = CTRLM_IR_DEVICE_UNKNOWN;
     ctrlm_irdb_dev_type_t dev_type         = CTRLM_IRDB_DEV_TYPE_INVALID;
@@ -146,13 +146,15 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_manufacturers(void *arg) {
         } else {
             manufacturers = json_array();
             ctrlm_irdb_manufacturer_list_t mans;
-            if(irdb->get_manufacturers(mans, dev_type, manufacturer) == false ) {
+            if(irdb->get_manufacturers(&mans, dev_type, manufacturer) == false ) {
                XLOGD_ERROR("Failed getting manufacturers");
                success = false;
             } else {
-               for(const auto &itr : mans) {
-                   json_array_append_new(manufacturers, json_string(itr.c_str()));
+               for(unsigned int i = 0; i < mans.list_qty; i++) {
+                   json_array_append_new(manufacturers, json_string(mans.names[i]));
+                   free(mans.names[i]);
                }
+               free(mans.names);
             }
         }
     }
@@ -175,7 +177,7 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_models(void *arg) {
     ctrlm_main_iarm_call_json_t *call_data = static_cast<ctrlm_main_iarm_call_json_t *>(arg);
     json_t *ret                            = json_object();
     json_t *payload, *models               = NULL;
-    ctrlm_irdb_t *irdb                     = ctrlm_main_irdb_get();
+    ctrlm_irdb_interface_t *irdb           = ctrlm_main_irdb_get();
     bool success                           = false;
     ctrlm_ir_device_type_t ir_dev_type     = CTRLM_IR_DEVICE_UNKNOWN;
     ctrlm_irdb_dev_type_t dev_type         = CTRLM_IRDB_DEV_TYPE_INVALID;
@@ -225,13 +227,15 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_models(void *arg) {
         } else {
             models = json_array();
             ctrlm_irdb_model_list_t mods;
-            if(irdb->get_models(mods, dev_type, manufacturer, model) == false ) {
-               XLOGD_ERROR("Failed getting models");
-               success = false;
+            if(irdb->get_models(&mods, dev_type, manufacturer, model) == false ) {
+                XLOGD_ERROR("Failed getting models");
+                success = false;
             } else {
-               for(const auto &itr : mods) {
-                   json_array_append_new(models, json_string(itr.c_str()));
-               }
+                for(unsigned int i = 0; i < mods.list_qty; i++) {
+                   json_array_append_new(models, json_string(mods.names[i]));
+                   free(mods.names[i]);
+                }
+                free(mods.names);
             }
         }
     }
@@ -257,7 +261,7 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_ir_codes_by_auto_lookup(void *a
     json_t *payload                         = NULL;
     json_t *tv_man, *tv_model, *tv_codes    = NULL;
     json_t *avr_man, *avr_model, *avr_codes = NULL;
-    ctrlm_irdb_t *irdb                      = ctrlm_main_irdb_get();
+    ctrlm_irdb_interface_t *irdb            = ctrlm_main_irdb_get();
     bool success                            = false;
     json_config conf;
 
@@ -277,7 +281,7 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_ir_codes_by_auto_lookup(void *a
             XLOGD_WARN("IRDB is not initialized");
             success = false;
         } else {
-            ctrlm_irdb_autolookup_ranked_list_by_type_t cd_map;
+            ctrlm_autolookup_ranked_list_by_type_t cd_map;
             if(irdb->get_ir_codes_by_autolookup(cd_map) == false) {
                 XLOGD_ERROR("Failed getting codes");
                 success = false;
@@ -320,12 +324,12 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_ir_codes_by_auto_lookup(void *a
     return(IARM_RESULT_SUCCESS);
 }
 
-IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_ir_codes_by_names(void *arg) {
+IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_irdb_entry_ids(void *arg) {
     XLOGD_INFO("");
     ctrlm_main_iarm_call_json_t *call_data  = static_cast<ctrlm_main_iarm_call_json_t *>(arg);
     json_t *ret                             = json_object();
     json_t *payload, *codes                 = NULL;
-    ctrlm_irdb_t *irdb                      = ctrlm_main_irdb_get();
+    ctrlm_irdb_interface_t *irdb            = ctrlm_main_irdb_get();
     bool success                            = false;
     ctrlm_ir_device_type_t ir_dev_type      = CTRLM_IR_DEVICE_UNKNOWN;
     ctrlm_irdb_dev_type_t dev_type          = CTRLM_IRDB_DEV_TYPE_INVALID;
@@ -374,14 +378,16 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_ir_codes_by_names(void *arg) {
             success = false;
         } else {
             codes = json_array();
-            ctrlm_irdb_ir_entry_id_list_t cds;
-            if(irdb->get_ir_codes_by_names(cds, dev_type, manufacturer, model) == false) {
+            ctrlm_irdb_entry_id_list_t cds;
+            if(irdb->get_irdb_entry_ids(&cds, dev_type, manufacturer, model) == false) {
                XLOGD_ERROR("Failed getting codes");
                success = false;
             } else {
-               for(const auto &itr : cds) {
-                    json_array_append_new(codes, json_string(itr.c_str()));
+               for(unsigned int i = 0; i < cds.list_qty; i++) {
+                   json_array_append_new(codes, json_string(cds.ids[i]));
+                   free(cds.ids[i]);
                }
+               free(cds.ids);
             }
         }
     }
@@ -401,12 +407,12 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_ir_codes_by_names(void *arg) {
     return(IARM_RESULT_SUCCESS);
 }
 
-IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::set_ir_codes_by_name(void *arg) {
+IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::program_ir_codes(void *arg) {
     XLOGD_INFO("");
     ctrlm_main_iarm_call_json_t *call_data  = static_cast<ctrlm_main_iarm_call_json_t *>(arg);
     json_t *ret                             = json_object();
     json_t *payload                         = NULL;
-    ctrlm_irdb_t *irdb                      = ctrlm_main_irdb_get();
+    ctrlm_irdb_interface_t *irdb            = ctrlm_main_irdb_get();
     bool success                            = false;
     ctrlm_irdb_dev_type_t dev_type          = CTRLM_IRDB_DEV_TYPE_INVALID;
     ctrlm_ir_device_type_t ir_dev_type      = CTRLM_IR_DEVICE_UNKNOWN;
@@ -465,7 +471,7 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::set_ir_codes_by_name(void *arg) {
             XLOGD_WARN("IRDB is not initialized");
             success = false;
         } else {
-            success = irdb->set_ir_codes_by_name(network_id, controller_id, dev_type, code);
+            success = irdb->program_ir_codes(network_id, controller_id, dev_type, code);
         }
     }
 
@@ -483,7 +489,7 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::clear_ir_codes(void *arg) {
     ctrlm_main_iarm_call_json_t *call_data  = static_cast<ctrlm_main_iarm_call_json_t *>(arg);
     json_t *ret                             = json_object();
     json_t *payload                         = NULL;
-    ctrlm_irdb_t *irdb                      = ctrlm_main_irdb_get();
+    ctrlm_irdb_interface_t *irdb            = ctrlm_main_irdb_get();
     bool success                            = false;
     int network_type_val                    = CTRLM_NETWORK_TYPE_INVALID;
     int remote_id                           = 0;
@@ -537,7 +543,7 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::initialize_irdb(void *arg) {
     ctrlm_main_iarm_call_json_t *call_data  = static_cast<ctrlm_main_iarm_call_json_t *>(arg);
     json_t *ret                             = json_object();
     json_t *payload                         = NULL;
-    ctrlm_irdb_t *irdb                      = ctrlm_main_irdb_get();
+    ctrlm_irdb_interface_t *irdb            = ctrlm_main_irdb_get();
     bool success                            = false;
     json_config conf;
 

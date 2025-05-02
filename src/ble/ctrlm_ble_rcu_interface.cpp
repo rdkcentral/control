@@ -1182,7 +1182,7 @@ bool ctrlm_ble_rcu_interface_t::setIrControl(uint64_t ieee_address, ctrlm_irdb_v
 }
 
 bool ctrlm_ble_rcu_interface_t::programIrSignalWaveforms(uint64_t ieee_address, 
-                                                         ctrlm_irdb_ir_codes_t &&irWaveforms, 
+                                                         std::map<ctrlm_key_code_t, std::vector<uint8_t>> &&irWaveforms, 
                                                          ctrlm_irdb_vendor_t vendor)
 {
     // lambda invoked when the request returns

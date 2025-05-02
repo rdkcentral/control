@@ -605,12 +605,12 @@ void ctrlm_obj_network_ble_t::req_process_pair_with_code(void *data, int size) {
 }
 
 
-void ctrlm_obj_network_ble_t::req_process_ir_set_code(void *data, int size) {
+void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size) {
    XLOGD_DEBUG("Enter...");
    THREAD_ID_VALIDATE();
-   ctrlm_main_queue_msg_ir_set_code_t *dqm = (ctrlm_main_queue_msg_ir_set_code_t *)data;
+   ctrlm_main_queue_msg_program_ir_codes_t *dqm = (ctrlm_main_queue_msg_program_ir_codes_t *)data;
    g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_ir_set_code_t));
+   g_assert(size == sizeof(ctrlm_main_queue_msg_program_ir_codes_t));
 
    if(dqm->success) {*(dqm->success) = false;}
 
@@ -624,7 +624,9 @@ void ctrlm_obj_network_ble_t::req_process_ir_set_code(void *data, int size) {
          XLOGD_ERROR("Unsupported IRDB - not continuing with ir code download!");
       } else {
          if(dqm->ir_codes) {
-            ctrlm_irdb_ir_codes_t ir_codes;
+
+            std::map<ctrlm_key_code_t, std::vector<uint8_t>> ir_codes;
+            
             // First add IR Codes to the IR RF Database (this contains all of the logic for maintaining TV vs AVR codes)
             ir_rf_database_.add_irdb_codes(dqm->ir_codes);
             XLOGD_INFO("\n%s", this->ir_rf_database_.to_string(true).c_str());
@@ -651,7 +653,7 @@ void ctrlm_obj_network_ble_t::req_process_ir_set_code(void *data, int size) {
 
                      controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, ir_rf_database_.get_tv_ir_code_id());
                      controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, ir_rf_database_.get_avr_ir_code_id());
-                     XLOGD_INFO("irdb_entry_id_name = <%s>", dqm->ir_codes->get_id().c_str());
+                     XLOGD_INFO("irdb_entry_id_name = <%s>", dqm->ir_codes->id);
                }
             }
             // Store the IR codes in the database

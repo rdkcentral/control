@@ -79,7 +79,7 @@
 #include "ctrlm_voice_obj.h"
 #include "ctrlm_voice_obj_generic.h"
 #include "ctrlm_voice_endpoint.h"
-#include "ctrlm_irdb_factory.h"
+#include "ctrlm_irdb_interface.h"
 #ifdef FDC_ENABLED
 #include "xr_fdc.h"
 #endif
@@ -260,7 +260,7 @@ typedef struct {
    vector<ctrlm_thread_monitor_t>     monitor_threads;
    int                                return_code;
    ctrlm_voice_t                     *voice_session;
-   ctrlm_irdb_t                      *irdb;
+   ctrlm_irdb_interface_t            *irdb;
    ctrlm_telemetry_t                 *telemetry;
    ctrlm_cs_values_t                  cs_values;
 #ifdef AUTH_ENABLED
@@ -560,7 +560,6 @@ int main(int argc, char *argv[]) {
    //g_ctrlm.precomission_table             = g_hash_table_new(g_str_hash, g_str_equal);
    g_ctrlm.loading_db                     = false;
    g_ctrlm.return_code                    = 0;
-   g_ctrlm.irdb                           = NULL;
    g_ctrlm.power_state                    = ctrlm_main_iarm_call_get_power_state();
    g_ctrlm.auto_ack                       = true;
    g_ctrlm.local_conf                     = false;
@@ -832,11 +831,6 @@ int main(int argc, char *argv[]) {
 
    vsdk_term();
 
-   if(g_ctrlm.irdb != NULL) {
-      delete g_ctrlm.irdb;
-      g_ctrlm.irdb = NULL;
-   }
-
    sem_destroy(&g_ctrlm.service_access_token_semaphore);
 
 #if AUTH_ENABLED
@@ -863,6 +857,7 @@ int main(int argc, char *argv[]) {
    ctrlm_telemetry_t::destroy_instance();
    #endif
    ctrlm_ir_controller_t::destroy_instance();
+   ctrlm_irdb_interface_t::destroy_instance();
 
    XLOGD_INFO("exit program");
    return (g_ctrlm.return_code);
@@ -1327,7 +1322,7 @@ void ctrlm_device_type_loaded(ctrlm_device_type_t device_type) {
       g_ctrlm.voice_session->voice_stb_data_device_type_set(g_ctrlm.device_type);
 
       XLOGD_INFO("create IRDB object");
-      g_ctrlm.irdb = ctrlm_irdb_create((g_ctrlm.device_type == CTRLM_DEVICE_TYPE_TV) ? true : false);
+      g_ctrlm.irdb = ctrlm_irdb_interface_t::get_instance((g_ctrlm.device_type == CTRLM_DEVICE_TYPE_TV) ? true : false);
 
       ctrlm_main_has_device_type_set(true);
    }
@@ -4760,7 +4755,7 @@ gboolean ctrlm_main_successful_init_get(void) {
    return(g_ctrlm.successful_init);
 }
 
-ctrlm_irdb_t* ctrlm_main_irdb_get() {
+ctrlm_irdb_interface_t* ctrlm_main_irdb_get() {
    return(g_ctrlm.irdb);
 }
 

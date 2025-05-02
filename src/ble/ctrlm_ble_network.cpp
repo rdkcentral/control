@@ -405,7 +405,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                voice_format.type = CTRLM_VOICE_FORMAT_ADPCM_FRAME;
 
                audio_format.getFrameInfo(adpcm_frame->size_packet, adpcm_frame->size_header);
-               audio_format.getHeaderInfoAdpcm(adpcm_frame->offset_step_size_index, adpcm_frame->offset_predicted_sample_lsb, adpcm_frame->offset_predicted_sample_msb, adpcm_frame->offset_sequence_value, adpcm_frame->sequence_value_min, adpcm_frame->sequence_value_max);
+               audio_format.getHeaderInfoAdpcm(adpcm_frame->offset_step_size_index, adpcm_frame->offset_predicted_sample_lsb, adpcm_frame->offset_predicted_sample_msb, adpcm_frame->offset_sequence_value, adpcm_frame->shift_sequence_value, adpcm_frame->sequence_value_min, adpcm_frame->sequence_value_max);
 
                pressAndHoldSupport = audio_format.getPressAndHoldSupport();
                if(!pressAndHoldSupport) {

@@ -34,8 +34,8 @@
 #include "libIBus.h"
 #ifdef USE_DEPRECATED_IRMGR
 #include "irMgr.h"
-#endif
 #include "plat_ir.h"
+#endif
 #include "sysMgr.h"
 #ifdef BREAKPAD_SUPPORT
 #include "client/linux/handler/exception_handler.h"
@@ -387,8 +387,9 @@ static void     ctrlm_property_write_shutdown_time(void);
 static guchar   ctrlm_property_write_shutdown_time(guchar *data, guchar length);
 static void     ctrlm_property_read_shutdown_time(void);
 static void     control_service_values_read_from_db();
+#ifdef USE_DEPRECATED_IRMGR
 static void     ctrlm_check_for_key_tag(int key_tag) __attribute__((unused)); //USE_DEPRECATED_IRMGR
-
+#endif
 #ifdef MEMORY_LOCK
 const char *memory_lock_progs[] = {
 "/usr/bin/controlMgr",
@@ -4478,8 +4479,6 @@ void ctrlm_event_handler_ir(const char *owner, IARM_EventId_t event_id, void *da
       ctrlm_update_last_key_info(controller_id, key_src, key_code, source_name, g_ctrlm.last_key_info.is_screen_bind_mode, write_last_key_info);
    }
 }
-#endif // USE_DEPRECATED_IRMGR
-
 
 void ctrlm_check_for_key_tag(int key_tag) {
    switch(key_tag) {
@@ -4521,6 +4520,7 @@ void ctrlm_check_for_key_tag(int key_tag) {
       XLOGD_DEBUG("key_tag <%s>", ctrlm_rcu_ir_remote_types_str(g_ctrlm.last_key_info.last_ir_remote_type));
    }
 }
+#endif // USE_DEPRECATED_IRMGR
 
 gboolean ctrlm_timeout_line_of_sight(gpointer user_data) {
    XLOGD_INFO("Timeout - Line of sight.");

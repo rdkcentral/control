@@ -105,7 +105,7 @@ typedef struct {
 
 const char *irdb_version();
 
-bool ctrlm_irdb_open(bool platform_tv);
+bool ctrlm_irdb_open(bool platform_tv, const char* unique_id = NULL);
 
 bool ctrlm_irdb_initialize();
 

@@ -23,7 +23,7 @@
 #include "ctrlm_irdb_plugin.h"
 
 const char* STUB_irdb_version();
-bool STUB_ctrlm_irdb_open(bool platform_tv);
+bool STUB_ctrlm_irdb_open(bool platform_tv, const char* unique_id);
 bool STUB_ctrlm_irdb_close();
 bool STUB_ctrlm_irdb_initialize();
 bool STUB_ctrlm_irdb_get_manufacturers(ctrlm_irdb_manufacturer_list_t *manufacturers, ctrlm_irdb_dev_type_t type, const char *prefix);

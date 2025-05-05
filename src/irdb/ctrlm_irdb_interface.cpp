@@ -58,7 +58,7 @@ void ctrlm_irdb_interface_t::destroy_instance() {
 
 
 typedef struct {
-    bool (*pluginOpen)(bool) = NULL;
+    bool (*pluginOpen)(bool, const char*) = NULL;
     bool (*pluginInitialize)() = NULL;
     bool (*pluginGetManufacturers)(ctrlm_irdb_manufacturer_list_t *manufacturers, ctrlm_irdb_dev_type_t type, const char *prefix) = NULL;
     bool (*pluginGetModels)(ctrlm_irdb_model_list_t *models, ctrlm_irdb_dev_type_t type, const char *manufacturer, const char *prefix) = NULL;
@@ -188,7 +188,7 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
             g_irdb.pluginGetCodesByInfoframe = STUB_ctrlm_irdb_get_ir_codes_by_infoframe;
         }
     }
-    (*g_irdb.pluginOpen)(m_platform_tv);
+    (*g_irdb.pluginOpen)(m_platform_tv, ctrlm_device_mac_get().c_str());
 
     #if defined(CTRLM_THUNDER)
     Thunder::Controller::ctrlm_thunder_controller_t *controller = Thunder::Controller::ctrlm_thunder_controller_t::getInstance();
@@ -496,7 +496,7 @@ bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctr
         if ( (*g_irdb.pluginGetCodeSet)(&code_set, type, id.c_str()) == false) {
             XLOGD_ERROR("Failed getting IR code set");
         } else {
-            ret = this->_program_ir_codes(network_id, controller_id, &code_set, CTRLM_IRDB_VENDOR_RUWIDO);
+            ret = this->_program_ir_codes(network_id, controller_id, &code_set, CTRLM_IRDB_VENDOR_UEI);
         }
     }
     return(ret);

@@ -25,7 +25,7 @@ const char* STUB_irdb_version() {
     XLOGD_ERROR("not implemented");
     return("INVALID");
 }
-bool STUB_ctrlm_irdb_open(bool platform_tv) {
+bool STUB_ctrlm_irdb_open(bool platform_tv, const char* unique_id) {
     XLOGD_ERROR("not implemented");
     return(false);
 }

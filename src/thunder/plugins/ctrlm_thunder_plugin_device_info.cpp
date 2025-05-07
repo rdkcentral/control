@@ -104,7 +104,7 @@ bool ctrlm_thunder_plugin_device_info_t::_get_device_type() {
                 this->device_type = CTRLM_DEVICE_TYPE_STB_IP;
             } else if(device_type == "QamIpStb") {
                 this->device_type = CTRLM_DEVICE_TYPE_STB_QAM;
-            } else if(device_type == "tv") {
+            } else if(device_type == "IpTv") {
                 this->device_type = CTRLM_DEVICE_TYPE_TV;
             } else {
                 XLOGD_ERROR("unknown device type <%s>", device_type.c_str());

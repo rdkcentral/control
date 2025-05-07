@@ -3,10 +3,12 @@
 #include "ctrlm_log.h"
 
 ctrlm_thunder_powermanager_t *ctrlm_thunder_powermanager_create() {
+
    return(new ctrlm_thunder_powermanager_t());
 }
 
 ctrlm_thunder_powermanager_t::ctrlm_thunder_powermanager_t() {
+
    XLOGD_INFO("Thunder PowerManager Implementation");
    this->plugin = Thunder::PowerManager::ctrlm_thunder_plugin_powermanager_t::get_instance();
 }
@@ -39,14 +41,16 @@ void ctrlm_thunder_powermanager_t::get_power_state(ctrlm_power_state_t &power_st
 }
 
 void ctrlm_thunder_powermanager_t::get_networked_standby_mode(bool networked_standby_mode) {
+
    if(this->plugin == NULL) {
-      XLOD_ERROR("plugin not yet available");
+      XLOGD_ERROR("plugin not yet available");
    } else {
       this->plugin->get_networked_standby_mode(networked_standby_mode);
    }
 }
 
 void ctrlm_thunder_powermanager_t::get_wakeup_reason_voice(bool wakeup_reason_voice) {
+
    if(this->plugin == NULL) {
       XLOGD_WARN("plugin not yet available");
    } else {

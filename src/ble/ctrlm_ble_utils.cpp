@@ -60,30 +60,6 @@ unsigned char ctrlm_ble_utils_ConvertLinuxCodeToUsbKdb(uint16_t linux_code) {
     return 0;
 }
 
-
-const std::map<uint8_t, ctrlm_irdb_vendor_t> irdbVendorMap
-{
-   {0x2, CTRLM_IRDB_VENDOR_UEI},
-   {0x4, CTRLM_IRDB_VENDOR_RUWIDO},
-};
-
-uint8_t ctrlm_ble_utils_VendorToIrControlBitmask(ctrlm_irdb_vendor_t vendor)
-{
-    for (auto const &it : irdbVendorMap) {
-        if (it.second == vendor) {
-           return it.first;
-        }
-    }
-    return 0;
-}
-
-ctrlm_irdb_vendor_t ctrlm_ble_utils_IrControlToVendor(uint8_t irControl)
-{
-    auto it = irdbVendorMap.find(irControl);
-    return (it != irdbVendorMap.end()) ? it->second : CTRLM_IRDB_VENDOR_INVALID;
-}
-
-
 string ctrlm_ble_utils_BuildDBusDeviceObjectPath(const char *path_base, unsigned long long ieee_address)
 {
     char objectPath[CTRLM_MAX_PARAM_STR_LEN];
@@ -151,14 +127,4 @@ const char *ctrlm_ble_rcu_action_str(ctrlm_ble_RcuAction_t reason) {
         case CTRLM_BLE_RCU_ACTION_INVALID:          return("INVALID");
         default:                                    return("INVALID__TYPE");
     }
-}
-
-string ctrlm_ble_irdbs_supported_str(std::vector<ctrlm_irdb_vendor_t> vendors) {
-   string supported_irdbs;
-
-   for (auto const &vendor : vendors) {
-      supported_irdbs += (supported_irdbs.empty()) ? "" : ", ";
-      supported_irdbs += ctrlm_irdb_vendor_str(vendor);
-   }
-   return supported_irdbs;
 }

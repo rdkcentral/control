@@ -131,9 +131,9 @@ public:
 
    virtual void                     check_upgrade_error(void);
 
-   void                             setSupportedIrdbs(ctrlm_irdb_vendor_t* vendors, int num_supported);
-   std::vector<ctrlm_irdb_vendor_t> getSupportedIrdbs() const;
-   bool                             isSupportedIrdb(ctrlm_irdb_vendor_t vendor);
+   void                             setSupportedIrdbs(uint8_t vendors);
+   uint8_t                          getSupportedIrdbs() const;
+   bool                             isSupportedIrdb(uint8_t vendor_support_bit);
 
    void                             print_status();
 
@@ -188,7 +188,7 @@ private:
    ctrlm_rcu_wakeup_config_t               wakeup_config_        = CTRLM_RCU_WAKEUP_CONFIG_INVALID;
    std::vector<uint16_t>                   wakeup_custom_list_;
 
-   std::vector<ctrlm_irdb_vendor_t>        irdbs_supported_;
+   uint8_t                                 irdbs_supported_;
 
    std::string                             ota_product_name_;
    std::string                             controller_type_str_;

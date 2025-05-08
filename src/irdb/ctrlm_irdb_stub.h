@@ -22,10 +22,11 @@
 
 #include "ctrlm_irdb_plugin.h"
 
-const char* STUB_irdb_version();
+char* STUB_irdb_version();
 bool STUB_ctrlm_irdb_open(bool platform_tv, const char* unique_id);
 bool STUB_ctrlm_irdb_close();
 bool STUB_ctrlm_irdb_initialize();
+unsigned char STUB_ctrlm_irdb_get_vendor_support_bit();
 bool STUB_ctrlm_irdb_get_manufacturers(ctrlm_irdb_manufacturer_list_t *manufacturers, ctrlm_irdb_dev_type_t type, const char *prefix);
 bool STUB_ctrlm_irdb_get_models(ctrlm_irdb_model_list_t *models, ctrlm_irdb_dev_type_t type, const char *manufacturer, const char *prefix);
 bool STUB_ctrlm_irdb_get_entry_ids(ctrlm_irdb_entry_id_list_t *codes, ctrlm_irdb_dev_type_t type, const char *manufacturer, const char *model);

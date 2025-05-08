@@ -193,7 +193,7 @@ if(THUNDER)
       thunder/plugins/ctrlm_thunder_plugin_cec_source.cpp
       thunder/plugins/ctrlm_thunder_plugin_display_settings.cpp
       thunder/plugins/ctrlm_thunder_plugin_device_info.cpp
-      thunder/plugins/ctrlm_thunder_plugin_hdmi_input.cpp
+      thunder/plugins/ctrlm_thunder_plugin_av_input.cpp
       thunder/plugins/ctrlm_thunder_plugin_system.cpp
       ipc/ctrlm_rcp_ipc_iarm_thunder.cpp
       voice/ipc/ctrlm_voice_ipc_iarm_thunder.cpp

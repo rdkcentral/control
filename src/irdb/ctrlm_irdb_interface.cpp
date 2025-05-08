@@ -32,7 +32,7 @@
 #include "ctrlm_thunder_plugin_cec.h"
 #include "ctrlm_thunder_plugin_cec_source.h"
 // TV Platforms
-#include "ctrlm_thunder_plugin_hdmi_input.h"
+#include "ctrlm_thunder_plugin_av_input.h"
 #include "ctrlm_thunder_plugin_cec_sink.h"
 #endif
 
@@ -59,7 +59,9 @@ void ctrlm_irdb_interface_t::destroy_instance() {
 
 typedef struct {
     bool (*pluginOpen)(bool, const char*) = NULL;
+    char* (*pluginVersion)() = NULL;
     bool (*pluginInitialize)() = NULL;
+    unsigned char (*pluginGetVendorSupportBit)() = NULL;
     bool (*pluginGetManufacturers)(ctrlm_irdb_manufacturer_list_t *manufacturers, ctrlm_irdb_dev_type_t type, const char *prefix) = NULL;
     bool (*pluginGetModels)(ctrlm_irdb_model_list_t *models, ctrlm_irdb_dev_type_t type, const char *manufacturer, const char *prefix) = NULL;
     bool (*pluginGetCodesByNames)(ctrlm_irdb_entry_id_list_t *codes, ctrlm_irdb_dev_type_t type, const char *manufacturer, const char *model) = NULL;
@@ -72,7 +74,7 @@ typedef struct {
     #ifdef CTRLM_THUNDER
     Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t   *display_settings;
     Thunder::CEC::ctrlm_thunder_plugin_cec_t                            *cec;
-    Thunder::HDMIInput::ctrlm_thunder_plugin_hdmi_input_t               *hdmi_input;
+    Thunder::AVInput::ctrlm_thunder_plugin_av_input_t                   *av_input;
     Thunder::CECSink::ctrlm_thunder_plugin_cec_sink_t                   *cec_sink;
    #endif
 } ctrlm_irdb_global_t;
@@ -110,7 +112,9 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
     if (!m_irdbPluginHandle) {
         XLOGD_ERROR("Failed to dynamically load IR database library <%s>, using stub implementation.", dlerror());
         g_irdb.pluginOpen = STUB_ctrlm_irdb_open;
+        g_irdb.pluginVersion = STUB_irdb_version;
         g_irdb.pluginInitialize = STUB_ctrlm_irdb_initialize;
+        g_irdb.pluginGetVendorSupportBit = STUB_ctrlm_irdb_get_vendor_support_bit;
         g_irdb.pluginGetManufacturers = STUB_ctrlm_irdb_get_manufacturers;
         g_irdb.pluginGetModels = STUB_ctrlm_irdb_get_models;
         g_irdb.pluginGetCodesByNames = STUB_ctrlm_irdb_get_entry_ids;
@@ -133,10 +137,24 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
         }
         dlerror();  // Clear any existing error
 
+        *(void **) (&g_irdb.pluginVersion) = dlsym(m_irdbPluginHandle, "irdb_version");
+        if ((error = dlerror()) != NULL)  {
+            XLOGD_ERROR("Failed to find plugin method (irdb_version), error <%s>, Using STUB implementation", error);
+            g_irdb.pluginVersion = STUB_irdb_version;
+        }
+        dlerror();  // Clear any existing error
+
         *(void **) (&g_irdb.pluginInitialize) = dlsym(m_irdbPluginHandle, "ctrlm_irdb_initialize");
         if ((error = dlerror()) != NULL)  {
             XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_initialize), error <%s>, Using STUB implementation", error);
             g_irdb.pluginInitialize = STUB_ctrlm_irdb_initialize;
+        }
+        dlerror();  // Clear any existing error
+
+        *(void **) (&g_irdb.pluginGetVendorSupportBit) = dlsym(m_irdbPluginHandle, "ctrlm_irdb_get_vendor_support_bit");
+        if ((error = dlerror()) != NULL)  {
+            XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_get_vendor_support_bit), error <%s>, Using STUB implementation", error);
+            g_irdb.pluginGetVendorSupportBit = STUB_ctrlm_irdb_get_vendor_support_bit;
         }
         dlerror();  // Clear any existing error
 
@@ -188,7 +206,13 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
             g_irdb.pluginGetCodesByInfoframe = STUB_ctrlm_irdb_get_ir_codes_by_infoframe;
         }
     }
-    (*g_irdb.pluginOpen)(m_platform_tv, ctrlm_device_mac_get().c_str());
+    if ((*g_irdb.pluginOpen)(m_platform_tv, ctrlm_device_mac_get().c_str()) == true) {
+        char* version = (*g_irdb.pluginVersion)();
+        if (version != NULL) {
+            XLOGD_INFO("IRDB Version <%s>", version);
+            free(version);
+        }
+    }
 
     #if defined(CTRLM_THUNDER)
     Thunder::Controller::ctrlm_thunder_controller_t *controller = Thunder::Controller::ctrlm_thunder_controller_t::getInstance();
@@ -242,7 +266,7 @@ void ctrlm_irdb_interface_t::on_thunder_ready() {
             }
         }
     } else {
-        g_irdb.hdmi_input = Thunder::HDMIInput::ctrlm_thunder_plugin_hdmi_input_t::getInstance();
+        g_irdb.av_input = Thunder::AVInput::ctrlm_thunder_plugin_av_input_t::getInstance();
         g_irdb.cec_sink = Thunder::CECSink::ctrlm_thunder_plugin_cec_sink_t::getInstance();
     }
     #endif
@@ -250,10 +274,19 @@ void ctrlm_irdb_interface_t::on_thunder_ready() {
 
 
 bool ctrlm_irdb_interface_t::initialize_irdb() {
+    bool ret = false;
+
     if (g_irdb.pluginInitialize) {
-        return (*g_irdb.pluginInitialize)();
+
+        if ((ret = (*g_irdb.pluginInitialize)()) == true) {
+            char* version = (*g_irdb.pluginVersion)();
+            if (version != NULL) {
+                XLOGD_INFO("IRDB Version <%s>", version);
+                free(version);
+            }
+        }
     }
-    return false;
+    return ret;
 }
 
 bool ctrlm_irdb_interface_t::get_initialized() { 
@@ -366,10 +399,10 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
             XLOGD_ERROR("cec is NULL");
         }
     } else {
-        if(g_irdb.hdmi_input) {
+        if(g_irdb.av_input) {
             // Check Infoframe data
             std::map<int, std::vector<uint8_t> > infoframes;
-            g_irdb.hdmi_input->get_infoframes(infoframes);
+            g_irdb.av_input->get_infoframes(infoframes);
             for(auto &itr : infoframes) {
                 if(itr.second.size() > 0) {
                     ctrlm_irdb_dev_type_t type = CTRLM_IRDB_DEV_TYPE_INVALID;
@@ -537,14 +570,14 @@ bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctr
         if ( (*g_irdb.pluginGetCodeSet)(&code_set, type, id.c_str()) == false) {
             XLOGD_ERROR("Failed getting IR code set");
         } else {
-            ret = this->_program_ir_codes(network_id, controller_id, &code_set, CTRLM_IRDB_VENDOR_UEI);
+            ret = this->_program_ir_codes(network_id, controller_id, &code_set);
         }
     }
     return(ret);
 }
 
 
-bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes, ctrlm_irdb_vendor_t vendor) {
+bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes) {
     bool ret = false;
 
     ctrlm_main_queue_msg_program_ir_codes_t msg = {0};
@@ -553,7 +586,11 @@ bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ct
     msg.controller_id      = controller_id;
     msg.ir_codes           = ir_codes;
     msg.success            = &ret;
-    msg.vendor             = vendor;
+    msg.vendor_support_bit = 0;
+
+    if (g_irdb.pluginGetVendorSupportBit) {
+        msg.vendor_support_bit = (*g_irdb.pluginGetVendorSupportBit)();
+    }
 
     ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_program_ir_codes, &msg, sizeof(msg), NULL, network_id, true);
 

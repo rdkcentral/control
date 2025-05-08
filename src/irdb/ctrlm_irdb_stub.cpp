@@ -21,9 +21,9 @@
 #include "ctrlm_irdb_stub.h"
 
 
-const char* STUB_irdb_version() {
+char* STUB_irdb_version() {
     XLOGD_ERROR("not implemented");
-    return("INVALID");
+    return NULL;
 }
 bool STUB_ctrlm_irdb_open(bool platform_tv, const char* unique_id) {
     XLOGD_ERROR("not implemented");
@@ -36,6 +36,10 @@ bool STUB_ctrlm_irdb_close() {
 bool STUB_ctrlm_irdb_initialize() {
     XLOGD_ERROR("not implemented");
     return(false);
+}
+unsigned char STUB_ctrlm_irdb_get_vendor_support_bit() {
+    XLOGD_ERROR("not implemented");
+    return(0);
 }
 bool STUB_ctrlm_irdb_get_manufacturers(ctrlm_irdb_manufacturer_list_t *manufacturers, ctrlm_irdb_dev_type_t type, const char *prefix) {
     XLOGD_ERROR("not implemented");

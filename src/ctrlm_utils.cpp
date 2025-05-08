@@ -2317,15 +2317,6 @@ bool ctrlm_utils_queue_msg_push(int msgq, const char *msg, size_t msg_len) {
    return(true);
 }
 
-const char *ctrlm_irdb_vendor_str(ctrlm_irdb_vendor_t vendor) {
-   switch (vendor) {
-      case CTRLM_IRDB_VENDOR_UEI:      return("UEI");
-      case CTRLM_IRDB_VENDOR_RUWIDO:   return("RUWIDO");
-      case CTRLM_IRDB_VENDOR_INVALID:  return("INVALID");
-      default:                         return("UNKNOWN");
-   }
-}
-
 std::string ctrlm_utils_time_as_string(time_t time) {
    char time_str[CTRLM_MAX_TIME_STR_LEN];
    errno_t safec_rc = -1;

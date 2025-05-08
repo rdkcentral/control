@@ -16,30 +16,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-#ifndef __CTRLM_THUNDER_PLUGIN_HDMI_INPUT_H__
-#define __CTRLM_THUNDER_PLUGIN_HDMI_INPUT_H__
+#ifndef __CTRLM_THUNDER_PLUGIN_AV_INPUT_H__
+#define __CTRLM_THUNDER_PLUGIN_AV_INPUT_H__
 #include "ctrlm_thunder_plugin.h"
 #include <semaphore.h>
 #include <map>
 
 namespace Thunder {
-namespace HDMIInput {
+namespace AVInput {
 
 /**
- * This class is used within ControlMgr to interact with the HDMIInput Thunder Plugin.
+ * This class is used within ControlMgr to interact with the AVInput Thunder Plugin.
  */
-class ctrlm_thunder_plugin_hdmi_input_t : public Thunder::Plugin::ctrlm_thunder_plugin_t {
+class ctrlm_thunder_plugin_av_input_t : public Thunder::Plugin::ctrlm_thunder_plugin_t {
 public:
     /**
      * This function is used to get the Thunder HDMI Input instance, as it is a Singleton.
      * @return The instance of the Thunder HDMI Input, or NULL on error.
      */
-    static ctrlm_thunder_plugin_hdmi_input_t *getInstance();
+    static ctrlm_thunder_plugin_av_input_t *getInstance();
 
     /**
-     * HDMIInput Thunder Plugin Destructor
+     * AVInput Thunder Plugin Destructor
      */
-    virtual ~ctrlm_thunder_plugin_hdmi_input_t();
+    virtual ~ctrlm_thunder_plugin_av_input_t();
 
     /**
      * This function is used to get the HDMI Infoframe data from cache.
@@ -56,15 +56,15 @@ public:
     void on_device_status_change(int port, bool active);
 
     /**
-     * This function is technically used internally but from static function. This function is used to parse device list from HdmiInput calls/events
+     * This function is technically used internally but from static function. This function is used to parse device list from AVInput calls/events
      */
     void check_device_list(void *params);
 
 protected:
     /**
-     * HDMIInput Thunder Plugin Default Constructor
+     * AVInput Thunder Plugin Default Constructor
      */
-    ctrlm_thunder_plugin_hdmi_input_t();
+    ctrlm_thunder_plugin_av_input_t();
 
     /**
      * This function is called when registering for Thunder events.

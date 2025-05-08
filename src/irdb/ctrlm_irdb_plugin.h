@@ -24,19 +24,6 @@
 extern "C" {
 #endif
 
-#define CTRLM_IRDB_MAX_STRING_LENGTH 50
-#define CTRLM_IRDB_MAX_RESULTS 100
-#define CTRLM_IRDB_MAX_WAVEFORM_SIZE 255
-
-////////////////////////////////////////////////////
-//EGTODO: remove this
-typedef enum {
-    CTRLM_IRDB_VENDOR_UEI,
-    CTRLM_IRDB_VENDOR_RUWIDO,
-    CTRLM_IRDB_VENDOR_INVALID
-} ctrlm_irdb_vendor_t;
-////////////////////////////////////////////////////
-
 
 typedef enum {
     CTRLM_IRDB_MODE_OFFLINE,
@@ -103,11 +90,13 @@ typedef struct {
 } ctrlm_irdb_autolookup_ranked_list_t;
 
 
-const char *irdb_version();
+char *irdb_version();
 
 bool ctrlm_irdb_open(bool platform_tv, const char* unique_id = NULL);
 
 bool ctrlm_irdb_initialize();
+
+unsigned char ctrlm_irdb_get_vendor_support_bit();
 
 bool ctrlm_irdb_get_manufacturers(ctrlm_irdb_manufacturer_list_t *manufacturers, ctrlm_irdb_dev_type_t type, const char *prefix);
 

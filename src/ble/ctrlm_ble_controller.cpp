@@ -56,7 +56,7 @@ ctrlm_obj_controller_ble_t::ctrlm_obj_controller_ble_t(ctrlm_controller_id_t con
    battery_percent_(std::make_shared<ctrlm_uint64_db_attr_t>("Battery Percentage", 0xFF, &network, controller_id, "battery_percent")),
    validation_result_(validation_result),
    wakeup_custom_list_(),
-   irdbs_supported_()
+   irdbs_supported_(0)
 {
    XLOGD_INFO("constructor - controller id <%u>", controller_id);
 
@@ -527,40 +527,36 @@ ctrlm_timestamp_t ctrlm_obj_controller_ble_t::getVoiceStartTimeLocal() const {
    return(voice_start_time_local_);
 }
 
-void ctrlm_obj_controller_ble_t::setSupportedIrdbs(ctrlm_irdb_vendor_t* vendors, int num_supported) {
-   if (vendors == NULL) {
-      XLOGD_ERROR("vendors is NULL");
-      return;
-   }
-   if (num_supported == 0)
-      return;
+void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmask) {
+   this->irdbs_supported_ = vendor_support_bitmask;
 
-   this->irdbs_supported_.clear();
-   for (int i = 0; i < num_supported; i++) {
-      this->irdbs_supported_.push_back(vendors[i]);
-   }
-   XLOGD_INFO("Controller <%s> IRDBs supported = <%s>",
-         ieee_address_get().to_string().c_str(), ctrlm_ble_irdbs_supported_str(getSupportedIrdbs()).c_str());
+   XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>", 
+         ieee_address_get().to_string().c_str(), vendor_support_bitmask);
 }
 
-std::vector<ctrlm_irdb_vendor_t> ctrlm_obj_controller_ble_t::getSupportedIrdbs() const {
+uint8_t ctrlm_obj_controller_ble_t::getSupportedIrdbs() const {
    return this->irdbs_supported_;
 }
 
-bool ctrlm_obj_controller_ble_t::isSupportedIrdb(ctrlm_irdb_vendor_t vendor) {
-   if (vendor == CTRLM_IRDB_VENDOR_INVALID) {
-      XLOGD_ERROR("%s (%u) is not allowed", ctrlm_irdb_vendor_str(vendor), vendor);
+bool ctrlm_obj_controller_ble_t::isSupportedIrdb(uint8_t vendor_support_bit) {
+   
+   XLOGD_WARN("EGPRINT: controller supported IRDBs <%X>, vendor_support_bit <%X>",this->irdbs_supported_, vendor_support_bit);
+
+   if (irdbs_supported_ == 0) {
+      XLOGD_WARN("Controller <%s> likely does not support this feature yet - continuing...", 
+               ieee_address_get().to_string().c_str());
+      return true;
+
+   } else if (vendor_support_bit == 0) {
+      XLOGD_ERROR("vendor support bit is invalid.");
       return false;
-   }
-   if (irdbs_supported_.empty()) {
-      XLOGD_WARN("Controller %u likely does not support this feature yet - continuing...", controller_id_get());
+   
+   } else if (this->irdbs_supported_ & vendor_support_bit) {
+      XLOGD_INFO("Controller <%s> supports IRDB protocol", ieee_address_get().to_string().c_str());
       return true;
    }
-   if (std::find(irdbs_supported_.begin(), irdbs_supported_.end(), vendor) != irdbs_supported_.end()) {
-      XLOGD_INFO("Controller %u supports IRDB %s (%u)", controller_id_get(), ctrlm_irdb_vendor_str(vendor), vendor);
-      return true;
-   }
-   XLOGD_WARN("Controller %u does not support IRDB %s (%u)", controller_id_get(), ctrlm_irdb_vendor_str(vendor), vendor);
+
+   XLOGD_INFO("Controller <%s> does not support IRDB protocol", ieee_address_get().to_string().c_str());
    return false;
 }
 
@@ -635,7 +631,7 @@ void ctrlm_obj_controller_ble_t::print_status() {
    XLOGD_INFO("Wakeup Config Custom List    : %s", wakeupCustomListToString().c_str());
    }
    XLOGD_INFO("");
-   XLOGD_INFO("IR Database Supported        : %s", ctrlm_ble_irdbs_supported_str(irdbs_supported_).c_str());
+   XLOGD_INFO("IR Database Support Bitmask  : 0x%X", irdbs_supported_);
    XLOGD_INFO("Programmed TV IRDB Code      : %s", irdb_entry_id_name_tv_->to_string().c_str());
    XLOGD_INFO("Programmed AVR IRDB Code     : %s", irdb_entry_id_name_avr_->to_string().c_str());
    XLOGD_INFO("");

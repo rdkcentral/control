@@ -199,7 +199,6 @@ const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config);
 const char *ctrlm_t2_error_str(T2ERROR error);
 #endif
 
-const char *ctrlm_irdb_vendor_str(ctrlm_irdb_vendor_t vendor);  //EGTODO: remove this
 const char *ctrlm_rf_pair_state_str(ctrlm_rf_pair_state_t state);
 const char *ctrlm_rcu_upgrade_state_str(ctrlm_rcu_upgrade_state_t state);
 

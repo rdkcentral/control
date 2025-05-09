@@ -727,7 +727,7 @@ void ctrlm_obj_network_ble_t::req_process_get_ir_protocol_support(void *data, in
          dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
       } else {
          if (ble_rcu_interface_) {
-            dqm->params->irdbs_supported = controllers_[controller_id]->getSupportedIrdbs();
+            dqm->params->irdbs_supported_bitmask = controllers_[controller_id]->getSupportedIrdbs();
             dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
          }
       }
@@ -761,7 +761,7 @@ void ctrlm_obj_network_ble_t::req_process_set_ir_protocol_control(void *data, in
          dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
       } else {
          if (ble_rcu_interface_ && !ble_rcu_interface_->setIrControl(controllers_[controller_id]->ieee_address_get().get_value(),
-                                                                     dqm->params->irdbs_supported))
+                                                                     dqm->params->irdbs_supported_bitmask))
          {
             XLOGD_ERROR("failed to write IR control characteristic to the remote");
          } else {

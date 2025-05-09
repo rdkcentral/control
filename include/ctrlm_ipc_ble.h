@@ -114,7 +114,9 @@ typedef struct {
    unsigned char                 api_revision;
    ctrlm_network_id_t            network_id;
    ctrlm_controller_id_t         controller_id;
-   uint8_t                       irdbs_supported;
+   uint8_t                       irdbs_supported_bitmask;   
+   uint8_t                       irdbs_supported[8];
+   int                           num_irdbs_supported;
    ctrlm_iarm_call_result_t      result;
 } ctrlm_iarm_call_IrProtocol_params_t;
 

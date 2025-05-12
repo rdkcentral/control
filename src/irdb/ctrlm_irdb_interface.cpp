@@ -107,10 +107,9 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
 
     m_irdbPluginHandle = NULL;
 
-    // m_irdbPluginHandle = dlopen ("libctrlm-hal-irdb.so", RTLD_LAZY);
-    m_irdbPluginHandle = dlopen ("libctrlm-hal-irdb.so", RTLD_NOW);
+    m_irdbPluginHandle = dlopen ("libctrlm-irdb-plugin.so", RTLD_NOW);
     if (!m_irdbPluginHandle) {
-        XLOGD_ERROR("Failed to dynamically load IR database library <%s>, using stub implementation.", dlerror());
+        XLOGD_ERROR("Failed to load IR database plugin <%s>, using stub implementation.", dlerror());
         g_irdb.pluginOpen = STUB_ctrlm_irdb_open;
         g_irdb.pluginVersion = STUB_irdb_version;
         g_irdb.pluginInitialize = STUB_ctrlm_irdb_initialize;

@@ -540,8 +540,6 @@ uint8_t ctrlm_obj_controller_ble_t::getSupportedIrdbs() const {
 
 bool ctrlm_obj_controller_ble_t::isSupportedIrdb(uint8_t vendor_support_bit) {
    
-   XLOGD_WARN("EGPRINT: controller supported IRDBs <%X>, vendor_support_bit <%X>",this->irdbs_supported_, vendor_support_bit);
-
    if (irdbs_supported_ == 0) {
       XLOGD_WARN("Controller <%s> likely does not support this feature yet - continuing...", 
                ieee_address_get().to_string().c_str());

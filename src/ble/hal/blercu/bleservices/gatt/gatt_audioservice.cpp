@@ -448,12 +448,17 @@ void GattAudioService::onAudioInfoReceived(uint16_t frameCount, uint32_t duratio
     }
 
     // Set the frame count max in the audio pipe
-    bool more_frames = m_audioPipe->setFrameCountMax(frameCountMax);
+    bool more_frames = false;
+    if(m_audioPipe) {
+        m_audioPipe->setFrameCountMax(frameCountMax);
+    }
     
     if(m_StreamStopPending && !more_frames) { // if stream stop is pending and no more frames are needed, then stop the stream
         guard.unlock();
 
         m_stateMachine.postEvent(StopStreamingRequestEvent);
+    } else if(!m_StreamStopPending) {
+        XLOGD_INFO("wait for stream stop request");
     } else {
         XLOGD_INFO("wait for remaining frames to arrive");
         // Set a timeout event for receiving the remaining audio frames

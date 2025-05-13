@@ -32,11 +32,7 @@
 #include "ctrlm_thunder_plugin_cec.h"
 #include "ctrlm_thunder_plugin_cec_source.h"
 // TV Platforms
-#ifdef USE_DEPRECATED_HDMI_INPUT_PLUGIN
-#include "ctrlm_thunder_plugin_hdmi_input.h"
-#else
 #include "ctrlm_thunder_plugin_av_input.h"
-#endif
 #include "ctrlm_thunder_plugin_cec_sink.h"
 #endif
 
@@ -78,11 +74,7 @@ typedef struct {
     #ifdef CTRLM_THUNDER
     Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t   *display_settings;
     Thunder::CEC::ctrlm_thunder_plugin_cec_t                            *cec;
-    #ifdef USE_DEPRECATED_HDMI_INPUT_PLUGIN
-    Thunder::HDMIInput::ctrlm_thunder_plugin_hdmi_input_t               *av_input;
-    #else
     Thunder::AVInput::ctrlm_thunder_plugin_av_input_t                   *av_input;
-    #endif
     Thunder::CECSink::ctrlm_thunder_plugin_cec_sink_t                   *cec_sink;
    #endif
 } ctrlm_irdb_global_t;
@@ -273,11 +265,7 @@ void ctrlm_irdb_interface_t::on_thunder_ready() {
             }
         }
     } else {
-        #ifdef USE_DEPRECATED_HDMI_INPUT_PLUGIN
-        g_irdb.av_input = Thunder::HDMIInput::ctrlm_thunder_plugin_hdmi_input_t::getInstance();
-        #else
         g_irdb.av_input = Thunder::AVInput::ctrlm_thunder_plugin_av_input_t::getInstance();
-        #endif
         g_irdb.cec_sink = Thunder::CECSink::ctrlm_thunder_plugin_cec_sink_t::getInstance();
     }
     #endif

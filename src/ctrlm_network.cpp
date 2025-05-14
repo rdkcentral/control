@@ -498,10 +498,6 @@ ctrlm_hal_result_t ctrlm_obj_network_t::network_init(GThread *ctrlm_main_thread)
       XLOGD_FATAL("Failed to initialize %s network", name_get());
    } else {
       XLOGD_INFO("Initialized %s network version %s", name_get(), version_get());
-      ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
-      if (rcp_ipc) {
-          rcp_ipc->register_ipc();
-      }
       // Post HAL initialization
       hal_init_complete();
       // Xconf

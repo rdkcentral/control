@@ -87,6 +87,7 @@
 #ifdef MEMORY_LOCK
 #include "clnl.h"
 #endif
+#include "ctrlm_rcp_ipc_iarm_thunder.h"
 
 using namespace std;
 
@@ -767,6 +768,12 @@ int main(int argc, char *argv[]) {
    XLOGD_INFO("Waiting for ctrlm main thread initialization...");
    sem_wait(&g_ctrlm.semaphore);
 
+   XLOGD_INFO("init networks");
+   if(!ctrlm_networks_init()) {
+      XLOGD_FATAL("Unable to initialize networks");
+      return(-1);
+   }
+
    XLOGD_INFO("init IR controller object");
    g_ctrlm.ir_controller = ctrlm_ir_controller_t::get_instance();
    g_ctrlm.ir_controller->mask_key_codes_set(g_ctrlm.mask_pii);
@@ -776,10 +783,9 @@ int main(int argc, char *argv[]) {
    g_ctrlm.ir_controller->db_load();
    g_ctrlm.ir_controller->print_status();
 
-   XLOGD_INFO("init networks");
-   if(!ctrlm_networks_init()) {
-      XLOGD_FATAL("Unable to initialize networks");
-      return(-1);
+   ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
+   if (rcp_ipc) {
+       rcp_ipc->register_ipc();
    }
 
    XLOGD_INFO("init voice");

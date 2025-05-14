@@ -191,8 +191,8 @@ bool ctrlm_ir_rf_db_t::add_irdb_codes(ctrlm_irdb_ir_code_set_t *ir_codes) {
                 break;
             }
         }
-        for(unsigned int i = 0; i < ir_codes->list_qty; i++) {
-            ctrlm_ir_rf_db_entry_t *entry = ctrlm_ir_rf_db_entry_t::from_raw_ir_code(type, to_ctrlm_keycode(ir_codes->waveforms[i].key_code), (uint8_t *)ir_codes->waveforms[i].data, (uint16_t)ir_codes->waveforms[i].list_qty);
+        for(auto &itr : ir_codes->waveforms) {
+            ctrlm_ir_rf_db_entry_t *entry = ctrlm_ir_rf_db_entry_t::from_raw_ir_code(type, to_ctrlm_keycode(itr.first), (uint8_t *)itr.second.data(), (uint16_t)itr.second.size());
             if(entry) {
                this->add_ir_code_entry(entry);
             } else {

@@ -30,26 +30,11 @@
 #include "ctrlm_irdb_plugin.h"
 
 
-// Autolookup
-class ctrlm_autolookup_entry_ranked_t {
-public:
-   std::string man;
-   std::string model;
-   std::string id;
-   int rank;
-   ctrlm_autolookup_entry_ranked_t() {
-      this->man = "Unknown";
-      this->model = "Unknown";
-      this->id  = "";
-      this->rank = 0;
-   }
-};
-inline bool operator==(const ctrlm_autolookup_entry_ranked_t& lhs, const ctrlm_autolookup_entry_ranked_t& rhs) {
+inline bool operator==(const ctrlm_irdb_autolookup_entry_ranked_t& lhs, const ctrlm_irdb_autolookup_entry_ranked_t& rhs) {
       return (lhs.id.compare(rhs.id) == 0);
 }
    
-typedef std::vector<ctrlm_autolookup_entry_ranked_t> ctrlm_autolookup_ranked_list_t;
-typedef std::map<ctrlm_irdb_dev_type_t,ctrlm_autolookup_ranked_list_t> ctrlm_autolookup_ranked_list_by_type_t;
+typedef std::map<ctrlm_irdb_dev_type_t,ctrlm_irdb_autolookup_ranked_list_t> ctrlm_autolookup_ranked_list_by_type_t;
 
 typedef struct {
    ctrlm_network_id_t         network_id;
@@ -82,9 +67,9 @@ public:
 
    virtual ~ctrlm_irdb_interface_t();
 
-   bool get_manufacturers(ctrlm_irdb_manufacturer_list_t *manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix = "");
-   bool get_models(ctrlm_irdb_model_list_t *models, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &prefix = "");
-   bool get_irdb_entry_ids(ctrlm_irdb_entry_id_list_t *codes, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model = "");
+   bool get_manufacturers(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix = "");
+   bool get_models(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &prefix = "");
+   bool get_irdb_entry_ids(ctrlm_irdb_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model = "");
    bool program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_dev_type_t type, const std::string &name);
    bool clear_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id);
    
@@ -109,8 +94,6 @@ private:
 protected:
     ctrlm_irdb_mode_t mode;
     volatile int      initialized;
-    
-
     bool              m_platform_tv;
 };
 

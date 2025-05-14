@@ -146,15 +146,13 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_manufacturers(void *arg) {
         } else {
             manufacturers = json_array();
             ctrlm_irdb_manufacturer_list_t mans;
-            if(irdb->get_manufacturers(&mans, dev_type, manufacturer) == false ) {
-               XLOGD_ERROR("Failed getting manufacturers");
-               success = false;
+            if(irdb->get_manufacturers(mans, dev_type, manufacturer) == false ) {
+                XLOGD_ERROR("Failed getting manufacturers");
+                success = false;
             } else {
-               for(unsigned int i = 0; i < mans.list_qty; i++) {
-                   json_array_append_new(manufacturers, json_string(mans.names[i]));
-                   free(mans.names[i]);
-               }
-               free(mans.names);
+                for(const auto &itr : mans) {
+                    json_array_append_new(manufacturers, json_string(itr.c_str()));
+                }
             }
         }
     }
@@ -227,15 +225,13 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_models(void *arg) {
         } else {
             models = json_array();
             ctrlm_irdb_model_list_t mods;
-            if(irdb->get_models(&mods, dev_type, manufacturer, model) == false ) {
+            if(irdb->get_models(mods, dev_type, manufacturer, model) == false ) {
                 XLOGD_ERROR("Failed getting models");
                 success = false;
             } else {
-                for(unsigned int i = 0; i < mods.list_qty; i++) {
-                   json_array_append_new(models, json_string(mods.names[i]));
-                   free(mods.names[i]);
+                for(const auto &itr : mods) {
+                   json_array_append_new(models, json_string(itr.c_str()));
                 }
-                free(mods.names);
             }
         }
     }
@@ -288,7 +284,7 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_ir_codes_by_auto_lookup(void *a
             } else {
                 if(cd_map.count(CTRLM_IRDB_DEV_TYPE_TV) > 0) {
                     // First entry in the list is the highest ranked code, so use the manufacturer and model from that entry
-                    tv_man   = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_TV].front().man.c_str());
+                    tv_man   = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_TV].front().manufacturer.c_str());
                     tv_model = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_TV].front().model.c_str());
                     tv_codes = json_array();
                     for (auto const &entry : cd_map[CTRLM_IRDB_DEV_TYPE_TV]) {
@@ -300,7 +296,7 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_ir_codes_by_auto_lookup(void *a
                 }
                 if(cd_map.count(CTRLM_IRDB_DEV_TYPE_AVR) > 0) {
                     // First entry in the list is the highest ranked code, so use the manufacturer and model from that entry
-                    avr_man   = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_AVR].front().man.c_str());
+                    avr_man   = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_AVR].front().manufacturer.c_str());
                     avr_model = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_AVR].front().model.c_str());
                     avr_codes = json_array();
                     for (auto const &entry : cd_map[CTRLM_IRDB_DEV_TYPE_AVR]) {
@@ -379,15 +375,13 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_irdb_entry_ids(void *arg) {
         } else {
             codes = json_array();
             ctrlm_irdb_entry_id_list_t cds;
-            if(irdb->get_irdb_entry_ids(&cds, dev_type, manufacturer, model) == false) {
-               XLOGD_ERROR("Failed getting codes");
-               success = false;
+            if(irdb->get_irdb_entry_ids(cds, dev_type, manufacturer, model) == false) {
+                XLOGD_ERROR("Failed getting codes");
+                success = false;
             } else {
-               for(unsigned int i = 0; i < cds.list_qty; i++) {
-                   json_array_append_new(codes, json_string(cds.ids[i]));
-                   free(cds.ids[i]);
-               }
-               free(cds.ids);
+                for(const auto &itr : cds) {
+                    json_array_append_new(codes, json_string(itr.c_str()));
+                }
             }
         }
     }

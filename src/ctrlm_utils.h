@@ -141,11 +141,7 @@ extern "C"
 
 #ifdef BREAKPAD_SUPPORT
 void ctrlm_crash_ctrlm_device_update(void);
-#ifdef CTRLM_RF4CE_HAL_QORVO
-void ctrlm_crash_rf4ce_qorvo(void);
-#else
-void ctrlm_crash_rf4ce_ti(void);
-#endif
+void ctrlm_crash_rf4ce(void);
 void ctrlm_crash_ble(void);
 void ctrlm_crash_vsdk(void);
 void ctrlm_crash_ctrlm_main(void);

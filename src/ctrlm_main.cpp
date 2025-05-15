@@ -216,6 +216,7 @@ typedef struct {
    gboolean                           production_build;
    bool                               rf4ce_enabled;
    void *                             rf4ce_handle;
+   ctrlm_hal_rf4ce_main_t             rf4ce_hal_main;
    guint                              thread_monitor_timeout_val;
    guint                              thread_monitor_timeout_tag;
    guint                              thread_monitor_index;
@@ -2128,7 +2129,7 @@ gboolean ctrlm_networks_pre_init(json_t *json_obj_net_rf4ce, json_t *json_config
 
       ctrlm_obj_network_rf4ce_t *obj_net_rf4ce = new ctrlm_obj_network_rf4ce_t(CTRLM_NETWORK_TYPE_RF4CE, network_id, "RF4CE", g_ctrlm.mask_pii, json_obj_net_rf4ce, g_thread_self());
       // Set main function for the RF4CE Network object
-      obj_net_rf4ce->hal_api_main_set(ctrlm_hal_rf4ce_main);
+      obj_net_rf4ce->hal_api_main_set(g_ctrlm.rf4ce_hal_main);
       g_ctrlm.networks[network_id]      = obj_net_rf4ce;
       //g_ctrlm.networks[network_id].net.rf4ce = obj_net_rf4ce;
       g_ctrlm.network_type[network_id]       = g_ctrlm.networks[network_id]->type_get();
@@ -6052,8 +6053,19 @@ void *ctrlm_load_hal_rf4ce(void) {
       } else {
          XLOGD_INFO("RF4CE HAL is not present.");
       }
+      return(NULL);
    }
 
-   // TODO
+   dlerror();  // Clear any existing error
+
+   g_ctrlm.rf4ce_hal_main = (ctrlm_hal_rf4ce_main_t)dlsym(handle, "ctrlm_hal_rf4ce_main");
+   char *error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (ctrlm_hal_rf4ce_main), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+   
    return(handle);
 }

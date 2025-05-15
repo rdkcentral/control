@@ -295,7 +295,7 @@ int StateMachine::shouldMoveState(Event::Type eventType) const
 static gboolean timerEvent(gpointer user_data)
 {
     StateMachine_userdata *userData = (StateMachine_userdata*)user_data;
-    if (userData == nullptr || !userData->m_ptr->isRunning() || !userData->m_isAlive || !(*userData->m_isAlive)) {
+    if (userData == nullptr || !userData->is_alive() || !userData->m_ptr->isRunning() ) {
         delete userData;
         return false;
     }

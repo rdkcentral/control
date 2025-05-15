@@ -995,7 +995,7 @@ static gboolean onDiscoveryWatchdog(gpointer user_data)
     BleRcuAdapterBluez_userData *userData = (BleRcuAdapterBluez_userData*)user_data;
     if (userData == nullptr) {
         return false;
-    } else if (userData->m_isAlive || !*userData->m_isAlive) {
+    } else if (!userData->is_alive()) {
         XLOGD_ERROR("BleRcuAdapterBluez is not alive");
         delete userData;
         return false;

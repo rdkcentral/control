@@ -287,7 +287,7 @@ static gboolean notifyUpdateCompleted(gpointer user_data)
     BleGattProfileBluez_userdata *profile = (BleGattProfileBluez_userdata *)user_data;
     if (profile == nullptr) {
         XLOGD_ERROR("user_data is NULL!!!!!!!!!!");
-    } else if (!profile->m_isAlive || !*profile->m_isAlive) {
+    } else if (!profile->is_alive()) {
         XLOGD_ERROR("BleGattProfileBluez is not alive");
     } else {
         profile->m_ptr->m_updateCompletedSlots.invoke();

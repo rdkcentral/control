@@ -639,7 +639,7 @@ static gboolean disablePacketNotificationsMainLoop(gpointer user_data)
     if (userData == nullptr) {
         XLOGD_ERROR("user_data is NULL!!!!!!!!!!");
         return false;
-    } else if (!userData->m_isAlive || *userData->m_isAlive == false) {
+    } else if (!userData->is_alive()) {
         XLOGD_WARN("GattUpgradeService object is not alive");
     } else {
         userData->m_ptr->disablePacketNotifications();
@@ -879,7 +879,7 @@ static gboolean timerEvent(gpointer user_data)
     if (us == nullptr) {
         XLOGD_ERROR("user data pointer is null!");
         return result;
-    } else if (!us->m_isAlive || *us->m_isAlive == false) {
+    } else if (!us->is_alive()) {
         XLOGD_ERROR("GattUpgradeService is not alive");
     } else {
         result = us->m_ptr->onTimeout();

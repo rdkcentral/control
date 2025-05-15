@@ -127,6 +127,11 @@ public:
         : m_isAlive(isAlive)
         , m_ptr(obj)
     {}
+
+    bool is_alive(void) const
+    {
+        return ((m_isAlive != nullptr) && (*m_isAlive == true));
+    }
 };
 
 #ifdef __cplusplus

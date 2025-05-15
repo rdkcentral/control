@@ -79,8 +79,6 @@ set_property(CACHE BUILD_SYSTEM PROPERTY STRINGS "NONE" "YOCTO")
 
 # BUILD VARIABLES
 set(BEEP_ON_KWD_FILE "NONE" CACHE STRING "Keyword Beep file name")
-set(CTRLM_HAL_RF4CE_API_VERSION "0" CACHE STRING "RF4CE HAL API version")
-
 
 
 # EXECUTABLE(S)
@@ -302,15 +300,9 @@ if(MEMORY_LOCK)
 endif()
 
 # RF4CE options
-# All RF4CE platforms have HAL NVM
-add_compile_definitions(CTRLM_NETWORK_HAS_HAL_NVM)
-
-# Link with RF4CE HAL until it is loaded at runtime (TODO)
-target_link_libraries(controlMgr ${CTRLM_HAL_RF4CE_LIBRARY})
-
-# All RF4CE platforms have the same API version
-if(CTRLM_HAL_RF4CE_API_VERSION)
-   add_compile_definitions(CTRLM_HAL_RF4CE_API_VERSION=${CTRLM_HAL_RF4CE_API_VERSION})
+if(RF4CE_ENABLED)
+   # All RF4CE platforms have HAL NVM
+   add_compile_definitions(CTRLM_NETWORK_HAS_HAL_NVM)
 endif()
 
 if(TELEMETRY_SUPPORT)

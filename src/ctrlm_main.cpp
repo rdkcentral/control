@@ -6069,3 +6069,7 @@ void *ctrlm_load_hal_rf4ce(void) {
    
    return(handle);
 }
+
+gboolean ctrlm_is_rf4ce_enabled(void) {
+   return(g_ctrlm.rf4ce_enabled);
+}

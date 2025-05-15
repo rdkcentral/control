@@ -39,7 +39,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
-
+#include "ctrlm_utils.h"
 
 /// Possible packet opcodes
 #define OPCODE_WRQ                    uint8_t(0x0 << 6)
@@ -53,6 +53,8 @@
 #define FIRMWARE_PACKET_MTU           18
 
 using namespace std;
+
+typedef gmain_loop_obj_user_data<GattUpgradeService> GattUpgradeService_userdata;
 
 /// The structure representing the contents of the control point characteristic
 struct ControlPoint {
@@ -606,7 +608,8 @@ void GattUpgradeService::onEnteredSendWriteRequestState()
     if (m_timeoutTimer > 0) {
         g_source_remove(m_timeoutTimer);
     }
-    m_timeoutTimer = g_timeout_add(6000, timerEvent, this);
+    GattUpgradeService_userdata *timerEvent_userdata = new GattUpgradeService_userdata(m_isAlive, this);
+    m_timeoutTimer = g_timeout_add(6000, timerEvent, timerEvent_userdata);
 }
 
 // -----------------------------------------------------------------------------
@@ -632,13 +635,17 @@ void GattUpgradeService::onEnteredSendingDataState()
 
 static gboolean disablePacketNotificationsMainLoop(gpointer user_data)
 {
-    GattUpgradeService *service = (GattUpgradeService*)user_data;    
-    if (service == nullptr) {
+    GattUpgradeService_userdata *userData = (GattUpgradeService_userdata*)user_data;
+    if (userData == nullptr) {
         XLOGD_ERROR("user_data is NULL!!!!!!!!!!");
         return false;
+    } else if (!userData->m_isAlive || *userData->m_isAlive == false) {
+        XLOGD_WARN("GattUpgradeService object is not alive");
+    } else {
+        userData->m_ptr->disablePacketNotifications();
     }
-    service->disablePacketNotifications();
 
+    delete userData;
     return false;
 }
 
@@ -706,7 +713,8 @@ void GattUpgradeService::onEnteredFinishedState()
     // BleGattNotifyPipe NotifyThread, and when notifications are disabled that BleGattNotifyPipe
     // gets destroyed.  And we can't try to join with the NotifyThread while
     // within the NotifyThread. 
-    g_timeout_add(0, disablePacketNotificationsMainLoop, this);
+    GattUpgradeService_userdata *disablePacketNotifications_userData = new GattUpgradeService_userdata(m_isAlive, this);
+    g_timeout_add(0, disablePacketNotificationsMainLoop, disablePacketNotifications_userData);
 
     // it's possible we never completed the start promise as the user could
     // have cancelled, if this happens we complete with an error
@@ -865,11 +873,20 @@ void GattUpgradeService::sendDATA()
 
 static gboolean timerEvent(gpointer user_data)
 {
-    GattUpgradeService *us = (GattUpgradeService*)user_data;
-    if (us) {
-        return us->onTimeout();
+    GattUpgradeService_userdata *us = (GattUpgradeService_userdata*)user_data;
+    bool result = false;
+
+    if (us == nullptr) {
+        XLOGD_ERROR("user data pointer is null!");
+        return result;
+    } else if (!us->m_isAlive || *us->m_isAlive == false) {
+        XLOGD_ERROR("GattUpgradeService is not alive");
+    } else {
+        result = us->m_ptr->onTimeout();
     }
-    return false;
+
+    delete us;
+    return result;
 }
 
 // -----------------------------------------------------------------------------
@@ -1028,7 +1045,8 @@ void GattUpgradeService::onACKPacket(const vector<uint8_t> &data)
             if (m_timeoutTimer > 0) {
                 g_source_remove(m_timeoutTimer);
             }
-            m_timeoutTimer = g_timeout_add(6000, timerEvent, this);
+            GattUpgradeService_userdata *timerEvent_userdata = new GattUpgradeService_userdata(m_isAlive, this);
+            m_timeoutTimer = g_timeout_add(6000, timerEvent, timerEvent_userdata);
         }
     }
 }

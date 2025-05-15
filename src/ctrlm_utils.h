@@ -42,6 +42,7 @@
 #ifdef TELEMETRY_SUPPORT
 #include <telemetry2_0.h>
 #endif
+#include <memory>
 
 #define TIMEOUT_TAG_INVALID (0)
 
@@ -114,6 +115,19 @@ bool ctrlm_json_to_iarm_call_data_result(json_t *obj, T iarm)
     }
     return true;
 }
+
+template<typename T>
+class gmain_loop_obj_user_data
+{
+public:
+    std::shared_ptr<bool> m_isAlive;
+    T                    *m_ptr;
+
+    gmain_loop_obj_user_data(std::shared_ptr<bool> isAlive, T *obj)
+        : m_isAlive(isAlive)
+        , m_ptr(obj)
+    {}
+};
 
 #ifdef __cplusplus
 extern "C"

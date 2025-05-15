@@ -41,10 +41,10 @@ bool STUB_ctrlm_irdb_initialize()
     XLOGD_ERROR("not implemented");
     return(false);
 }
-unsigned char STUB_ctrlm_irdb_get_vendor_support_bit()
+bool STUB_ctrlm_irdb_get_vendor_info(ctrlm_irdb_vendor_info_t &info)
 {
     XLOGD_ERROR("not implemented");
-    return(0);
+    return(false);
 }
 bool STUB_ctrlm_irdb_get_manufacturers(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix)
 {

@@ -42,7 +42,7 @@ typedef struct {
    ctrlm_irdb_ir_code_set_t * ir_codes;
    bool *                     success;
    sem_t *                    semaphore;
-   uint8_t                    vendor_support_bit;
+   ctrlm_irdb_vendor_info_t   vendor_info;
 } ctrlm_main_queue_msg_program_ir_codes_t;
 
 typedef struct {
@@ -67,6 +67,7 @@ public:
 
    virtual ~ctrlm_irdb_interface_t();
 
+   bool get_vendor_info(ctrlm_irdb_vendor_info_t &info);
    bool get_manufacturers(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix = "");
    bool get_models(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &prefix = "");
    bool get_irdb_entry_ids(ctrlm_irdb_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model = "");
@@ -75,7 +76,6 @@ public:
    
    bool get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_list_by_type_t &codes);
    bool initialize_irdb();
-   bool get_initialized();
    void on_thunder_ready();
     
 private:
@@ -83,18 +83,23 @@ private:
    /**
     *  Default Constructor (Private due to it being a Singleton)
     */
-    ctrlm_irdb_interface_t();
-    ctrlm_irdb_interface_t(bool platform_tv);
+   ctrlm_irdb_interface_t();
+   ctrlm_irdb_interface_t(bool platform_tv);
 
-    bool _program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes);
-    bool _clear_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id);
+   bool lock_semaphore();
+   void unlock_semaphore();
 
-    void *m_irdbPluginHandle;
+   bool open_plugin();
+   bool close_plugin();
 
-protected:
-    ctrlm_irdb_mode_t mode;
-    volatile int      initialized;
-    bool              m_platform_tv;
+   bool _program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes);
+   bool _clear_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id);
+
+   void *m_irdbPluginHandle;
+
+   ctrlm_irdb_mode_t mode;
+   bool              m_platform_tv;
+   sem_t             m_semaphore;
 };
 
 #endif

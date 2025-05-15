@@ -530,31 +530,36 @@ ctrlm_timestamp_t ctrlm_obj_controller_ble_t::getVoiceStartTimeLocal() const {
 void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmask) {
    this->irdbs_supported_ = vendor_support_bitmask;
 
-   XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>", 
-         ieee_address_get().to_string().c_str(), vendor_support_bitmask);
+   ctrlm_irdb_interface_t *irdb = ctrlm_main_irdb_get();
+   ctrlm_irdb_vendor_info_t vendor_info;
+   if (irdb && irdb->get_vendor_info(vendor_info)) {
+      XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>, which %s support the loaded IRDB plugin vendor <%s>", 
+            ieee_address_get().to_string().c_str(), vendor_support_bitmask, 
+            isSupportedIrdb(vendor_info) ? "DOES" : "does NOT", vendor_info.name.c_str());
+   } else {
+      XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>, couldn't retrieve IRDB plugin vendor info.", 
+            ieee_address_get().to_string().c_str(), vendor_support_bitmask);
+   }
 }
 
 uint8_t ctrlm_obj_controller_ble_t::getSupportedIrdbs() const {
    return this->irdbs_supported_;
 }
 
-bool ctrlm_obj_controller_ble_t::isSupportedIrdb(uint8_t vendor_support_bit) {
+bool ctrlm_obj_controller_ble_t::isSupportedIrdb(const ctrlm_irdb_vendor_info_t &vendor_info) {
    
    if (irdbs_supported_ == 0) {
       XLOGD_WARN("Controller <%s> likely does not support this feature yet - continuing...", 
                ieee_address_get().to_string().c_str());
       return true;
 
-   } else if (vendor_support_bit == 0) {
-      XLOGD_ERROR("vendor support bit is invalid.");
+   } else if (vendor_info.rcu_support_bitmask == 0) {
+      XLOGD_ERROR("IRDB vendor support bitmask is invalid.");
       return false;
    
-   } else if (this->irdbs_supported_ & vendor_support_bit) {
-      XLOGD_INFO("Controller <%s> supports IRDB protocol", ieee_address_get().to_string().c_str());
+   } else if (this->irdbs_supported_ & vendor_info.rcu_support_bitmask) {
       return true;
    }
-
-   XLOGD_INFO("Controller <%s> does not support IRDB protocol", ieee_address_get().to_string().c_str());
    return false;
 }
 
@@ -629,7 +634,19 @@ void ctrlm_obj_controller_ble_t::print_status() {
    XLOGD_INFO("Wakeup Config Custom List    : %s", wakeupCustomListToString().c_str());
    }
    XLOGD_INFO("");
-   XLOGD_INFO("IR Database Support Bitmask  : 0x%X", irdbs_supported_);
+
+   ctrlm_irdb_interface_t *irdb = ctrlm_main_irdb_get();
+   ctrlm_irdb_vendor_info_t vendor_info;
+   if (irdbs_supported_) {
+      bool supported = false;
+      if (irdb && irdb->get_vendor_info(vendor_info)) {
+         supported = isSupportedIrdb(vendor_info);
+      }
+      XLOGD_INFO("IR Database Support          : 0x%X, which %s support loaded plugin <%s>", 
+               irdbs_supported_, supported ? "DOES" : "does NOT", vendor_info.name.c_str());
+   } else {
+      XLOGD_INFO("IR Database Support          : N/A");
+   }
    XLOGD_INFO("Programmed TV IRDB Code      : %s", irdb_entry_id_name_tv_->to_string().c_str());
    XLOGD_INFO("Programmed AVR IRDB Code     : %s", irdb_entry_id_name_avr_->to_string().c_str());
    XLOGD_INFO("");

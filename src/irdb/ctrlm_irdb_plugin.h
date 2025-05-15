@@ -49,6 +49,11 @@ typedef enum {
     CTRLM_IRDB_KEY_MAX
 } ctrlm_irdb_key_code_t;
 
+typedef struct {
+    std::string   name;
+    unsigned char rcu_support_bitmask;
+} ctrlm_irdb_vendor_info_t;
+
 typedef std::vector<std::string> ctrlm_irdb_manufacturer_list_t;
 typedef std::vector<std::string> ctrlm_irdb_model_list_t;
 typedef std::vector<std::string> ctrlm_irdb_entry_id_list_t;
@@ -83,7 +88,7 @@ bool ctrlm_irdb_close();
 
 bool ctrlm_irdb_initialize();
 
-unsigned char ctrlm_irdb_get_vendor_support_bit();
+bool ctrlm_irdb_get_vendor_info(ctrlm_irdb_vendor_info_t &info);
 
 bool ctrlm_irdb_get_manufacturers(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix);
 

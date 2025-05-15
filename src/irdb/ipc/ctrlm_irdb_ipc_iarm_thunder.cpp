@@ -140,19 +140,14 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_manufacturers(void *arg) {
     }
 
     if(irdb && success) {
-        if(!irdb->get_initialized()) {
-            XLOGD_WARN("IRDB is not initialized");
+        manufacturers = json_array();
+        ctrlm_irdb_manufacturer_list_t mans;
+        if(irdb->get_manufacturers(mans, dev_type, manufacturer) == false ) {
+            XLOGD_ERROR("Failed getting manufacturers");
             success = false;
         } else {
-            manufacturers = json_array();
-            ctrlm_irdb_manufacturer_list_t mans;
-            if(irdb->get_manufacturers(mans, dev_type, manufacturer) == false ) {
-                XLOGD_ERROR("Failed getting manufacturers");
-                success = false;
-            } else {
-                for(const auto &itr : mans) {
-                    json_array_append_new(manufacturers, json_string(itr.c_str()));
-                }
+            for(const auto &itr : mans) {
+                json_array_append_new(manufacturers, json_string(itr.c_str()));
             }
         }
     }
@@ -219,19 +214,14 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_models(void *arg) {
     }
 
     if(irdb && success) {
-        if(!irdb->get_initialized()) {
-            XLOGD_WARN("IRDB is not initialized");
+        models = json_array();
+        ctrlm_irdb_model_list_t mods;
+        if(irdb->get_models(mods, dev_type, manufacturer, model) == false ) {
+            XLOGD_ERROR("Failed getting models");
             success = false;
         } else {
-            models = json_array();
-            ctrlm_irdb_model_list_t mods;
-            if(irdb->get_models(mods, dev_type, manufacturer, model) == false ) {
-                XLOGD_ERROR("Failed getting models");
-                success = false;
-            } else {
-                for(const auto &itr : mods) {
-                   json_array_append_new(models, json_string(itr.c_str()));
-                }
+            for(const auto &itr : mods) {
+                json_array_append_new(models, json_string(itr.c_str()));
             }
         }
     }
@@ -273,41 +263,36 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_ir_codes_by_auto_lookup(void *a
     }
 
     if(irdb) {
-        if(!irdb->get_initialized()) {
-            XLOGD_WARN("IRDB is not initialized");
+        ctrlm_autolookup_ranked_list_by_type_t cd_map;
+        if(irdb->get_ir_codes_by_autolookup(cd_map) == false) {
+            XLOGD_ERROR("Failed getting codes");
             success = false;
         } else {
-            ctrlm_autolookup_ranked_list_by_type_t cd_map;
-            if(irdb->get_ir_codes_by_autolookup(cd_map) == false) {
-                XLOGD_ERROR("Failed getting codes");
-                success = false;
-            } else {
-                if(cd_map.count(CTRLM_IRDB_DEV_TYPE_TV) > 0) {
-                    // First entry in the list is the highest ranked code, so use the manufacturer and model from that entry
-                    tv_man   = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_TV].front().manufacturer.c_str());
-                    tv_model = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_TV].front().model.c_str());
-                    tv_codes = json_array();
-                    for (auto const &entry : cd_map[CTRLM_IRDB_DEV_TYPE_TV]) {
-                        json_array_append_new(tv_codes, json_string(entry.id.c_str()));
-                    }
-                    json_object_set_new(ret, "tvManufacturer", tv_man);
-                    json_object_set_new(ret, "tvModel", tv_model);
-                    json_object_set_new(ret, "tvCodes", tv_codes);
+            if(cd_map.count(CTRLM_IRDB_DEV_TYPE_TV) > 0) {
+                // First entry in the list is the highest ranked code, so use the manufacturer and model from that entry
+                tv_man   = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_TV].front().manufacturer.c_str());
+                tv_model = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_TV].front().model.c_str());
+                tv_codes = json_array();
+                for (auto const &entry : cd_map[CTRLM_IRDB_DEV_TYPE_TV]) {
+                    json_array_append_new(tv_codes, json_string(entry.id.c_str()));
                 }
-                if(cd_map.count(CTRLM_IRDB_DEV_TYPE_AVR) > 0) {
-                    // First entry in the list is the highest ranked code, so use the manufacturer and model from that entry
-                    avr_man   = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_AVR].front().manufacturer.c_str());
-                    avr_model = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_AVR].front().model.c_str());
-                    avr_codes = json_array();
-                    for (auto const &entry : cd_map[CTRLM_IRDB_DEV_TYPE_AVR]) {
-                        json_array_append_new(avr_codes, json_string(entry.id.c_str()));
-                    }
-                    json_object_set_new(ret, "avrManufacturer", avr_man);
-                    json_object_set_new(ret, "avrModel", avr_model);
-                    json_object_set_new(ret, "avrCodes", avr_codes);
-                }
-                success = true;
+                json_object_set_new(ret, "tvManufacturer", tv_man);
+                json_object_set_new(ret, "tvModel", tv_model);
+                json_object_set_new(ret, "tvCodes", tv_codes);
             }
+            if(cd_map.count(CTRLM_IRDB_DEV_TYPE_AVR) > 0) {
+                // First entry in the list is the highest ranked code, so use the manufacturer and model from that entry
+                avr_man   = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_AVR].front().manufacturer.c_str());
+                avr_model = json_string(cd_map[CTRLM_IRDB_DEV_TYPE_AVR].front().model.c_str());
+                avr_codes = json_array();
+                for (auto const &entry : cd_map[CTRLM_IRDB_DEV_TYPE_AVR]) {
+                    json_array_append_new(avr_codes, json_string(entry.id.c_str()));
+                }
+                json_object_set_new(ret, "avrManufacturer", avr_man);
+                json_object_set_new(ret, "avrModel", avr_model);
+                json_object_set_new(ret, "avrCodes", avr_codes);
+            }
+            success = true;
         }
     }
 
@@ -369,19 +354,14 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_irdb_entry_ids(void *arg) {
     }
 
     if(irdb && success) {
-        if(!irdb->get_initialized()) {
-            XLOGD_WARN("IRDB is not initialized");
+        codes = json_array();
+        ctrlm_irdb_entry_id_list_t cds;
+        if(irdb->get_irdb_entry_ids(cds, dev_type, manufacturer, model) == false) {
+            XLOGD_ERROR("Failed getting codes");
             success = false;
         } else {
-            codes = json_array();
-            ctrlm_irdb_entry_id_list_t cds;
-            if(irdb->get_irdb_entry_ids(cds, dev_type, manufacturer, model) == false) {
-                XLOGD_ERROR("Failed getting codes");
-                success = false;
-            } else {
-                for(const auto &itr : cds) {
-                    json_array_append_new(codes, json_string(itr.c_str()));
-                }
+            for(const auto &itr : cds) {
+                json_array_append_new(codes, json_string(itr.c_str()));
             }
         }
     }
@@ -461,12 +441,7 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::program_ir_codes(void *arg) {
     }
 
     if(irdb && success) {
-        if(!irdb->get_initialized()) {
-            XLOGD_WARN("IRDB is not initialized");
-            success = false;
-        } else {
-            success = irdb->program_ir_codes(network_id, controller_id, dev_type, code);
-        }
+        success = irdb->program_ir_codes(network_id, controller_id, dev_type, code);
     }
 
     // Assemble the return
@@ -515,12 +490,7 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::clear_ir_codes(void *arg) {
     ctrlm_controller_id_t controller_id = static_cast<ctrlm_controller_id_t>(remote_id);
 
     if(irdb) {
-        if(!irdb->get_initialized()) {
-            XLOGD_WARN("IRDB is not initialized");
-            success = false;
-        } else {
-            success = irdb->clear_ir_codes(network_id, controller_id);
-        }
+        success = irdb->clear_ir_codes(network_id, controller_id);
     }
 
     // Assemble the return

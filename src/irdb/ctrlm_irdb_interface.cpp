@@ -61,9 +61,10 @@ void ctrlm_irdb_interface_t::destroy_instance() {
 
 typedef struct {
     bool (*pluginOpen)(bool, const std::string&) = NULL;
+    bool (*pluginClose)() = NULL;
     std::string (*pluginVersion)() = NULL;
     bool (*pluginInitialize)() = NULL;
-    unsigned char (*pluginGetVendorSupportBit)() = NULL;
+    bool (*pluginGetVendorInfo)(ctrlm_irdb_vendor_info_t &info) = NULL;
     bool (*pluginGetManufacturers)(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix) = NULL;
     bool (*pluginGetModels)(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &prefix) = NULL;
     bool (*pluginGetEntryIds)(ctrlm_irdb_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model) = NULL;
@@ -100,22 +101,24 @@ static void _on_thunder_ready(void *data) {
 }
 #endif
 
+
 ctrlm_irdb_interface_t::ctrlm_irdb_interface_t() : ctrlm_irdb_interface_t(false) {
 }
 
 ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
 
+    sem_init(&m_semaphore, 0, 1);
     m_platform_tv = platform_tv;
-
     m_irdbPluginHandle = NULL;
 
     m_irdbPluginHandle = dlopen ("libctrlm-irdb-plugin.so", RTLD_NOW);
     if (!m_irdbPluginHandle) {
         XLOGD_ERROR("Failed to load IR database plugin <%s>, using stub implementation.", dlerror());
         g_irdb.pluginOpen = STUB_ctrlm_irdb_open;
+        g_irdb.pluginClose = STUB_ctrlm_irdb_close;
         g_irdb.pluginVersion = STUB_irdb_version;
         g_irdb.pluginInitialize = STUB_ctrlm_irdb_initialize;
-        g_irdb.pluginGetVendorSupportBit = STUB_ctrlm_irdb_get_vendor_support_bit;
+        g_irdb.pluginGetVendorInfo = STUB_ctrlm_irdb_get_vendor_info;
         g_irdb.pluginGetManufacturers = STUB_ctrlm_irdb_get_manufacturers;
         g_irdb.pluginGetModels = STUB_ctrlm_irdb_get_models;
         g_irdb.pluginGetEntryIds = STUB_ctrlm_irdb_get_entry_ids;
@@ -138,6 +141,13 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
         }
         dlerror();  // Clear any existing error
 
+        *(void **) (&g_irdb.pluginClose) = dlsym(m_irdbPluginHandle, "ctrlm_irdb_close");
+        if ((error = dlerror()) != NULL)  {
+            XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_close), error <%s>, Using STUB implementation", error);
+            g_irdb.pluginClose = STUB_ctrlm_irdb_close;
+        }
+        dlerror();  // Clear any existing error
+
         *(void **) (&g_irdb.pluginVersion) = dlsym(m_irdbPluginHandle, "irdb_version");
         if ((error = dlerror()) != NULL)  {
             XLOGD_ERROR("Failed to find plugin method (irdb_version), error <%s>, Using STUB implementation", error);
@@ -152,10 +162,10 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
         }
         dlerror();  // Clear any existing error
 
-        *(void **) (&g_irdb.pluginGetVendorSupportBit) = dlsym(m_irdbPluginHandle, "ctrlm_irdb_get_vendor_support_bit");
+        *(void **) (&g_irdb.pluginGetVendorInfo) = dlsym(m_irdbPluginHandle, "ctrlm_irdb_get_vendor_info");
         if ((error = dlerror()) != NULL)  {
-            XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_get_vendor_support_bit), error <%s>, Using STUB implementation", error);
-            g_irdb.pluginGetVendorSupportBit = STUB_ctrlm_irdb_get_vendor_support_bit;
+            XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_get_vendor_info), error <%s>, Using STUB implementation", error);
+            g_irdb.pluginGetVendorInfo = STUB_ctrlm_irdb_get_vendor_info;
         }
         dlerror();  // Clear any existing error
 
@@ -207,10 +217,8 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
             g_irdb.pluginGetCodesByInfoframe = STUB_ctrlm_irdb_get_ir_codes_by_infoframe;
         }
     }
-    if ((*g_irdb.pluginOpen)(m_platform_tv, ctrlm_device_mac_get()) == true) {
-        string version = (*g_irdb.pluginVersion)();
-        XLOGD_INFO("IRDB Version <%s>", version.c_str());
-    }
+
+    open_plugin();
 
     #if defined(CTRLM_THUNDER)
     Thunder::Controller::ctrlm_thunder_controller_t *controller = Thunder::Controller::ctrlm_thunder_controller_t::getInstance();
@@ -239,11 +247,66 @@ ctrlm_irdb_interface_t::~ctrlm_irdb_interface_t() {
         g_irdb.irdb_ipc = NULL;
     }
 
+    close_plugin();
+
     if (m_irdbPluginHandle != NULL) {
         dlclose(m_irdbPluginHandle);
     }
+    sem_destroy(&m_semaphore);
 }
 
+bool ctrlm_irdb_interface_t::lock_semaphore() {
+    struct timespec end_time;
+    int acknowledged;
+    clock_gettime(CLOCK_REALTIME, &end_time);
+    end_time.tv_sec += 5;
+
+    while ((acknowledged = sem_timedwait(&m_semaphore, &end_time)) == -1 && errno == EINTR) {
+        continue;
+    }
+    if (acknowledged == -1) {
+        XLOGD_ERROR("unable to lock IRDB semaphore!");
+        return false;
+    }
+    return true;
+}
+
+void ctrlm_irdb_interface_t::unlock_semaphore() {
+    sem_post(&m_semaphore);
+}
+
+bool ctrlm_irdb_interface_t::open_plugin() {
+    if (!lock_semaphore()) {return false;}
+    bool ret = false;
+    if (g_irdb.pluginOpen) {
+        if ((ret = (*g_irdb.pluginOpen)(m_platform_tv, ctrlm_device_mac_get())) == true) {
+            string version = (*g_irdb.pluginVersion)();
+            XLOGD_INFO("IRDB Version <%s>", version.c_str());
+        }
+    }
+    XLOGD_INFO("IRDB plugin opened, ret = <%s>", ret ? "SUCCESS" : "ERROR");
+    unlock_semaphore();
+    return ret;
+}
+
+bool ctrlm_irdb_interface_t::close_plugin() {
+    if (!lock_semaphore()) {return false;}
+    bool ret = false;
+    if (g_irdb.pluginClose) {
+        ret = (*g_irdb.pluginClose)();
+    }
+    XLOGD_INFO("IRDB plugin closed, ret = <%s>", ret ? "SUCCESS" : "ERROR, but ignoring");
+    unlock_semaphore();
+    return ret;
+}
+
+bool ctrlm_irdb_interface_t::get_vendor_info(ctrlm_irdb_vendor_info_t &info) {
+    // No need to lock, this just returns hardcoded data
+    if (g_irdb.pluginGetVendorInfo) {
+        return (*g_irdb.pluginGetVendorInfo)(info);
+    }
+    return false;
+}
 
 void ctrlm_irdb_interface_t::on_thunder_ready() {
     #if defined(CTRLM_THUNDER)
@@ -272,6 +335,7 @@ void ctrlm_irdb_interface_t::on_thunder_ready() {
 
 
 bool ctrlm_irdb_interface_t::initialize_irdb() {
+    if (!lock_semaphore()) {return false;}
     bool ret = false;
 
     if (g_irdb.pluginInitialize) {
@@ -281,13 +345,46 @@ bool ctrlm_irdb_interface_t::initialize_irdb() {
             XLOGD_INFO("IRDB Version <%s>", version.c_str());
         }
     }
+    unlock_semaphore();
     return ret;
 }
 
-bool ctrlm_irdb_interface_t::get_initialized() { 
-    // return(m_irdb->get_initialized());
-    return true;
+bool ctrlm_irdb_interface_t::get_manufacturers(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix) {
+    if (!lock_semaphore()) {return false;}
+    bool ret = false;
+
+    if (g_irdb.pluginGetManufacturers) {
+        ret = (*g_irdb.pluginGetManufacturers)(manufacturers, type, prefix);
+    }
+
+    unlock_semaphore();
+    return ret;
 }
+
+bool ctrlm_irdb_interface_t::get_models(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &prefix) {
+    if (!lock_semaphore()) {return false;}
+    bool ret = false;
+
+    if (g_irdb.pluginGetModels) {
+        ret = (*g_irdb.pluginGetModels)(models, type, manufacturer, prefix);
+    }
+
+    unlock_semaphore();
+    return ret;
+}
+
+bool ctrlm_irdb_interface_t::get_irdb_entry_ids(ctrlm_irdb_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model) {
+    if (!lock_semaphore()) {return false;}
+    bool ret = false;
+
+    if (g_irdb.pluginGetEntryIds) {
+        ret = (*g_irdb.pluginGetEntryIds)(codes, type, manufacturer, model);
+    }
+
+    unlock_semaphore();
+    return ret;
+}
+
 
 bool comp_autolookup_ranked_list (ctrlm_irdb_autolookup_entry_ranked_t i, ctrlm_irdb_autolookup_entry_ranked_t j) {
     // Sort descending order
@@ -295,6 +392,7 @@ bool comp_autolookup_ranked_list (ctrlm_irdb_autolookup_entry_ranked_t i, ctrlm_
 }
 
 bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_list_by_type_t &codes) {
+    if (!lock_semaphore()) {return false;}
     bool ret = false;
 
     #if defined(CTRLM_THUNDER)
@@ -433,8 +531,46 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
         codes[CTRLM_IRDB_DEV_TYPE_AVR].erase( unique( codes[CTRLM_IRDB_DEV_TYPE_AVR].begin(), codes[CTRLM_IRDB_DEV_TYPE_AVR].end() ), codes[CTRLM_IRDB_DEV_TYPE_AVR].end() );
     }
 
+    unlock_semaphore();
     return(ret);
 }
+
+bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_dev_type_t type, const std::string &id) {
+    if (!lock_semaphore()) {return false;}
+    bool ret = false;
+
+    XLOGD_INFO("Programming IR codes for (%u, %u) with database id <%s>", network_id, controller_id, id.c_str());
+
+    ctrlm_irdb_ir_code_set_t code_set;
+    if (g_irdb.pluginGetCodeSet) {
+        if ( (*g_irdb.pluginGetCodeSet)(code_set, type, id) == false) {
+            XLOGD_ERROR("Failed getting IR code set");
+        } else {
+            ret = this->_program_ir_codes(network_id, controller_id, &code_set);
+        }
+    }
+    unlock_semaphore();
+    return(ret);
+}
+
+
+bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes) {
+    bool ret = false;
+
+    ctrlm_main_queue_msg_program_ir_codes_t msg = {0};
+    msg.network_id         = network_id;
+    msg.controller_id      = controller_id;
+    msg.ir_codes           = ir_codes;
+    msg.success            = &ret;
+
+    if (false == get_vendor_info(msg.vendor_info)) {
+        msg.vendor_info.rcu_support_bitmask = 0;
+    }
+    ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_program_ir_codes, &msg, sizeof(msg), NULL, network_id, true);
+
+    return(ret);
+}
+
 
 bool ctrlm_irdb_interface_t::clear_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id) {
     XLOGD_INFO("Clearing IR codes for (%u, %u)", network_id, controller_id);
@@ -452,70 +588,5 @@ bool ctrlm_irdb_interface_t::_clear_ir_codes(ctrlm_network_id_t network_id, ctrl
 
     ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_ir_clear_codes, &msg, sizeof(msg), NULL, network_id, true);
     
-    return(ret);
-}
-
-bool ctrlm_irdb_interface_t::get_manufacturers(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix) {
-
-    if (g_irdb.pluginGetManufacturers) {
-        return (*g_irdb.pluginGetManufacturers)(manufacturers, type, prefix);
-    }
-
-    return false;
-}
-
-bool ctrlm_irdb_interface_t::get_models(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &prefix) {
-
-    if (g_irdb.pluginGetModels) {
-        return (*g_irdb.pluginGetModels)(models, type, manufacturer, prefix);
-    }
-
-    return false;
-}
-
-bool ctrlm_irdb_interface_t::get_irdb_entry_ids(ctrlm_irdb_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model) {
-
-    if (g_irdb.pluginGetEntryIds) {
-        return (*g_irdb.pluginGetEntryIds)(codes, type, manufacturer, model);
-    }
-
-    return false;
-}
-
-
-bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_dev_type_t type, const std::string &id) {
-    bool ret = false;
-
-    XLOGD_INFO("Programming IR codes for (%u, %u) with database id <%s>", network_id, controller_id, id.c_str());
-
-    ctrlm_irdb_ir_code_set_t code_set;
-    if (g_irdb.pluginGetCodeSet) {
-        if ( (*g_irdb.pluginGetCodeSet)(code_set, type, id) == false) {
-            XLOGD_ERROR("Failed getting IR code set");
-        } else {
-            ret = this->_program_ir_codes(network_id, controller_id, &code_set);
-        }
-    }
-    return(ret);
-}
-
-
-bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes) {
-    bool ret = false;
-
-    ctrlm_main_queue_msg_program_ir_codes_t msg = {0};
-
-    msg.network_id         = network_id;
-    msg.controller_id      = controller_id;
-    msg.ir_codes           = ir_codes;
-    msg.success            = &ret;
-    msg.vendor_support_bit = 0;
-
-    if (g_irdb.pluginGetVendorSupportBit) {
-        msg.vendor_support_bit = (*g_irdb.pluginGetVendorSupportBit)();
-    }
-
-    ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_program_ir_codes, &msg, sizeof(msg), NULL, network_id, true);
-
     return(ret);
 }

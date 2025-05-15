@@ -133,7 +133,7 @@ public:
 
    void                             setSupportedIrdbs(uint8_t vendors);
    uint8_t                          getSupportedIrdbs() const;
-   bool                             isSupportedIrdb(uint8_t vendor_support_bit);
+   bool                             isSupportedIrdb(const ctrlm_irdb_vendor_info_t &vendor_info);
 
    void                             print_status();
 

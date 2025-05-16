@@ -36,7 +36,7 @@
 #include "ctrlm_thunder_plugin_cec_sink.h"
 #endif
 
-
+#include <chrono>
 #include <dlfcn.h>
 
 using namespace std;
@@ -107,7 +107,6 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t() : ctrlm_irdb_interface_t(false)
 
 ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
 
-    sem_init(&m_semaphore, 0, 1);
     m_platform_tv = platform_tv;
     m_irdbPluginHandle = NULL;
 
@@ -252,31 +251,23 @@ ctrlm_irdb_interface_t::~ctrlm_irdb_interface_t() {
     if (m_irdbPluginHandle != NULL) {
         dlclose(m_irdbPluginHandle);
     }
-    sem_destroy(&m_semaphore);
 }
 
-bool ctrlm_irdb_interface_t::lock_semaphore() {
-    struct timespec end_time;
-    int acknowledged;
-    clock_gettime(CLOCK_REALTIME, &end_time);
-    end_time.tv_sec += 5;
-
-    while ((acknowledged = sem_timedwait(&m_semaphore, &end_time)) == -1 && errno == EINTR) {
-        continue;
-    }
-    if (acknowledged == -1) {
-        XLOGD_ERROR("unable to lock IRDB semaphore!");
+bool ctrlm_irdb_interface_t::lock_mutex() {
+    if (m_mutex.try_lock_for(std::chrono::seconds(5))) {
+        return true;
+    } else {
+        XLOGD_ERROR("unable to lock IRDB mutex!");
         return false;
     }
-    return true;
 }
 
-void ctrlm_irdb_interface_t::unlock_semaphore() {
-    sem_post(&m_semaphore);
+void ctrlm_irdb_interface_t::unlock_mutex() {
+    m_mutex.unlock();
 }
 
 bool ctrlm_irdb_interface_t::open_plugin() {
-    if (!lock_semaphore()) {return false;}
+    if (!lock_mutex()) {return false;}
     bool ret = false;
     if (g_irdb.pluginOpen) {
         if ((ret = (*g_irdb.pluginOpen)(m_platform_tv, ctrlm_device_mac_get())) == true) {
@@ -285,18 +276,18 @@ bool ctrlm_irdb_interface_t::open_plugin() {
         }
     }
     XLOGD_INFO("IRDB plugin opened, ret = <%s>", ret ? "SUCCESS" : "ERROR");
-    unlock_semaphore();
+    unlock_mutex();
     return ret;
 }
 
 bool ctrlm_irdb_interface_t::close_plugin() {
-    if (!lock_semaphore()) {return false;}
+    if (!lock_mutex()) {return false;}
     bool ret = false;
     if (g_irdb.pluginClose) {
         ret = (*g_irdb.pluginClose)();
     }
     XLOGD_INFO("IRDB plugin closed, ret = <%s>", ret ? "SUCCESS" : "ERROR, but ignoring");
-    unlock_semaphore();
+    unlock_mutex();
     return ret;
 }
 
@@ -335,7 +326,7 @@ void ctrlm_irdb_interface_t::on_thunder_ready() {
 
 
 bool ctrlm_irdb_interface_t::initialize_irdb() {
-    if (!lock_semaphore()) {return false;}
+    if (!lock_mutex()) {return false;}
     bool ret = false;
 
     if (g_irdb.pluginInitialize) {
@@ -345,43 +336,43 @@ bool ctrlm_irdb_interface_t::initialize_irdb() {
             XLOGD_INFO("IRDB Version <%s>", version.c_str());
         }
     }
-    unlock_semaphore();
+    unlock_mutex();
     return ret;
 }
 
 bool ctrlm_irdb_interface_t::get_manufacturers(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix) {
-    if (!lock_semaphore()) {return false;}
+    if (!lock_mutex()) {return false;}
     bool ret = false;
 
     if (g_irdb.pluginGetManufacturers) {
         ret = (*g_irdb.pluginGetManufacturers)(manufacturers, type, prefix);
     }
 
-    unlock_semaphore();
+    unlock_mutex();
     return ret;
 }
 
 bool ctrlm_irdb_interface_t::get_models(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &prefix) {
-    if (!lock_semaphore()) {return false;}
+    if (!lock_mutex()) {return false;}
     bool ret = false;
 
     if (g_irdb.pluginGetModels) {
         ret = (*g_irdb.pluginGetModels)(models, type, manufacturer, prefix);
     }
 
-    unlock_semaphore();
+    unlock_mutex();
     return ret;
 }
 
 bool ctrlm_irdb_interface_t::get_irdb_entry_ids(ctrlm_irdb_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model) {
-    if (!lock_semaphore()) {return false;}
+    if (!lock_mutex()) {return false;}
     bool ret = false;
 
     if (g_irdb.pluginGetEntryIds) {
         ret = (*g_irdb.pluginGetEntryIds)(codes, type, manufacturer, model);
     }
 
-    unlock_semaphore();
+    unlock_mutex();
     return ret;
 }
 
@@ -392,7 +383,7 @@ bool comp_autolookup_ranked_list (ctrlm_irdb_autolookup_entry_ranked_t i, ctrlm_
 }
 
 bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_list_by_type_t &codes) {
-    if (!lock_semaphore()) {return false;}
+    if (!lock_mutex()) {return false;}
     bool ret = false;
 
     #if defined(CTRLM_THUNDER)
@@ -531,12 +522,12 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
         codes[CTRLM_IRDB_DEV_TYPE_AVR].erase( unique( codes[CTRLM_IRDB_DEV_TYPE_AVR].begin(), codes[CTRLM_IRDB_DEV_TYPE_AVR].end() ), codes[CTRLM_IRDB_DEV_TYPE_AVR].end() );
     }
 
-    unlock_semaphore();
+    unlock_mutex();
     return(ret);
 }
 
 bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_dev_type_t type, const std::string &id) {
-    if (!lock_semaphore()) {return false;}
+    if (!lock_mutex()) {return false;}
     bool ret = false;
 
     XLOGD_INFO("Programming IR codes for (%u, %u) with database id <%s>", network_id, controller_id, id.c_str());
@@ -549,7 +540,7 @@ bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctr
             ret = this->_program_ir_codes(network_id, controller_id, &code_set);
         }
     }
-    unlock_semaphore();
+    unlock_mutex();
     return(ret);
 }
 

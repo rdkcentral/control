@@ -24,8 +24,10 @@
 #include <vector>
 #include <map>
 #include <utility>
+#include <mutex>
 #include <semaphore.h>
 #include <string>
+
 #include "ctrlm_hal.h"
 #include "ctrlm_irdb_plugin.h"
 
@@ -86,8 +88,8 @@ private:
    ctrlm_irdb_interface_t();
    ctrlm_irdb_interface_t(bool platform_tv);
 
-   bool lock_semaphore();
-   void unlock_semaphore();
+   bool lock_mutex();
+   void unlock_mutex();
 
    bool open_plugin();
    bool close_plugin();
@@ -99,7 +101,7 @@ private:
 
    ctrlm_irdb_mode_t mode;
    bool              m_platform_tv;
-   sem_t             m_semaphore;
+   std::timed_mutex  m_mutex;
 };
 
 #endif

@@ -81,6 +81,9 @@ set_property(CACHE BUILD_SYSTEM PROPERTY STRINGS "NONE" "YOCTO")
 set(BEEP_ON_KWD_FILE "NONE" CACHE STRING "Keyword Beep file name")
 
 
+# This is required to allow an executable to export symbols to be used by loadable modules (e.g. plugins using dlopen)
+set(CMAKE_ENABLE_EXPORTS ON)
+
 # EXECUTABLE(S)
 add_executable(controlMgr src/ctrlm_config_default.json ctrlm_version_build.h ctrlm_config_default.h ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.c ${CMAKE_CURRENT_SOURCE_DIR}/src/voice/ipc/ctrlm_voice_ipc_request_type.c)
 

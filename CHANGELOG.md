@@ -25,7 +25,7 @@ All notable changes to this project will be documented in this file.
 - Control manager crashes on rapid MIC button presses
 - [Logging] Add Invalid firmware version OTA error code (0x8) mapping in ctrlmgr logs
 - Changed deviceType from tv to IpTv.
-- Extend adpcm frame info
+- Extend adpcm frame info.
 
 
 ## [1.0.9] - 2025-04-28

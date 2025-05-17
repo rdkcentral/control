@@ -56,6 +56,7 @@
 #include "ctrlm_main_powermanager.h"
 #ifdef CTRLM_THUNDER
 #include "ctrlm_thunder_plugin_device_info.h"
+#include "ctrlm_rcp_ipc_iarm_thunder.h"
 #ifndef USE_IARM_POWER_MANAGER
 #include "ctrlm_thunder_powermanager.h"
 #endif
@@ -273,9 +274,6 @@ typedef struct {
 #endif
 #ifdef CTRLM_THUNDER
    Thunder::DeviceInfo::ctrlm_thunder_plugin_device_info_t *thunder_device_info;
-   #ifndef USE_IARM_POWER_MANAGER
-   ctrlm_thunder_powermanager_t *power_manager;
-   #endif
 #endif
    ctrlm_main_powermanager_t         *power_manager;
    ctrlm_power_state_t                power_state;

@@ -37,8 +37,6 @@ ctrlm_main_powermanager_t *ctrlm_main_powermanager_create() {
    instance->thunder_powermanager = ctrlm_thunder_powermanager_create();
    if(instance->thunder_powermanager == NULL) {
       XLOGD_ERROR("failed to create Thunder Power Manager instance");
-   } else {
-      intance->thunder_powermanager->running_set(true);
    }
    #endif
 

@@ -49,6 +49,11 @@ public:
     static ctrlm_thunder_plugin_powermanager_t *get_instance();
 
     /**
+     * PowerManager Thunder Plugin Default Constructor
+     */
+    ctrlm_thunder_plugin_powermanager_t();
+
+    /**
      * PowerManager Thunder Plugin Destructor
      */
     virtual ~ctrlm_thunder_plugin_powermanager_t();
@@ -78,11 +83,6 @@ public:
 
 protected:
     /**
-     * PowerManager Thunder Plugin Default Constructor
-     */
-    ctrlm_thunder_plugin_powermanager_t();
-
-    /**
      * This function is called when the initial activation of the plugin occurs.
      */
     virtual void on_initial_activation();
@@ -95,13 +95,9 @@ protected:
     bool register_events();
 
 private:
-    /* Check if they need to be stored here and cached or call the API every time - todo */
-    ctrlm_power_state_t power_state;
-    bool            networked_standby_mode;
     bool            registered_events;
     sem_t           semaphore;
 };
 };
 };
 #endif
-

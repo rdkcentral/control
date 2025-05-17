@@ -1351,7 +1351,7 @@ const char *ctrlm_linux_key_code_str(uint16_t code, bool mask) {
    }
 }
 
-#ifdef DEEP_SLEEP_ENABLED
+#ifdef NETWORKED_STANDBY_MODE_ENABLED
 const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason) {
     switch(wakeup_reason) {
         case DEEPSLEEP_WAKEUPREASON_IR:               return("IR");
@@ -1988,20 +1988,6 @@ std::string ctrlm_xml_tag_text_get(const std::string &xml, const std::string &ta
 
    //grab all content between start and end tag
    return xml.substr(idx, idx2 - idx);
-}
-
-ctrlm_power_state_t ctrlm_iarm_power_state_map(IARM_Bus_PowerState_t iarm_power_state) {
-    ctrlm_power_state_t ctrlm_power_state = CTRLM_POWER_STATE_ON;
-
-    switch(iarm_power_state) {
-       case IARM_BUS_PWRMGR_POWERSTATE_ON:                  ctrlm_power_state = CTRLM_POWER_STATE_ON;          break;
-       case IARM_BUS_PWRMGR_POWERSTATE_STANDBY:
-       case IARM_BUS_PWRMGR_POWERSTATE_STANDBY_LIGHT_SLEEP: ctrlm_power_state = CTRLM_POWER_STATE_STANDBY;     break;
-       case IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP:
-       case IARM_BUS_PWRMGR_POWERSTATE_OFF:                 ctrlm_power_state = CTRLM_POWER_STATE_DEEP_SLEEP;  break;
-    }
-
-    return ctrlm_power_state;
 }
 
 const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config) {

@@ -36,7 +36,7 @@
 #include "libIBus.h"
 #include "libIBusDaemon.h"
 #include <jansson.h>
-#ifdef DEEP_SLEEP_ENABLED
+#ifdef NETWORKED_STANDBY_MODE_ENABLED
 #include "deepSleepMgr.h"
 #endif
 #ifdef TELEMETRY_SUPPORT
@@ -190,7 +190,7 @@ const char *ctrlm_ir_state_str(ctrlm_ir_state_t state);
 const char *ctrlm_power_state_str(ctrlm_power_state_t state);
 const char *ctrlm_device_type_str(ctrlm_device_type_t device_type);
 
-#ifdef DEEP_SLEEP_ENABLED
+#ifdef NETWORKED_STANDBY_MODE_ENABLED
 const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason);
 #endif
 const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config);
@@ -236,8 +236,6 @@ void        ctrlm_archive_extract_tmp_dir_make(const std::string &tmp_dir_path);
 void        ctrlm_archive_extract_ble_tmp_dir_make(const std::string &tmp_dir_path);
 bool        ctrlm_archive_extract_ble_check_dir_exists(const std::string &path);
 std::string ctrlm_xml_tag_text_get(const std::string &xml, const std::string &tag);
-
-ctrlm_power_state_t ctrlm_iarm_power_state_map(IARM_Bus_PowerState_t iarm_power_state);
 
 bool ctrlm_utils_calc_crc32( const char *filename, uLong *crc_ret );
 bool ctrlm_utils_move_file_to_secure_nvm(const char *path);

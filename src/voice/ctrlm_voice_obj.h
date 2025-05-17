@@ -312,7 +312,7 @@ typedef struct {
    uint8_t                     opus_encoder_params[CTRLM_RCU_RIB_ATTR_LEN_OPUS_ENCODING_PARAMS];
    bool                        force_toggle_fallback;
    bool                        telemetry_session_stats;
-   #ifdef DEEP_SLEEP_ENABLED
+   #ifdef NETWORKED_STANDBY_MODE_ENABLED
    xrsr_dst_params_t           dst_params_standby;
    #endif
    xrsr_dst_params_t           dst_params_low_latency;
@@ -610,7 +610,7 @@ public:
     virtual void                  voice_server_return_code_callback(const uuid_t uuid, const char *reason, long ret_code);
     virtual void                  voice_session_transcription_callback(const uuid_t uuid, const char *transcription);
     virtual void                  voice_power_state_change(ctrlm_power_state_t power_state);
-    #ifdef DEEP_SLEEP_ENABLED
+    #ifdef NETWORKED_STANDBY_MODE_ENABLED
     virtual void                  voice_nsm_session_request(void);
     #endif
     virtual void                  voice_keyword_verified_action(void);

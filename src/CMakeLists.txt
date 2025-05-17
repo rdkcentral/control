@@ -22,6 +22,7 @@ set(project "ctrlm-main")
 target_sources(controlMgr PRIVATE
    ctrlm_main.cpp
    ctrlm_main_iarm.cpp
+   ctrlm_main_powermanager.cpp
    ctrlm_utils.cpp
    ctrlm_network.cpp
    ctrlm_controller.cpp
@@ -145,6 +146,21 @@ if(IRDB_STUB)
       irdb/ctrlm_irdb_stub.cpp
       irdb/ctrlm_irdb_factory.cpp
    )
+endif()
+
+if(USE_IARM_POWER_MANAGER)
+   target_sources(controlMgr PRIVATE
+      ipc/ctrlm_ipc_iarm_powermanager.cpp
+   )
+else()
+   if(NOT THUNDER)
+      message(WARNING "THUNDER is not defined, unable to use Power Manager plugin")
+   else()
+      target_sources(controlMgr PRIVATE
+         thunder/ctrlm_thunder_powermanager.cpp
+         thunder/ctrlm_thunder_plugin_powermanager.cpp
+   )
+   endif()
 endif()
 
 if(RF4CE_ENABLED)

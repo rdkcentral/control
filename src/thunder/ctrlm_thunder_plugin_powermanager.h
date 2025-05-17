@@ -59,7 +59,10 @@ public:
      */
     void get_power_state(ctrlm_power_state_t &power_state);
 
+<<<<<<< HEAD
     #ifdef NETWORKED_STANDBY_MODE_ENABLED
+=======
+>>>>>>> 66311b27882fe408e6bd16e2fb839c102febd562
     /**
      * This function is used to get the networked standby mode from PowerManager plugin.
      * 
@@ -71,8 +74,12 @@ public:
      * This function is used to determine if the last wakeup was voice
      * 
      */
+<<<<<<< HEAD
     void get_wakeup_reason_voice(bool &wakeup_reason_voice);
     #endif
+=======
+    void get_wakeup_reason_voice(bool &voice_wakeup);
+>>>>>>> 66311b27882fe408e6bd16e2fb839c102febd562
 
     void on_power_state_changed(const ctrlm_power_state_t &current_state, const ctrlm_power_state_t &new_state);
 
@@ -99,8 +106,16 @@ private:
     ctrlm_power_state_t power_state;
     bool            networked_standby_mode;
     bool            registered_events;
+<<<<<<< HEAD
     sem_t           semaphore;
 };
 };
 };
 #endif
+=======
+    sem_t           semaphore; // check if it is needed
+};
+};
+};
+#endif
+>>>>>>> 66311b27882fe408e6bd16e2fb839c102febd562

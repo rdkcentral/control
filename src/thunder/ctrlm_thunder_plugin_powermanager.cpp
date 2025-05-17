@@ -57,6 +57,7 @@ void ctrlm_thunder_plugin_powermanager_t::on_activation_change(Thunder::plugin_s
    Thunder::Plugin::ctrlm_thunder_plugin_t::on_activation_change(state);
 }
 
+<<<<<<< HEAD
 /* root@pioneer-uhd:~# curl --request POST --url http://127.0.0.1:9998/jsonrpc --header 'Content-Type: application/json' --data '{ "jsonrpc": "2.0", "id": 1234567890, "method": "org.rdk.PowerManager.1.getPowerState", "params": {} }'
  * {"jsonrpc":"2.0","id":1234567890,"result":{"currentState":"ON","previousState":"DEEP_SLEEP"}}
  * */
@@ -86,6 +87,8 @@ void ctrlm_thunder_plugin_powermanager_t::get_power_state(ctrlm_power_state_t &p
 
 
 #ifdef NETWORKED_STANDBY_MODE_ENABLED
+=======
+>>>>>>> 66311b27882fe408e6bd16e2fb839c102febd562
 /* root@pioneer-uhd:~# curl --request POST --url http://127.0.0.1:9998/jsonrpc --header 'Content-Type: application/json' --data '{ "jsonrpc": "2.0", "id": 1234567890, "method": "org.rdk.PowerManager.1.getNetworkStandbyMode", "params": {} }'
 {"jsonrpc":"2.0","id":1234567890,"result":true} */
 void ctrlm_thunder_plugin_powermanager_t::get_networked_standby_mode(bool &networked_standby_mode) {
@@ -104,19 +107,57 @@ void ctrlm_thunder_plugin_powermanager_t::get_networked_standby_mode(bool &netwo
 
 /* root@pioneer-uhd:~# curl --request POST --url http://127.0.0.1:9998/jsonrpc --header 'Content-Type: application/json' --data '{ "jsonrpc": "2.0", "id": 1234567890, "method": "org.rdk.PowerManager.1.getLastWakeupReason", "params": {} }'
 {"jsonrpc":"2.0","id":1234567890,"result":"COLDBOOT"} */
+<<<<<<< HEAD
 void ctrlm_thunder_plugin_powermanager_t::get_wakeup_reason_voice(bool &wakeup_reason_voice) {
+=======
+void ctrlm_thunder_plugin_powermanager_t::get_wakeup_reason_voice(bool &voice_wakeup) {
+>>>>>>> 66311b27882fe408e6bd16e2fb839c102febd562
    JsonObject params, response;
    params = {};
 
    sem_wait(&this->semaphore);   
    if(this->call_plugin("getLastWakeupReason", (void *)&params, (void *)&response)) {
+<<<<<<< HEAD
       wakeup_reason_voice = (0 == strncmp(response["result"].String().c_str(), "VOICE", 5));
       XLOGD_DEBUG("voice_wakeup is %s", wakeup_reason_voice?"TRUE":"FALSE");
+=======
+      voice_wakeup = (0 == strncmp(response["result"].String().c_str(), "VOICE", 5));
+      XLOGD_DEBUG("voice_wakeup is %s", voice_wakeup?"TRUE":"FALSE");
+>>>>>>> 66311b27882fe408e6bd16e2fb839c102febd562
    } else {
       XLOGD_ERROR("getLastWakeupReason call failed");
    }
    sem_post(&this->semaphore);}
+<<<<<<< HEAD
 #endif
+=======
+
+/* root@pioneer-uhd:~# curl --request POST --url http://127.0.0.1:9998/jsonrpc --header 'Content-Type: application/json' --data '{ "jsonrpc": "2.0", "id": 1234567890, "method": "org.rdk.PowerManager.1.getPowerState", "params": {} }'
+{"jsonrpc":"2.0","id":1234567890,"result":{"currentState":"ON","previousState":"DEEP_SLEEP"}}
+*/
+void ctrlm_thunder_plugin_powermanager_t::get_power_state(ctrlm_power_state_t &power_state) {
+   JsonObject params, response;
+   params = {};
+   power_state = CTRLM_POWER_STATE_INVALID;
+
+   sem_wait(&this->semaphore);   
+   if(this->call_plugin("getPowerState", (void *)&params, (void *)&response)) {
+      std::string power_string;
+      const char *query_string = "currentState";
+
+      if(response.HasLabel(query_string)) {
+         string power_string = response[query_string].String();
+         power_state = ctrlm_thunder_power_state_map(power_string);
+         XLOGD_DEBUG("power_state %s", ctrlm_power_state_str(power_state));         
+      } else {
+         std::string response_string;
+         response.ToString(response_string);
+         XLOGD_ERROR("power state response malformed: <%s>", response_string.c_str());
+      }
+   }
+   sem_post(&this->semaphore);
+}
+>>>>>>> 66311b27882fe408e6bd16e2fb839c102febd562
 
 void ctrlm_thunder_plugin_powermanager_t::on_power_state_changed(const ctrlm_power_state_t &current_state, const ctrlm_power_state_t &new_state) {
    ctrlm_main_queue_power_state_change_t *msg = (ctrlm_main_queue_power_state_change_t *)g_malloc(sizeof(ctrlm_main_queue_power_state_change_t));

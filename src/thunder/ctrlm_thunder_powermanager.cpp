@@ -2,6 +2,7 @@
 #include "ctrlm.h"
 #include "ctrlm_log.h"
 
+<<<<<<< HEAD
 static ctrlm_thunder_powermanager_t *instance = NULL;
 
 ctrlm_thunder_powermanager_t *ctrlm_thunder_powermanager_create() {
@@ -12,6 +13,15 @@ ctrlm_thunder_powermanager_t *ctrlm_thunder_powermanager_create() {
 }
 
 ctrlm_thunder_powermanager_t::ctrlm_thunder_powermanager_t() {
+=======
+ctrlm_thunder_powermanager_t *ctrlm_thunder_powermanager_create() {
+
+   return(new ctrlm_thunder_powermanager_t());
+}
+
+ctrlm_thunder_powermanager_t::ctrlm_thunder_powermanager_t() {
+
+>>>>>>> 66311b27882fe408e6bd16e2fb839c102febd562
    XLOGD_INFO("Thunder PowerManager Implementation");
    this->plugin = Thunder::PowerManager::ctrlm_thunder_plugin_powermanager_t::get_instance();
 }
@@ -35,6 +45,7 @@ bool ctrlm_thunder_powermanager_t::is_ready() {
 }
 
 void ctrlm_thunder_powermanager_t::get_power_state(ctrlm_power_state_t &power_state) {
+<<<<<<< HEAD
    this->plugin->get_power_state(power_state);
 }
 
@@ -47,4 +58,31 @@ void ctrlm_thunder_powermanager_t::get_wakeup_reason_voice(bool wakeup_reason_vo
    this->plugin->get_wakeup_reason_voice(wakeup_reason_voice);
 }
 #endif
+=======
+
+   if(this->plugin == NULL) {
+      XLOGD_WARN("plugin not yet available");
+   } else {
+      this->plugin->get_power_state(power_state);
+   }
+}
+
+void ctrlm_thunder_powermanager_t::get_networked_standby_mode(bool networked_standby_mode) {
+
+   if(this->plugin == NULL) {
+      XLOGD_ERROR("plugin not yet available");
+   } else {
+      this->plugin->get_networked_standby_mode(networked_standby_mode);
+   }
+}
+
+void ctrlm_thunder_powermanager_t::get_wakeup_reason_voice(bool wakeup_reason_voice) {
+
+   if(this->plugin == NULL) {
+      XLOGD_WARN("plugin not yet available");
+   } else {
+      this->plugin->get_wakeup_reason_voice(wakeup_reason_voice);
+   }
+}
+>>>>>>> 66311b27882fe408e6bd16e2fb839c102febd562
 

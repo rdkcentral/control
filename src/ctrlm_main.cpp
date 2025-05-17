@@ -56,6 +56,9 @@
 #include "ctrlm_main_powermanager.h"
 #ifdef CTRLM_THUNDER
 #include "ctrlm_thunder_plugin_device_info.h"
+#ifndef USE_IARM_POWER_MANAGER
+#include "ctrlm_thunder_powermanager.h"
+#endif
 #endif
 #ifdef AUTH_ENABLED
 #include "ctrlm_auth.h"
@@ -270,6 +273,9 @@ typedef struct {
 #endif
 #ifdef CTRLM_THUNDER
    Thunder::DeviceInfo::ctrlm_thunder_plugin_device_info_t *thunder_device_info;
+   #ifndef USE_IARM_POWER_MANAGER
+   ctrlm_thunder_powermanager_t *power_manager;
+   #endif
 #endif
    ctrlm_main_powermanager_t         *power_manager;
    ctrlm_power_state_t                power_state;
@@ -2713,7 +2719,7 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-#ifdef AUTH_ENABLED
+         #ifdef AUTH_ENABLED
          case CTRLM_MAIN_QUEUE_MSG_TYPE_AUTHSERVICE_POLL: {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_AUTHSERVICE_POLL");
 
@@ -2733,8 +2739,8 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-#endif
-#ifdef CTRLM_NETWORK_RF4CE
+         #endif
+         #ifdef CTRLM_NETWORK_RF4CE
          case CTRLM_MAIN_QUEUE_MSG_TYPE_NOTIFY_FIRMWARE: {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_NOTIFY_FIRMWARE");
             if(ctrlm_main_successful_init_get()) {
@@ -2752,7 +2758,7 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-#endif
+         #endif
          case CTRLM_MAIN_QUEUE_MSG_TYPE_IR_REMOTE_USAGE: {
             gboolean day_changed = false;
             ctrlm_main_queue_msg_ir_remote_usage_t *dqm = (ctrlm_main_queue_msg_ir_remote_usage_t *) msg;

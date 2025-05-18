@@ -127,7 +127,7 @@ void ctrlm_thunder_plugin_powermanager_t::on_power_state_changed(const ctrlm_pow
       return;
    }
 
-   XLOGD_INFO("current state %s, new state %s", ctrlm_power_state_str(current_state), ctrlm_power_state_str(new_state));
+   XLOGD_DEBUG("current state %s, new state %s", ctrlm_power_state_str(current_state), ctrlm_power_state_str(new_state));
    msg->header.type = CTRLM_MAIN_QUEUE_MSG_TYPE_POWER_STATE_CHANGE;
    msg->new_state = new_state;
    ctrlm_main_queue_msg_push(msg);

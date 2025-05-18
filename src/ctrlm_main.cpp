@@ -6048,7 +6048,7 @@ void ctrlm_trigger_startup_actions(void) {
 void *ctrlm_load_hal_rf4ce(void) {
    void *handle = dlopen("libctrlm_hal_rf4ce.so", RTLD_NOW);
    if(NULL == handle) {
-      if(ctrlm_file_exists("/usr/lib/libctrlm_hal_rf4ce.so")) {
+      if(ctrlm_file_exists("/usr/lib/libctrlm_hal_rf4ce.so") || ctrlm_file_exists("/vendor/lib/libctrlm_hal_rf4ce.so")) {
          XLOGD_ERROR("Failed to load RF4CE HAL plugin <%s>", dlerror());
       } else {
          XLOGD_INFO("RF4CE HAL is not present.");

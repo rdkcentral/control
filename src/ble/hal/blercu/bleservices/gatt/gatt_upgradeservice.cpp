@@ -1078,6 +1078,9 @@ void GattUpgradeService::onERRORPacket(const vector<uint8_t> &data)
         case 0x07:
             m_lastError = "Invalid hash error from RCU";
             break;
+        case 0x08:
+            m_lastError = "Invalid FW Version error from RCU";
+            break;
         default:
             m_lastError = "Received unknown error from RCU";
             break;

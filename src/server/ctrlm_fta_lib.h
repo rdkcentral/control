@@ -1,0 +1,38 @@
+/*
+ * If not stated otherwise in this file or this component's license file the
+ * following copyright and licenses apply:
+ *
+ * Copyright 2014 RDK Management
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+*/
+#ifndef _CTRLM_FTA_LIB_H_
+#define _CTRLM_FTA_LIB_H_
+
+#include <stdint.h>
+#include <ctrlm_fta_caa.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+bool ctrlms_init(xlog_level_t level);
+void ctrlms_term(void);
+
+bool ctrlms_mic_test_factory(uint32_t duration, const char *output_filename, uint32_t level, const char *audio_filename, double *snr_min, double *snr_max, double *snr_var, ctrlms_test_result_t *test_result);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

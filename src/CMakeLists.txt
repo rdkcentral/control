@@ -139,6 +139,9 @@ if(BUILD_FACTORY_TEST)
    add_subdirectory(factory)
 endif()
 
+if(BUILD_CTRLM_SERVER)
+   add_subdirectory(server)
+endif()
 
 if(IRDB_STUB)
    target_sources(controlMgr PRIVATE

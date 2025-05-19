@@ -500,7 +500,7 @@ bool ctrlm_obj_controller_ble_t::is_stale(time_t stale_time_threshold) const {
 }
 
 bool ctrlm_obj_controller_ble_t::isVoiceKey(uint16_t key_code) const {
-   if(key_code == voice_key_code_) {
+   if(key_code == voice_key_code_ || key_code == KEY_F23) {
       return true;
    }
    return false;

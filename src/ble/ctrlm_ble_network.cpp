@@ -653,7 +653,7 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
 
                      controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, ir_rf_database_.get_tv_ir_code_id());
                      controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, ir_rf_database_.get_avr_ir_code_id());
-                     XLOGD_INFO("irdb_entry_id_name = <%s>", dqm->ir_codes->id);
+                     XLOGD_INFO("irdb_entry_id_name = <%s>", dqm->ir_codes->id.c_str());
                }
             }
             // Store the IR codes in the database

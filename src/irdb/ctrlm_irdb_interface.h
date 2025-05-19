@@ -88,9 +88,6 @@ private:
    ctrlm_irdb_interface_t();
    ctrlm_irdb_interface_t(bool platform_tv);
 
-   bool lock_mutex();
-   void unlock_mutex();
-
    bool open_plugin();
    bool close_plugin();
 
@@ -101,7 +98,7 @@ private:
 
    ctrlm_irdb_mode_t mode;
    bool              m_platform_tv;
-   std::timed_mutex  m_mutex;
+   std::mutex        m_mutex;
 };
 
 #endif

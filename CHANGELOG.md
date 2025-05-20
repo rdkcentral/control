@@ -23,6 +23,17 @@ All notable changes to this project will be documented in this file.
 - Support for Thunder based Power Manager component for RDK-E
 - RDK-V will continue to use IARM based Power Manager, enabled with USE_IARM_POWER_MANAGER flag in ctrlm-main.bb
 
+## [1.0.10] - 2025-05-16
+
+### Changed
+- ctrlm crash from main queue msgs getting to networks prior to initialization
+- ctrlm support both old and new deviceType
+- Control manager crashes on rapid MIC button presses
+- [Logging] Add Invalid firmware version OTA error code (0x8) mapping in ctrlmgr logs
+- Changed deviceType from tv to IpTv.
+- Extend adpcm frame info.
+
+
 ## [1.0.9] - 2025-04-28
 
 ### Changed

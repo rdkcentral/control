@@ -29,11 +29,13 @@
 
 #include "statemachine.h"
 #include "ctrlm_log_ble.h"
+#include "ctrlm_utils.h"
 
 #include <algorithm>
 
 using namespace std;
 
+typedef gmain_loop_obj_user_data<StateMachine> StateMachine_userdata;
 
 StateMachine::StateMachine()
     : m_isAlive(make_shared<bool>(true))
@@ -292,11 +294,13 @@ int StateMachine::shouldMoveState(Event::Type eventType) const
 
 static gboolean timerEvent(gpointer user_data)
 {
-    StateMachine *sm = (StateMachine*)user_data;
-    if (sm == nullptr || !sm->isRunning()) {
+    StateMachine_userdata *userData = (StateMachine_userdata*)user_data;
+    if (userData == nullptr || !userData->is_alive() || !userData->m_ptr->isRunning() ) {
+        delete userData;
         return false;
     }
 
+    StateMachine *sm = userData->m_ptr;
     unsigned int timerId = g_source_get_id(g_main_current_source());
 
     // take the lock before accessing the delay events map
@@ -337,6 +341,7 @@ static gboolean timerEvent(gpointer user_data)
         sm->m_delayedEventsLock.unlock();
     }
     
+    delete userData;
     return false;
 }
 
@@ -696,7 +701,8 @@ int64_t StateMachine::postDelayedEvent(Event::Type eventType, int delay)
     std::lock_guard<std::mutex> lock(m_delayedEventsLock);
 
     // create a timer and then pin the event to the timer
-    const unsigned int timerId = g_timeout_add(delay, timerEvent, this);
+    StateMachine_userdata *timerEvent_userdata = new StateMachine_userdata(this->m_isAlive, this);
+    const unsigned int timerId = g_timeout_add(delay, timerEvent, timerEvent_userdata);
 
     // get a unique id
     int64_t id = m_delayedEventIdCounter++;

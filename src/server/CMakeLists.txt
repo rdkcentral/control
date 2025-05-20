@@ -34,7 +34,7 @@ target_sources(controlServer PRIVATE
    ctrlms_ws.c
 )
 
-target_link_libraries(controlServer c rdkversion pthread nopoll xr-voice-sdk secure_wrapper)
+target_link_libraries(controlServer c rdkversion pthread nopoll jansson xr-voice-sdk secure_wrapper ${CMAKE_DL_LIBS})
 
 #if(CUSTOM_AUTH_LIB)
 #   add_compile_definitions(PRIVATE CTRLMS_WSS_ENABLED)

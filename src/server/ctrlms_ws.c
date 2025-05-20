@@ -9,11 +9,14 @@
 #include <semaphore.h>
 #include <sys/stat.h>
 #include <nopoll.h>
+#include <dlfcn.h>
+#include <jansson.h>
 #include <ctrlm_log.h>
 #include <rdkx_logger.h>
 #include <safec_lib.h>
 #include <ctrlms_ws.h>
-#include <ctrlm_fta_platform.h>
+#include <ctrlm_server_platform.h>
+#include <ctrlm_server_app.h>
 
 #ifdef CTRLMS_WSS_ENABLED
 #include <openssl/pkcs12.h>
@@ -33,31 +36,26 @@ typedef struct {
    sem_t *                semaphore;
    uint16_t               port;
    bool                   log_enable;
-   ctrlms_audio_frame_t * audio_frames;
-   uint32_t *             audio_frame_qty;
-   uint32_t               audio_frame_size;
    ctrlms_ws_callbacks_t *callbacks;
 } ctrlms_ws_thread_params_t;
 
 typedef struct {
-   noPollConn *          nopoll_conn;
-   ctrlms_audio_frame_t *audio_frames;
-   uint32_t *            audio_frame_qty;
-   uint32_t              audio_frame_size;
-   uint32_t              audio_byte_cnt;
-   uint32_t              audio_byte_total;
-   uint8_t *             audio_byte_ptr;
-   ctrlms_ws_callbacks_t callbacks;
+   noPollConn *              nopoll_conn;
+   ctrlms_ws_callbacks_t     callbacks;
+   void *                    app_handle;
+   ctrlms_ws_receive_audio_t app_receive_audio;
+   ctrlms_ws_receive_json_t  app_receive_json;
 } ctrlms_ws_thread_state_t;
 
 typedef struct {
    pthread_t            thread_id;
    noPollCtx *          nopoll_ctx;
-   ctrlms_audio_frame_t audio_frames;
-   uint32_t             audio_frame_qty;
 } ctrlms_ws_global_t;
 
 static void *ctrlms_ws_main(void *param);
+static void *ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state);
+static bool  ctrlms_ws_receive_audio_stub(const unsigned char *payload, int payload_size);
+static bool  ctrlms_ws_receive_json_stub(const json_t *json_obj);
 
 static nopoll_bool ctrlms_ws_on_accept(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data);
 static nopoll_bool ctrlms_ws_on_ready(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data);
@@ -72,7 +70,7 @@ static bool        ctrlms_ws_add_chain(FILE *cert_key_fp, STACK_OF(X509) *additi
 
 ctrlms_ws_global_t g_ctrlms_ws;
 
-bool ctrlms_ws_init(uint32_t audio_frame_size, uint16_t port, bool log_enable, ctrlms_ws_callbacks_t *callbacks) {
+bool ctrlms_ws_init(uint16_t port, bool log_enable, ctrlms_ws_callbacks_t *callbacks) {
    ctrlms_ws_thread_params_t params;
 
    sem_t semaphore;
@@ -83,14 +81,13 @@ bool ctrlms_ws_init(uint32_t audio_frame_size, uint16_t port, bool log_enable, c
 
    params.port             = port;
    params.log_enable       = log_enable;
-   params.audio_frames     = &g_ctrlms_ws.audio_frames;
-   params.audio_frame_qty  = &g_ctrlms_ws.audio_frame_qty;
-   params.audio_frame_size = audio_frame_size;
-   params.callbacks        = callbacks;
+   if(callbacks != NULL) {
+      params.callbacks = callbacks;
+   } else {
+      params.callbacks = NULL;
+   }
 
    g_ctrlms_ws.nopoll_ctx      = NULL;
-   g_ctrlms_ws.audio_frames    = NULL;
-   g_ctrlms_ws.audio_frame_qty = 0;
    
    if(0 != pthread_create(&g_ctrlms_ws.thread_id, NULL, ctrlms_ws_main, &params)) {
       XLOGD_ERROR("unable to launch thread");
@@ -104,9 +101,12 @@ bool ctrlms_ws_init(uint32_t audio_frame_size, uint16_t port, bool log_enable, c
    return(true);
 }
 
-bool ctrlms_ws_capture_set(ctrlms_audio_frame_t audio_frames, uint32_t audio_frame_qty) {
-   g_ctrlms_ws.audio_frames    = audio_frames;
-   g_ctrlms_ws.audio_frame_qty = audio_frame_qty;
+bool ctrlms_ws_listen(void) {
+   // Wait for thread to exit
+   XLOGD_INFO("Waiting until thread exits");
+   void *retval = NULL;
+   pthread_join(g_ctrlms_ws.thread_id, &retval);
+   XLOGD_INFO("thread exited.");
    return(true);
 }
 
@@ -126,19 +126,18 @@ void *ctrlms_ws_main(void *param) {
    ctrlms_ws_thread_params_t params = *((ctrlms_ws_thread_params_t *)param);
    errno_t safec_rc = -1;
 
-   if(params.audio_frames == NULL || params.audio_frame_qty == NULL || params.callbacks == NULL) {
-      XLOGD_ERROR("invalid params");
-      return(NULL);
-   }
    ctrlms_ws_thread_state_t state;
    
-   state.audio_frames     = params.audio_frames;
-   state.audio_frame_qty  = params.audio_frame_qty;
-   state.audio_frame_size = params.audio_frame_size;
-   state.audio_byte_cnt   = 0;
-   state.audio_byte_ptr   = (uint8_t *)params.audio_frames;
-   state.audio_byte_total = *params.audio_frame_qty * state.audio_frame_size;
-   state.callbacks        = *params.callbacks;
+   if(params.callbacks != NULL) {
+      state.callbacks = *params.callbacks;
+   } else {
+      state.callbacks.connected    = NULL;
+      state.callbacks.disconnected = NULL;
+      state.callbacks.data         = NULL;
+   }
+   state.app_receive_audio = NULL;
+   state.app_receive_json  = NULL;
+   state.app_handle        = ctrlms_ws_load_app(&state);
 
    g_ctrlms_ws.nopoll_ctx = nopoll_ctx_new();
    if(g_ctrlms_ws.nopoll_ctx == NULL) {
@@ -254,6 +253,11 @@ void *ctrlms_ws_main(void *param) {
    }
    #endif
 
+   if(state.app_handle != NULL) {
+      dlclose(state.app_handle);
+      state.app_handle = NULL;
+   }
+
    return(NULL);
 }
 
@@ -264,10 +268,6 @@ nopoll_bool ctrlms_ws_on_accept(noPollCtx *ctx, noPollConn *conn, noPollPtr user
       XLOGD_ERROR("invalid params");
       return(nopoll_false);
    }
-
-   state->audio_byte_cnt   = 0;
-   state->audio_byte_ptr   = (uint8_t *)(*state->audio_frames);
-   state->audio_byte_total = (*state->audio_frame_qty * state->audio_frame_size);
 
    // Set ping handler
    nopoll_conn_set_on_ping_msg(conn, ctrlms_ws_on_ping, NULL);
@@ -302,34 +302,34 @@ void ctrlms_ws_on_message(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPo
       return;
    }
 
+   bool close_conn = false;
    int payload_size = nopoll_msg_get_payload_size(msg);
    const unsigned char *payload = nopoll_msg_get_payload(msg);
    
    switch(nopoll_msg_opcode(msg)) {
       case NOPOLL_TEXT_FRAME: {
-         XLOGD_INFO("NOPOLL_TEXT_FRAME");
+         XLOGD_INFO("NOPOLL_TEXT_FRAME size <%d>", payload_size);
+
+         json_t *json_obj = json_loads((const char *)payload, 0, NULL);
+
+         if(json_obj == NULL) {
+            XLOGD_ERROR("Failed to parse JSON object");
+            break;
+         } else {
+            // Pass the incoming payload to the application
+            if(state->app_receive_json != NULL) {
+               close_conn = (*state->app_receive_json)(json_obj);
+            }
+            json_decref(json_obj);
+         }
          break;
       }
       case NOPOLL_BINARY_FRAME: {
          XLOGD_INFO("NOPOLL_BINARY_FRAME size <%d>", payload_size);
-         if(state->audio_byte_cnt < state->audio_byte_total) {
-            if(state->audio_byte_ptr != NULL) {
-               if((state->audio_byte_cnt + payload_size) > state->audio_byte_total) {
-                  memcpy(state->audio_byte_ptr, payload, (state->audio_byte_total - state->audio_byte_cnt));
-                  state->audio_byte_cnt = state->audio_byte_total;
-               } else {
-                  memcpy(state->audio_byte_ptr, payload, payload_size);
-                  state->audio_byte_ptr += payload_size;
-                  state->audio_byte_cnt += payload_size;
-               }
-               if(state->audio_byte_cnt >= state->audio_byte_total) {
-                  state->audio_byte_ptr = NULL;
-               }
-            }
-         }
-         if(state->audio_byte_cnt >= state->audio_byte_total) {
-            const char *reason = "audio buffer filled";
-            nopoll_conn_close_ext(conn, 1000, reason, strlen(reason));
+
+         // Pass the incoming payload to the application
+         if(state->app_receive_audio != NULL) {
+            close_conn = (*state->app_receive_audio)(payload, payload_size);
          }
          break;
       }
@@ -341,6 +341,11 @@ void ctrlms_ws_on_message(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPo
          XLOGD_INFO("NOPOLL_UNKNOWN");
          break;
       }
+   }
+
+   if(close_conn) {
+      const char *reason = "app closed";
+      nopoll_conn_close_ext(conn, 1000, reason, strlen(reason));
    }
 }
 
@@ -478,4 +483,46 @@ void ctrlms_ws_nopoll_log(noPollCtx * ctx, noPollDebugLevel level, const char * 
    int errsv = errno;
    xlog_printf(&args, "%s", log_msg);
    errno = errsv;
+}
+
+void *ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state) {
+   void *handle = dlopen("libctrlm_server_app.so", RTLD_NOW);
+   if(NULL == handle) {
+      XLOGD_WARN("Failed to load server app plugin <%s>.  Using stub implementation.", dlerror());
+
+      state->app_receive_audio = ctrlms_ws_receive_audio_stub;
+      state->app_receive_json  = ctrlms_ws_receive_json_stub;
+      return(NULL);
+   }
+
+   dlerror(); // Clear any existing error
+   state->app_receive_audio = (ctrlms_ws_receive_audio_t)dlsym(handle, "ctrlms_ws_receive_audio");
+   char *error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (ctrlms_ws_receive_audio), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   state->app_receive_json = (ctrlms_ws_receive_json_t)dlsym(handle, "ctrlms_ws_receive_json");
+   error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (ctrlms_ws_receive_json), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   return(handle);
+}
+
+bool ctrlms_ws_receive_audio_stub(const unsigned char *payload, int payload_size) {
+   XLOGD_INFO("size <%d>", payload_size);
+   return(true);
+}
+
+bool ctrlms_ws_receive_json_stub(const json_t *json_obj) {
+   XLOGD_INFO("");
+   return(true);
 }

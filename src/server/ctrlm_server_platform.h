@@ -16,27 +16,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-#ifndef _CTRLMF_WS_H_
-#define _CTRLMF_WS_H_
+#ifndef _CTRLM_SERVER_PLATFORM_H_
+#define _CTRLM_SERVER_PLATFORM_H_
 
 #include <stdint.h>
 
-typedef void (*ctrlms_ws_connected_t)(void *data);
-typedef void (*ctrlms_ws_disconnected_t)(void *data);
+typedef enum {
+   CTRLM_FTA_PLATFORM_VOICE_CERT_TYPE_NONE    = 0,
+   CTRLM_FTA_PLATFORM_VOICE_CERT_TYPE_P12     = 1,
+   CTRLM_FTA_PLATFORM_VOICE_CERT_TYPE_INVALID = 2
+} ctrlm_fta_platform_voice_cert_type_t;
 
 typedef struct {
-   ctrlms_ws_connected_t    connected;
-   ctrlms_ws_disconnected_t disconnected;
-   void *                   data;
-} ctrlms_ws_callbacks_t;
+   ctrlm_fta_platform_voice_cert_type_t   type;
+   char                                  *filename;
+   char                                  *password;
+}ctrlm_fta_platform_cert_info_t;
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-bool ctrlms_ws_init(uint16_t port, bool log_enable, ctrlms_ws_callbacks_t *callbacks);
-bool ctrlms_ws_listen(void);
-void ctrlms_ws_term(void);
+ctrlm_fta_platform_cert_info_t *ctrlm_fta_platform_cert_info_get(bool allow_expired);
+void ctrlm_fta_platform_cert_info_free(ctrlm_fta_platform_cert_info_t *cert_info);
 
 #ifdef __cplusplus
 }

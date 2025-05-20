@@ -16,23 +16,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-#ifndef _CTRLM_FTA_LIB_H_
-#define _CTRLM_FTA_LIB_H_
+#ifndef _CTRLM_SERVER_APP_H_
+#define _CTRLM_SERVER_APP_H_
 
 #include <stdint.h>
-#include <ctrlm_fta_caa.h>
+#include <jansson.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-bool ctrlms_init(xlog_level_t level);
-void ctrlms_term(void);
+// Audio data received from websocket client
+typedef bool (*ctrlms_ws_receive_audio_t)(const unsigned char *payload, int payload_size);
 
-bool ctrlms_mic_test_factory(uint32_t duration, const char *output_filename, uint32_t level, const char *audio_filename, double *snr_min, double *snr_max, double *snr_var, ctrlms_test_result_t *test_result);
+// Json object received from websocket client
+typedef bool (*ctrlms_ws_receive_json_t)(const json_t *json_obj);
+
+// Json object to send to websocket client
+void ctrlms_ws_send_json(const json_t *json_obj);
 
 #ifdef __cplusplus
 }
 #endif
-
 #endif

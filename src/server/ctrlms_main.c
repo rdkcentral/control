@@ -5,8 +5,11 @@
 #include <argp.h>
 #include <ctrlm_log.h>
 #include <rdkx_logger.h>
+#include <ctrlms_version.h>
 
 #define CTRLMS_VERSION "1.0"
+
+#define CTRLMS_WS_PORT_INT (9881)
 
 typedef struct {
    bool     silent;
@@ -54,12 +57,14 @@ int main(int argc, char* argv[]) {
    if(!ctrlms_init(level)) {
       XLOGD_ERROR("ctrlms_main: init failed");
    } else {
-      XLOGD_INFO("ctrlms_main: Run main loop");
 
       // TODO Start listening for connections
-      //bool ctrlms_ws_init(uint32_t audio_frame_size, uint16_t port, bool log_enable, ctrlms_ws_callbacks_t *callbacks) {
-
-
+      if(!ctrlms_ws_init(CTRLMS_WS_PORT_INT, true, NULL)) {
+         XLOGD_ERROR("ctrlms_main: ws init failed");
+      } else {
+         ctrlms_ws_listen();
+         ctrlms_ws_term();
+      }
       XLOGD_INFO("ctrlms_main: main loop ended");
    }
    ctrlms_term();

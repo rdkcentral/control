@@ -168,6 +168,7 @@ void ctrlm_thunder_plugin_t::on_activation_change(plugin_state_t state) {
 
 void ctrlm_thunder_plugin_t::on_thunder_ready(bool boot) {
     std::string callsign_api = this->callsign_with_api();
+
     XLOGD_INFO("Thunder is now ready, create plugin client for %s", callsign_api.c_str());
     auto pluginClient = new JSONRPC::LinkType<Core::JSON::IElement>(_T(callsign_api), _T(""), false, Thunder::Controller::ctrlm_thunder_controller_t::get_security_token());
     if(pluginClient == NULL) {

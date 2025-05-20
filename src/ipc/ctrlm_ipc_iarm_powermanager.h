@@ -23,7 +23,7 @@
 class ctrlm_ipc_iarm_powermanager_t : public ctrlm_powermanager_t {
 public:
     ctrlm_ipc_iarm_powermanager_t();
-    virtual ~ctrlm_ipc_iarm_powermanager_t();
+    ~ctrlm_ipc_iarm_powermanager_t();
 
     void get_power_state(ctrlm_power_state_t &power_state);
     void running_set(bool running);

@@ -21,18 +21,8 @@
 #include "ctrlm.h"
 #include "ctrlm_thunder_plugin.h"
 #include "ctrlm_utils.h"
-#include "interfaces/IPowerManager.h"
 #include <semaphore.h>
 #include <map>
-
-#define POWER_STATE_OFF                 WPEFramework::Exchange::IPowerManager::POWER_STATE_OFF
-#define POWER_STATE_STANDBY             WPEFramework::Exchange::IPowerManager::POWER_STATE_STANDBY
-#define POWER_STATE_ON                  WPEFramework::Exchange::IPowerManager::POWER_STATE_ON
-#define POWER_STATE_STANDBY_LIGHT_SLEEP WPEFramework::Exchange::IPowerManager::POWER_STATE_STANDBY_LIGHT_SLEEP
-#define POWER_STATE_STANDBY_DEEP_SLEEP  WPEFramework::Exchange::IPowerManager::POWER_STATE_STANDBY_DEEP_SLEEP
-
-using PowerState   = WPEFramework::Exchange::IPowerManager::PowerState;
-//using WakeupReason = WPEFramework::Exchange::IPowerManager::WakeupReason;
 
 namespace Thunder {
 namespace PowerManager {

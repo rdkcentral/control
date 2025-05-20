@@ -1,9 +1,10 @@
 #ifndef __CTRLM_THUNDER_POWERMANAGER_H__
 #define __CTRLM_THUNDER_POWERMANAGER_H__
 
+#include "ctrlm_powermanager.h"
 #include "ctrlm_thunder_plugin_powermanager.h"
 
-class ctrlm_thunder_powermanager_t {
+class ctrlm_thunder_powermanager_t : public ctrlm_powermanager_t {
 public:
    ctrlm_thunder_powermanager_t();
    virtual ~ctrlm_thunder_powermanager_t();
@@ -19,7 +20,5 @@ public:
 private:
    Thunder::PowerManager::ctrlm_thunder_plugin_powermanager_t *plugin;
 };
-
-ctrlm_thunder_powermanager_t *ctrlm_thunder_powermanager_create();
 
 #endif

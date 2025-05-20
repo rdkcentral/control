@@ -45,7 +45,6 @@ ctrlm_thunder_plugin_powermanager_t *ctrlm_thunder_plugin_powermanager_t::get_in
       instance = new ctrlm_thunder_plugin_powermanager_t;
    }
 
-   XLOGD_INFO("power manager plugin init");
    return instance;
 }
 

@@ -53,13 +53,10 @@
 #include "ctrlm_validation.h"
 #include "ctrlm_recovery.h"
 #include "ctrlm_ir_controller.h"
-#include "ctrlm_main_powermanager.h"
+#include "ctrlm_powermanager.h"
 #ifdef CTRLM_THUNDER
 #include "ctrlm_thunder_plugin_device_info.h"
 #include "ctrlm_rcp_ipc_iarm_thunder.h"
-#ifndef USE_IARM_POWER_MANAGER
-#include "ctrlm_thunder_powermanager.h"
-#endif
 #endif
 #ifdef AUTH_ENABLED
 #include "ctrlm_auth.h"
@@ -275,7 +272,7 @@ typedef struct {
 #ifdef CTRLM_THUNDER
    Thunder::DeviceInfo::ctrlm_thunder_plugin_device_info_t *thunder_device_info;
 #endif
-   ctrlm_main_powermanager_t         *power_manager;
+   ctrlm_powermanager_t              *power_manager;
    ctrlm_power_state_t                power_state;
    gboolean                           auto_ack;
    gboolean                           local_conf;
@@ -567,7 +564,7 @@ int main(int argc, char *argv[]) {
    //g_ctrlm.precomission_table             = g_hash_table_new(g_str_hash, g_str_equal);
    g_ctrlm.loading_db                     = false;
    g_ctrlm.return_code                    = 0;
-   g_ctrlm.power_manager                  = ctrlm_main_powermanager_create();
+   g_ctrlm.power_manager                  = ctrlm_powermanager_create();
    g_ctrlm.power_state                    = ctrlm_main_get_system_power_state();
    g_ctrlm.auto_ack                       = true;
    g_ctrlm.local_conf                     = false;

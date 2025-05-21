@@ -16,13 +16,6 @@ All notable changes to this project will be documented in this file.
 
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
-## [1.0.10] - 2025-05-17
-
-### Added
-- PowerManager interface to choose between Thunder or IARM based Power Manager
-- Support for Thunder based Power Manager component for RDK-E
-- RDK-V will continue to use IARM based Power Manager, enabled with USE_IARM_POWER_MANAGER flag in ctrlm-main.bb
-
 ## [1.0.10] - 2025-05-16
 
 ### Changed

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <ctrlms_utils.h>
 
+/*
 #define CTRLMS_INVALID_STR_LEN (24)
 
 static char ctrlms_invalid_str[CTRLMS_INVALID_STR_LEN];
@@ -13,3 +14,4 @@ const char *ctrlms_invalid_return(int value) {
    ctrlms_invalid_str[sizeof(ctrlms_invalid_str) - 1] = '\0';
    return(ctrlms_invalid_str);
 }
+*/

@@ -17,6 +17,8 @@
 # limitations under the License.
 ##########################################################################
 
+# This is required to allow an executable to export symbols to be used by loadable modules (e.g. plugins using dlopen)
+set(CMAKE_ENABLE_EXPORTS ON)
 
 add_executable(controlServer ctrlms_main.c)
 
@@ -33,6 +35,8 @@ target_sources(controlServer PRIVATE
    ctrlms_utils.c
    ctrlms_ws.c
 )
+
+target_compile_options(controlServer PUBLIC -fPIC -rdynamic -Wall -Werror)
 
 target_link_libraries(controlServer c rdkversion pthread nopoll jansson xr-voice-sdk secure_wrapper ${CMAKE_DL_LIBS})
 

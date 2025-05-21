@@ -6,6 +6,7 @@
 #include <ctrlm_log.h>
 #include <rdkx_logger.h>
 #include <ctrlms_version.h>
+#include <ctrlms_ws.h>
 
 #define CTRLMS_VERSION "1.0"
 

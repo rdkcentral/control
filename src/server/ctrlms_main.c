@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
    } else {
 
       // TODO Start listening for connections
-      if(!ctrlms_ws_init(CTRLMS_WS_PORT_INT, true, NULL)) {
+      if(!ctrlms_ws_init(CTRLMS_WS_PORT_INT, true)) {
          XLOGD_ERROR("ctrlms_main: ws init failed");
       } else {
          ctrlms_ws_listen();

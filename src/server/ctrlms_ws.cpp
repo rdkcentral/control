@@ -36,15 +36,12 @@ typedef struct {
    sem_t *                semaphore;
    uint16_t               port;
    bool                   log_enable;
-   ctrlms_ws_callbacks_t *callbacks;
 } ctrlms_ws_thread_params_t;
 
 typedef struct {
    noPollConn *              nopoll_conn;
-   ctrlms_ws_callbacks_t     callbacks;
    void *                    app_handle;
-   ctrlms_ws_receive_audio_t app_receive_audio;
-   ctrlms_ws_receive_json_t  app_receive_json;
+   ctrlms_app_interface_t   *app_interface;
 } ctrlms_ws_thread_state_t;
 
 typedef struct {
@@ -54,8 +51,6 @@ typedef struct {
 
 static void *ctrlms_ws_main(void *param);
 static void *ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state);
-static bool  ctrlms_ws_receive_audio_stub(const unsigned char *payload, int payload_size);
-static bool  ctrlms_ws_receive_json_stub(const json_t *json_obj);
 
 static nopoll_bool ctrlms_ws_on_accept(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data);
 static nopoll_bool ctrlms_ws_on_ready(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data);
@@ -70,7 +65,7 @@ static bool        ctrlms_ws_add_chain(FILE *cert_key_fp, STACK_OF(X509) *additi
 
 ctrlms_ws_global_t g_ctrlms_ws;
 
-bool ctrlms_ws_init(uint16_t port, bool log_enable, ctrlms_ws_callbacks_t *callbacks) {
+bool ctrlms_ws_init(uint16_t port, bool log_enable) {
    ctrlms_ws_thread_params_t params;
 
    sem_t semaphore;
@@ -81,11 +76,6 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable, ctrlms_ws_callbacks_t *callb
 
    params.port             = port;
    params.log_enable       = log_enable;
-   if(callbacks != NULL) {
-      params.callbacks = callbacks;
-   } else {
-      params.callbacks = NULL;
-   }
 
    g_ctrlms_ws.nopoll_ctx      = NULL;
    
@@ -128,16 +118,8 @@ void *ctrlms_ws_main(void *param) {
 
    ctrlms_ws_thread_state_t state;
    
-   if(params.callbacks != NULL) {
-      state.callbacks = *params.callbacks;
-   } else {
-      state.callbacks.connected    = NULL;
-      state.callbacks.disconnected = NULL;
-      state.callbacks.data         = NULL;
-   }
-   state.app_receive_audio = NULL;
-   state.app_receive_json  = NULL;
-   state.app_handle        = ctrlms_ws_load_app(&state);
+   state.app_interface = NULL;
+   state.app_handle    = ctrlms_ws_load_app(&state);
 
    g_ctrlms_ws.nopoll_ctx = nopoll_ctx_new();
    if(g_ctrlms_ws.nopoll_ctx == NULL) {
@@ -257,6 +239,10 @@ void *ctrlms_ws_main(void *param) {
       dlclose(state.app_handle);
       state.app_handle = NULL;
    }
+   if(state.app_interface != NULL) {
+      delete state.app_interface;
+      state.app_interface = NULL;
+   }
 
    return(NULL);
 }
@@ -284,10 +270,8 @@ nopoll_bool ctrlms_ws_on_ready(noPollCtx *ctx, noPollConn *conn, noPollPtr user_
    }
 
    XLOGD_INFO("Connection established");
-   
-   if(state->callbacks.connected != NULL) {
-      (*state->callbacks.connected)(state->callbacks.data);
-   }
+   state->app_interface->ws_handle_set((void *)conn);
+   state->app_interface->ws_connected();
    
    nopoll_conn_set_on_close(conn, ctrlms_ws_on_close, user_data);
 
@@ -317,9 +301,7 @@ void ctrlms_ws_on_message(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPo
             break;
          } else {
             // Pass the incoming payload to the application
-            if(state->app_receive_json != NULL) {
-               close_conn = (*state->app_receive_json)(json_obj);
-            }
+            close_conn = state->app_interface->ws_receive_json(json_obj);
             json_decref(json_obj);
          }
          break;
@@ -328,9 +310,7 @@ void ctrlms_ws_on_message(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPo
          XLOGD_INFO("NOPOLL_BINARY_FRAME size <%d>", payload_size);
 
          // Pass the incoming payload to the application
-         if(state->app_receive_audio != NULL) {
-            close_conn = (*state->app_receive_audio)(payload, payload_size);
-         }
+         close_conn = state->app_interface->ws_receive_audio(payload, payload_size);
          break;
       }
       case NOPOLL_CONTINUATION_FRAME: {
@@ -369,9 +349,8 @@ void ctrlms_ws_on_close(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
    }
    XLOGD_INFO("");
 
-   if(state->callbacks.disconnected != NULL) {
-      (*state->callbacks.disconnected)(state->callbacks.data);
-   }
+   state->app_interface->ws_disconnected();
+   state->app_interface->ws_handle_set(NULL);
 }
 
 
@@ -485,44 +464,75 @@ void ctrlms_ws_nopoll_log(noPollCtx * ctx, noPollDebugLevel level, const char * 
    errno = errsv;
 }
 
+typedef ctrlms_app_interface_t *(*ctrlms_app_interface_create_t)(void);
+
 void *ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state) {
    void *handle = dlopen("libctrlm_server_app.so", RTLD_NOW);
    if(NULL == handle) {
-      XLOGD_WARN("Failed to load server app plugin <%s>.  Using stub implementation.", dlerror());
+      XLOGD_WARN("failed to load server app plugin <%s>.  Using stub implementation.", dlerror());
 
-      state->app_receive_audio = ctrlms_ws_receive_audio_stub;
-      state->app_receive_json  = ctrlms_ws_receive_json_stub;
+      state->app_interface = new ctrlms_app_interface_t();
       return(NULL);
    }
 
    dlerror(); // Clear any existing error
-   state->app_receive_audio = (ctrlms_ws_receive_audio_t)dlsym(handle, "ctrlms_ws_receive_audio");
+   ctrlms_app_interface_create_t app_interface = (ctrlms_app_interface_create_t)dlsym(handle, "ctrlms_app_interface_create");
    char *error = dlerror();
 
    if(error != NULL) {
-      XLOGD_ERROR("Failed to find plugin method (ctrlms_ws_receive_audio), error <%s>", error);
+      XLOGD_ERROR("failed to find plugin interface, error <%s>", error);
       dlclose(handle);
+
+      state->app_interface = new ctrlms_app_interface_t();
       return(NULL);
    }
 
-   state->app_receive_json = (ctrlms_ws_receive_json_t)dlsym(handle, "ctrlms_ws_receive_json");
-   error = dlerror();
-
-   if(error != NULL) {
-      XLOGD_ERROR("Failed to find plugin method (ctrlms_ws_receive_json), error <%s>", error);
-      dlclose(handle);
-      return(NULL);
-   }
+   XLOGD_INFO("successfully loaded plugin interface");
+   state->app_interface = (*app_interface)();
 
    return(handle);
 }
 
-bool ctrlms_ws_receive_audio_stub(const unsigned char *payload, int payload_size) {
-   XLOGD_INFO("size <%d>", payload_size);
+void ctrlms_app_interface_t::ws_connected(void) {
+   XLOGD_INFO("STUB: implement ws_connected");
+}
+
+void ctrlms_app_interface_t::ws_disconnected(void) {
+   XLOGD_INFO("STUB: implement ws_disconnected");
+}
+
+bool ctrlms_app_interface_t::ws_receive_audio(const unsigned char *payload, int payload_size) {
+   XLOGD_INFO("STUB: audio received size <%d>", payload_size);
+   return(true);   
+};
+bool ctrlms_app_interface_t::ws_receive_json(const json_t *json_obj) {
+   XLOGD_INFO("STUB: json object received");
    return(true);
 }
 
-bool ctrlms_ws_receive_json_stub(const json_t *json_obj) {
-   XLOGD_INFO("");
-   return(true);
+void ctrlms_app_interface_t::ws_send_json(const json_t *json_obj) {
+   if(json_obj == NULL) {
+      XLOGD_ERROR("json object is NULL");
+      return;
+   }
+   if(ws_handle == NULL) {
+      XLOGD_ERROR("ws connection is not established");
+      return;
+   }
+   char *payload = json_dumps(json_obj, JSON_COMPACT | JSON_ENSURE_ASCII);
+   if(payload == NULL) {
+      XLOGD_ERROR("failed to dump JSON object");
+      return;
+   }
+
+   XLOGD_INFO("Sending <%s>", payload);
+   int rc = nopoll_conn_send_text((noPollConn *)ws_handle, payload, strlen(payload));
+   if(rc <= 0) {
+      XLOGD_ERROR("failed to send message");
+   }
+   free(payload);
+}
+
+void ctrlms_app_interface_t::ws_handle_set(void *handle) {
+   ws_handle = handle;
 }

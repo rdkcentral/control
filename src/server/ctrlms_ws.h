@@ -21,20 +21,11 @@
 
 #include <stdint.h>
 
-typedef void (*ctrlms_ws_connected_t)(void *data);
-typedef void (*ctrlms_ws_disconnected_t)(void *data);
-
-typedef struct {
-   ctrlms_ws_connected_t    connected;
-   ctrlms_ws_disconnected_t disconnected;
-   void *                   data;
-} ctrlms_ws_callbacks_t;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-bool ctrlms_ws_init(uint16_t port, bool log_enable, ctrlms_ws_callbacks_t *callbacks);
+bool ctrlms_ws_init(uint16_t port, bool log_enable);
 bool ctrlms_ws_listen(void);
 void ctrlms_ws_term(void);
 

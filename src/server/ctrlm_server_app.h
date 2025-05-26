@@ -16,26 +16,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-#ifndef _CTRLM_SERVER_APP_H_
-#define _CTRLM_SERVER_APP_H_
+#pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <jansson.h>
+
+class ctrlms_app_interface_t
+{
+   public:
+   virtual ~ctrlms_app_interface_t() {};
+
+   virtual void ws_connected(void);
+   virtual void ws_disconnected(void);
+   virtual bool ws_receive_audio(const unsigned char *payload, int payload_size);
+   virtual bool ws_receive_json(const json_t *json_obj);
+           void ws_send_json(const json_t *json_obj);
+           void ws_handle_set(void *handle);
+
+   private:
+   void *ws_handle;
+};
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// Audio data received from websocket client
-typedef bool (*ctrlms_ws_receive_audio_t)(const unsigned char *payload, int payload_size);
-
-// Json object received from websocket client
-typedef bool (*ctrlms_ws_receive_json_t)(const json_t *json_obj);
-
-// Json object to send to websocket client
-void ctrlms_ws_send_json(const json_t *json_obj);
+ctrlms_app_interface_t *ctrlms_app_interface_create(void);
 
 #ifdef __cplusplus
 }
-#endif
 #endif

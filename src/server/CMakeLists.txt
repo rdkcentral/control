@@ -33,7 +33,7 @@ include_directories(
 target_sources(controlServer PRIVATE
    ctrlms_version.c
    ctrlms_utils.c
-   ctrlms_ws.c
+   ctrlms_ws.cpp
 )
 
 target_compile_options(controlServer PUBLIC -fPIC -rdynamic -Wall -Werror)

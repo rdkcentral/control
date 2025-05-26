@@ -167,7 +167,6 @@ bool ctrlm_voice_ipc_iarm_legacy_t::session_end(const ctrlm_voice_ipc_event_sess
 }
 
 bool ctrlm_voice_ipc_iarm_legacy_t::server_message(const char *message, unsigned long size) {
-    XLOGD_INFO("Not supported");
     return(true);
 }
 

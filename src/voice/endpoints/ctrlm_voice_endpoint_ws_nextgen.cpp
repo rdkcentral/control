@@ -109,6 +109,7 @@ bool ctrlm_voice_endpoint_ws_nextgen_t::open() {
        .test_flag                 = this->voice_obj->voice_stb_data_test_get(),
        .bypass_wuw_verify_success = this->voice_obj->voice_stb_data_bypass_wuw_verify_success_get(),
        .bypass_wuw_verify_failure = this->voice_obj->voice_stb_data_bypass_wuw_verify_failure_get(),
+       .listen_for_key_names      = this->voice_obj->voice_stb_data_listen_for_key_names_get(),
        .mask_pii                  = ctrlm_is_pii_mask_enabled(),
        .user_data                 = (void *)this
    };
@@ -154,6 +155,7 @@ bool ctrlm_voice_endpoint_ws_nextgen_t::get_handlers(xrsr_handlers_t *handlers) 
     handlers_xrsv.tv_mute           = &ctrlm_voice_endpoint_ws_nextgen_t::ctrlm_voice_handler_ws_nextgen_tv_mute;
     handlers_xrsv.tv_power          = &ctrlm_voice_endpoint_ws_nextgen_t::ctrlm_voice_handler_ws_nextgen_tv_power;
     handlers_xrsv.tv_volume         = &ctrlm_voice_endpoint_ws_nextgen_t::ctrlm_voice_handler_ws_nextgen_tv_volume;
+    handlers_xrsv.key_code          = &ctrlm_voice_endpoint_ws_nextgen_t::ctrlm_voice_handler_ws_nextgen_key_code;
     handlers_xrsv.msg               = &ctrlm_voice_endpoint_ws_nextgen_t::ctrlm_voice_handler_ws_nextgen_server_message;
 
     if(!xrsv_ws_nextgen_handlers(this->xrsv_obj_ws_nextgen, &handlers_xrsv, handlers)) {
@@ -626,6 +628,11 @@ void ctrlm_voice_endpoint_ws_nextgen_t::ctrlm_voice_handler_ws_nextgen_tv_volume
 void ctrlm_voice_endpoint_ws_nextgen_t::ctrlm_voice_handler_ws_nextgen_server_message(const char *msg, unsigned long length, void *user_data) {
     ctrlm_voice_endpoint_ws_nextgen_t *endpoint = (ctrlm_voice_endpoint_ws_nextgen_t *)user_data;
     endpoint->voice_obj->server_message(msg, length);
+}
+
+void ctrlm_voice_endpoint_ws_nextgen_t::ctrlm_voice_handler_ws_nextgen_key_code(uint16_t key_code, void *user_data) {
+    ctrlm_voice_endpoint_ws_nextgen_t *endpoint = (ctrlm_voice_endpoint_ws_nextgen_t *)user_data;
+    endpoint->voice_obj->voice_action_key_code_callback(key_code);
 }
 
 // End Function Implementations

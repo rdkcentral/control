@@ -138,7 +138,7 @@ public:
    void                             print_status();
 
    virtual bool                     is_stale(time_t stale_time_threshold) const;
-   bool                             isVoiceKey(uint16_t key_code) const;
+   bool                             isVoiceKey(uint16_t key_code, bool &listenForKeyNames) const;
 
    void                             setPressAndHoldSupport(bool supported);
    bool                             getPressAndHoldSupport() const;

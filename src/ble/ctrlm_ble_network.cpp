@@ -2108,8 +2108,9 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
       ctrlm_obj_controller_ble_t *controller = controllers_[controller_id];
 
       if (key_status == CTRLM_KEY_STATUS_DOWN) {
+         bool listenForKeyNames = false;
 
-         if (controller->isVoiceKey(dqm->event.code)) {
+         if (controller->isVoiceKey(dqm->event.code, listenForKeyNames)) {
             rdkx_timestamp_t keyDownTime;
             keyDownTime.tv_sec  = dqm->event.time.tv_sec;
             keyDownTime.tv_nsec = dqm->event.time.tv_usec * 1000;
@@ -2129,6 +2130,10 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
             msg.params = &v_params;
 
             req_process_voice_session_begin(&msg, sizeof(msg));
+
+            if (listenForKeyNames) {
+               XLOGD_WARN("listening for key names in the voice session");
+            }
          }
 
          if (controller->getUpgradeInProgress()) {
@@ -2163,8 +2168,8 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
          }
 
       } else if (key_status == CTRLM_KEY_STATUS_UP) {
-
-         if (controller->isVoiceKey(dqm->event.code)) {
+         bool listenForKeyNames = false;
+         if (controller->isVoiceKey(dqm->event.code, listenForKeyNames)) {
             if(!controller->getPressAndHoldSupport()) { // if the voice session is "Press and Release" then don't end session on voice key up event
                XLOGD_INFO("------------------------------------------------------------------------");
                XLOGD_INFO("CODE_VOICE_KEY button RELEASED event for device: %s (ignored for PAR session)", controller->ieee_address_get().to_string().c_str());

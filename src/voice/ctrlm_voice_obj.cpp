@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <semaphore.h>
+#include <sys/sysmacros.h>
 #include "include/ctrlm_ipc.h"
 #include "include/ctrlm_ipc_voice.h"
 #include "ctrlm_voice_obj.h"
@@ -256,6 +257,8 @@ ctrlm_voice_t::ctrlm_voice_t() {
     }
     #endif
 
+    init_uinput_writer();
+
     // Set audio mode to default
     ctrlm_voice_audio_settings_t settings = CTRLM_VOICE_AUDIO_SETTINGS_INITIALIZER;
     this->set_audio_mode(&settings);
@@ -292,6 +295,8 @@ ctrlm_voice_t::~ctrlm_voice_t() {
             session->audio_pipe[PIPE_WRITE] = -1;
         }
     }
+
+    uinput_writer.shutdown();
 
     #ifdef BEEP_ON_KWD_ENABLED
     if(this->sap_opened) {
@@ -2356,6 +2361,11 @@ bool ctrlm_voice_t::voice_stb_data_bypass_wuw_verify_failure_get() const {
     return(this->prefs.vrex_wuw_bypass_failure_flag);
 }
 
+bool ctrlm_voice_t::voice_stb_data_listen_for_key_names_get() const {
+    return(true);
+    //return(this->prefs.vrex_wuw_bypass_failure_flag);
+}
+
 void ctrlm_voice_t::voice_stb_data_pii_mask_set(bool mask_pii) {
    if(this->mask_pii != mask_pii) {
       this->mask_pii = mask_pii;
@@ -3061,6 +3071,26 @@ void ctrlm_voice_t::voice_action_tv_volume_callback(bool up, uint32_t repeat_cou
     session->status.data.tv_avr.cmd             = up ? CTRLM_VOICE_TV_AVR_CMD_VOLUME_UP : CTRLM_VOICE_TV_AVR_CMD_VOLUME_DOWN;
     session->status.data.tv_avr.ir_repeats      = repeat_count;
 }
+
+void ctrlm_voice_t::voice_action_key_code_callback(uint16_t key_code) {
+
+    XLOGD_WARN("DAVE emit key code <%s>", ctrlm_linux_key_code_str(key_code, false));
+
+    uint16_t linux_code = uinput_writer.write_event_linux(key_code, CTRLM_KEY_STATUS_DOWN);
+
+    if(linux_code == KEY_RESERVED) {
+        XLOGD_ERROR("Something went wrong while trying to inject the %s key DOWN", ctrlm_linux_key_code_str(key_code, false));
+        return;
+    }
+    
+    linux_code = uinput_writer.write_event_linux(key_code, CTRLM_KEY_STATUS_UP);
+
+    if(linux_code == KEY_RESERVED) {
+        XLOGD_ERROR("Something went wrong while trying to inject the %s key UP", ctrlm_linux_key_code_str(key_code, false));
+        return;
+    }
+}
+
 void ctrlm_voice_t::voice_action_keyword_verification_callback(const uuid_t uuid, bool success, rdkx_timestamp_t timestamp) {
     // Get session based on uuid
     ctrlm_voice_session_t *session = voice_session_from_uuid(uuid);
@@ -4292,4 +4322,17 @@ void ctrlm_voice_t::url_hostname_patterns(const std::vector<std::string> &obj_se
         XLOGD_INFO("Adding server host pattern <%s>", itr.c_str());
         this->url_hostname_pattern_add(itr.c_str());
     }
+}
+
+bool ctrlm_voice_t::init_uinput_writer() {
+    bool ret = false;
+
+    std::string uinput_name = "ctrlm";
+    ret = uinput_writer.init(uinput_name, 0x75F, 0x9);
+    if (!ret) {
+        XLOGD_ERROR("failed to initialize a uinput device");
+        return ret;
+    }
+
+    return ret;
 }

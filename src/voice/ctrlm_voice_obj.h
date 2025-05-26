@@ -36,6 +36,7 @@
 #include "ctrlm_rfc.h"
 #include "xrsr.h"
 #include "ctrlm_voice_telemetry_events.h"
+#include "ctrlm_input_event_writer.h"
 
 #ifdef BEEP_ON_KWD_ENABLED
 #include "ctrlm_thunder_plugin_system_audio_player.h"
@@ -528,6 +529,7 @@ class ctrlm_voice_t {
     bool                                  voice_stb_data_test_get() const;
     bool                                  voice_stb_data_bypass_wuw_verify_success_get() const;
     bool                                  voice_stb_data_bypass_wuw_verify_failure_get() const;
+    bool                                  voice_stb_data_listen_for_key_names_get() const;
     virtual void                          voice_stb_data_pii_mask_set(bool mask_pii);
     bool                                  voice_stb_data_pii_mask_get() const;
     virtual bool                          voice_stb_data_device_certificate_set(ctrlm_voice_cert_t &device_cert, bool &ocsp_verify_stapling, bool &ocsp_verify_ca);
@@ -606,6 +608,7 @@ public:
     virtual void                  voice_action_tv_mute_callback(bool mute);
     virtual void                  voice_action_tv_power_callback(bool power, bool toggle);
     virtual void                  voice_action_tv_volume_callback(bool up, uint32_t repeat_count);
+    virtual void                  voice_action_key_code_callback(uint16_t key_code);
     virtual void                  voice_action_keyword_verification_callback(const uuid_t uuid, bool success, rdkx_timestamp_t timestamp);
     virtual void                  voice_server_return_code_callback(const uuid_t uuid, const char *reason, long ret_code);
     virtual void                  voice_session_transcription_callback(const uuid_t uuid, const char *transcription);
@@ -650,6 +653,8 @@ public:
     void                  voice_device_enable(ctrlm_voice_device_t device, bool db_update, bool *update_routes);
     void                  voice_device_disable(ctrlm_voice_device_t device, bool db_update, bool *update_routes);
 
+    bool                  init_uinput_writer();
+
     protected:
     // STB Data
     std::string              software_version;
@@ -682,7 +687,8 @@ public:
     bool                                              device_requires_stb_data[CTRLM_VOICE_DEVICE_INVALID + 1];
     std::vector<ctrlm_voice_endpoint_t *>             endpoints;
     std::vector<std::pair<std::string, std::string> > query_strs_ptt;
-
+    ctrlm_input_event_writer                          uinput_writer;
+    
     private:
     bool                     xrsr_opened;
     ctrlm_voice_ipc_t       *voice_ipc;

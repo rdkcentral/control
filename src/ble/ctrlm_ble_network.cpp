@@ -494,7 +494,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                                                                 controllers_[controller_id]->get_model().c_str(),
                                                                 controllers_[controller_id]->get_sw_revision().to_string().c_str(),
                                                                 controllers_[controller_id]->get_hw_revision().to_string().c_str(), 0.0,
-                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport);
+                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport, dqm->params->service_id);
          if (!controllers_[controller_id]->get_capabilities().has_capability(ctrlm_controller_capabilities_t::capability::PAR) && (VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE == voice_status)) {
             XLOGD_WARN("PAR voice is enabled but not supported by BLE controller treating as normal voice session");
             voice_status = VOICE_SESSION_RESPONSE_AVAILABLE;
@@ -2123,6 +2123,7 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
 
             ctrlm_voice_iarm_call_voice_session_t v_params;
             v_params.ieee_address = dqm->ieee_address;
+            v_params.service_id = listenForKeyNames ? 1 : 0;
 
             ctrlm_main_queue_msg_voice_session_t msg;
             errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));

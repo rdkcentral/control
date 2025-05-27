@@ -237,6 +237,7 @@
       "url_src_ptt"                      : "",
       "url_src_ff"                       : "",
       "url_src_mic_tap"                  : "",
+      "url_src_key_listen"               : "vrng://localhost:9881/",
       "vrex_request_timeout"             :        30,
       "enable_sat"                       :      true,
       "enable_mtls"                      :      true,

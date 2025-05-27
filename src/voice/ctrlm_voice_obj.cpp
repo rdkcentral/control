@@ -82,6 +82,7 @@ ctrlm_voice_t::ctrlm_voice_t() {
         session->network_type       = CTRLM_NETWORK_TYPE_INVALID;
         session->controller_id      = CTRLM_MAIN_CONTROLLER_ID_INVALID;
         session->voice_device       = CTRLM_VOICE_DEVICE_INVALID;
+        session->service_id         = 0;
         session->format.type        = CTRLM_VOICE_FORMAT_INVALID;
         session->server_ret_code    = 0;
 
@@ -148,6 +149,7 @@ ctrlm_voice_t::ctrlm_voice_t() {
     #ifdef CTRLM_LOCAL_MIC_TAP
     this->prefs.server_url_src_mic_tap    = JSON_STR_VALUE_VOICE_URL_SRC_MIC_TAP;
     #endif
+    this->prefs.server_url_src_key_listen = JSON_STR_VALUE_VOICE_URL_SRC_KEY_LISTEN;
     #ifdef JSON_ARRAY_VAL_STR_VOICE_SERVER_HOSTS_0
     this->url_hostname_pattern_add(JSON_ARRAY_VAL_STR_VOICE_SERVER_HOSTS_0);
     #endif
@@ -430,6 +432,7 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             #ifdef CTRLM_LOCAL_MIC_TAP
             conf.config_value_get(JSON_STR_NAME_VOICE_URL_SRC_MIC_TAP,              this->prefs.server_url_src_mic_tap);
             #endif
+            conf.config_value_get(JSON_STR_NAME_VOICE_URL_SRC_KEY_LISTEN,           this->prefs.server_url_src_key_listen);
             conf.config_value_get(JSON_STR_NAME_VOICE_LANGUAGE,                     this->prefs.guide_language);
             conf.config_value_get(JSON_INT_NAME_VOICE_MINIMUM_DURATION,             this->prefs.utterance_duration_min);
             if(conf.config_value_get(JSON_BOOL_NAME_VOICE_ENABLE_SAT,                  this->sat_token_required)) {
@@ -541,6 +544,7 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             #ifdef CTRLM_LOCAL_MIC_TAP
             ctrlm_sm_voice_url_mic_tap_read(this->prefs.server_url_src_mic_tap);
             #endif
+            // TODO ctrlm_sm_voice_url_key_listen_read(this->prefs.server_url_src_key_listen);
             ctrlm_sm_voice_sat_enable_read(this->sat_token_required);
             ctrlm_sm_voice_mtls_enable_read(this->mtls_required);
             ctrlm_sm_voice_secure_url_required_read(this->secure_url_required);
@@ -873,6 +877,7 @@ bool ctrlm_voice_t::voice_configure(json_t *settings, bool db_write) {
                 #ifdef CTRLM_LOCAL_MIC_TAP
                 ctrlm_sm_voice_url_mic_tap_write(this->prefs.server_url_src_mic_tap);
                 #endif
+                // TODO ctrlm_sm_voice_url_key_listen_write(this->prefs.server_url_src_key_listen);
             }
         }
     }
@@ -1352,7 +1357,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                                                                        ctrlm_voice_device_t device_type, ctrlm_voice_format_t format,
                                                                        voice_session_req_stream_params *stream_params,
                                                                        const char *controller_name, const char *sw_version, const char *hw_version, double voltage, bool command_status,
-                                                                       ctrlm_timestamp_t *timestamp, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param, bool use_external_data_pipe, bool press_and_hold, const char *l_transcription_in, const char *audio_file_in, const uuid_t *uuid, bool low_latency, bool low_cpu_util, int audio_fd) {
+                                                                       ctrlm_timestamp_t *timestamp, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param, bool use_external_data_pipe, bool press_and_hold, uint8_t service_id, const char *l_transcription_in, const char *audio_file_in, const uuid_t *uuid, bool low_latency, bool low_cpu_util, int audio_fd) {
 
     ctrlm_voice_session_t *session = &this->voice_session[voice_device_to_session_group(device_type)];
 
@@ -1424,7 +1429,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
         request_params.value.text.text = l_transcription_in;
 
         xrsr_audio_format_t xrsr_format = { .type = XRSR_AUDIO_FORMAT_NONE};
-        if (false == xrsr_session_request(voice_device_to_xrsr(device_type), xrsr_format, request_params, uuid, false, false)) {
+        if (false == xrsr_session_request(voice_device_to_xrsr(device_type), service_id, xrsr_format, request_params, uuid, false, false)) {
             XLOGD_ERROR("Failed to acquire the text-only session from the speech router.");
             return VOICE_SESSION_RESPONSE_BUSY;
         }
@@ -1444,7 +1449,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
             xrsr_format.type = XRSR_AUDIO_FORMAT_PCM;
         }
 
-        if (false == xrsr_session_request(voice_device_to_xrsr(device_type), xrsr_format, request_params, uuid, false, false)) {
+        if (false == xrsr_session_request(voice_device_to_xrsr(device_type), service_id, xrsr_format, request_params, uuid, false, false)) {
             XLOGD_ERROR("Failed to acquire the audio file session from the speech router.");
             return VOICE_SESSION_RESPONSE_BUSY;
         }
@@ -1461,7 +1466,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
        request_params.type = XRSR_SESSION_REQUEST_TYPE_AUDIO_MIC;
        request_params.value.audio_mic.stream_params_required = this->nsm_voice_session;
 
-       if(false == xrsr_session_request(voice_device_to_xrsr(device_type), xrsr_format, request_params, uuid, low_latency, low_cpu_util)) {
+       if(false == xrsr_session_request(voice_device_to_xrsr(device_type), service_id, xrsr_format, request_params, uuid, low_latency, low_cpu_util)) {
            XLOGD_ERROR("Failed to acquire the microphone session from the speech router.");
            return VOICE_SESSION_RESPONSE_BUSY;
        }
@@ -1490,7 +1495,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
             request_params.value.audio_fd.callback     = (create_pipe) ? NULL : ctrlm_voice_data_post_processing_cb; // RF4CE does not use pipe read callback
             request_params.value.audio_fd.user_data    = (create_pipe) ? NULL : (void *)this;
 
-            if(false == xrsr_session_request(voice_device_to_xrsr(device_type), voice_format_to_xrsr(format), request_params, uuid, false, false)) {
+            if(false == xrsr_session_request(voice_device_to_xrsr(device_type), service_id, voice_format_to_xrsr(format), request_params, uuid, false, false)) {
                 XLOGD_TELEMETRY("Failed to acquire voice session");
                 this->voice_session_notify_abort(network_id, controller_id, 0, CTRLM_VOICE_SESSION_ABORT_REASON_BUSY);
                 if(create_pipe) {
@@ -2362,8 +2367,11 @@ bool ctrlm_voice_t::voice_stb_data_bypass_wuw_verify_failure_get() const {
 }
 
 bool ctrlm_voice_t::voice_stb_data_listen_for_key_names_get() const {
-    return(true);
-    //return(this->prefs.vrex_wuw_bypass_failure_flag);
+    const ctrlm_voice_session_t *session = &this->voice_session[VOICE_SESSION_GROUP_DEFAULT];
+    if(session->service_id == 1) {
+        return(true);
+    } 
+    return(false);
 }
 
 void ctrlm_voice_t::voice_stb_data_pii_mask_set(bool mask_pii) {
@@ -4220,6 +4228,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
         #ifdef CTRLM_LOCAL_MIC_TAP
         attr.get_rfc_value(JSON_STR_NAME_VOICE_URL_SRC_MIC_TAP,              this->prefs.server_url_src_mic_tap);
         #endif
+        attr.get_rfc_value(JSON_STR_NAME_VOICE_URL_SRC_KEY_LISTEN,           this->prefs.server_url_src_key_listen);
         // Check if enabled
         if(!enabled) {
             for(int i = CTRLM_VOICE_DEVICE_PTT; i < CTRLM_VOICE_DEVICE_INVALID; i++) {

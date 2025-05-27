@@ -208,6 +208,7 @@ typedef struct {
    ctrlm_controller_id_t      controller_id;       ///< A unique identifier of the remote
    unsigned long long         ieee_address;        ///< IEEE MAC address of the remote
    ctrlm_iarm_call_result_t   result;              ///< OUT - The result of the operation.
+   unsigned char              service_id;              
 } ctrlm_voice_iarm_call_voice_session_t;
 
 typedef struct {

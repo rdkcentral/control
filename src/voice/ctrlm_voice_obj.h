@@ -285,6 +285,7 @@ typedef struct {
    #ifdef CTRLM_LOCAL_MIC_TAP
    std::string                 server_url_src_mic_tap;
    #endif
+   std::string                 server_url_src_key_listen;
    std::vector<std::string>    server_hosts;
    std::string                 aspect_ratio;
    std::string                 guide_language;
@@ -412,6 +413,7 @@ typedef struct {
    double                           controller_voltage;
    bool                             controller_command_status;
    ctrlm_voice_device_t             voice_device;
+   uint8_t                          service_id;
    ctrlm_voice_format_t             format;
    long                             server_ret_code;
    std::string                      server_message;
@@ -484,7 +486,7 @@ class ctrlm_voice_t {
     ctrlm_voice_t();
     virtual ~ctrlm_voice_t();
 
-    ctrlm_voice_session_response_status_t voice_session_req(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_voice_device_t device_type, ctrlm_voice_format_t format, voice_session_req_stream_params *stream_params, const char *controller_name, const char *sw_version, const char *hw_version, double voltage, bool command_status=false, ctrlm_timestamp_t *timestamp=NULL, ctrlm_voice_session_rsp_confirm_t *cb_confirm=NULL, void **cb_confirm_param=NULL, bool use_external_data_pipe=false, bool press_and_hold=true, const char *transcription_in=NULL, const char *audio_file_in=NULL, const uuid_t *uuid = NULL, bool low_latency=false, bool low_cpu_util=false, int audio_fd = -1);
+    ctrlm_voice_session_response_status_t voice_session_req(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_voice_device_t device_type, ctrlm_voice_format_t format, voice_session_req_stream_params *stream_params, const char *controller_name, const char *sw_version, const char *hw_version, double voltage, bool command_status=false, ctrlm_timestamp_t *timestamp=NULL, ctrlm_voice_session_rsp_confirm_t *cb_confirm=NULL, void **cb_confirm_param=NULL, bool use_external_data_pipe=false, bool press_and_hold=true, uint8_t service_id = 0, const char *transcription_in=NULL, const char *audio_file_in=NULL, const uuid_t *uuid = NULL, bool low_latency=false, bool low_cpu_util=false, int audio_fd = -1);
     void                                  voice_session_rsp_confirm(bool result, signed long long rsp_time, unsigned int rsp_window, const std::string &err_str, ctrlm_timestamp_t *timestamp);
     bool                                  voice_session_data(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, const char *buffer, long unsigned int length, ctrlm_timestamp_t *timestamp=NULL, uint8_t *lqi=NULL);
     bool                                  voice_session_data(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, int fd, const uuid_t *uuid=NULL);

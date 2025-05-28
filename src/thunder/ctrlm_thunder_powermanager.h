@@ -9,9 +9,6 @@ public:
    ctrlm_thunder_powermanager_t();
    virtual ~ctrlm_thunder_powermanager_t();
 
-   ctrlm_thunder_powermanager_t *get_instance();
-   void destroy_instance();
-   
    bool is_ready();
    ctrlm_power_state_t get_power_state();
    #ifdef NETWORKED_STANDBY_MODE

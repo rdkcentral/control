@@ -2,8 +2,6 @@
 #include "ctrlm.h"
 #include "ctrlm_log.h"
 
-static ctrlm_thunder_powermanager_t *instance = NULL;
-
 ctrlm_thunder_powermanager_t::ctrlm_thunder_powermanager_t() {
 
    XLOGD_INFO("Thunder PowerManager Implementation");
@@ -27,24 +25,6 @@ bool ctrlm_thunder_powermanager_t::is_ready() {
    }
    return(ret);
 }
-
-ctrlm_thunder_powermanager_t* ctrlm_thunder_powermanager_t::get_instance() {
-
-   if(instance == NULL) {
-      instance = new ctrlm_thunder_powermanager_t();
-   }
-
-   return(instance);
-}
-
-void ctrlm_thunder_powermanager_t::destroy_instance() {
-
-   if (instance != NULL) {
-        delete instance;
-        instance = NULL;
-    }
-}
-
 
 ctrlm_power_state_t ctrlm_thunder_powermanager_t::get_power_state() {
 

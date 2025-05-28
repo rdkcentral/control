@@ -24,8 +24,6 @@
 #include "pwrMgr.h"
 #include "ctrlm_tr181.h"
 
-// Keep state since we do not want to service calls on termination
-static ctrlm_ipc_iarm_powermanager_t *instance = NULL;
 static ctrlm_power_state_t ctrlm_iarm_power_state_map(IARM_Bus_PowerState_t iarm_power_state);
 
 ctrlm_ipc_iarm_powermanager_t::ctrlm_ipc_iarm_powermanager_t() {
@@ -33,22 +31,6 @@ ctrlm_ipc_iarm_powermanager_t::ctrlm_ipc_iarm_powermanager_t() {
 }
 
 ctrlm_ipc_iarm_powermanager_t::~ctrlm_ipc_iarm_powermanager_t() {
-}
-
-ctrlm_ipc_iarm_powermanager_t* ctrlm_ipc_iarm_powermanager_t::get_instance() {
-
-   if(instance == NULL) {
-      instance = new ctrlm_ipc_iarm_powermanager_t();
-   }
-
-   return(instance);
-}
-
-void ctrlm_ipc_iarm_powermanager_t::destroy_instance() {
-
-   if(instance != NULL) {
-      delete instance;
-   }
 }
 
 ctrlm_power_state_t ctrlm_ipc_iarm_powermanager_t::get_power_state() {

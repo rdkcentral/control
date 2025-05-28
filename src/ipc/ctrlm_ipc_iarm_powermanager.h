@@ -25,11 +25,13 @@ public:
     ctrlm_ipc_iarm_powermanager_t();
     ~ctrlm_ipc_iarm_powermanager_t();
 
-    void get_power_state(ctrlm_power_state_t &power_state);
-    void running_set(bool running);
+    ctrlm_ipc_iarm_powermanager_t *get_instance();
+    void destroy_instance();
+
+    ctrlm_power_state_t get_power_state();
     #ifdef NETWORKED_STANDBY_MODE_ENABLED
-    void get_networked_standby_mode(bool &networked_standby_mode);
-    void get_wakeup_reason_voice(bool &wakeup_reason_voice);
+    bool get_networked_standby_mode();
+    bool get_wakeup_reason_voice();
     #endif
 
 

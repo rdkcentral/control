@@ -52,7 +52,7 @@ public:
      * This function is used to get the current power state from PowerManager plugin.
      * 
      */
-    void get_power_state(ctrlm_power_state_t &power_state);
+    ctrlm_power_state_t get_power_state();
 
     #ifdef NETWORKED_STANDBY_MODE_ENABLED
     /**
@@ -60,13 +60,13 @@ public:
      * 
      */
 
-    void get_networked_standby_mode(bool &networked_standby_mode);
+    bool get_networked_standby_mode();
 
     /**
      * This function is used to determine if the last wakeup was voice
      * 
      */
-    void get_wakeup_reason_voice(bool &wakeup_reason_voice);
+    bool get_wakeup_reason_voice();
     #endif
 
     void on_power_state_changed(const ctrlm_power_state_t &current_state, const ctrlm_power_state_t &new_state);

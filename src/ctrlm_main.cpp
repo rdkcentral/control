@@ -564,7 +564,7 @@ int main(int argc, char *argv[]) {
    //g_ctrlm.precomission_table             = g_hash_table_new(g_str_hash, g_str_equal);
    g_ctrlm.loading_db                     = false;
    g_ctrlm.return_code                    = 0;
-   g_ctrlm.power_manager                  = ctrlm_powermanager_create();
+   g_ctrlm.power_manager                  = ctrlm_powermanager_t::get_instance();
    g_ctrlm.power_state                    = ctrlm_main_get_system_power_state();
    g_ctrlm.auto_ack                       = true;
    g_ctrlm.local_conf                     = false;
@@ -872,6 +872,7 @@ int main(int argc, char *argv[]) {
    ctrlm_telemetry_t::destroy_instance();
    #endif
    ctrlm_ir_controller_t::destroy_instance();
+   ctrlm_powermanager_t::destroy_instance();
 
    XLOGD_INFO("exit program");
    return (g_ctrlm.return_code);
@@ -2682,12 +2683,10 @@ gpointer ctrlm_main_thread(gpointer param) {
             //Wake with voice? Handle NSM voice, do not change power state
             if(dqm->new_state == CTRLM_POWER_STATE_ON) {
                bool wake_with_voice_allowed = g_ctrlm.wake_with_voice_allowed;
-               bool wakeup_reason_voice = false; 
 
                g_ctrlm.wake_with_voice_allowed = false;
-               g_ctrlm.power_manager->get_wakeup_reason_voice(wakeup_reason_voice);
 
-               if((wake_with_voice_allowed == true) && (wakeup_reason_voice == true)) {
+               if((wake_with_voice_allowed == true) && (g_ctrlm.power_manager->get_wakeup_reason_voice())) {
                   if( g_ctrlm.voice_session->nsm_voice_session == true ) {
                      XLOGD_INFO("Handling NSM voice session, ignore ON");
                   } else {
@@ -5833,13 +5832,12 @@ gboolean ctrlm_power_state_change(ctrlm_power_state_t power_state) {
 }
 
 ctrlm_power_state_t ctrlm_main_get_system_power_state(void) {
-   ctrlm_power_state_t power_state;
+   ctrlm_power_state_t power_state = CTRLM_POWER_STATE_ON;
 
    if(g_ctrlm.power_manager == NULL) {
       XLOGD_ERROR("power_manager is invalid, defaulting to ON");
-      return CTRLM_POWER_STATE_ON;
    } else {
-      g_ctrlm.power_manager->get_power_state(power_state);
+      power_state = g_ctrlm.power_manager->get_power_state();
    }
    return power_state;
 }
@@ -5849,7 +5847,7 @@ gboolean ctrlm_main_get_networked_standby_mode(void) {
 
    #ifdef NETWORKED_STANDBY_MODE_ENABLED
    if(g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP) {
-      g_ctrlm.power_manager->get_networked_standby_mode(networked_standby_mode);
+      networked_standby_mode = g_ctrlm.power_manager->get_networked_standby_mode();
    }
    #endif
 

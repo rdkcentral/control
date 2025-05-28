@@ -23,16 +23,15 @@
 
 class ctrlm_powermanager_t {
 public:
-   ctrlm_powermanager_t();
    virtual ~ctrlm_powermanager_t();
    
-   virtual void get_power_state(ctrlm_power_state_t &power_state) = 0;
+   static ctrlm_powermanager_t *get_instance();
+   static void destroy_instance();
+   virtual ctrlm_power_state_t get_power_state() = 0;
    #ifdef NETWORKED_STANDBY_MODE_ENABLED
-   virtual void get_networked_standby_mode(bool &networked_standby_mode) = 0;
-   virtual void get_wakeup_reason_voice(bool &wakeup_reason_voice) = 0;
+   virtual bool get_networked_standby_mode() = 0;
+   virtual bool get_wakeup_reason_voice() = 0;
    #endif
 };
-
-ctrlm_powermanager_t *ctrlm_powermanager_create();
 
 #endif

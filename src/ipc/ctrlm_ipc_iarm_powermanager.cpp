@@ -26,7 +26,6 @@
 
 // Keep state since we do not want to service calls on termination
 static ctrlm_ipc_iarm_powermanager_t *instance = NULL;
-static volatile int g_running = 0;
 static ctrlm_power_state_t ctrlm_iarm_power_state_map(IARM_Bus_PowerState_t iarm_power_state);
 
 ctrlm_ipc_iarm_powermanager_t::ctrlm_ipc_iarm_powermanager_t() {
@@ -36,14 +35,25 @@ ctrlm_ipc_iarm_powermanager_t::ctrlm_ipc_iarm_powermanager_t() {
 ctrlm_ipc_iarm_powermanager_t::~ctrlm_ipc_iarm_powermanager_t() {
 }
 
-void ctrlm_ipc_iarm_powermanager_t::running_set(bool running) {
-    g_running = running;
+ctrlm_ipc_iarm_powermanager_t* ctrlm_ipc_iarm_powermanager_t::get_instance() {
+
+   if(instance == NULL) {
+      instance = new ctrlm_ipc_iarm_powermanager_t();
+   }
+
+   return(instance);
 }
 
-void ctrlm_ipc_iarm_powermanager_t::get_power_state(ctrlm_power_state_t &power_state) {
-   IARM_Bus_PWRMgr_GetPowerState_Param_t param;
+void ctrlm_ipc_iarm_powermanager_t::destroy_instance() {
 
-   power_state = CTRLM_POWER_STATE_ON;
+   if(instance != NULL) {
+      delete instance;
+   }
+}
+
+ctrlm_power_state_t ctrlm_ipc_iarm_powermanager_t::get_power_state() {
+   IARM_Bus_PWRMgr_GetPowerState_Param_t param;
+   ctrlm_power_state_t power_state = CTRLM_POWER_STATE_ON;
 
    if(IARM_RESULT_SUCCESS != IARM_Bus_Call(IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_API_GetPowerState, (void *)&param, sizeof(param))) {
       XLOGD_WARN("IARM bus failed to read power state, defaulting to <%s>", ctrlm_power_state_str(power_state));
@@ -55,35 +65,31 @@ void ctrlm_ipc_iarm_powermanager_t::get_power_state(ctrlm_power_state_t &power_s
          power_state = CTRLM_POWER_STATE_ON;
       }
       #endif
-      XLOGD_INFO("power state is : <%s>", ctrlm_power_state_str(power_state));
+      XLOGD_DEBUG("power state <%s>", ctrlm_power_state_str(power_state));
    }
 
-   return;
+   return power_state;
 }
 
 #ifdef NETWORKED_STANDBY_MODE_ENABLED
-void ctrlm_ipc_iarm_powermanager_t::get_networked_standby_mode(bool &networked_standby_mode) {
+bool ctrlm_ipc_iarm_powermanager_t::get_networked_standby_mode() {
    IARM_Bus_PWRMgr_NetworkStandbyMode_Param_t param = {0};
    IARM_Result_t res = IARM_Bus_Call(IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_API_GetNetworkStandbyMode, (void *)&param, sizeof(param));
 
-   networked_standby_mode = false;
-
    if (res != IARM_RESULT_SUCCESS) {
       XLOGD_ERROR("IARM query for network standby mode failed, default to NO");
-      return;
+      return false;
    }
 
-   networked_standby_mode = param.bStandbyMode ? true : false;
+   return param.bStandbyMode ? true : false;
 
-   return;
 }
 
-void ctrlm_ipc_iarm_powermanager_t::get_wakeup_reason_voice(bool &wakeup_reason_voice) {
+bool ctrlm_ipc_iarm_powermanager_t::get_wakeup_reason_voice() {
    DeepSleep_WakeupReason_t wakeup_reason;
    IARM_Result_t res;
+   bool wakeup_reason_voice = false;
    bool pwrmgr2 = false;
-
-   wakeup_reason_voice = false;
 
    if(CTRLM_TR181_RESULT_SUCCESS != ctrlm_tr181_bool_get(CTRLM_RT181_POWER_RFC_PWRMGR2, &pwrmgr2)) {
       XLOGD_INFO("failed to determine Power Manager revision, defaulting to 1");
@@ -92,14 +98,14 @@ void ctrlm_ipc_iarm_powermanager_t::get_wakeup_reason_voice(bool &wakeup_reason_
    res = IARM_Bus_Call(pwrmgr2 ? IARM_BUS_PWRMGR_NAME : IARM_BUS_DEEPSLEEPMGR_NAME, IARM_BUS_DEEPSLEEPMGR_API_GetLastWakeupReason, (void*)&wakeup_reason, sizeof(wakeup_reason));
    if(res != IARM_RESULT_SUCCESS) {
       XLOGD_ERROR("IARM query for wakeup reason failed, returning false!");
-      return;
+      return false;
    }
 
    XLOGD_INFO("wakeup_reason <%s>", ctrlm_wakeup_reason_str(wakeup_reason));
    
    wakeup_reason_voice = (wakeup_reason == DEEPSLEEP_WAKEUPREASON_VOICE) ? true: false;
 
-   return;
+   return wakeup_reason_voice;
 }
 #endif
 
@@ -107,10 +113,7 @@ void ctrlm_ipc_iarm_powermanager_t::get_wakeup_reason_voice(bool &wakeup_reason_
 IARM_Result_t ctrlm_iarm_powermanager_event_handler_power_pre_change(void* pArgs)
 {
    const IARM_Bus_CommonAPI_PowerPreChange_Param_t* pParams = (const IARM_Bus_CommonAPI_PowerPreChange_Param_t*) pArgs;
-   if(0 == g_atomic_int_get(&g_running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
+
    if(pArgs == NULL) {
       XLOGD_ERROR("Invalid argument");
       return IARM_RESULT_INVALID_PARAM;
@@ -131,13 +134,6 @@ IARM_Result_t ctrlm_iarm_powermanager_event_handler_power_pre_change(void* pArgs
    return IARM_RESULT_SUCCESS;
 }
 #endif
-
-ctrlm_ipc_iarm_powermanager_t *ctrlm_ipc_iarm_powermanager_create() {
-   if(instance == NULL) {
-      instance = new ctrlm_ipc_iarm_powermanager_t();
-   }
-   return(instance);
-}
 
 ctrlm_power_state_t ctrlm_iarm_power_state_map(IARM_Bus_PowerState_t iarm_power_state) {
 

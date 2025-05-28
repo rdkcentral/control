@@ -13,16 +13,6 @@ ctrlm_thunder_powermanager_t::ctrlm_thunder_powermanager_t() {
 ctrlm_thunder_powermanager_t::~ctrlm_thunder_powermanager_t() {
 }
 
-ctrlm_thunder_powermanager_t *ctrlm_thunder_powermanager_create() {
-
-   if(instance == NULL) {
-      instance = new ctrlm_thunder_powermanager_t();
-   }
-
-   return(instance);
-}
-
-
 bool ctrlm_thunder_powermanager_t::is_ready() {
    bool ret = false;
 
@@ -38,31 +28,52 @@ bool ctrlm_thunder_powermanager_t::is_ready() {
    return(ret);
 }
 
-void ctrlm_thunder_powermanager_t::get_power_state(ctrlm_power_state_t &power_state) {
+ctrlm_thunder_powermanager_t* ctrlm_thunder_powermanager_t::get_instance() {
+
+   if(instance == NULL) {
+      instance = new ctrlm_thunder_powermanager_t();
+   }
+
+   return(instance);
+}
+
+void ctrlm_thunder_powermanager_t::destroy_instance() {
+
+   if (instance != NULL) {
+        delete instance;
+        instance = NULL;
+    }
+}
+
+
+ctrlm_power_state_t ctrlm_thunder_powermanager_t::get_power_state() {
 
    if(this->plugin == NULL) {
       XLOGD_WARN("plugin not yet available");
+      return CTRLM_POWER_STATE_ON;
    } else {
-      this->plugin->get_power_state(power_state);
+      return this->plugin->get_power_state();
    }
 }
 
 #ifdef NETWORKED_STANDBY_MODE_ENABLED
-void ctrlm_thunder_powermanager_t::get_networked_standby_mode(bool networked_standby_mode) {
+bool ctrlm_thunder_powermanager_t::get_networked_standby_mode() {
 
    if(this->plugin == NULL) {
       XLOGD_ERROR("plugin not yet available");
+      return false;
    } else {
-      this->plugin->get_networked_standby_mode(networked_standby_mode);
+      return this->plugin->get_networked_standby_mode(networked_standby_mode);
    }
 }
 
-void ctrlm_thunder_powermanager_t::get_wakeup_reason_voice(bool wakeup_reason_voice) {
+bool ctrlm_thunder_powermanager_t::get_wakeup_reason_voice() {
 
    if(this->plugin == NULL) {
       XLOGD_WARN("plugin not yet available");
+      return false;
    } else {
-      this->plugin->get_wakeup_reason_voice(wakeup_reason_voice);
+      return this->plugin->get_wakeup_reason_voice(wakeup_reason_voice);
    }
 }
 #endif

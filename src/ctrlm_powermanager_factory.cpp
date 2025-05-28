@@ -23,7 +23,7 @@
 
 static ctrlm_powermanager_t *instance = NULL;
 
-ctrlm_powermanager_t *ctrlm_powermanager_create() {
+ctrlm_powermanager_t* ctrlm_powermanager_t::get_instance() {
    if(instance == NULL) {
       #ifdef USE_IARM_POWER_MANAGER
       instance = new ctrlm_ipc_iarm_powermanager_t();
@@ -35,7 +35,11 @@ ctrlm_powermanager_t *ctrlm_powermanager_create() {
    return(instance);
 }
 
-ctrlm_powermanager_t::ctrlm_powermanager_t() {
+void ctrlm_powermanager_t::destroy_instance() {
+
+   if(instance != NULL) {
+      delete instance;
+   }
 }
 
 ctrlm_powermanager_t::~ctrlm_powermanager_t() {

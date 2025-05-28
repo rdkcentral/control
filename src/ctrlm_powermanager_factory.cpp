@@ -39,6 +39,7 @@ void ctrlm_powermanager_t::destroy_instance() {
 
    if(instance != NULL) {
       delete instance;
+      instance = NULL;
    }
 }
 

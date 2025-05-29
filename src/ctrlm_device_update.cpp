@@ -266,9 +266,7 @@ void ctrlm_device_update_init(json_t *json_obj_device_update) {
    g_ctrlm_device_update.prefs.download.background        = JSON_BOOL_VALUE_DEVICE_UPDATE_NON_INTERACTIVE_DOWNLOAD_BACKGROUND_DOWNLOAD;
    g_ctrlm_device_update.prefs.download.load_immediately  = JSON_BOOL_VALUE_DEVICE_UPDATE_NON_INTERACTIVE_DOWNLOAD_LOAD_IMMEDIATELY;
    g_ctrlm_device_update.prefs.download.percent_increment = JSON_INT_VALUE_DEVICE_UPDATE_NON_INTERACTIVE_DOWNLOAD_PERCENT_INCREMENT;
-   #ifdef CTRLM_NETWORK_RF4CE
    g_ctrlm_device_update.prefs.download.request_timeout   = JSON_INT_VALUE_NETWORK_RF4CE_DATA_REQUEST_TIMEOUT;
-   #endif
    g_ctrlm_device_update.prefs.load.interactive           = JSON_BOOL_VALUE_DEVICE_UPDATE_INTERACTIVE_LOAD;
    g_ctrlm_device_update.prefs.load.time_after_inactive   = JSON_INT_VALUE_DEVICE_UPDATE_NON_INTERACTIVE_LOAD_TIME_AFTER_INACTIVE;
    g_ctrlm_device_update.prefs.load.before_hour           = JSON_INT_VALUE_DEVICE_UPDATE_NON_INTERACTIVE_LOAD_LOAD_BEFORE_HOUR;
@@ -492,17 +490,17 @@ gboolean ctrlm_device_update_load_config(json_t *json_obj_device_update) {
          XLOGD_INFO("%-28s - ABSENT", text);
       }
 
-      #ifdef CTRLM_NETWORK_RF4CE
-      json_obj = json_object_get(json_obj_device_update, JSON_INT_NAME_NETWORK_RF4CE_DATA_REQUEST_TIMEOUT);
-      text     = "Data request timeout";
-      if(json_obj != NULL && json_is_integer(json_obj)) {
-         json_int_t req_timeout = json_integer_value(json_obj);
-         XLOGD_INFO("%-28s - PRESENT <%lld>", text, req_timeout);
-         g_ctrlm_device_update.prefs.download.request_timeout = req_timeout;
-      } else {
-         XLOGD_INFO("%-28s - ABSENT", text);
+      if(ctrlm_is_rf4ce_enabled()) {
+         json_obj = json_object_get(json_obj_device_update, JSON_INT_NAME_NETWORK_RF4CE_DATA_REQUEST_TIMEOUT);
+         text     = "Data request timeout";
+         if(json_obj != NULL && json_is_integer(json_obj)) {
+            json_int_t req_timeout = json_integer_value(json_obj);
+            XLOGD_INFO("%-28s - PRESENT <%lld>", text, req_timeout);
+            g_ctrlm_device_update.prefs.download.request_timeout = req_timeout;
+         } else {
+            XLOGD_INFO("%-28s - ABSENT", text);
+         }
       }
-      #endif
 
       json_t *json_obj_non_interactive = json_object_get(json_obj_device_update, JSON_OBJ_NAME_DEVICE_UPDATE_NON_INTERACTIVE);
       if(json_obj_non_interactive == NULL || !json_is_object(json_obj_non_interactive)) {
@@ -650,9 +648,9 @@ void ctrlm_device_update_rfc_values_retrieved(const ctrlm_rfc_attr_t& attr) {
    attr.get_rfc_value(JSON_INT_NAME_DEVICE_UPDATE_CHECK_POLL_TIME_LOAD, g_ctrlm_device_update.prefs.check_poll_time_load, 1, 30*60);
    attr.get_rfc_value(JSON_BOOL_NAME_DEVICE_UPDATE_INTERACTIVE_DOWNLOAD, g_ctrlm_device_update.prefs.download.interactive);
    attr.get_rfc_value(JSON_BOOL_NAME_DEVICE_UPDATE_INTERACTIVE_LOAD, g_ctrlm_device_update.prefs.load.interactive);
-   #ifdef CTRLM_NETWORK_RF4CE
-   attr.get_rfc_value(JSON_INT_NAME_NETWORK_RF4CE_DATA_REQUEST_TIMEOUT, g_ctrlm_device_update.prefs.download.request_timeout, 0);
-   #endif
+   if(ctrlm_is_rf4ce_enabled()) {
+      attr.get_rfc_value(JSON_INT_NAME_NETWORK_RF4CE_DATA_REQUEST_TIMEOUT, g_ctrlm_device_update.prefs.download.request_timeout, 0);
+   }
 
    attr.get_rfc_value(NONINTERACTIVE_DOWNLOAD_PATH JSON_BOOL_NAME_DEVICE_UPDATE_NON_INTERACTIVE_DOWNLOAD_BACKGROUND_DOWNLOAD, g_ctrlm_device_update.prefs.download.background);
    attr.get_rfc_value(NONINTERACTIVE_DOWNLOAD_PATH JSON_BOOL_NAME_DEVICE_UPDATE_NON_INTERACTIVE_DOWNLOAD_LOAD_IMMEDIATELY, g_ctrlm_device_update.prefs.download.load_immediately);
@@ -870,29 +868,29 @@ void ctrlm_device_update_process_device_file(const std::string &file_path_archiv
             }
 #endif
             // HACK FOR XR15-704
-#ifdef CTRLM_NETWORK_RF4CE
-            // Firmware Notify message
-            errno_t safec_rc = -1;
-            ctrlm_main_queue_msg_notify_firmware_t *msg = (ctrlm_main_queue_msg_notify_firmware_t *)g_malloc(sizeof(ctrlm_main_queue_msg_notify_firmware_t));
-            if(NULL == msg) {
-               XLOGD_ERROR("Out of memory");
-               g_assert(0);
+            if(ctrlm_is_rf4ce_enabled()) {
+               // Firmware Notify message
+               errno_t safec_rc = -1;
+               ctrlm_main_queue_msg_notify_firmware_t *msg = (ctrlm_main_queue_msg_notify_firmware_t *)g_malloc(sizeof(ctrlm_main_queue_msg_notify_firmware_t));
+               if(NULL == msg) {
+                  XLOGD_ERROR("Out of memory");
+                  g_assert(0);
+               }
+               else {
+                  msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_NOTIFY_FIRMWARE;
+                  msg->image_type        = image_info.image_type;
+                  msg->controller_type   = controller_type;
+                  msg->force_update      = image_info.force_update;
+                  msg->type_z            = image_info.type_z;
+                  safec_rc = memcpy_s(&msg->version_software, sizeof(msg->version_software), &image_info.version_software, sizeof(version_software_t));
+                  ERR_CHK(safec_rc);
+                  safec_rc = memcpy_s(&msg->version_bootloader_min, sizeof(msg->version_bootloader_min), &image_info.version_bootloader_min, sizeof(version_software_t));
+                  ERR_CHK(safec_rc);
+                  safec_rc = memcpy_s(&msg->version_hardware_min, sizeof(msg->version_hardware_min), &image_info.version_hardware_min, sizeof(version_hardware_t));
+                  ERR_CHK(safec_rc);
+                  ctrlm_main_queue_msg_push(msg);
+               }  //CID:113223 - Forward null
             }
-            else {
-               msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_NOTIFY_FIRMWARE;
-               msg->image_type        = image_info.image_type;
-               msg->controller_type   = controller_type;
-               msg->force_update      = image_info.force_update;
-               msg->type_z            = image_info.type_z;
-               safec_rc = memcpy_s(&msg->version_software, sizeof(msg->version_software), &image_info.version_software, sizeof(version_software_t));
-               ERR_CHK(safec_rc);
-               safec_rc = memcpy_s(&msg->version_bootloader_min, sizeof(msg->version_bootloader_min), &image_info.version_bootloader_min, sizeof(version_software_t));
-               ERR_CHK(safec_rc);
-               safec_rc = memcpy_s(&msg->version_hardware_min, sizeof(msg->version_hardware_min), &image_info.version_hardware_min, sizeof(version_hardware_t));
-               ERR_CHK(safec_rc);
-               ctrlm_main_queue_msg_push(msg);
-            }  //CID:113223 - Forward null
-#endif
          }
       }
    }
@@ -1053,12 +1051,12 @@ gboolean ctrlm_device_update_image_info_get(const std::string &filename, ctrlm_d
       XLOGD_ERROR("Invalid force update flag <%s>", force_update.c_str());
       image_info->force_update = false;
    }
-#ifdef CTRLM_NETWORK_RF4CE
-   XLOGD_INFO("device <%s> type <%s> size %u crc 0x%08X", image_info->device_name.c_str(), ctrlm_rf4ce_device_update_image_type_str(image_info->image_type), image_info->size, image_info->crc);
-   XLOGD_INFO("sw version <%u.%u.%u.%u> force update <%s> image file name <%s> audio theme <%s> type z <%s>", image_info->version_software.major, image_info->version_software.minor, image_info->version_software.revision, image_info->version_software.patch, image_info->force_update ? "YES" : "NO", image_info->file_name_image.c_str(), ctrlm_rf4ce_device_update_audio_theme_str(image_info->audio_theme), image_info->type_z ? "YES" : "NO");
-   XLOGD_INFO("hw version min <%u.%u.%u>", image_info->version_hardware_min.manufacturer, image_info->version_hardware_min.model, image_info->version_hardware_min.hw_revision);
-   XLOGD_INFO("bldr version min <%u.%u.%u.%u>", image_info->version_bootloader_min.major, image_info->version_bootloader_min.minor, image_info->version_bootloader_min.revision, image_info->version_bootloader_min.patch);
-#endif
+   if(ctrlm_is_rf4ce_enabled()) {
+      XLOGD_INFO("device <%s> type <%s> size %u crc 0x%08X", image_info->device_name.c_str(), ctrlm_rf4ce_device_update_image_type_str(image_info->image_type), image_info->size, image_info->crc);
+      XLOGD_INFO("sw version <%u.%u.%u.%u> force update <%s> image file name <%s> audio theme <%s> type z <%s>", image_info->version_software.major, image_info->version_software.minor, image_info->version_software.revision, image_info->version_software.patch, image_info->force_update ? "YES" : "NO", image_info->file_name_image.c_str(), ctrlm_rf4ce_device_update_audio_theme_str(image_info->audio_theme), image_info->type_z ? "YES" : "NO");
+      XLOGD_INFO("hw version min <%u.%u.%u>", image_info->version_hardware_min.manufacturer, image_info->version_hardware_min.model, image_info->version_hardware_min.hw_revision);
+      XLOGD_INFO("bldr version min <%u.%u.%u.%u>", image_info->version_bootloader_min.major, image_info->version_bootloader_min.minor, image_info->version_bootloader_min.revision, image_info->version_bootloader_min.patch);
+   }
    return true;
 }
 
@@ -1155,19 +1153,19 @@ gboolean ctrlm_device_update_rf4ce_is_image_available(ctrlm_rf4ce_device_update_
    ERR_CHK(safec_rc);
    upgrade.version = version_software;
 
-#ifdef CTRLM_NETWORK_RF4CE
-   XLOGD_INFO("Controller type <%s> Current  image type <%s> theme <%s> hw ver <%u.%u.%u.%u> bldr ver <%u.%u.%u.%u> sw ver <%u.%u.%u.%u> type Z <%s>", ctrlm_rf4ce_controller_type_str(type), ctrlm_rf4ce_device_update_image_type_str(image_type), ctrlm_rf4ce_device_update_audio_theme_str(audio_theme), version_hardware.manufacturer, version_hardware.model, version_hardware.hw_revision, version_hardware.lot_code, version_bootloader.major, version_bootloader.minor, version_bootloader.revision, version_bootloader.patch, version_software.major, version_software.minor, version_software.revision, version_software.patch, type_z ? "YES":"NO");
-#endif
+   if(ctrlm_is_rf4ce_enabled()) {
+      XLOGD_INFO("Controller type <%s> Current  image type <%s> theme <%s> hw ver <%u.%u.%u.%u> bldr ver <%u.%u.%u.%u> sw ver <%u.%u.%u.%u> type Z <%s>", ctrlm_rf4ce_controller_type_str(type), ctrlm_rf4ce_device_update_image_type_str(image_type), ctrlm_rf4ce_device_update_audio_theme_str(audio_theme), version_hardware.manufacturer, version_hardware.model, version_hardware.hw_revision, version_hardware.lot_code, version_bootloader.major, version_bootloader.minor, version_bootloader.revision, version_bootloader.patch, version_software.major, version_software.minor, version_software.revision, version_software.patch, type_z ? "YES":"NO");
+   }
 
    DEVICE_UPDATE_MUTEX_LOCK();
 
    if((image_type == RF4CE_DEVICE_UPDATE_IMAGE_TYPE_AUDIO_DATA_1) && (audio_theme < RF4CE_DEVICE_UPDATE_AUDIO_THEME_INVALID)) {
       // User has set an audio theme.  Find the image and set a force update
       for(vector<ctrlm_device_update_rf4ce_image_info_t>::iterator it = g_ctrlm_device_update.rf4ce_images->begin(); it < g_ctrlm_device_update.rf4ce_images->end(); it++) {
-#ifdef CTRLM_NETWORK_RF4CE
-         XLOGD_INFO("Checking for audio theme image type <%s> controller_type <%s>  hw ver min <%u.%u.%u.%u> bldr ver min <%u.%u.%u.%u> sw ver <%u.%u.%u.%u>", ctrlm_rf4ce_device_update_image_type_str(it->image_type), ctrlm_rf4ce_controller_type_str(it->controller_type), it->version_hardware_min.manufacturer, it->version_hardware_min.model, it->version_hardware_min.hw_revision, it->version_hardware_min.lot_code,
+         if(ctrlm_is_rf4ce_enabled()) {
+            XLOGD_INFO("Checking for audio theme image type <%s> controller_type <%s>  hw ver min <%u.%u.%u.%u> bldr ver min <%u.%u.%u.%u> sw ver <%u.%u.%u.%u>", ctrlm_rf4ce_device_update_image_type_str(it->image_type), ctrlm_rf4ce_controller_type_str(it->controller_type), it->version_hardware_min.manufacturer, it->version_hardware_min.model, it->version_hardware_min.hw_revision, it->version_hardware_min.lot_code,
                it->version_bootloader_min.major, it->version_bootloader_min.minor, it->version_bootloader_min.revision, it->version_bootloader_min.patch, it->version_software.major, it->version_software.minor, it->version_software.revision, it->version_software.patch);
-#endif
+         }
          if(it->image_type == image_type && it->controller_type == type && ctrlm_device_update_rf4ce_is_hardware_version_min_met(version_hardware, it->version_hardware_min)
                                                                         && ctrlm_device_update_rf4ce_is_software_version_min_met(version_bootloader, it->version_bootloader_min)) {
             // Image is for this device.  Check for force update or newer image
@@ -1182,9 +1180,9 @@ gboolean ctrlm_device_update_rf4ce_is_image_available(ctrlm_rf4ce_device_update_
                safec_rc = strncpy_s(upgrade.file_name, sizeof(upgrade.file_name), it->file_path_archive.c_str(), sizeof(upgrade.file_name) - 1);
                ERR_CHK(safec_rc);
                found = true;
-#ifdef CTRLM_NETWORK_RF4CE
-               XLOGD_INFO("Found AUDIO THEME <%s> sw version <%u.%u.%u.%u> id %u size %u crc 0x%08X", ctrlm_rf4ce_device_update_audio_theme_str(audio_theme), it->version_software.major, it->version_software.minor, it->version_software.revision, it->version_software.patch, it->id, it->size, it->crc);
-#endif
+               if(ctrlm_is_rf4ce_enabled()) {
+                  XLOGD_INFO("Found AUDIO THEME <%s> sw version <%u.%u.%u.%u> id %u size %u crc 0x%08X", ctrlm_rf4ce_device_update_audio_theme_str(audio_theme), it->version_software.major, it->version_software.minor, it->version_software.revision, it->version_software.patch, it->id, it->size, it->crc);
+             }
                break;
             }
          }
@@ -1194,9 +1192,9 @@ gboolean ctrlm_device_update_rf4ce_is_image_available(ctrlm_rf4ce_device_update_
 
    // Check for a newer version of image for this controller type
    for(vector<ctrlm_device_update_rf4ce_image_info_t>::iterator it = g_ctrlm_device_update.rf4ce_images->begin(); it < g_ctrlm_device_update.rf4ce_images->end(); it++) {
-#ifdef CTRLM_NETWORK_RF4CE
-      XLOGD_INFO("Checking image type <%s> theme <%s> controller_type <%s>  hw ver min <%u.%u.%u.%u> bldr ver min <%u.%u.%u.%u> sw ver <%u.%u.%u.%u> force <%s> type z <%s>", ctrlm_rf4ce_device_update_image_type_str(it->image_type), ctrlm_rf4ce_device_update_audio_theme_str(it->audio_theme), ctrlm_rf4ce_controller_type_str(it->controller_type), it->version_hardware_min.manufacturer, it->version_hardware_min.model, it->version_hardware_min.hw_revision, it->version_hardware_min.lot_code, it->version_bootloader_min.major, it->version_bootloader_min.minor, it->version_bootloader_min.revision, it->version_bootloader_min.patch, it->version_software.major, it->version_software.minor, it->version_software.revision, it->version_software.patch, it->force_update ? "YES" : "NO", it->type_z ? "YES" : "NO");
-#endif
+      if(ctrlm_is_rf4ce_enabled()) {
+         XLOGD_INFO("Checking image type <%s> theme <%s> controller_type <%s>  hw ver min <%u.%u.%u.%u> bldr ver min <%u.%u.%u.%u> sw ver <%u.%u.%u.%u> force <%s> type z <%s>", ctrlm_rf4ce_device_update_image_type_str(it->image_type), ctrlm_rf4ce_device_update_audio_theme_str(it->audio_theme), ctrlm_rf4ce_controller_type_str(it->controller_type), it->version_hardware_min.manufacturer, it->version_hardware_min.model, it->version_hardware_min.hw_revision, it->version_hardware_min.lot_code, it->version_bootloader_min.major, it->version_bootloader_min.minor, it->version_bootloader_min.revision, it->version_bootloader_min.patch, it->version_software.major, it->version_software.minor, it->version_software.revision, it->version_software.patch, it->force_update ? "YES" : "NO", it->type_z ? "YES" : "NO");
+      }
       if((it->image_type == image_type) && (it->controller_type == type) && ((it->audio_theme == RF4CE_DEVICE_UPDATE_AUDIO_THEME_DEFAULT) || (it->audio_theme >= RF4CE_DEVICE_UPDATE_AUDIO_THEME_INVALID))
                                                                          && ctrlm_device_update_rf4ce_is_hardware_version_min_met(version_hardware, it->version_hardware_min)
                                                                          && ctrlm_device_update_rf4ce_is_software_version_min_met(version_bootloader, it->version_bootloader_min)

@@ -59,8 +59,7 @@ option(MAC_POLLING "MAC polling" OFF)
 option(MEM_DEBUG "Enable memory debugging" OFF)
 option(MEMORY_LOCK "Memory Lock" OFF)
 option(MIC_TAP "Enable MIC_TAP" OFF)
-option(RF4CE_ENABLED "Enable RF4CE" OFF)
-option(RF4CE_HAL_QORVO "Enable RF4CE_HAL_QORVO" OFF)
+option(RF4CE_ENABLED "Enable RF4CE" ON)
 option(RF4CE_PACKET_ANALYSIS "Enable RF4CE_PACKET_ANALYSIS" OFF)
 option(TELEMETRY_SUPPORT "Enable TELEMETRY_SUPPORT" OFF)
 option(THUNDER "Enable THUNDER" OFF)
@@ -80,9 +79,10 @@ set_property(CACHE BUILD_SYSTEM PROPERTY STRINGS "NONE" "YOCTO")
 
 # BUILD VARIABLES
 set(BEEP_ON_KWD_FILE "NONE" CACHE STRING "Keyword Beep file name")
-set(CTRLM_HAL_RF4CE_API_VERSION "0" CACHE STRING "RF4CE HAL API version")
 
 
+# This is required to allow an executable to export symbols to be used by loadable modules (e.g. plugins using dlopen)
+set(CMAKE_ENABLE_EXPORTS ON)
 
 # EXECUTABLE(S)
 add_executable(controlMgr src/ctrlm_config_default.json ctrlm_version_build.h ctrlm_config_default.h ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.c ${CMAKE_CURRENT_SOURCE_DIR}/src/voice/ipc/ctrlm_voice_ipc_request_type.c)
@@ -187,6 +187,8 @@ target_link_libraries(
       rfcapi
       secure_wrapper
       evdev
+      
+      ${CMAKE_DL_LIBS}
       )
 
 install(TARGETS controlMgr RUNTIME DESTINATION bin)
@@ -245,10 +247,6 @@ if(CPC_ENABLED)
    target_link_libraries(controlMgr ${CTRLM_CPC_LIBRARY})
 endif()
 
-if(CTRLM_HAL_RF4CE_API_VERSION)
-   add_compile_definitions(CTRLM_HAL_RF4CE_API_VERSION=${CTRLM_HAL_RF4CE_API_VERSION})
-endif()
-
 if(DEEPSLEEP_CLOSE_DB)
    add_compile_definitions(DEEPSLEEP_CLOSE_DB)
 endif()
@@ -304,12 +302,10 @@ if(MEMORY_LOCK)
    target_link_libraries(controLMgr clnl)
 endif()
 
+# RF4CE options
 if(RF4CE_ENABLED)
-   target_link_libraries(controlMgr ${CTRLM_HAL_RF4CE_LIBRARY})
-   add_compile_definitions(CTRLM_NETWORK_RF4CE CTRLM_NETWORK_HAS_HAL_NVM)
-   if(RF4CE_HAL_QORVO)
-      add_compile_definitions(CTRLM_RF4CE_HAL_QORVO)
-   endif()
+   # All RF4CE platforms have HAL NVM
+   add_compile_definitions(CTRLM_NETWORK_HAS_HAL_NVM)
 endif()
 
 if(TELEMETRY_SUPPORT)

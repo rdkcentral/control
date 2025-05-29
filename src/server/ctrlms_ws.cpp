@@ -467,7 +467,7 @@ void ctrlms_ws_nopoll_log(noPollCtx * ctx, noPollDebugLevel level, const char * 
 typedef ctrlms_app_interface_t *(*ctrlms_app_interface_create_t)(void);
 
 void *ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state) {
-   void *handle = dlopen("libctrlm_server_app.so", RTLD_NOW);
+   void *handle = dlopen("libctrlm-server-app.so", RTLD_NOW);
    if(NULL == handle) {
       XLOGD_WARN("failed to load server app plugin <%s>.  Using stub implementation.", dlerror());
 

@@ -38,7 +38,7 @@ target_sources(controlServer PRIVATE
 
 target_compile_options(controlServer PUBLIC -fPIC -rdynamic -Wall -Werror)
 
-target_link_libraries(controlServer c rdkversion pthread nopoll jansson xr-voice-sdk secure_wrapper ${CMAKE_DL_LIBS})
+target_link_libraries(controlServer c rdkversion pthread nopoll jansson xr-voice-sdk secure_wrapper systemd ${CMAKE_DL_LIBS})
 
 #if(CUSTOM_AUTH_LIB)
 #   add_compile_definitions(PRIVATE CTRLMS_WSS_ENABLED)

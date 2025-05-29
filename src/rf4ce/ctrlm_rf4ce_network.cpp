@@ -4420,13 +4420,13 @@ ctrlm_rf4ce_polling_generic_config_t ctrlm_obj_network_rf4ce_t::controller_gener
    return (controller_generic_polling_configuration_);
 }
 
-void ctrlm_obj_network_rf4ce_t::req_process_ir_set_code(void *data, int size) {
-   ctrlm_main_queue_msg_ir_set_code_t *dqm = (ctrlm_main_queue_msg_ir_set_code_t *)data;
+void ctrlm_obj_network_rf4ce_t::req_process_program_ir_codes(void *data, int size) {
+   ctrlm_main_queue_msg_program_ir_codes_t *dqm = (ctrlm_main_queue_msg_program_ir_codes_t *)data;
    g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_ir_set_code_t));
+   g_assert(size == sizeof(ctrlm_main_queue_msg_program_ir_codes_t));
 
    if(controller_exists(dqm->controller_id)) {
-      if(dqm->ir_codes->get_key_map()) {
+      if(dqm->ir_codes) {
          XLOGD_INFO("Setting IR Codes on Controller %u", dqm->controller_id);
          unsigned char status[1] = {IR_RF_DATABASE_STATUS_DB_DOWNLOAD_YES | IR_RF_DATABASE_STATUS_FORCE_DOWNLOAD};
          ir_rf_database_.add_irdb_codes(dqm->ir_codes);

@@ -594,7 +594,7 @@ public:
    void last_key_time_update(void);
 
    void push_ir_codes(void);
-   void irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, ctrlm_irdb_ir_entry_id_t irdb_ir_entry_id);
+   void irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, const std::string &irdb_ir_entry_id);
 
    virtual void    ota_failure_type_z_cnt_set(uint8_t ota_failures);
    virtual uint8_t ota_failure_type_z_cnt_get(void) const;

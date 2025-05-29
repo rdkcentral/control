@@ -29,7 +29,6 @@
 #include "ctrlm_controller.h"
 #include "ctrlm_recovery.h"
 #include "ctrlm_validation.h"
-#include "ctrlm_irdb.h"
 #include "ctrlm_ipc_device_update.h"
 #include "ctrlm_voice_types.h"
 #include "ctrlm_voice_obj.h"
@@ -249,7 +248,7 @@ public:
    virtual void         req_process_write_rcu_wakeup_config(void *data, int size);
    virtual void         req_process_unpair(void *data, int size);
 
-   virtual void         req_process_ir_set_code(void *data, int size);
+   virtual void         req_process_program_ir_codes(void *data, int size);
    virtual void         req_process_ir_clear_codes(void *data, int size);
    virtual void         req_process_find_my_remote(void *data, int size);
 

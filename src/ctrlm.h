@@ -35,6 +35,7 @@
 #include "ctrlm_ipc_rcu.h"
 #include "ctrlm_ipc_voice.h"
 #include "ctrlm_ipc_device_update.h"
+#include "ctrlm_irdb_interface.h"
 #include "libIBus.h"
 #include "safec_lib.h"
 
@@ -50,7 +51,7 @@ class ctrlm_obj_network_rf4ce_t;
 class ctrlm_obj_controller_t;
 class ctrlm_voice_t;
 class ctrlm_voice_endpoint_t;
-class ctrlm_irdb_t;
+class ctrlm_irdb_interface_t;
 class ctrlm_auth_t;
 class ctrlm_telemetry_t;
 typedef enum {
@@ -504,7 +505,7 @@ void        ctrlm_on_network_assert(ctrlm_network_id_t network_id);
 void        ctrlm_on_network_assert(ctrlm_network_id_t network_id, const char* assert_info);
 ctrlm_network_id_t network_id_get_next(ctrlm_network_type_t network_type);
 void        ctrlm_update_last_key_info(int controller_id, ctrlm_key_source_t source_type, guint32 source_key_code, const char *source_name, gboolean is_screen_bind_mode, gboolean write_last_key_info);
-ctrlm_irdb_t* ctrlm_main_irdb_get();
+ctrlm_irdb_interface_t* ctrlm_main_irdb_get();
 ctrlm_auth_t* ctrlm_main_auth_get();
 void          ctrlm_main_auth_start_poll();
 std::string ctrlm_receiver_id_get();

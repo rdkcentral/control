@@ -3,6 +3,8 @@
 #include <string.h>
 #include <errno.h>
 #include <argp.h>
+#include <unistd.h>
+#include <systemd/sd-daemon.h>
 #include <ctrlm_log.h>
 #include <rdkx_logger.h>
 #include <ctrlms_version.h>
@@ -63,6 +65,8 @@ int main(int argc, char* argv[]) {
       if(!ctrlms_ws_init(CTRLMS_WS_PORT_INT, true)) {
          XLOGD_ERROR("ctrlms_main: ws init failed");
       } else {
+         XLOGD_INFO("Notifying systemd of successful initialization");
+         sd_notifyf(0, "READY=1\nSTATUS=ctrlm-server has successfully initialized\nMAINPID=%lu", (unsigned long)getpid());      
          ctrlms_ws_listen();
          ctrlms_ws_term();
       }

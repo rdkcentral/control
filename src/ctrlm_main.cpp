@@ -25,6 +25,7 @@
 #include <glib.h>
 #include <string.h>
 #include <semaphore.h>
+#include <dlfcn.h>
 #include <memory>
 #include <algorithm>
 #include <fstream>
@@ -213,6 +214,9 @@ typedef struct {
    gboolean                           has_service_access_token;
    gboolean                           sat_enabled;
    gboolean                           production_build;
+   bool                               rf4ce_enabled;
+   void *                             rf4ce_handle;
+   ctrlm_hal_rf4ce_main_t             rf4ce_hal_main;
    guint                              thread_monitor_timeout_val;
    guint                              thread_monitor_timeout_tag;
    guint                              thread_monitor_index;
@@ -320,6 +324,8 @@ static void     ctrlm_main_has_device_type_set(gboolean has_type);
 #ifdef CTRLM_THUNDER
 static void ctrlm_device_info_activated(void *user_data);
 #endif
+
+static void *   ctrlm_load_hal_rf4ce(void);
 
 static gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, json_t **json_obj_voice, json_t **json_obj_device_update, json_t **json_obj_validation, json_t **json_obj_vsdk);
 static gboolean ctrlm_iarm_init(void);
@@ -520,6 +526,8 @@ int main(int argc, char *argv[]) {
    g_ctrlm.main_thread                    = NULL;
    g_ctrlm.queue                          = NULL;
    g_ctrlm.production_build               = true;
+   g_ctrlm.rf4ce_handle                   = ctrlm_load_hal_rf4ce();
+   g_ctrlm.rf4ce_enabled                  = (NULL == g_ctrlm.rf4ce_handle) ? false : true;
    g_ctrlm.has_service_access_token       = false;
    g_ctrlm.sat_enabled                    = true;
    g_ctrlm.service_access_token_expiration_tag = 0;
@@ -866,6 +874,12 @@ int main(int argc, char *argv[]) {
    ctrlm_ir_controller_t::destroy_instance();
    ctrlm_irdb_interface_t::destroy_instance();
 
+   if(g_ctrlm.rf4ce_handle != NULL) {
+      XLOGD_INFO("unload rf4ce hal");
+      dlclose(g_ctrlm.rf4ce_handle);
+      g_ctrlm.rf4ce_handle = NULL;
+   }
+
    XLOGD_INFO("exit program");
    return (g_ctrlm.return_code);
 }
@@ -1002,11 +1016,7 @@ gboolean ctrlm_thread_monitor(gpointer user_data) {
                } else if(0 == strncmp(it->name, CTRLM_THREAD_NAME_VOICE_SDK,     sizeof(CTRLM_THREAD_NAME_VOICE_SDK))) {
                   ctrlm_crash_vsdk();
                } else if(0 == strncmp(it->name, CTRLM_THREAD_NAME_RF4CE,         sizeof(CTRLM_THREAD_NAME_RF4CE))) {
-                  #ifdef CTRLM_RF4CE_HAL_QORVO
-                  ctrlm_crash_rf4ce_qorvo();
-                  #else
-                  ctrlm_crash_rf4ce_ti();
-                  #endif
+                  ctrlm_crash_rf4ce();
                } else if(0 == strncmp(it->name, CTRLM_THREAD_NAME_BLE,           sizeof(CTRLM_THREAD_NAME_BLE))) {
                   ctrlm_crash_ble();
                } else if(0 == strncmp(it->name, CTRLM_THREAD_NAME_DATABASE,      sizeof(CTRLM_THREAD_NAME_DATABASE))) {
@@ -1700,12 +1710,12 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
    }
 
    // Extract the RF4CE network configuration object
-   #ifdef CTRLM_NETWORK_RF4CE
-   *json_obj_net_rf4ce = json_object_get(*json_obj_root, JSON_OBJ_NAME_NETWORK_RF4CE);
-   if(*json_obj_net_rf4ce == NULL || !json_is_object(*json_obj_net_rf4ce)) {
-      XLOGD_WARN("RF4CE network object not found");
+   if(g_ctrlm.rf4ce_enabled) {
+      *json_obj_net_rf4ce = json_object_get(*json_obj_root, JSON_OBJ_NAME_NETWORK_RF4CE);
+      if(*json_obj_net_rf4ce == NULL || !json_is_object(*json_obj_net_rf4ce)) {
+         XLOGD_WARN("RF4CE network object not found");
+      }
    }
-   #endif
 
    // Extract the voice configuration object
    *json_obj_voice = json_object_get(*json_obj_root, JSON_OBJ_NAME_VOICE);
@@ -2109,17 +2119,17 @@ ctrlm_network_id_t network_id_get_next(ctrlm_network_type_t network_type) {
 extern ctrlm_obj_network_t* create_ctrlm_obj_network_t(ctrlm_network_type_t type, ctrlm_network_id_t id, const char *name, gboolean mask_key_codes, json_t *json_obj_net_ip, GThread *original_thread);
 
 gboolean ctrlm_networks_pre_init(json_t *json_obj_net_rf4ce, json_t *json_config_root) {
-   #ifdef CTRLM_NETWORK_RF4CE
-   ctrlm_network_id_t network_id;
-   network_id = network_id_get_next(CTRLM_NETWORK_TYPE_RF4CE);
+   if(g_ctrlm.rf4ce_enabled) {
+      ctrlm_network_id_t network_id;
+      network_id = network_id_get_next(CTRLM_NETWORK_TYPE_RF4CE);
 
-   ctrlm_obj_network_rf4ce_t *obj_net_rf4ce = new ctrlm_obj_network_rf4ce_t(CTRLM_NETWORK_TYPE_RF4CE, network_id, "RF4CE", g_ctrlm.mask_pii, json_obj_net_rf4ce, g_thread_self());
-   // Set main function for the RF4CE Network object
-   obj_net_rf4ce->hal_api_main_set(ctrlm_hal_rf4ce_main);
-   g_ctrlm.networks[network_id]      = obj_net_rf4ce;
-   //g_ctrlm.networks[network_id].net.rf4ce = obj_net_rf4ce;
-   g_ctrlm.network_type[network_id]       = g_ctrlm.networks[network_id]->type_get();
-   #endif
+      ctrlm_obj_network_rf4ce_t *obj_net_rf4ce = new ctrlm_obj_network_rf4ce_t(CTRLM_NETWORK_TYPE_RF4CE, network_id, "RF4CE", g_ctrlm.mask_pii, json_obj_net_rf4ce, g_thread_self());
+      // Set main function for the RF4CE Network object
+      obj_net_rf4ce->hal_api_main_set(g_ctrlm.rf4ce_hal_main);
+      g_ctrlm.networks[network_id]      = obj_net_rf4ce;
+      //g_ctrlm.networks[network_id].net.rf4ce = obj_net_rf4ce;
+      g_ctrlm.network_type[network_id]       = g_ctrlm.networks[network_id]->type_get();
+   }
 
    vendor_network_opts_t vendor_network_opts;
    vendor_network_opts.ignore_mask    = 0;
@@ -2356,21 +2366,21 @@ void ctrlm_main_update_export_controller_list() {
 void ctrlm_main_update_check_update_complete_all(ctrlm_main_queue_msg_update_file_check_t *msg) {
 
    XLOGD_DEBUG("entering");
-#ifdef CTRLM_NETWORK_RF4CE
-   try {
-      for(auto const &itr : g_ctrlm.networks) {
-         ctrlm_obj_network_t *obj_net = itr.second;
-         ctrlm_network_type_t network_type = obj_net->type_get();
-         XLOGD_INFO("network %s", obj_net->name_get());
-         if(network_type == CTRLM_NETWORK_TYPE_RF4CE) {
-            ((ctrlm_obj_network_rf4ce_t *)obj_net)->check_if_update_file_still_needed(msg);
+   if(g_ctrlm.rf4ce_enabled) {
+      try {
+         for(auto const &itr : g_ctrlm.networks) {
+            ctrlm_obj_network_t *obj_net = itr.second;
+            ctrlm_network_type_t network_type = obj_net->type_get();
+            XLOGD_INFO("network %s", obj_net->name_get());
+            if(network_type == CTRLM_NETWORK_TYPE_RF4CE) {
+               ((ctrlm_obj_network_rf4ce_t *)obj_net)->check_if_update_file_still_needed(msg);
+            }
          }
-      }
 
-   } catch (exception& e) {
-      XLOGD_ERROR("exception %s", e.what());
+      } catch (exception& e) {
+         XLOGD_ERROR("exception %s", e.what());
+      }
    }
-#endif
    XLOGD_DEBUG("exiting");
 
 }
@@ -2724,25 +2734,25 @@ gpointer ctrlm_main_thread(gpointer param) {
             break;
          }
 #endif
-#ifdef CTRLM_NETWORK_RF4CE
          case CTRLM_MAIN_QUEUE_MSG_TYPE_NOTIFY_FIRMWARE: {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_NOTIFY_FIRMWARE");
-            if(ctrlm_main_successful_init_get()) {
-               ctrlm_main_queue_msg_notify_firmware_t *dqm = (ctrlm_main_queue_msg_notify_firmware_t *)msg;
-               for(auto const &itr : g_ctrlm.networks) {
-                  if(ctrlm_network_type_get(itr.first) == CTRLM_NETWORK_TYPE_RF4CE) {
-                     ctrlm_obj_network_rf4ce_t *net_rf4ce = (ctrlm_obj_network_rf4ce_t *)itr.second;
-                     net_rf4ce->notify_firmware(dqm->controller_type, dqm->image_type, dqm->force_update, dqm->version_software, dqm->version_hardware_min, dqm->version_bootloader_min);
+            if(g_ctrlm.rf4ce_enabled) {
+               if(ctrlm_main_successful_init_get()) {
+                  ctrlm_main_queue_msg_notify_firmware_t *dqm = (ctrlm_main_queue_msg_notify_firmware_t *)msg;
+                  for(auto const &itr : g_ctrlm.networks) {
+                     if(ctrlm_network_type_get(itr.first) == CTRLM_NETWORK_TYPE_RF4CE) {
+                        ctrlm_obj_network_rf4ce_t *net_rf4ce = (ctrlm_obj_network_rf4ce_t *)itr.second;
+                        net_rf4ce->notify_firmware(dqm->controller_type, dqm->image_type, dqm->force_update, dqm->version_software, dqm->version_hardware_min, dqm->version_bootloader_min);
+                     }
                   }
+               } else {
+                  // Networks are not ready, push back to the queue, then continue so it's not freed
+                  ctrlm_timeout_create(CTRLM_MAIN_QUEUE_REPEAT_DELAY, ctrlm_message_queue_delay, msg);
+                  continue;
                }
-            } else {
-               // Networks are not ready, push back to the queue, then continue so it's not freed
-               ctrlm_timeout_create(CTRLM_MAIN_QUEUE_REPEAT_DELAY, ctrlm_message_queue_delay, msg);
-               continue;
             }
             break;
          }
-#endif
          case CTRLM_MAIN_QUEUE_MSG_TYPE_IR_REMOTE_USAGE: {
             gboolean day_changed = false;
             ctrlm_main_queue_msg_ir_remote_usage_t *dqm = (ctrlm_main_queue_msg_ir_remote_usage_t *) msg;
@@ -3681,15 +3691,15 @@ void ctrlm_main_iarm_call_property_set_(ctrlm_main_iarm_call_property_t *propert
          } else {
             g_ctrlm.auto_ack = property->value ? true : false;
 
-            #ifdef CTRLM_NETWORK_RF4CE
-            #if CTRLM_HAL_RF4CE_API_VERSION >= 16
-            for(auto const &itr : g_ctrlm.networks) {
-               if(itr.second->type_get() == CTRLM_NETWORK_TYPE_RF4CE) {
-                  itr.second->property_set(CTRLM_HAL_NETWORK_PROPERTY_AUTO_ACK, &g_ctrlm.auto_ack);
+            if(g_ctrlm.rf4ce_enabled) {
+               #if CTRLM_HAL_RF4CE_API_VERSION >= 16
+               for(auto const &itr : g_ctrlm.networks) {
+                  if(itr.second->type_get() == CTRLM_NETWORK_TYPE_RF4CE) {
+                     itr.second->property_set(CTRLM_HAL_NETWORK_PROPERTY_AUTO_ACK, &g_ctrlm.auto_ack);
+                  }
                }
+               #endif
             }
-            #endif
-            #endif
 
             property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
             XLOGD_INFO("AUTO ACK <%s>", property->value ? "enabled" : "disabled");
@@ -6029,4 +6039,33 @@ void ctrlm_trigger_startup_actions(void) {
       msg->network_id = CTRLM_MAIN_NETWORK_ID_ALL;
       ctrlm_main_queue_msg_push((gpointer)msg);
    }
+}
+
+void *ctrlm_load_hal_rf4ce(void) {
+   void *handle = dlopen("libctrlm_hal_rf4ce.so", RTLD_NOW);
+   if(NULL == handle) {
+      if(ctrlm_file_exists("/usr/lib/libctrlm_hal_rf4ce.so") || ctrlm_file_exists("/vendor/lib/libctrlm_hal_rf4ce.so")) {
+         XLOGD_ERROR("Failed to load RF4CE HAL plugin <%s>", dlerror());
+      } else {
+         XLOGD_INFO("RF4CE HAL is not present.");
+      }
+      return(NULL);
+   }
+
+   dlerror();  // Clear any existing error
+
+   g_ctrlm.rf4ce_hal_main = (ctrlm_hal_rf4ce_main_t)dlsym(handle, "ctrlm_hal_rf4ce_main");
+   char *error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (ctrlm_hal_rf4ce_main), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+   
+   return(handle);
+}
+
+gboolean ctrlm_is_rf4ce_enabled(void) {
+   return(g_ctrlm.rf4ce_enabled);
 }

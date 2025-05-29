@@ -428,6 +428,7 @@ typedef struct {
 gboolean                           ctrlm_main_iarm_init(void);
 void                               ctrlm_main_iarm_terminate(void);
 gboolean                           ctrlm_is_production_build(void);
+gboolean                           ctrlm_is_rf4ce_enabled(void);
 void                               ctrlm_network_list_get(std::vector<ctrlm_network_id_t> *list);
 gboolean                           ctrlm_network_id_is_valid(ctrlm_network_id_t network_id);
 gboolean                           ctrlm_controller_id_is_valid(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id);

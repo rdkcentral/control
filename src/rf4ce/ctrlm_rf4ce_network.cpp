@@ -4512,12 +4512,13 @@ bool ctrlm_obj_network_rf4ce_t::sec_init()
       return false;
    }
     // Initialise the library
-    ERR_load_crypto_strings();
-    OpenSSL_add_all_algorithms();
 #if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
-    OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS, NULL);
+   OpenSSL_add_all_algorithms();
+   OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS | OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS, NULL);
 #else
-    OPENSSL_config(NULL);
+   ERR_load_crypto_strings();
+   OpenSSL_add_all_algorithms();
+   OPENSSL_config(NULL);
 #endif
 
     if((ctx_ = EVP_CIPHER_CTX_new()) == NULL) {
@@ -4550,7 +4551,9 @@ void ctrlm_obj_network_rf4ce_t::sec_deinit() {
    EVP_CIPHER_CTX_free(ctx_);
    ctx_ = NULL;
    EVP_cleanup();
+   #if (OPENSSL_VERSION_NUMBER < 0x10100000L)
    ERR_free_strings();
+   #endif
 }
 
 ctrlm_hal_result_t ctrlm_obj_network_rf4ce_t::hal_rf4ce_decrypt_callback(ctrlm_hal_rf4ce_decrypt_params_t* param) {

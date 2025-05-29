@@ -69,18 +69,19 @@ bool AudioFormat::getFrameInfo(uint8_t &sizeFrame, uint8_t &sizeHeader) const
     return(true);
 }
 
-void AudioFormat::setHeaderInfoAdpcm(uint8_t offsetStepSizeIndex, uint8_t offsetPredictedSampleLsb, uint8_t offsetPredictedSampleMsb, uint8_t offsetSequenceValue, uint8_t sequenceValueMin, uint8_t sequenceValueMax)
+void AudioFormat::setHeaderInfoAdpcm(uint8_t offsetStepSizeIndex, uint8_t offsetPredictedSampleLsb, uint8_t offsetPredictedSampleMsb, uint8_t offsetSequenceValue, uint8_t shiftSequenceValue, uint8_t sequenceValueMin, uint8_t sequenceValueMax)
 {
     m_offsetStepSizeIndex      = offsetStepSizeIndex;
     m_offsetPredictedSampleLsb = offsetPredictedSampleLsb;
     m_offsetPredictedSampleMsb = offsetPredictedSampleMsb;
     m_offsetSequenceValue      = offsetSequenceValue;
+    m_shiftSequenceValue       = shiftSequenceValue;
     m_sequenceValueMin         = sequenceValueMin;
     m_sequenceValueMax         = sequenceValueMax;
     m_headerInfoSet            = true;
 }
 
-bool AudioFormat::getHeaderInfoAdpcm(uint8_t &offsetStepSizeIndex, uint8_t &offsetPredictedSampleLsb, uint8_t &offsetPredictedSampleMsb, uint8_t &offsetSequenceValue, uint8_t &sequenceValueMin, uint8_t &sequenceValueMax) const
+bool AudioFormat::getHeaderInfoAdpcm(uint8_t &offsetStepSizeIndex, uint8_t &offsetPredictedSampleLsb, uint8_t &offsetPredictedSampleMsb, uint8_t &offsetSequenceValue, uint8_t &shiftSequenceValue, uint8_t &sequenceValueMin, uint8_t &sequenceValueMax) const
 {
     if(!m_headerInfoSet) {
         XLOGD_ERROR("header info not set");
@@ -90,6 +91,7 @@ bool AudioFormat::getHeaderInfoAdpcm(uint8_t &offsetStepSizeIndex, uint8_t &offs
     offsetPredictedSampleLsb = m_offsetPredictedSampleLsb;
     offsetPredictedSampleMsb = m_offsetPredictedSampleMsb;
     offsetSequenceValue      = m_offsetSequenceValue;
+    shiftSequenceValue       = m_shiftSequenceValue;
     sequenceValueMin         = m_sequenceValueMin;
     sequenceValueMax         = m_sequenceValueMax;
     return(true);

@@ -56,6 +56,9 @@ using namespace std;
 #define CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT    (MINUTE_IN_MILLISECONDS * 5)    // 5 minutes
 #define CTRLM_BLE_UPGRADE_PAUSE_TIMEOUT       (MINUTE_IN_MILLISECONDS * 2)    // 2 minutes
 
+#define CTRLM_VENDOR_BLE_REMOTE_WHITELIST_FILE "/etc/vendor/input/ble_remote_whitelist.json"
+#define CTRLM_VENDOR_BLE_NETWORK_TIMEOUTS_FILE "/etc/vendor/input/ble_network_timeouts.json"
+
 typedef struct {
    guint upgrade_controllers_timer_tag;
    guint upgrade_pause_timer_tag;
@@ -130,6 +133,78 @@ static int ctrlm_ble_network_factory(vendor_network_opts_t *opts, json_t *json_c
       }
    }
 
+   // If the vendor supplied model list is provided, use it.  Otherwise use the default model list.
+   const char *vendor_model_file = CTRLM_VENDOR_BLE_REMOTE_WHITELIST_FILE;
+
+   if(ctrlm_file_exists(vendor_model_file)) {
+      XLOGD_INFO("Using vendor model file: %s", vendor_model_file);
+
+      json_t *json_obj_vendor_models = json_load_file(vendor_model_file, JSON_REJECT_DUPLICATES, NULL);
+
+      if(json_obj_vendor_models == NULL || !json_is_array(json_obj_vendor_models)) {
+         XLOGD_ERROR("invalid vendor model file format");
+      } else {
+         // Make sure the json_obj_net_ble object is valid
+         if(json_obj_net_ble == NULL) { // Create a json object
+            json_obj_net_ble = json_object();
+         }
+         if(json_obj_net_ble == NULL) {
+            XLOGD_ERROR("invalid BLE network json object");
+         } else { // Overwrite the "models" section in the json_obj_net_ble object
+            int rc = json_object_set_new(json_obj_net_ble, JSON_ARRAY_NAME_NETWORK_BLE_MODELS, json_obj_vendor_models);
+            if(rc != 0) {
+               XLOGD_ERROR("failed to set vendor models in BLE network json object");
+            } else {
+               XLOGD_INFO("successfully set vendor models in BLE network json object");
+               json_obj_vendor_models = NULL;
+            }
+         }
+      }
+      if(json_obj_vendor_models != NULL) {
+         json_decref(json_obj_vendor_models);
+         json_obj_vendor_models = NULL;
+      }
+   }
+
+   // If the vendor supplied timeouts are provided, use them.  Otherwise use the default timeouts.
+   const char *vendor_timeouts_file = CTRLM_VENDOR_BLE_NETWORK_TIMEOUTS_FILE;
+
+   if(ctrlm_file_exists(vendor_timeouts_file)) {
+      XLOGD_INFO("Using vendor timeouts file: %s", vendor_timeouts_file);
+
+      json_t *json_obj_vendor_timeouts = json_load_file(vendor_timeouts_file, JSON_REJECT_DUPLICATES, NULL);
+
+      if(json_obj_vendor_timeouts == NULL || !json_is_object(json_obj_vendor_timeouts)) {
+         XLOGD_ERROR("invalid vendor timeouts file format");
+      } else {
+         // Make sure the json_obj_net_ble object is valid
+         if(json_obj_net_ble == NULL) { // Create a json object
+            json_obj_net_ble = json_object();
+         }
+         if(json_obj_net_ble == NULL) {
+            XLOGD_ERROR("invalid BLE network json object");
+         } else { // Update the "timeouts" section in the json_obj_net_ble object
+            int rc = 0;
+            json_t *obj_timeouts = json_object_get(json_obj_net_ble, JSON_OBJ_NAME_NETWORK_BLE_TIMEOUTS);
+            if(obj_timeouts == NULL || !json_is_object(obj_timeouts)) {
+               rc = json_object_set_new(json_obj_net_ble, JSON_OBJ_NAME_NETWORK_BLE_TIMEOUTS, json_obj_vendor_timeouts);
+            } else {
+               rc = json_object_update(obj_timeouts, json_obj_vendor_timeouts);
+            }
+            if(rc != 0) {
+               XLOGD_ERROR("failed to update vendor timeouts in BLE network json object");
+            } else {
+               XLOGD_INFO("successfully updated vendor timeouts in BLE network json object");
+               json_obj_vendor_timeouts = NULL;
+            }
+         }
+      }
+      if(json_obj_vendor_timeouts != NULL) {
+         json_decref(json_obj_vendor_timeouts);
+         json_obj_vendor_timeouts = NULL;
+      }
+   }
+   
    // add network if enabled
    if ( !(opts->ignore_mask & (1 << CTRLM_NETWORK_TYPE_BLUETOOTH_LE)) ) {
       ctrlm_network_id_t network_id = network_id_get_next(CTRLM_NETWORK_TYPE_BLUETOOTH_LE);
@@ -405,7 +480,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                voice_format.type = CTRLM_VOICE_FORMAT_ADPCM_FRAME;
 
                audio_format.getFrameInfo(adpcm_frame->size_packet, adpcm_frame->size_header);
-               audio_format.getHeaderInfoAdpcm(adpcm_frame->offset_step_size_index, adpcm_frame->offset_predicted_sample_lsb, adpcm_frame->offset_predicted_sample_msb, adpcm_frame->offset_sequence_value, adpcm_frame->sequence_value_min, adpcm_frame->sequence_value_max);
+               audio_format.getHeaderInfoAdpcm(adpcm_frame->offset_step_size_index, adpcm_frame->offset_predicted_sample_lsb, adpcm_frame->offset_predicted_sample_msb, adpcm_frame->offset_sequence_value, adpcm_frame->shift_sequence_value, adpcm_frame->sequence_value_min, adpcm_frame->sequence_value_max);
 
                pressAndHoldSupport = audio_format.getPressAndHoldSupport();
                if(!pressAndHoldSupport) {

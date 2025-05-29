@@ -41,11 +41,12 @@
 using namespace std;
 
 
-GattAudioService::GattAudioService(uint8_t frameSize, uint8_t packetsPerFrame, uint32_t audioFrameDuration, GMainLoop* mainLoop)
+GattAudioService::GattAudioService(uint8_t frameSize, uint8_t packetsPerFrame, uint32_t audioFrameDuration, uint8_t audioSeqNumMax, GMainLoop* mainLoop)
     : m_isAlive(make_shared<bool>(true))
     , m_frameSize(frameSize)
     , m_packetsPerFrame(packetsPerFrame)
     , m_audioFrameDuration(audioFrameDuration)
+    , m_audioSeqNumMax(audioSeqNumMax)
     , m_timeoutEventIdSession(-1)
     , m_timeoutEventIdAudioInfo(-1)
     , m_timeoutEventIdAudioLastFrame(-1)
@@ -447,12 +448,17 @@ void GattAudioService::onAudioInfoReceived(uint16_t frameCount, uint32_t duratio
     }
 
     // Set the frame count max in the audio pipe
-    bool more_frames = m_audioPipe->setFrameCountMax(frameCountMax);
+    bool more_frames = false;
+    if(m_audioPipe) {
+        m_audioPipe->setFrameCountMax(frameCountMax);
+    }
     
     if(m_StreamStopPending && !more_frames) { // if stream stop is pending and no more frames are needed, then stop the stream
         guard.unlock();
 
         m_stateMachine.postEvent(StopStreamingRequestEvent);
+    } else if(!m_StreamStopPending) {
+        XLOGD_INFO("wait for stream stop request");
     } else {
         XLOGD_INFO("wait for remaining frames to arrive");
         // Set a timeout event for receiving the remaining audio frames
@@ -663,7 +669,10 @@ void GattAudioService::validateFrame(const uint8_t *frame, uint32_t frameCount)
 void GattAudioService::updateSequenceNumber(uint8_t sequenceNumber, uint32_t frameCount)
 {
     if (frameCount != 0) {
-        const uint8_t expectedSeqNumber = m_lastSequenceNumber + 1;
+        uint8_t expectedSeqNumber = m_lastSequenceNumber + 1;
+        if(expectedSeqNumber > m_audioSeqNumMax) {
+            expectedSeqNumber = 0;
+        }
         if (expectedSeqNumber != sequenceNumber) {
             uint8_t missed = sequenceNumber - expectedSeqNumber;
             m_missedSequences += missed;

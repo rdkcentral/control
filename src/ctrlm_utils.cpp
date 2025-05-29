@@ -64,11 +64,7 @@ void ctrlm_crash_ctrlm_device_update(void) {
    ctrlm_crash();
 }
 
-#ifdef CTRLM_RF4CE_HAL_QORVO
-void ctrlm_crash_rf4ce_qorvo(void) {
-#else
-void ctrlm_crash_rf4ce_ti(void) {
-#endif
+void ctrlm_crash_rf4ce(void) {
    XLOGD_TELEMETRY("crash");
    ctrlm_crash();
 }

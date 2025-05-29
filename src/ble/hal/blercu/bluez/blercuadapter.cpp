@@ -41,10 +41,11 @@
 #include "ctrlm_log_ble.h"
 
 #include <algorithm>
+#include "ctrlm_utils.h"
 
 using namespace std;
 
-
+typedef gmain_loop_obj_user_data<BleRcuAdapterBluez> BleRcuAdapterBluez_userData;
 static gboolean onDiscoveryWatchdog(gpointer user_data);
 
 // -----------------------------------------------------------------------------
@@ -737,7 +738,8 @@ bool BleRcuAdapterBluez::setAdapterDiscoveryFilter()
         // stopped later
         m_discoveryRequested = StopDiscovery;
         if (m_discoveryWatchdogID > 0) { g_source_remove(m_discoveryWatchdogID); }
-        m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, this);
+        BleRcuAdapterBluez_userData *onDiscoveryWatchdog_userdata = new BleRcuAdapterBluez_userData(this->m_isAlive, this);
+        m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, onDiscoveryWatchdog_userdata);
     }
 
     string error;
@@ -858,7 +860,8 @@ bool BleRcuAdapterBluez::startDiscovery()
     m_discoveryRequests++;
 
     if (m_discoveryWatchdogID > 0) { g_source_remove(m_discoveryWatchdogID); }
-    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, this);
+    BleRcuAdapterBluez_userData *onDiscoveryWatchdog_userdata = new BleRcuAdapterBluez_userData(this->m_isAlive, this);
+    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, onDiscoveryWatchdog_userdata);
 
     XLOGD_DEBUG("starting discoveryWatchdog, m_discoveryRequests = %d, m_discoveryWatchdogID = %u", 
             m_discoveryRequests, m_discoveryWatchdogID);
@@ -882,7 +885,8 @@ void BleRcuAdapterBluez::onStartDiscoveryReply(PendingReply<> *reply)
 {
     // reset the discovery watchdog and decrement the discovery pending count
     if (m_discoveryWatchdogID > 0) { g_source_remove(m_discoveryWatchdogID); }
-    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, this);
+    BleRcuAdapterBluez_userData *onDiscoveryWatchdog_userdata = new BleRcuAdapterBluez_userData(this->m_isAlive, this);
+    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, onDiscoveryWatchdog_userdata);
 
     m_discoveryRequests--;
     XLOGD_DEBUG("starting discoveryWatchdog, m_discoveryRequests = %d", m_discoveryRequests);
@@ -929,7 +933,8 @@ bool BleRcuAdapterBluez::stopDiscovery()
     m_discoveryRequests++;
     XLOGD_DEBUG("starting discoveryWatchdog, m_discoveryRequests = %d", m_discoveryRequests);
     if (m_discoveryWatchdogID > 0) { g_source_remove(m_discoveryWatchdogID); }
-    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, this);
+    BleRcuAdapterBluez_userData *onDiscoveryWatchdog_userdata = new BleRcuAdapterBluez_userData(this->m_isAlive, this);
+    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, onDiscoveryWatchdog_userdata);
 
     // send the request to stop discovery
     m_adapterProxy->StopDiscovery(
@@ -951,7 +956,8 @@ void BleRcuAdapterBluez::onStopDiscoveryReply(PendingReply<> *reply)
 {
     // reset the discovery watchdog and decrement the discovery pending count
     if (m_discoveryWatchdogID > 0) { g_source_remove(m_discoveryWatchdogID); }
-    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, this);
+    BleRcuAdapterBluez_userData *onDiscoveryWatchdog_userdata = new BleRcuAdapterBluez_userData(this->m_isAlive, this);
+    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, onDiscoveryWatchdog_userdata);
 
     m_discoveryRequests--;
     XLOGD_DEBUG("starting discoveryWatchdog, m_discoveryRequests = %d", m_discoveryRequests);
@@ -986,11 +992,17 @@ void BleRcuAdapterBluez::onStopDiscoveryReply(PendingReply<> *reply)
  */
 static gboolean onDiscoveryWatchdog(gpointer user_data)
 {
-    BleRcuAdapterBluez *rcuAdapter = (BleRcuAdapterBluez*)user_data;
-    if (rcuAdapter == nullptr) {
+    BleRcuAdapterBluez_userData *userData = (BleRcuAdapterBluez_userData*)user_data;
+    if (userData == nullptr) {
+        return false;
+    } else if (!userData->is_alive()) {
+        XLOGD_ERROR("BleRcuAdapterBluez is not alive");
+        delete userData;
         return false;
     }
+
     XLOGD_DEBUG("Enter...");
+    BleRcuAdapterBluez *rcuAdapter = userData->m_ptr;
     rcuAdapter->m_discoveryWatchdogID = 0;
 
     // wait for any outstanding requests to finish
@@ -1014,6 +1026,8 @@ static gboolean onDiscoveryWatchdog(gpointer user_data)
             rcuAdapter->stopDiscovery();
         }
     }
+
+    delete userData;
     return false;
 }
 // -----------------------------------------------------------------------------

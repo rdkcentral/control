@@ -17,6 +17,25 @@ All notable changes to this project will be documented in this file.
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
 
+## [1.0.10] - 2025-05-16
+
+### Changed
+- ctrlm crash from main queue msgs getting to networks prior to initialization
+- ctrlm support both old and new deviceType
+- Control manager crashes on rapid MIC button presses
+- [Logging] Add Invalid firmware version OTA error code (0x8) mapping in ctrlmgr logs
+- Changed deviceType from tv to IpTv.
+- Extend adpcm frame info.
+
+
+## [1.0.9] - 2025-04-28
+
+### Changed
+- Audio samples is always reported as 0 for FFV sessions
+- Remove 'volatile' type qualifier of "binding_in_progress"
+- Upgrading the halif-headers as iarmmgr
+
+
 ## [1.0.8] - 2025-04-15
 
 ### Changed

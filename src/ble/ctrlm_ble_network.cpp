@@ -494,7 +494,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                                                                 controllers_[controller_id]->get_model().c_str(),
                                                                 controllers_[controller_id]->get_sw_revision().to_string().c_str(),
                                                                 controllers_[controller_id]->get_hw_revision().to_string().c_str(), 0.0,
-                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport, dqm->params->service_id);
+                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport, dqm->params->service_id, NULL, NULL, NULL, (dqm->params->service_id == 1) ? true : false);
          if (!controllers_[controller_id]->get_capabilities().has_capability(ctrlm_controller_capabilities_t::capability::PAR) && (VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE == voice_status)) {
             XLOGD_WARN("PAR voice is enabled but not supported by BLE controller treating as normal voice session");
             voice_status = VOICE_SESSION_RESPONSE_AVAILABLE;

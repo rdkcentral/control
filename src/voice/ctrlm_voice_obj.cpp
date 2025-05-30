@@ -1471,7 +1471,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
            return VOICE_SESSION_RESPONSE_BUSY;
        }
     } else {
-        XLOGD_INFO("Requesting the speech router start a session with audio fd <%d>", fds[PIPE_READ]);
+        XLOGD_INFO("Requesting the speech router start a session with audio fd <%d> low latency <%s>", fds[PIPE_READ], low_latency ? "YES" : "NO");
         if(session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING || ((session->state_dst != CTRLM_VOICE_STATE_DST_READY) && (session->state_dst != CTRLM_VOICE_STATE_DST_OPENED))) { // DST_OPENED occurs when the session is in progress and more audio is requested
             XLOGD_ERROR("unable to accept an audio fd session due to current session - state src <%s> dst <%s>.", ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
             return VOICE_SESSION_RESPONSE_BUSY;
@@ -1495,7 +1495,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
             request_params.value.audio_fd.callback     = (create_pipe) ? NULL : ctrlm_voice_data_post_processing_cb; // RF4CE does not use pipe read callback
             request_params.value.audio_fd.user_data    = (create_pipe) ? NULL : (void *)this;
 
-            if(false == xrsr_session_request(voice_device_to_xrsr(device_type), service_id, voice_format_to_xrsr(format), request_params, uuid, false, false)) {
+            if(false == xrsr_session_request(voice_device_to_xrsr(device_type), service_id, voice_format_to_xrsr(format), request_params, uuid, low_latency, false)) {
                 XLOGD_TELEMETRY("Failed to acquire voice session");
                 this->voice_session_notify_abort(network_id, controller_id, 0, CTRLM_VOICE_SESSION_ABORT_REASON_BUSY);
                 if(create_pipe) {

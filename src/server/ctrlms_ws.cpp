@@ -292,7 +292,7 @@ void ctrlms_ws_on_message(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPo
    
    switch(nopoll_msg_opcode(msg)) {
       case NOPOLL_TEXT_FRAME: {
-         XLOGD_INFO("NOPOLL_TEXT_FRAME size <%d>", payload_size);
+         XLOGD_DEBUG("NOPOLL_TEXT_FRAME size <%d>", payload_size);
 
          json_t *json_obj = json_loads((const char *)payload, 0, NULL);
 
@@ -307,7 +307,7 @@ void ctrlms_ws_on_message(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPo
          break;
       }
       case NOPOLL_BINARY_FRAME: {
-         XLOGD_INFO("NOPOLL_BINARY_FRAME size <%d>", payload_size);
+         XLOGD_DEBUG("NOPOLL_BINARY_FRAME size <%d>", payload_size);
 
          // Pass the incoming payload to the application
          close_conn = state->app_interface->ws_receive_audio(payload, payload_size);

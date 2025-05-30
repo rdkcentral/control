@@ -26,6 +26,11 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - new interface to ctrlm IRDB
+- Default BLE controller type list
+- RF4CE network discovery at runtime instead of compile time
+
+### Fixed
+- crash during OTA interrupted by unpair or reset
 
 
 ## [1.0.10] - 2025-05-16

@@ -1693,6 +1693,7 @@ void ctrlm_voice_t::voice_session_data_post_processing(int bytes_sent, const cha
 
     if(session->timeout_packet_tag > 0) {
         g_source_remove(session->timeout_packet_tag);
+        session->timeout_packet_tag = 0;
         // QOS timeout handled at end of this function as it depends on time stamps and samples transmitted
         if(!this->controller_supports_qos(session->voice_device) && bytes_sent != 0) {
             if(session->network_type == CTRLM_NETWORK_TYPE_IP || session->is_session_by_fifo) {

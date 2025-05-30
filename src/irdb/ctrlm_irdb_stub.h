@@ -20,20 +20,30 @@
 #ifndef __CTRLM_IRDB_STUB_H__
 #define __CTRLM_IRDB_STUB_H__
 
-#include "ctrlm_irdb.h"
+#include "ctrlm_irdb_plugin.h"
 
-class ctrlm_irdb_stub_t : public ctrlm_irdb_t {
-public:
-    ctrlm_irdb_stub_t(ctrlm_irdb_mode_t mode, bool platform_tv);
-    ~ctrlm_irdb_stub_t();
+std::string STUB_irdb_version();
 
-    bool                  get_manufacturers(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix = "");
-    bool                  get_models(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, ctrlm_irdb_manufacturer_t manufacturer, const std::string &prefix = "");
-    bool                  get_ir_codes_by_names(ctrlm_irdb_ir_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, ctrlm_irdb_manufacturer_t manufacturer, const ctrlm_irdb_model_t &model = "");
-    bool                  set_ir_codes_by_name(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_dev_type_t type, const ctrlm_irdb_ir_entry_id_t &name);
-    bool                  clear_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id);
-    bool                  initialize_irdb();
-    ctrlm_irdb_vendor_t   get_vendor();
-};
+bool STUB_ctrlm_irdb_open(bool platform_tv, const std::string &unique_id = "");
+
+bool STUB_ctrlm_irdb_close();
+
+bool STUB_ctrlm_irdb_initialize();
+
+bool STUB_ctrlm_irdb_get_vendor_info(ctrlm_irdb_vendor_info_t &info);
+
+bool STUB_ctrlm_irdb_get_manufacturers(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix);
+
+bool STUB_ctrlm_irdb_get_models(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &prefix);
+
+bool STUB_ctrlm_irdb_get_entry_ids(ctrlm_irdb_entry_id_list_t &ids, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model);
+
+bool STUB_ctrlm_irdb_get_ir_code_set(ctrlm_irdb_ir_code_set_t &code_set, ctrlm_irdb_dev_type_t type, const std::string &id);
+
+bool STUB_ctrlm_irdb_get_ir_codes_by_infoframe(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, unsigned char *infoframe, unsigned int infoframe_len);
+
+bool STUB_ctrlm_irdb_get_ir_codes_by_edid(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, unsigned char *edid, unsigned int edid_len);
+
+bool STUB_ctrlm_irdb_get_ir_codes_by_cec(ctrlm_irdb_autolookup_ranked_list_t &codes, ctrlm_irdb_dev_type_t &type, const std::string &osd, unsigned int vendor_id, unsigned int logical_address);
 
 #endif

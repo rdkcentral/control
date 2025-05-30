@@ -680,12 +680,12 @@ void ctrlm_obj_network_ble_t::req_process_pair_with_code(void *data, int size) {
 }
 
 
-void ctrlm_obj_network_ble_t::req_process_ir_set_code(void *data, int size) {
+void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size) {
    XLOGD_DEBUG("Enter...");
    THREAD_ID_VALIDATE();
-   ctrlm_main_queue_msg_ir_set_code_t *dqm = (ctrlm_main_queue_msg_ir_set_code_t *)data;
+   ctrlm_main_queue_msg_program_ir_codes_t *dqm = (ctrlm_main_queue_msg_program_ir_codes_t *)data;
    g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_ir_set_code_t));
+   g_assert(size == sizeof(ctrlm_main_queue_msg_program_ir_codes_t));
 
    if(dqm->success) {*(dqm->success) = false;}
 
@@ -695,11 +695,13 @@ void ctrlm_obj_network_ble_t::req_process_ir_set_code(void *data, int size) {
       ctrlm_controller_id_t controller_id = dqm->controller_id;
       if (!controller_exists(controller_id)) {
          XLOGD_ERROR("Controller doesn't exist!");
-      } else if (!controllers_[controller_id]->isSupportedIrdb(dqm->vendor)) {
+      } else if (!controllers_[controller_id]->isSupportedIrdb(dqm->vendor_info)) {
          XLOGD_ERROR("Unsupported IRDB - not continuing with ir code download!");
       } else {
          if(dqm->ir_codes) {
-            ctrlm_irdb_ir_codes_t ir_codes;
+
+            std::map<ctrlm_key_code_t, std::vector<uint8_t>> ir_codes;
+            
             // First add IR Codes to the IR RF Database (this contains all of the logic for maintaining TV vs AVR codes)
             ir_rf_database_.add_irdb_codes(dqm->ir_codes);
             XLOGD_INFO("\n%s", this->ir_rf_database_.to_string(true).c_str());
@@ -717,7 +719,7 @@ void ctrlm_obj_network_ble_t::req_process_ir_set_code(void *data, int size) {
       
             if (ble_rcu_interface_) {
                if (!ble_rcu_interface_->programIrSignalWaveforms(controllers_[controller_id]->ieee_address_get().get_value(), 
-                                                                std::move(ir_codes), dqm->vendor)) {
+                                                                std::move(ir_codes), dqm->vendor_info.rcu_support_bitmask)) {
 
                   XLOGD_ERROR("failed to program IR signal waveforms on remote");
                } else {
@@ -726,7 +728,7 @@ void ctrlm_obj_network_ble_t::req_process_ir_set_code(void *data, int size) {
 
                      controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, ir_rf_database_.get_tv_ir_code_id());
                      controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, ir_rf_database_.get_avr_ir_code_id());
-                     XLOGD_INFO("irdb_entry_id_name = <%s>", dqm->ir_codes->get_id().c_str());
+                     XLOGD_INFO("irdb_entry_id_name = <%s>", dqm->ir_codes->id.c_str());
                }
             }
             // Store the IR codes in the database
@@ -800,11 +802,7 @@ void ctrlm_obj_network_ble_t::req_process_get_ir_protocol_support(void *data, in
          dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
       } else {
          if (ble_rcu_interface_) {
-            const auto irSupport = controllers_[controller_id]->getSupportedIrdbs();
-            dqm->params->num_irdbs_supported = irSupport.size();
-            for (unsigned int i = 0; i < irSupport.size(); i++) {
-               dqm->params->irdbs_supported[i] = irSupport[i];
-            }
+            dqm->params->irdbs_supported_bitmask = controllers_[controller_id]->getSupportedIrdbs();
             dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
          }
       }
@@ -833,20 +831,16 @@ void ctrlm_obj_network_ble_t::req_process_set_ir_protocol_control(void *data, in
       if (!controller_exists(controller_id)) {
          XLOGD_ERROR("Controller doesn't exist!");
          dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      } else if ( 0 == dqm->params->num_irdbs_supported ) {
-         XLOGD_ERROR("IR protocol control value is NULL!");
+      } else if ( 0 == dqm->params->irdbs_supported ) {
+         XLOGD_ERROR("IR protocol control value is INVALID!");
          dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
       } else {
-         if (ble_rcu_interface_) {
-            for (int i = 0; i < dqm->params->num_irdbs_supported; i++) {
-               if (!ble_rcu_interface_->setIrControl(controllers_[controller_id]->ieee_address_get().get_value(),
-                                                     (ctrlm_irdb_vendor_t) dqm->params->irdbs_supported[i]))
-               {
-                  XLOGD_ERROR("failed to write IR control characteristic to the remote");
-               } else {
-                  dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-               }
-            }
+         if (ble_rcu_interface_ && !ble_rcu_interface_->setIrControl(controllers_[controller_id]->ieee_address_get().get_value(),
+                                                                     dqm->params->irdbs_supported_bitmask))
+         {
+            XLOGD_ERROR("failed to write IR control characteristic to the remote");
+         } else {
+            dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
          }
       }
    }
@@ -1856,7 +1850,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   }
                   break;
                case CTRLM_HAL_BLE_PROPERTY_IRDBS_SUPPORTED:
-                  controller->setSupportedIrdbs(dqm->rcu_data.irdbs_supported, dqm->rcu_data.num_irdbs_supported);
+                  controller->setSupportedIrdbs(dqm->rcu_data.irdbs_supported);
                   report_status = false;
                   print_status = false;
                   break;
@@ -1952,7 +1946,7 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::controller_add(ctrlm_hal_ble_rcu_
       if (rcu_data.battery_level != 0xFF) { controller->setBatteryPercent(rcu_data.battery_level); }
       if (rcu_data.wakeup_config != 0xFF) { controller->setWakeupConfig(rcu_data.wakeup_config); }
       if (rcu_data.wakeup_custom_list_size != 0) { controller->setWakeupCustomList(rcu_data.wakeup_custom_list, rcu_data.wakeup_custom_list_size); }
-      if (rcu_data.num_irdbs_supported != 0) { controller->setSupportedIrdbs(rcu_data.irdbs_supported, rcu_data.num_irdbs_supported); }
+      if (rcu_data.irdbs_supported != 0) { controller->setSupportedIrdbs(rcu_data.irdbs_supported); }
       if (rcu_data.last_wakeup_key != 0xFF) { controller->setLastWakeupKey(rcu_data.last_wakeup_key); }
 
       controller->db_store();

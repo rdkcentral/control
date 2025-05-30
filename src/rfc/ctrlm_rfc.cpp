@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <iostream>
 #include "rfcapi.h"
+#include "ctrlm.h"
 #include "ctrlm_log.h"
 #include "ctrlm_config_default.h"
 
@@ -32,9 +33,10 @@ ctrlm_rfc_t::ctrlm_rfc_t() {
     // Create the RFC Attr objects
     ctrlm_rfc_attr_t *vsdk           = new ctrlm_rfc_attr_t("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.vsdk", JSON_OBJ_NAME_VSDK);
     ctrlm_rfc_attr_t *voice          = new ctrlm_rfc_attr_t("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.voice", JSON_OBJ_NAME_VOICE);
-    #ifdef CTRLM_NETWORK_RF4CE
-    ctrlm_rfc_attr_t *rf4ce          = new ctrlm_rfc_attr_t("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.network_rf4ce", JSON_OBJ_NAME_NETWORK_RF4CE);
-    #endif
+    ctrlm_rfc_attr_t *rf4ce          = NULL;
+    if(ctrlm_is_rf4ce_enabled()) {
+        rf4ce = new ctrlm_rfc_attr_t("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.network_rf4ce", JSON_OBJ_NAME_NETWORK_RF4CE);
+    }
     ctrlm_rfc_attr_t *ble            = new ctrlm_rfc_attr_t("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.network_ble", JSON_OBJ_NAME_NETWORK_BLE);
     ctrlm_rfc_attr_t *ip             = new ctrlm_rfc_attr_t("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.network_ip", JSON_OBJ_NAME_NETWORK_IP);
     ctrlm_rfc_attr_t *global         = new ctrlm_rfc_attr_t("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.global", JSON_OBJ_NAME_CTRLM_GLOBAL);
@@ -42,9 +44,9 @@ ctrlm_rfc_t::ctrlm_rfc_t() {
 
     this->add_attribute(ctrlm_rfc_t::attrs::VSDK,          vsdk);
     this->add_attribute(ctrlm_rfc_t::attrs::VOICE,         voice);
-    #ifdef CTRLM_NETWORK_RF4CE
-    this->add_attribute(ctrlm_rfc_t::attrs::RF4CE,         rf4ce);
-    #endif
+    if(ctrlm_is_rf4ce_enabled()) {
+        this->add_attribute(ctrlm_rfc_t::attrs::RF4CE,     rf4ce);
+    }
     this->add_attribute(ctrlm_rfc_t::attrs::BLE,           ble);
     this->add_attribute(ctrlm_rfc_t::attrs::IP,            ip);
     this->add_attribute(ctrlm_rfc_t::attrs::GLOBAL,        global);

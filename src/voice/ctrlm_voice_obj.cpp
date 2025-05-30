@@ -986,17 +986,17 @@ void ctrlm_voice_t::process_xconf(json_t **json_obj_vsdk, bool local_conf) {
 
    char vsdk_config_str[CTRLM_RFC_MAX_PARAM_LEN] = {0}; //MAX_PARAM_LEN from rfcapi.h is 2048
 
-#ifdef CTRLM_NETWORK_RF4CE
-   char encoder_params_str[CTRLM_RCU_RIB_ATTR_LEN_OPUS_ENCODING_PARAMS * 2 + 1] = {0};
+   if(ctrlm_is_rf4ce_enabled()) {
+      char encoder_params_str[CTRLM_RCU_RIB_ATTR_LEN_OPUS_ENCODING_PARAMS * 2 + 1] = {0};
 
-   result  = ctrlm_tr181_string_get(CTRLM_RF4CE_TR181_RF4CE_OPUS_ENCODER_PARAMS, encoder_params_str, sizeof(encoder_params_str));
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-      std::string opus_encoder_params_str = encoder_params_str;
-      this->voice_params_opus_encoder_validate(opus_encoder_params_str);
+      result  = ctrlm_tr181_string_get(CTRLM_RF4CE_TR181_RF4CE_OPUS_ENCODER_PARAMS, encoder_params_str, sizeof(encoder_params_str));
+      if(result == CTRLM_TR181_RESULT_SUCCESS) {
+         std::string opus_encoder_params_str = encoder_params_str;
+         this->voice_params_opus_encoder_validate(opus_encoder_params_str);
 
-      XLOGD_INFO("opus encoder params <%s>", this->prefs.opus_encoder_params_str.c_str());
+         XLOGD_INFO("opus encoder params <%s>", this->prefs.opus_encoder_params_str.c_str());
+      }
    }
-#endif
 
    ctrlm_voice_audio_settings_t audio_settings = {this->audio_mode, this->audio_timing, this->audio_confidence_threshold, this->audio_ducking_type, this->audio_ducking_level, this->audio_ducking_beep_enabled};
    bool changed = false;

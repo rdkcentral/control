@@ -66,7 +66,7 @@ public:
     DBusVariant getProperty(std::string name) const;
     bool setProperty(std::string name, GVariant *prop) const;
 
-    //EGTODO: how to deal with removing callbacks when the callback object gets destroyed???
+    // NOTE: how to deal with removing callbacks when the callback object gets destroyed?
     // maybe its not a big concern because proxies get destroyed along with the callback object,
     // and we already use an isAlive shared_ptr to prevent crashes.
     // could be an issue if the same proxy is used in multiple places, and slots would simply never be

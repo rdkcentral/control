@@ -145,25 +145,54 @@ bool ctrlm_ir_rf_db_t::add_ir_code_entry(ctrlm_ir_rf_db_entry_t *entry, ctrlm_ke
     return(ret);
 }
 
+ctrlm_key_code_t to_ctrlm_keycode(ctrlm_irdb_key_code_t irdb_code) {
+    switch(irdb_code) {
+        case CTRLM_IRDB_KEY_POWER_OFF: {
+            return CTRLM_KEY_CODE_POWER_OFF;
+        }
+        case CTRLM_IRDB_KEY_POWER_ON: {
+            return CTRLM_KEY_CODE_POWER_ON;
+        }
+        case CTRLM_IRDB_KEY_POWER_TOGGLE: {
+            return CTRLM_KEY_CODE_POWER_TOGGLE;
+        }
+        case CTRLM_IRDB_KEY_VOLUME_MUTE: {
+            return CTRLM_KEY_CODE_MUTE;
+        }
+        case CTRLM_IRDB_KEY_VOLUME_UP: {
+            return CTRLM_KEY_CODE_VOL_UP;
+        }
+        case CTRLM_IRDB_KEY_VOLUME_DOWN: {
+            return CTRLM_KEY_CODE_VOL_DOWN;
+        }
+        case CTRLM_IRDB_KEY_INPUT_SELECT: {
+            return CTRLM_KEY_CODE_INPUT_SELECT;
+        }
+        default: {
+            return CTRLM_KEY_CODE_INVALID;
+        }
+    }
+}
+
 bool ctrlm_ir_rf_db_t::add_irdb_codes(ctrlm_irdb_ir_code_set_t *ir_codes) {
     bool ret = false;
     if(ir_codes) {
-        ctrlm_ir_rf_db_dev_type_t type = ctrlm_ir_rf_db_entry_t::type_from_irdb(ir_codes->get_type());
+        ctrlm_ir_rf_db_dev_type_t type = ctrlm_ir_rf_db_entry_t::type_from_irdb(ir_codes->type);
         switch(type) {
             case CTRLM_IR_RF_DB_DEV_TV: {
-                this->tv_ir_code_id_ = ir_codes->get_id();
+                this->tv_ir_code_id_ = ir_codes->id;
                 break;
             }
             case CTRLM_IR_RF_DB_DEV_AVR: {
-                this->avr_ir_code_id_ = ir_codes->get_id();
+                this->avr_ir_code_id_ = ir_codes->id;
                 break;
             }
             default: {
                 break;
             }
         }
-        for(auto &itr : *ir_codes->get_key_map()) {
-            ctrlm_ir_rf_db_entry_t *entry = ctrlm_ir_rf_db_entry_t::from_raw_ir_code(type, itr.first, (uint8_t *)itr.second.data(), (uint16_t)itr.second.size());
+        for(auto &itr : ir_codes->waveforms) {
+            ctrlm_ir_rf_db_entry_t *entry = ctrlm_ir_rf_db_entry_t::from_raw_ir_code(type, to_ctrlm_keycode(itr.first), (uint8_t *)itr.second.data(), (uint16_t)itr.second.size());
             if(entry) {
                this->add_ir_code_entry(entry);
             } else {

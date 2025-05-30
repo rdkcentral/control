@@ -31,7 +31,7 @@
 #include "ctrlm_rcu.h"
 #include "ctrlm_hal.h"
 #include "ctrlm_hal_rf4ce.h"
-#include "ctrlm_irdb.h"
+#include "ctrlm_irdb_plugin.h"
 #include "ctrlm_log.h"
 #include "libIBus.h"
 #include "libIBusDaemon.h"
@@ -141,11 +141,7 @@ extern "C"
 
 #ifdef BREAKPAD_SUPPORT
 void ctrlm_crash_ctrlm_device_update(void);
-#ifdef CTRLM_RF4CE_HAL_QORVO
-void ctrlm_crash_rf4ce_qorvo(void);
-#else
-void ctrlm_crash_rf4ce_ti(void);
-#endif
+void ctrlm_crash_rf4ce(void);
 void ctrlm_crash_ble(void);
 void ctrlm_crash_vsdk(void);
 void ctrlm_crash_ctrlm_main(void);
@@ -218,7 +214,6 @@ const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config);
 const char *ctrlm_t2_error_str(T2ERROR error);
 #endif
 
-const char *ctrlm_irdb_vendor_str(ctrlm_irdb_vendor_t vendor);
 const char *ctrlm_rf_pair_state_str(ctrlm_rf_pair_state_t state);
 const char *ctrlm_rcu_upgrade_state_str(ctrlm_rcu_upgrade_state_t state);
 

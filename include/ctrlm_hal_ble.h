@@ -23,10 +23,9 @@
 #include <linux/input.h>
 #include "ctrlm_ipc.h"
 #include "ctrlm_ipc_ble.h"
-#include "ctrlm_irdb.h"
+#include "ctrlm_irdb_plugin.h"
+#include "ctrlm_hal.h"
 
-
-#define CTRLM_HAL_BLE_MAX_IRDBS_SUPPORTED (8)
 
 /// @file ctrlm_hal_ble.h
 ///
@@ -123,8 +122,7 @@ typedef struct {
    uint8_t                       wakeup_config;
    int                           wakeup_custom_list[CTRLM_WAKEUP_CONFIG_LIST_MAX_SIZE];
    int                           wakeup_custom_list_size;
-   ctrlm_irdb_vendor_t           irdbs_supported[CTRLM_HAL_BLE_MAX_IRDBS_SUPPORTED];
-   int                           num_irdbs_supported;
+   uint8_t                       irdbs_supported;
 } ctrlm_hal_ble_rcu_data_t;
 
 typedef struct {

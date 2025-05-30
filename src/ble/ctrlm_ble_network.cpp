@@ -2171,7 +2171,8 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
       } else if (key_status == CTRLM_KEY_STATUS_UP) {
          bool listenForKeyNames = false;
          if (controller->isVoiceKey(dqm->event.code, listenForKeyNames)) {
-            if(!controller->getPressAndHoldSupport()) { // if the voice session is "Press and Release" then don't end session on voice key up event
+            // TODO This needs to check if the voice session is "Press and Hold" or "Press and Release" based on the key code
+            if(!controller->getPressAndHoldSupport() || dqm->event.code == KEY_F23) { // if the voice session is "Press and Release" then don't end session on voice key up event
                XLOGD_INFO("------------------------------------------------------------------------");
                XLOGD_INFO("CODE_VOICE_KEY button RELEASED event for device: %s (ignored for PAR session)", controller->ieee_address_get().to_string().c_str());
                XLOGD_INFO("------------------------------------------------------------------------");

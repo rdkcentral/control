@@ -17,6 +17,17 @@ All notable changes to this project will be documented in this file.
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
 
+## [1.1.0] - 2025-05-30
+
+### Changed
+- move thunder and IARM dependencies from irdb to ctrlm
+- load irdb library as a plugin with dlopen
+- use AVInput instead of HDMI Input thunder plugin for HDMI Infoframes
+
+### Added
+- new interface to ctrlm IRDB
+
+
 ## [1.0.10] - 2025-05-16
 
 ### Changed

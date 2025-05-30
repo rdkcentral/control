@@ -3083,7 +3083,7 @@ void ctrlm_voice_t::voice_action_tv_volume_callback(bool up, uint32_t repeat_cou
 
 void ctrlm_voice_t::voice_action_key_code_callback(uint16_t key_code) {
 
-    XLOGD_WARN("DAVE emit key code <%s>", ctrlm_linux_key_code_str(key_code, false));
+    XLOGD_INFO("emit key code <%s>", ctrlm_linux_key_code_str(key_code, false));
 
     uint16_t linux_code = uinput_writer.write_event_linux(key_code, CTRLM_KEY_STATUS_DOWN);
 

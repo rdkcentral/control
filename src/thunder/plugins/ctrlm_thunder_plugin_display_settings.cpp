@@ -106,7 +106,6 @@ bool ctrlm_thunder_plugin_display_settings_t::_get_edid() {
                 edid_buf = g_base64_decode(edid_str.c_str(), &edid_size);
                 if(edid_buf && edid_size > 0) {
                     this->edid.clear();
-                    XLOGD_DEBUG("EDID data begin <%d> bytes", edid_size);
                     std::stringstream ss;
                     ss << std::hex << std::setfill('0');
                     for(size_t i = 0; i < edid_size; i++) {
@@ -119,8 +118,7 @@ bool ctrlm_thunder_plugin_display_settings_t::_get_edid() {
                         }
                     }
                     ret = true;
-                    XLOGD_DEBUG("EDID data: \n%s", ss.str().c_str());
-                    XLOGD_DEBUG("EDID data end");
+                    XLOGD_DEBUG("EDID data <%d> bytes: \n<%s>", edid_size, ss.str().c_str());
                 } else {
                     XLOGD_ERROR("Failed to decode EDID base64!");
                 }

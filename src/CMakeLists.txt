@@ -65,7 +65,8 @@ target_sources(controlMgr PRIVATE
    input_event/ctrlm_input_event_writer.cpp
    ipc/ctrlm_ipc_iarm.cpp
    ipc/ctrlm_rcp_ipc_event.cpp
-   irdb/ctrlm_irdb.cpp
+   irdb/ctrlm_irdb_stub.cpp
+   irdb/ctrlm_irdb_interface.cpp
    irdb/ipc/ctrlm_irdb_ipc_iarm_thunder.cpp
    json_config.cpp
    network/ctrlm_ir_rf_db.cpp
@@ -140,14 +141,6 @@ if(BUILD_FACTORY_TEST)
    add_subdirectory(factory)
 endif()
 
-
-if(IRDB_STUB)
-   target_sources(controlMgr PRIVATE
-      irdb/ctrlm_irdb_stub.cpp
-      irdb/ctrlm_irdb_factory.cpp
-   )
-endif()
-
 if(USE_IARM_POWER_MANAGER)
    target_sources(controlMgr PRIVATE
       ipc/ctrlm_ipc_iarm_powermanager.cpp
@@ -207,7 +200,12 @@ if(THUNDER)
       thunder/ctrlm_thunder_plugin.cpp
       thunder/ctrlm_thunder_plugin_system_audio_player.cpp
       thunder/helpers/ctrlm_thunder_helpers.cpp
+      thunder/plugins/ctrlm_thunder_plugin_cec.cpp
+      thunder/plugins/ctrlm_thunder_plugin_cec_sink.cpp
+      thunder/plugins/ctrlm_thunder_plugin_cec_source.cpp
+      thunder/plugins/ctrlm_thunder_plugin_display_settings.cpp
       thunder/plugins/ctrlm_thunder_plugin_device_info.cpp
+      thunder/plugins/ctrlm_thunder_plugin_av_input.cpp
       thunder/plugins/ctrlm_thunder_plugin_system.cpp
       ipc/ctrlm_rcp_ipc_iarm_thunder.cpp
       voice/ipc/ctrlm_voice_ipc_iarm_thunder.cpp
@@ -233,4 +231,3 @@ if(XRSR_SDT)
       voice/endpoints/ctrlm_voice_endpoint_sdt.cpp
    )
 endif()
-

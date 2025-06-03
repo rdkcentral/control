@@ -187,7 +187,7 @@ ctrlm_controller_capabilities_t ctrlm_obj_controller_t::get_capabilities() const
    return(ctrlm_controller_capabilities_t()); // return empty capabilities object
 }
 
-void ctrlm_obj_controller_t::irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, ctrlm_irdb_ir_entry_id_t irdb_entry_id_name) {
+void ctrlm_obj_controller_t::irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, const std::string &irdb_entry_id_name) {
    switch(type) {
       case CTRLM_IRDB_DEV_TYPE_TV:
          if (irdb_entry_id_name_tv_->to_string() != irdb_entry_id_name) {

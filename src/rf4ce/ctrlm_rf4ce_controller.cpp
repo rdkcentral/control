@@ -2141,7 +2141,7 @@ guchar ctrlm_obj_controller_rf4ce_t::property_read_validation_configuration(guch
    return(CTRLM_RF4CE_RIB_ATTR_LEN_VALIDATION_CONFIGURATION);
 }
 
-void ctrlm_obj_controller_rf4ce_t::irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, ctrlm_irdb_ir_entry_id_t irdb_entry_id_name) {
+void ctrlm_obj_controller_rf4ce_t::irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, const std::string &irdb_entry_id_name) {
    switch(type) {
       case CTRLM_IRDB_DEV_TYPE_TV:
          if (irdb_entry_id_name_tv_->to_string() != irdb_entry_id_name) {

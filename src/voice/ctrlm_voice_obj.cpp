@@ -2368,11 +2368,8 @@ bool ctrlm_voice_t::voice_stb_data_bypass_wuw_verify_failure_get() const {
 }
 
 bool ctrlm_voice_t::voice_stb_data_listen_for_key_names_get() const {
-    const ctrlm_voice_session_t *session = &this->voice_session[VOICE_SESSION_GROUP_DEFAULT];
-    if(session->service_id == 1) {
-        return(true);
-    } 
-    return(false);
+    // Always return true unless the build doesn't support listening for key names
+    return(true);
 }
 
 void ctrlm_voice_t::voice_stb_data_pii_mask_set(bool mask_pii) {

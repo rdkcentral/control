@@ -20,6 +20,7 @@
 
 #ifdef CTRLMS_WSS_ENABLED
 #include <openssl/pkcs12.h>
+#include <ctrlm_hal_certificate.h>
 #define CTRLMS_WS_CIPHER_LIST       "AES256-SHA256:AES128-GCM-SHA256:AES128-SHA256"
 #define CTRLMS_WS_TLS_CERT_KEY_FILE "/tmp/serverXXXXXX"
 #define CTRLMS_WS_CERT_NAME_LEN     (1024)
@@ -356,9 +357,19 @@ void ctrlms_ws_on_close(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
 
 #ifdef CTRLMS_WSS_ENABLED
 bool ctrlms_ws_cert_config(FILE* cert_key_fp) {
-
    bool ret = false;
-   ctrlm_fta_platform_cert_info_t *cert_info = NULL;
+
+   ctrlm_hal_certificate_t *hal_certificate = ctrlm_hal_certificate_get();
+
+   if(hal_certificate == NULL) {
+      XLOGD_ERROR("unable to get hal certificate");
+      return(false);
+   }
+
+   ctrlm_voice_cert_t device_cert;
+   bool ocsp_verify_stapling = false;
+   bool ocsp_verify_ca       = false;
+
    do {
       FILE *device_cert_fp             = NULL;
       PKCS12 *p12_cert                 = NULL;
@@ -366,18 +377,17 @@ bool ctrlms_ws_cert_config(FILE* cert_key_fp) {
       X509 *x509_cert                  = NULL;
       STACK_OF(X509) *additional_certs = NULL;
 
-      cert_info = ctrlm_fta_platform_cert_info_get(false);
-      if(cert_info == NULL) {
-         XLOGD_ERROR("unable to get certificate info");
+      if(!hal_certificate->device_cert_get(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
+         XLOGD_ERROR("unable to get device certificate");
          break;
       }
 
-      if(cert_info->type != CTRLM_FTA_PLATFORM_VOICE_CERT_TYPE_P12) {
+      if(device_cert.type != CTRLM_VOICE_CERT_TYPE_P12) {
          XLOGD_ERROR("unable to parse certificates that are not of PKCS12 type");
          break;
       }
 
-      device_cert_fp = fopen(cert_info->filename, "rb");
+      device_cert_fp = fopen(device_cert.cert.p12.certificate, "rb");
       if(device_cert_fp == NULL) {
          XLOGD_ERROR("unable to open P12 certificate");
          break;
@@ -392,7 +402,7 @@ bool ctrlms_ws_cert_config(FILE* cert_key_fp) {
          break;
       }
 
-      if(1 != PKCS12_parse(p12_cert, cert_info->password, &pkey, &x509_cert, &additional_certs)) {
+      if(1 != PKCS12_parse(p12_cert, device_cert.cert.p12.passphrase, &pkey, &x509_cert, &additional_certs)) {
          XLOGD_ERROR("unable to parse P12 certificate");
          break;
       }
@@ -407,17 +417,15 @@ bool ctrlms_ws_cert_config(FILE* cert_key_fp) {
          break;
       }
 
-      if(1 != PEM_write_PrivateKey(cert_key_fp, pkey, NULL, (unsigned char*)cert_info->password, strlen(cert_info->password), NULL, NULL)) {
+      if(1 != PEM_write_PrivateKey(cert_key_fp, pkey, NULL, (unsigned char*)device_cert.cert.p12.passphrase, strlen(device_cert.cert.p12.passphrase), NULL, NULL)) {
          XLOGD_ERROR("failed to write temp key");
          break;
-       }
+      }
 
       ret = true;
    }while(0);
 
-   if(cert_info != NULL) {
-      ctrlm_fta_platform_cert_info_free(cert_info);
-   }
+   free(hal_certificate);
 
    return ret;
 }
@@ -432,7 +440,7 @@ bool ctrlms_ws_add_chain(FILE *cert_key_fp, STACK_OF(X509) *additional_certs) {
       return false;
    }
 
-   for(uint32_t index = 0; index < sk_X509_num(additional_certs); index++) {
+   for(int32_t index = 0; index < sk_X509_num(additional_certs); index++) {
       X509 *cert = sk_X509_value(additional_certs, index);
       if(1 != PEM_write_X509(cert_key_fp, cert)) {
          XLOGD_ERROR("failed to write temp cert index %d", index);

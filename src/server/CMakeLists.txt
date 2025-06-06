@@ -17,9 +17,6 @@
 # limitations under the License.
 ##########################################################################
 
-# This is required to allow an executable to export symbols to be used by loadable modules (e.g. plugins using dlopen)
-set(CMAKE_ENABLE_EXPORTS ON)
-
 add_executable(controlServer ctrlms_main.c)
 
 include_directories(
@@ -40,18 +37,12 @@ target_compile_options(controlServer PUBLIC -fPIC -rdynamic -Wall -Werror)
 
 target_link_libraries(controlServer c rdkversion pthread nopoll jansson xr-voice-sdk secure_wrapper systemd ${CMAKE_DL_LIBS})
 
-#if(CUSTOM_AUTH_LIB)
-#   add_compile_definitions(PRIVATE CTRLMS_WSS_ENABLED)
-#   target_link_libraries(controlServer ${CUSTOM_AUTH_LIB})
-#endif()
-
 #if(EXISTS ${CMAKE_SYSROOT}/usr/lib/libctrlm-hal-certificate.so)
-#   target_link_libraries(controlServer ctrlm-hal-certificate)
-#else()
-#   if(AUTH_ENABLED)
-#      message(WARNING "ctrlm-hal-certificate library is not provided, disabling authentication")
-#      unset(AUTH_ENABLED)
-#   endif()
+   # TODO This needs to be done in certselector.  mountutils recipe with rdkconfig.a static library
+#   target_link_libraries(controlServer rdkconfig.a)
+
+#   add_compile_definitions(PRIVATE CTRLMS_WSS_ENABLED)
+#   target_link_libraries(controlServer ctrlm-hal-certificate ssl crypto)
 #endif()
 
 if(USE_SAFEC)

@@ -36,6 +36,7 @@
 #include "ctrlm_rfc.h"
 #include "xrsr.h"
 #include "ctrlm_voice_telemetry_events.h"
+#include "ctrlm_input_event_writer.h"
 
 #ifdef BEEP_ON_KWD_ENABLED
 #include "ctrlm_thunder_plugin_system_audio_player.h"
@@ -284,6 +285,7 @@ typedef struct {
    #ifdef CTRLM_LOCAL_MIC_TAP
    std::string                 server_url_src_mic_tap;
    #endif
+   std::string                 server_url_src_key_listen;
    std::vector<std::string>    server_hosts;
    std::string                 aspect_ratio;
    std::string                 guide_language;
@@ -411,6 +413,7 @@ typedef struct {
    double                           controller_voltage;
    bool                             controller_command_status;
    ctrlm_voice_device_t             voice_device;
+   uint8_t                          service_id;
    ctrlm_voice_format_t             format;
    long                             server_ret_code;
    std::string                      server_message;
@@ -483,7 +486,7 @@ class ctrlm_voice_t {
     ctrlm_voice_t();
     virtual ~ctrlm_voice_t();
 
-    ctrlm_voice_session_response_status_t voice_session_req(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_voice_device_t device_type, ctrlm_voice_format_t format, voice_session_req_stream_params *stream_params, const char *controller_name, const char *sw_version, const char *hw_version, double voltage, bool command_status=false, ctrlm_timestamp_t *timestamp=NULL, ctrlm_voice_session_rsp_confirm_t *cb_confirm=NULL, void **cb_confirm_param=NULL, bool use_external_data_pipe=false, bool press_and_hold=true, const char *transcription_in=NULL, const char *audio_file_in=NULL, const uuid_t *uuid = NULL, bool low_latency=false, bool low_cpu_util=false, int audio_fd = -1);
+    ctrlm_voice_session_response_status_t voice_session_req(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_voice_device_t device_type, ctrlm_voice_format_t format, voice_session_req_stream_params *stream_params, const char *controller_name, const char *sw_version, const char *hw_version, double voltage, bool command_status=false, ctrlm_timestamp_t *timestamp=NULL, ctrlm_voice_session_rsp_confirm_t *cb_confirm=NULL, void **cb_confirm_param=NULL, bool use_external_data_pipe=false, bool press_and_hold=true, uint8_t service_id = 0, const char *transcription_in=NULL, const char *audio_file_in=NULL, const uuid_t *uuid = NULL, bool low_latency=false, bool low_cpu_util=false, int audio_fd = -1);
     void                                  voice_session_rsp_confirm(bool result, signed long long rsp_time, unsigned int rsp_window, const std::string &err_str, ctrlm_timestamp_t *timestamp);
     bool                                  voice_session_data(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, const char *buffer, long unsigned int length, ctrlm_timestamp_t *timestamp=NULL, uint8_t *lqi=NULL);
     bool                                  voice_session_data(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, int fd, const uuid_t *uuid=NULL);
@@ -528,6 +531,7 @@ class ctrlm_voice_t {
     bool                                  voice_stb_data_test_get() const;
     bool                                  voice_stb_data_bypass_wuw_verify_success_get() const;
     bool                                  voice_stb_data_bypass_wuw_verify_failure_get() const;
+    bool                                  voice_stb_data_listen_for_key_names_get() const;
     virtual void                          voice_stb_data_pii_mask_set(bool mask_pii);
     bool                                  voice_stb_data_pii_mask_get() const;
     virtual bool                          voice_stb_data_device_certificate_set(ctrlm_voice_cert_t &device_cert, bool &ocsp_verify_stapling, bool &ocsp_verify_ca);
@@ -606,6 +610,7 @@ public:
     virtual void                  voice_action_tv_mute_callback(bool mute);
     virtual void                  voice_action_tv_power_callback(bool power, bool toggle);
     virtual void                  voice_action_tv_volume_callback(bool up, uint32_t repeat_count);
+    virtual void                  voice_action_key_code_callback(uint16_t key_code);
     virtual void                  voice_action_keyword_verification_callback(const uuid_t uuid, bool success, rdkx_timestamp_t timestamp);
     virtual void                  voice_server_return_code_callback(const uuid_t uuid, const char *reason, long ret_code);
     virtual void                  voice_session_transcription_callback(const uuid_t uuid, const char *transcription);
@@ -650,6 +655,8 @@ public:
     void                  voice_device_enable(ctrlm_voice_device_t device, bool db_update, bool *update_routes);
     void                  voice_device_disable(ctrlm_voice_device_t device, bool db_update, bool *update_routes);
 
+    bool                  init_uinput_writer();
+
     protected:
     // STB Data
     std::string              software_version;
@@ -682,7 +689,8 @@ public:
     bool                                              device_requires_stb_data[CTRLM_VOICE_DEVICE_INVALID + 1];
     std::vector<ctrlm_voice_endpoint_t *>             endpoints;
     std::vector<std::pair<std::string, std::string> > query_strs_ptt;
-
+    ctrlm_input_event_writer                          uinput_writer;
+    
     private:
     bool                     xrsr_opened;
     ctrlm_voice_ipc_t       *voice_ipc;

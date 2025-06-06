@@ -499,8 +499,12 @@ bool ctrlm_obj_controller_ble_t::is_stale(time_t stale_time_threshold) const {
    return false;
 }
 
-bool ctrlm_obj_controller_ble_t::isVoiceKey(uint16_t key_code) const {
+bool ctrlm_obj_controller_ble_t::isVoiceKey(uint16_t key_code, bool &listenForKeyNames) const {
    if(key_code == voice_key_code_) {
+      return true;
+   }
+   if(key_code == KEY_F23) {
+      listenForKeyNames = true;
       return true;
    }
    return false;

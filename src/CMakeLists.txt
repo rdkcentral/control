@@ -140,6 +140,10 @@ if(BUILD_FACTORY_TEST)
    add_subdirectory(factory)
 endif()
 
+if(BUILD_CTRLM_SERVER)
+   add_subdirectory(server)
+endif()
+
 if(RF4CE_ENABLED)
    target_sources(controlMgr PRIVATE
       rf4ce/controller/attributes/ctrlm_rf4ce_controller_attr_battery.cpp

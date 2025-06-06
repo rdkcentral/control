@@ -117,6 +117,7 @@ public:
     bool     init(std::string uinput_name, uint32_t vendor, uint32_t product);
     void     shutdown(void);
     uint16_t write_event(ctrlm_key_code_t code, ctrlm_key_status_t status);
+    uint16_t write_event_linux(uint16_t code, ctrlm_key_status_t status);
     bool     get_meta_data(struct stat &file_meta_data);
 };
 

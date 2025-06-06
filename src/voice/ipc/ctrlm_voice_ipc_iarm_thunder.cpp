@@ -784,7 +784,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                     ctrlm_voice_session_response_status_t voice_status = voice_obj->voice_session_req(
                             CTRLM_MAIN_NETWORK_ID_INVALID, CTRLM_MAIN_CONTROLLER_ID_INVALID, 
                             request_config.device, request_config.format, NULL, "APPLICATION", "0.0.0.0", "0.0.0.0", 0.0,
-                            false, NULL, NULL, NULL, (fd >= 0) ? true : false, true, str_transcription.empty() ? NULL : str_transcription.c_str(), str_audio_file.empty() ? NULL : str_audio_file.c_str(), &request_uuid, request_config.low_latency, request_config.low_cpu_util, fd);
+                            false, NULL, NULL, NULL, (fd >= 0) ? true : false, true, 0, str_transcription.empty() ? NULL : str_transcription.c_str(), str_audio_file.empty() ? NULL : str_audio_file.c_str(), &request_uuid, request_config.low_latency, request_config.low_cpu_util, fd);
                     if (voice_status != VOICE_SESSION_RESPONSE_AVAILABLE && 
                         voice_status != VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
                         XLOGD_ERROR("Failed opening voice session <%s>", ctrlm_voice_session_response_status_str(voice_status));

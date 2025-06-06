@@ -494,7 +494,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                                                                 controllers_[controller_id]->get_model().c_str(),
                                                                 controllers_[controller_id]->get_sw_revision().to_string().c_str(),
                                                                 controllers_[controller_id]->get_hw_revision().to_string().c_str(), 0.0,
-                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport);
+                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport, dqm->params->service_id, NULL, NULL, NULL, (dqm->params->service_id == 1) ? true : false);
          if (!controllers_[controller_id]->get_capabilities().has_capability(ctrlm_controller_capabilities_t::capability::PAR) && (VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE == voice_status)) {
             XLOGD_WARN("PAR voice is enabled but not supported by BLE controller treating as normal voice session");
             voice_status = VOICE_SESSION_RESPONSE_AVAILABLE;
@@ -2102,8 +2102,9 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
       ctrlm_obj_controller_ble_t *controller = controllers_[controller_id];
 
       if (key_status == CTRLM_KEY_STATUS_DOWN) {
+         bool listenForKeyNames = false;
 
-         if (controller->isVoiceKey(dqm->event.code)) {
+         if (controller->isVoiceKey(dqm->event.code, listenForKeyNames)) {
             rdkx_timestamp_t keyDownTime;
             keyDownTime.tv_sec  = dqm->event.time.tv_sec;
             keyDownTime.tv_nsec = dqm->event.time.tv_usec * 1000;
@@ -2116,6 +2117,7 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
 
             ctrlm_voice_iarm_call_voice_session_t v_params;
             v_params.ieee_address = dqm->ieee_address;
+            v_params.service_id = listenForKeyNames ? 1 : 0;
 
             ctrlm_main_queue_msg_voice_session_t msg;
             errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
@@ -2123,6 +2125,10 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
             msg.params = &v_params;
 
             req_process_voice_session_begin(&msg, sizeof(msg));
+
+            if (listenForKeyNames) {
+               XLOGD_WARN("listening for key names in the voice session");
+            }
          }
 
          if (controller->getUpgradeInProgress()) {
@@ -2157,9 +2163,10 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
          }
 
       } else if (key_status == CTRLM_KEY_STATUS_UP) {
-
-         if (controller->isVoiceKey(dqm->event.code)) {
-            if(!controller->getPressAndHoldSupport()) { // if the voice session is "Press and Release" then don't end session on voice key up event
+         bool listenForKeyNames = false;
+         if (controller->isVoiceKey(dqm->event.code, listenForKeyNames)) {
+            // TODO This needs to check if the voice session is "Press and Hold" or "Press and Release" based on the key code
+            if(!controller->getPressAndHoldSupport() || dqm->event.code == KEY_F23) { // if the voice session is "Press and Release" then don't end session on voice key up event
                XLOGD_INFO("------------------------------------------------------------------------");
                XLOGD_INFO("CODE_VOICE_KEY button RELEASED event for device: %s (ignored for PAR session)", controller->ieee_address_get().to_string().c_str());
                XLOGD_INFO("------------------------------------------------------------------------");
@@ -2271,6 +2278,17 @@ void ctrlm_obj_network_ble_t::ind_process_voice_session_end(void *data, int size
    if(!controller_exists(controller_id)) {
       XLOGD_ERROR("Controller object doesn't exist for controller id %u!", controller_id);
       return;
+   }
+
+   unsigned long long ieee_address = controllers_[controller_id]->ieee_address_get().get_value();;
+
+   if (ble_rcu_interface_) {
+      int32_t audioDuration = -1;
+      if (!ble_rcu_interface_->stopAudioStreaming(ieee_address, audioDuration)) {
+         XLOGD_ERROR("failed to end voice session for controller id <%u>", controller_id);
+      } else {
+         XLOGD_INFO("voice session ended for controller id <%u>", controller_id);
+      }
    }
 }
 

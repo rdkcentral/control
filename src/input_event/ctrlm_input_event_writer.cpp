@@ -146,6 +146,25 @@ uint16_t ctrlm_input_event_writer::write_event(ctrlm_key_code_t code, ctrlm_key_
     return param.key_code;
 }
 
+uint16_t ctrlm_input_event_writer::write_event_linux(uint16_t code, ctrlm_key_status_t status) {
+    if (!initialized_) {
+        XLOGD_ERROR("User input device is not yet initialized!");
+        return KEY_RESERVED;
+    }
+
+    if (ev_key_value_map.find(status) == ev_key_value_map.end()) {
+        XLOGD_ERROR("Key status <%d> not found in mapping", status);
+        return KEY_RESERVED;
+    }
+
+    // TODO the scan code may need to vary based on the key code
+    if (!write_event_internal(0, code, ev_key_value_map.at(status))) {
+        return KEY_RESERVED;
+    }
+
+    return code;
+}
+
 bool ctrlm_input_event_writer::get_meta_data(struct stat &file_meta_data) {
     int ret = fstat(fd_, &file_meta_data);
     if (ret == -1) {

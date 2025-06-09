@@ -196,6 +196,11 @@ if(ANSI_CODES_DISABLED)
    add_compile_definitions(ANSI_CODES_DISABLED)
 endif()
 
+if(ASB)
+   add_compile_definitions(ASB)
+   target_link_libraries(controlMgr ${ASB_LIBS})
+endif()
+
 if(ASSERT_ON_WRONG_THREAD)
    add_comile_definitions(ASSERT_ON_WRONG_THREAD)
 endif()

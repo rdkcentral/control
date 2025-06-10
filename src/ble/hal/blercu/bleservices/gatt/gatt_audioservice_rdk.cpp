@@ -94,6 +94,39 @@ bool GattAudioServiceRdk::start(const shared_ptr<const BleGattService> &gattServ
         updateFrameCountSupport(true);
     }
 
+
+    auto replyHandlerInfo = [this](PendingReply<> *reply)
+    {
+        if (reply->isError()) {
+            // if this happens, we won't get audio info, but the stream can continue
+            XLOGD_WARN("failed to enable audio info notifications due to <%s>", reply->errorMessage().c_str());
+        } else {
+            XLOGD_INFO("successfully enabled audio info notifications");
+        }
+    };
+    if (m_audioInfoCharacteristic && !m_audioInfoCharacteristic->notificationsEnabled()) {
+        m_audioInfoCharacteristic->enableNotifications(
+                Slot<const std::vector<uint8_t> &>(getIsAlivePtr(),
+                    std::bind(&GattAudioServiceRdk::onAudioInfoNotification, this, std::placeholders::_1)),
+                PendingReply<>(getIsAlivePtr(), replyHandlerInfo));
+    }
+    auto replyHandlerData = [this](PendingReply<> *reply)
+    {
+        if (reply->isError()) {
+            // if this happens, we won't get audio info, but the stream can continue
+            XLOGD_WARN("failed to enable audio data notifications due to <%s>", reply->errorMessage().c_str());
+        } else {
+            XLOGD_INFO("successfully enabled audio data notifications");
+        }
+    };
+    if (m_audioDataCharacteristic && !m_audioDataCharacteristic->notificationsEnabled()) {
+        m_audioDataCharacteristic->enableNotifications(
+                Slot<const std::vector<uint8_t> &>(getIsAlivePtr(),
+                    std::bind(&GattAudioServiceRdk::onAudioDataNotification, this, std::placeholders::_1)), 
+                PendingReply<>(getIsAlivePtr(), replyHandlerData));
+    }
+
+
     requestGainLevel();
     requestAudioCodecs();
 

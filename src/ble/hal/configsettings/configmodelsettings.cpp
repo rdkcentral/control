@@ -281,38 +281,38 @@ ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
     }
     servicesRequiredStr = servicesRequiredStr.substr(0, servicesRequiredStr.length() - 2); // Remove the trailing comma and space
 
-    XLOGD_DEBUG("m_servicesRequired = <%s>", servicesRequiredStr.c_str());
+    XLOGD_INFO("m_servicesRequired = <%s>", servicesRequiredStr.c_str());
 
     // services.optional array
     json_t *optionalArray = json_object_get(servicesObj, "optional");
     if (!optionalArray || !json_is_array(optionalArray)) {
-        XLOGD_ERROR( "missing or invalid 'services.optional' field");
-        return;
-    }
-    array_size = json_array_size(optionalArray);
+        XLOGD_WARN("invalid or missing 'services.optional' field, not fatal, continuing to parse info");
+    } else {
+        array_size = json_array_size(optionalArray);
 
-    for (unsigned int i = 0; i < array_size; i++) {
-        obj = json_array_get(optionalArray, i);
-        if (!obj || !json_is_string(obj)) {
-            XLOGD_ERROR("invalid 'services.optional' array entry");
-            return;
+        for (unsigned int i = 0; i < array_size; i++) {
+            obj = json_array_get(optionalArray, i);
+            if (!obj || !json_is_string(obj)) {
+                XLOGD_WARN("invalid 'services.optional' array entry, ignoring...");
+                continue;
+            }
+            string serviceStr = json_string_value(obj);
+    
+            if (!BleUuid().doesServiceExist(serviceStr)) {
+                XLOGD_WARN("invalid service name <%s>, ignoring...", serviceStr.c_str());
+                continue;
+            }
+            m_servicesOptional.insert(serviceStr);
         }
-        string serviceStr = json_string_value(obj);
-
-        if (!BleUuid().doesServiceExist(serviceStr)) {
-            XLOGD_ERROR("invalid service name <%s>", serviceStr.c_str());
-            return;
+    
+        std::string servicesOptionalStr;
+        for (const auto& service : m_servicesOptional) {
+            servicesOptionalStr += service + ", ";
         }
-        m_servicesOptional.insert(serviceStr);
+        servicesOptionalStr = servicesOptionalStr.substr(0, servicesOptionalStr.length() - 2); // Remove the trailing comma and space
+    
+        XLOGD_INFO("m_servicesOptional = <%s>\n", servicesOptionalStr.c_str());
     }
-
-    std::string servicesOptionalStr;
-    for (const auto& service : m_servicesOptional) {
-        servicesOptionalStr += service + ", ";
-    }
-    servicesOptionalStr = servicesOptionalStr.substr(0, servicesOptionalStr.length() - 2); // Remove the trailing comma and space
-
-    XLOGD_DEBUG("m_servicesOptional = <%s>\n", servicesOptionalStr.c_str());
 
     // (optional) connectionParams
     // if (json.contains("connectionParams")) {

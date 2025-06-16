@@ -230,7 +230,7 @@ void ctrlm_ir_controller_t::process_event_key(uint16_t key_code) {
 
          ctrlm_main_queue_msg_push(msg);
       }
-   } else if(key_code == KEY_CONFIG) {
+   } else if(key_code == KEY_FN_B) {
       XLOGD_INFO("received IR key for Autobind");
       // Allocate a message and send it to Control Manager's queue
       ctrlm_main_queue_msg_header_t *msg = (ctrlm_main_queue_msg_header_t *)g_malloc(sizeof(ctrlm_main_queue_msg_header_t));

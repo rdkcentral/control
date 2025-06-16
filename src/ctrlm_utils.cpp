@@ -64,11 +64,7 @@ void ctrlm_crash_ctrlm_device_update(void) {
    ctrlm_crash();
 }
 
-#ifdef CTRLM_RF4CE_HAL_QORVO
-void ctrlm_crash_rf4ce_qorvo(void) {
-#else
-void ctrlm_crash_rf4ce_ti(void) {
-#endif
+void ctrlm_crash_rf4ce(void) {
    XLOGD_TELEMETRY("crash");
    ctrlm_crash();
 }
@@ -2315,15 +2311,6 @@ bool ctrlm_utils_queue_msg_push(int msgq, const char *msg, size_t msg_len) {
       return(false);
    }
    return(true);
-}
-
-const char *ctrlm_irdb_vendor_str(ctrlm_irdb_vendor_t vendor) {
-   switch (vendor) {
-      case CTRLM_IRDB_VENDOR_UEI:      return("UEI");
-      case CTRLM_IRDB_VENDOR_RUWIDO:   return("RUWIDO");
-      case CTRLM_IRDB_VENDOR_INVALID:  return("INVALID");
-      default:                         return("UNKNOWN");
-   }
 }
 
 std::string ctrlm_utils_time_as_string(time_t time) {

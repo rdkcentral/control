@@ -17,6 +17,47 @@ All notable changes to this project will be documented in this file.
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
 
+## [1.1.0] - 2025-05-30
+
+### Changed
+- move thunder and IARM dependencies from irdb to ctrlm
+- load irdb library as a plugin with dlopen
+- use AVInput instead of HDMI Input thunder plugin for HDMI Infoframes
+
+### Added
+- new interface to ctrlm IRDB
+- Default BLE controller type list
+- RF4CE network discovery at runtime instead of compile time
+
+### Fixed
+- crash during OTA interrupted by unpair or reset
+
+
+## [1.0.10] - 2025-05-16
+
+### Changed
+- ctrlm crash from main queue msgs getting to networks prior to initialization
+- ctrlm support both old and new deviceType
+- Control manager crashes on rapid MIC button presses
+- [Logging] Add Invalid firmware version OTA error code (0x8) mapping in ctrlmgr logs
+- Changed deviceType from tv to IpTv.
+- Extend adpcm frame info.
+
+
+## [1.0.9] - 2025-04-28
+
+### Changed
+- Audio samples is always reported as 0 for FFV sessions
+- Remove 'volatile' type qualifier of "binding_in_progress"
+- Upgrading the halif-headers as iarmmgr
+
+
+## [1.0.8] - 2025-04-15
+
+### Changed
+- use list of all possible names for IR input device discovery instead of product specific config
+
+
 ## [1.0.7] - 2025-03-31
 
 ### Changed

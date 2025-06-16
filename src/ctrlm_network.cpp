@@ -498,10 +498,6 @@ ctrlm_hal_result_t ctrlm_obj_network_t::network_init(GThread *ctrlm_main_thread)
       XLOGD_FATAL("Failed to initialize %s network", name_get());
    } else {
       XLOGD_INFO("Initialized %s network version %s", name_get(), version_get());
-      ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
-      if (rcp_ipc) {
-          rcp_ipc->register_ipc();
-      }
       // Post HAL initialization
       hal_init_complete();
       // Xconf
@@ -672,11 +668,11 @@ void ctrlm_obj_network_t::req_process_pair_with_code(void *data, int size){
    }
 }
 
-void ctrlm_obj_network_t::req_process_ir_set_code(void *data, int size){
+void ctrlm_obj_network_t::req_process_program_ir_codes(void *data, int size){
    XLOGD_WARN("request is not valid for %s network", name_get());
-   ctrlm_main_queue_msg_ir_set_code_t *dqm = (ctrlm_main_queue_msg_ir_set_code_t *)data;
+   ctrlm_main_queue_msg_program_ir_codes_t *dqm = (ctrlm_main_queue_msg_program_ir_codes_t *)data;
    g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_ir_set_code_t));
+   g_assert(size == sizeof(ctrlm_main_queue_msg_program_ir_codes_t));
 
    // post the semaphore just to ensure nothing blocks
    if(dqm->semaphore) {

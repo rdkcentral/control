@@ -55,7 +55,7 @@ public:
 
    void print_status();
 
-   std::string input_device_name_get(void);
+   std::vector<std::string> input_device_names_get(void);
    std::string name_get(void);
 
    /**
@@ -92,7 +92,7 @@ private:
     */
    ctrlm_ir_controller_t();
 
-   std::string                             input_device_name_;
+   std::vector<std::string>                input_device_names_;
 
    std::shared_ptr<ctrlm_uint64_db_attr_t> last_key_time_;
    std::shared_ptr<ctrlm_uint64_db_attr_t> last_key_code_;

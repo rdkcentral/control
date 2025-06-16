@@ -61,18 +61,31 @@ using namespace std;
  */
 ConfigSettings::TimeOuts ConfigSettings::parseTimeouts(json_t *json)
 {
-    TimeOuts timeouts = { 15000, 15000, 60000, 20000, 20000, 65000 };
+    TimeOuts timeouts = {
+        JSON_INT_VALUE_NETWORK_BLE_TIMEOUTS_DISCOVERY,
+        JSON_INT_VALUE_NETWORK_BLE_TIMEOUTS_PAIR,
+        JSON_INT_VALUE_NETWORK_BLE_TIMEOUTS_SETUP,
+        JSON_INT_VALUE_NETWORK_BLE_TIMEOUTS_UNPAIR,
+        JSON_INT_VALUE_NETWORK_BLE_TIMEOUTS_HIDRAWPOLL,
+        JSON_INT_VALUE_NETWORK_BLE_TIMEOUTS_HIDRAWLIMIT
+    };
+
+    if(json == NULL) { // return default values
+        return timeouts;
+    }
 
     struct {
         const char *name;
         int *storage;
+        int minValue;
+        int maxValue;
     } fields[6] = {
-        { "discovery",      &timeouts.discoveryMSecs        },
-        { "pair",           &timeouts.pairingMSecs          },
-        { "setup",          &timeouts.setupMSecs            },
-        { "unpair",         &timeouts.upairingMSecs         },
-        { "hidrawPoll",     &timeouts.hidrawWaitPollMSecs   },
-        { "hidrawLimit",    &timeouts.hidrawWaitLimitMSecs  },
+        { "discovery",      &timeouts.discoveryMSecs,       0, 600000 },
+        { "pair",           &timeouts.pairingMSecs,         0, 600000 },
+        { "setup",          &timeouts.setupMSecs,           0, 600000 },
+        { "unpair",         &timeouts.upairingMSecs,        0, 600000 },
+        { "hidrawPoll",     &timeouts.hidrawWaitPollMSecs,  0, 600000 },
+        { "hidrawLimit",    &timeouts.hidrawWaitLimitMSecs, 0, 600000 },
     };
 
     // process the fields
@@ -83,7 +96,12 @@ ConfigSettings::TimeOuts ConfigSettings::parseTimeouts(json_t *json)
                 XLOGD_WARN("invalid '%s' field, reverting to default", fields[i].name);
             }
         } else {
-               *(fields[i].storage) = (int)json_integer_value(timeout);
+            json_int_t value = json_integer_value(timeout);
+            if(value < fields[i].minValue || value > fields[i].maxValue) {
+                XLOGD_WARN("'%s' field value %d out of range (%d - %d), using default", fields[i].name, (int)value, fields[i].minValue, fields[i].maxValue);
+            } else {
+               *(fields[i].storage) = (int)value;
+            }
             XLOGD_DEBUG("'%s' field = %d", fields[i].name, *(fields[i].storage));
         }
     }
@@ -123,24 +141,42 @@ std::shared_ptr<ConfigSettings> ConfigSettings::fromJsonObj(json_t *jsonConfig) 
  */
 std::shared_ptr<ConfigSettings> ConfigSettings::parseJson(json_t *jsonConfig)
 {
+    TimeOuts timeouts;
     // find the timeout params
     json_t *timeoutsObj = json_object_get(jsonConfig, "timeouts");
     if (!timeoutsObj || !json_is_object(timeoutsObj)) {
-        XLOGD_ERROR( "missing or invalid 'timeouts' field in config");
-        return std::shared_ptr<ConfigSettings>();
+        XLOGD_WARN( "missing or invalid 'timeouts' field in config (using defaults)");
+        timeouts = parseTimeouts(NULL);
+    } else {
+        timeouts = parseTimeouts(timeoutsObj);
     }
 
-    TimeOuts timeouts = parseTimeouts(timeoutsObj);
+    json_t *obj_network_ble = NULL;
 
-    
     // find the vendor details array
     json_t *modelArray = json_object_get(jsonConfig, "models");
     if (!modelArray || !json_is_array(modelArray)) {
-        XLOGD_ERROR( "missing or invalid 'models' field in config");
-        return std::shared_ptr<ConfigSettings>();
+        XLOGD_WARN( "missing or invalid 'models' field in config (using defaults)");
+        
+        obj_network_ble = json_loads(DEFAULT_CONFIG::json(), JSON_DECODE_ANY, NULL);
+        if (!obj_network_ble || !json_is_object(obj_network_ble)) {
+            if(!obj_network_ble) {
+                XLOGD_ERROR("invalid default config buffer");
+            } else {
+                XLOGD_ERROR("default config buffer is not a json object");
+                json_decref(obj_network_ble);
+            }
+            return std::shared_ptr<ConfigSettings>();
+        }
+    
+        modelArray = json_object_get(obj_network_ble, "models");
+        if((!modelArray || !json_is_array(modelArray))) {
+            XLOGD_ERROR("missing or invalid 'models' field in default config");
+            json_decref(obj_network_ble);
+            return std::shared_ptr<ConfigSettings>();
+        }
     }
     size_t array_size = json_array_size(modelArray);
-
 
     vector<ConfigModelSettings> models;
 
@@ -154,6 +190,10 @@ std::shared_ptr<ConfigSettings> ConfigSettings::parseJson(json_t *jsonConfig)
             }
             models.push_back(std::move(modelSettings));
         }
+    }
+
+    if(obj_network_ble != NULL) {
+        json_decref(obj_network_ble);
     }
 
     // finally return the config

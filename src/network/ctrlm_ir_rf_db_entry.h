@@ -20,7 +20,7 @@
 #ifndef __CTRLM_IR_RF_DB_ENTRY_H__
 #define __CTRLM_IR_RF_DB_ENTRY_H__
 #include "ctrlm.h"
-#include "ctrlm_irdb.h"
+#include "ctrlm_irdb_plugin.h"
 #include <vector>
 
 /**
@@ -124,7 +124,7 @@ private:
     void set_key_via_descriptor();
 
 private:
-    ctrlm_ir_rf_db_dev_type_t type;
+    ctrlm_ir_rf_db_dev_type_t       type;
     ctrlm_key_code_t                key;
     uint8_t                         rf_descriptor[2];
     uint8_t                         rf_config;

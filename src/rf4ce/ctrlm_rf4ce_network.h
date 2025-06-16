@@ -444,7 +444,7 @@ public:
 
    void                                 cfm_voice_session_rsp(void *data, int size);
 
-   void                                 req_process_ir_set_code(void *data, int size);
+   void                                 req_process_program_ir_codes(void *data, int size);
    void                                 req_process_ir_clear_codes(void *data, int size);
    virtual void                         req_process_start_pairing(void *data, int size) override;
    virtual void                         req_process_find_my_remote(void *data, int size);
@@ -519,11 +519,7 @@ private:
 
    ctrlm_rf4ce_mfg_test_t              mfg_test_;
 
-#if __GLIBC__ == 2 && __GLIBC_MINOR__ < 35
-   volatile gint              binding_in_progress_;
-#else
-   gint                       binding_in_progress_;
-#endif
+   gint                                binding_in_progress_;
    guint                               binding_in_progress_tag_;
    guint                               binding_in_progress_timeout_;
 

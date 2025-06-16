@@ -113,8 +113,8 @@ public:
     bool getAudioStatus(uint64_t ieee_address, uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs);
     bool getFirstAudioDataTime(uint64_t ieee_address, ctrlm_timestamp_t &time);
 
-    bool setIrControl(uint64_t ieee_address, ctrlm_irdb_vendor_t vendor);
-    bool programIrSignalWaveforms(uint64_t ieee_address, ctrlm_irdb_ir_codes_t &&irWaveforms, ctrlm_irdb_vendor_t vendor);
+    bool setIrControl(uint64_t ieee_address, uint8_t vendor);
+    bool programIrSignalWaveforms(uint64_t ieee_address, std::map<ctrlm_key_code_t, std::vector<uint8_t>> &&irWaveforms, uint8_t vendor);
     bool eraseIrSignals(uint64_t ieee_address);
 
     bool startUpgrade(uint64_t ieee_address, const std::string &fwFile);

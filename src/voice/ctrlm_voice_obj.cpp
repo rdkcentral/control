@@ -976,17 +976,17 @@ void ctrlm_voice_t::process_xconf(json_t **json_obj_vsdk, bool local_conf) {
 
    char vsdk_config_str[CTRLM_RFC_MAX_PARAM_LEN] = {0}; //MAX_PARAM_LEN from rfcapi.h is 2048
 
-#ifdef CTRLM_NETWORK_RF4CE
-   char encoder_params_str[CTRLM_RCU_RIB_ATTR_LEN_OPUS_ENCODING_PARAMS * 2 + 1] = {0};
+   if(ctrlm_is_rf4ce_enabled()) {
+      char encoder_params_str[CTRLM_RCU_RIB_ATTR_LEN_OPUS_ENCODING_PARAMS * 2 + 1] = {0};
 
-   result  = ctrlm_tr181_string_get(CTRLM_RF4CE_TR181_RF4CE_OPUS_ENCODER_PARAMS, encoder_params_str, sizeof(encoder_params_str));
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-      std::string opus_encoder_params_str = encoder_params_str;
-      this->voice_params_opus_encoder_validate(opus_encoder_params_str);
+      result  = ctrlm_tr181_string_get(CTRLM_RF4CE_TR181_RF4CE_OPUS_ENCODER_PARAMS, encoder_params_str, sizeof(encoder_params_str));
+      if(result == CTRLM_TR181_RESULT_SUCCESS) {
+         std::string opus_encoder_params_str = encoder_params_str;
+         this->voice_params_opus_encoder_validate(opus_encoder_params_str);
 
-      XLOGD_INFO("opus encoder params <%s>", this->prefs.opus_encoder_params_str.c_str());
+         XLOGD_INFO("opus encoder params <%s>", this->prefs.opus_encoder_params_str.c_str());
+      }
    }
-#endif
 
    ctrlm_voice_audio_settings_t audio_settings = {this->audio_mode, this->audio_timing, this->audio_confidence_threshold, this->audio_ducking_type, this->audio_ducking_level, this->audio_ducking_beep_enabled};
    bool changed = false;
@@ -2684,7 +2684,18 @@ void ctrlm_voice_t::voice_session_end_callback(ctrlm_voice_session_end_cb_t *ses
         }
     }
 
-    XLOGD_INFO("src <%s> audio sent bytes <%u> samples <%u> reason <%s> voice command status <%s>", ctrlm_voice_device_str(session->voice_device), session->audio_sent_bytes, session->audio_sent_samples, xrsr_session_end_reason_str(stats->reason), ctrlm_voice_command_status_str(command_status));
+    #ifdef CTRLM_LOCAL_MIC
+    #ifdef CTRLM_LOCAL_MIC_TAP
+    if(session->voice_device == CTRLM_VOICE_DEVICE_MICROPHONE || session->voice_device == CTRLM_VOICE_DEVICE_MICROPHONE_TAP) {
+    #else
+    if(session->voice_device == CTRLM_VOICE_DEVICE_MICROPHONE) {
+    #endif
+        XLOGD_INFO("src <%s> reason <%s> voice command status <%s>", ctrlm_voice_device_str(session->voice_device), xrsr_session_end_reason_str(stats->reason), ctrlm_voice_command_status_str(command_status));
+    } else 
+    #endif
+    {
+        XLOGD_INFO("src <%s> audio sent bytes <%u> samples <%u> reason <%s> voice command status <%s>", ctrlm_voice_device_str(session->voice_device), session->audio_sent_bytes, session->audio_sent_samples, xrsr_session_end_reason_str(stats->reason), ctrlm_voice_command_status_str(command_status));
+    }
 
     // Update device status
     this->voice_session_set_inactive(session->voice_device);
@@ -3381,6 +3392,7 @@ xrsr_audio_format_t voice_format_to_xrsr(ctrlm_voice_format_t format) {
             ret.value.adpcm_frame.offset_predicted_sample_lsb = format.value.adpcm_frame.offset_predicted_sample_lsb;
             ret.value.adpcm_frame.offset_predicted_sample_msb = format.value.adpcm_frame.offset_predicted_sample_msb;
             ret.value.adpcm_frame.offset_sequence_value       = format.value.adpcm_frame.offset_sequence_value;
+            ret.value.adpcm_frame.shift_sequence_value        = format.value.adpcm_frame.shift_sequence_value;
             ret.value.adpcm_frame.sequence_value_min          = format.value.adpcm_frame.sequence_value_min;
             ret.value.adpcm_frame.sequence_value_max          = format.value.adpcm_frame.sequence_value_max;
             break;

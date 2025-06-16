@@ -31,7 +31,7 @@
 #include "ctrlm_rcu.h"
 #include "ctrlm_hal.h"
 #include "ctrlm_hal_rf4ce.h"
-#include "ctrlm_irdb.h"
+#include "ctrlm_irdb_plugin.h"
 #include "ctrlm_log.h"
 #include "libIBus.h"
 #include "libIBusDaemon.h"
@@ -42,6 +42,7 @@
 #ifdef TELEMETRY_SUPPORT
 #include <telemetry2_0.h>
 #endif
+#include <memory>
 
 #define TIMEOUT_TAG_INVALID (0)
 
@@ -115,6 +116,24 @@ bool ctrlm_json_to_iarm_call_data_result(json_t *obj, T iarm)
     return true;
 }
 
+template<typename T>
+class gmain_loop_obj_user_data
+{
+public:
+    std::shared_ptr<bool> m_isAlive;
+    T                    *m_ptr;
+
+    gmain_loop_obj_user_data(std::shared_ptr<bool> isAlive, T *obj)
+        : m_isAlive(isAlive)
+        , m_ptr(obj)
+    {}
+
+    bool is_alive(void) const
+    {
+        return ((m_isAlive != nullptr) && (*m_isAlive == true));
+    }
+};
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -122,11 +141,7 @@ extern "C"
 
 #ifdef BREAKPAD_SUPPORT
 void ctrlm_crash_ctrlm_device_update(void);
-#ifdef CTRLM_RF4CE_HAL_QORVO
-void ctrlm_crash_rf4ce_qorvo(void);
-#else
-void ctrlm_crash_rf4ce_ti(void);
-#endif
+void ctrlm_crash_rf4ce(void);
 void ctrlm_crash_ble(void);
 void ctrlm_crash_vsdk(void);
 void ctrlm_crash_ctrlm_main(void);
@@ -199,7 +214,6 @@ const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config);
 const char *ctrlm_t2_error_str(T2ERROR error);
 #endif
 
-const char *ctrlm_irdb_vendor_str(ctrlm_irdb_vendor_t vendor);
 const char *ctrlm_rf_pair_state_str(ctrlm_rf_pair_state_t state);
 const char *ctrlm_rcu_upgrade_state_str(ctrlm_rcu_upgrade_state_t state);
 

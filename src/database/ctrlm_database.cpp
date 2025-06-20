@@ -282,7 +282,7 @@ void ctrlm_db_close() {
       sqlite3_stmt *p_stmt;
       int count = 0;
       XLOGD_INFO("finalizing...");
-      while((p_stmt = sqlit3_next_stmt(g_ctrlm_db.handle, NULL)) != NULL) {
+      while((p_stmt = sqlite3_stmt_next(g_ctrlm_db.handle, NULL)) != NULL) {
          sqlite3_finalize(p_stmt);
          count++;
          XLOGD_INFO("statement %d", count);

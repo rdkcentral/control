@@ -279,8 +279,18 @@ bool ctrlm_db_open(const char *db_path) {
 
 void ctrlm_db_close() {
    if(g_ctrlm_db.handle != NULL) {
+      sqlite3_stmt *p_stmt;
+      int count = 0;
+      XLOGD_INFO("finalizing...");
+      while((p_stmt = sqlit3_next_stmt(g_ctrlm_db.handle, NULL)) != NULL) {
+         sqlite3_finalize(p_stmt);
+         count++;
+         XLOGD_INFO("statement %d", count);
+      }
+      XLOGD_INFO("closing...");
       sqlite3_close(g_ctrlm_db.handle);
       g_ctrlm_db.handle = NULL;
+      XLOGD_INFO("closed...");
    }
 }
 

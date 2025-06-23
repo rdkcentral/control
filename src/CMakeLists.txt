@@ -26,6 +26,7 @@ target_sources(controlMgr PRIVATE
    ctrlm_network.cpp
    ctrlm_controller.cpp
    ctrlm_ir_controller.cpp
+   ctrlm_powermanager_factory.cpp
    ctrlm_rcu.cpp
    ctrlm_rcu_iarm.cpp
    attributes/ctrlm_attr.cpp
@@ -138,6 +139,17 @@ endif()
 
 if(BUILD_FACTORY_TEST)
    add_subdirectory(factory)
+endif()
+
+if(USE_IARM_POWER_MANAGER)
+   target_sources(controlMgr PRIVATE
+      ipc/ctrlm_ipc_iarm_powermanager.cpp
+   )
+else()
+   target_sources(controlMgr PRIVATE
+      thunder/ctrlm_thunder_powermanager.cpp
+      thunder/ctrlm_thunder_plugin_powermanager.cpp
+   )
 endif()
 
 if(RF4CE_ENABLED)

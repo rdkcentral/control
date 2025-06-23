@@ -203,7 +203,7 @@ ctrlm_voice_t::ctrlm_voice_t() {
     }
     #endif
 
-    #ifdef DEEP_SLEEP_ENABLED
+    #ifdef NETWORKED_STANDBY_MODE_ENABLED
     this->prefs.dst_params_standby.connect_check_interval = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL;
     this->prefs.dst_params_standby.timeout_connect        = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT;
     this->prefs.dst_params_standby.timeout_inactivity     = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY;
@@ -376,7 +376,7 @@ void ctrlm_voice_t::voice_sdk_open(json_t *json_obj_vsdk) {
 
    //HAL is not available to query mute state because xrsr is not open, so use stored status.
    bool privacy = this->voice_is_privacy_enabled();
-   ctrlm_power_state_t ctrlm_power_state = ctrlm_main_get_power_state();
+   ctrlm_power_state_t ctrlm_power_state = ctrlm_main_get_internal_power_state();
    xrsr_power_mode_t   xrsr_power_mode   = voice_xrsr_power_map(ctrlm_power_state);
 
    if(!xrsr_open(host_name, routes, &kw_config, &capture_config, xrsr_power_mode, privacy, this->mask_pii, json_obj_vsdk)) {
@@ -483,7 +483,7 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
         conf.config_value_get(JSON_FLOAT_NAME_VOICE_AUDIO_DUCKING_LEVEL,        audio_settings.ducking_level, 0.0, 1.0);
         conf.config_value_get(JSON_BOOL_NAME_VOICE_AUDIO_DUCKING_BEEP,          audio_settings.ducking_beep);
 
-        #ifdef DEEP_SLEEP_ENABLED
+        #ifdef NETWORKED_STANDBY_MODE_ENABLED
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL, this->prefs.dst_params_standby.connect_check_interval);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,        this->prefs.dst_params_standby.timeout_connect);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,     this->prefs.dst_params_standby.timeout_inactivity);
@@ -1647,8 +1647,8 @@ bool ctrlm_voice_t::voice_session_audio_stream_start(std::string &session_id) {
 void ctrlm_voice_t::voice_session_rsp_confirm(bool result, signed long long rsp_time, unsigned int rsp_window, const std::string &err_str, ctrlm_timestamp_t *timestamp) {
    ctrlm_voice_session_t *session = &this->voice_session[VOICE_SESSION_GROUP_DEFAULT]; // this is for PTT only
    if(session->state_src != CTRLM_VOICE_STATE_SRC_STREAMING) {
-       if(ctrlm_main_get_power_state() == CTRLM_POWER_STATE_DEEP_SLEEP) {
-           XLOGD_WARN("missed voice session response window after waking from <%s>", ctrlm_power_state_str(ctrlm_main_get_power_state()));
+       if(ctrlm_main_get_internal_power_state() == CTRLM_POWER_STATE_DEEP_SLEEP) {
+           XLOGD_WARN("missed voice session response window after waking from <%s>", ctrlm_power_state_str(ctrlm_main_get_internal_power_state()));
        } else {
            XLOGD_ERROR("No voice session in progress");
        }
@@ -3208,7 +3208,7 @@ void ctrlm_voice_t::voice_server_return_code_callback(const uuid_t uuid, const c
         (ret_code == 0) ? "success" : "error", \
         ret_code, \
         ((reason == NULL) ? "NULL" : reason), \
-        ((ctrlm_main_get_power_state() == CTRLM_POWER_STATE_ON) ? "FPM" : "NSM"));
+        ((ctrlm_main_get_internal_power_state() == CTRLM_POWER_STATE_ON) ? "FPM" : "NSM"));
 
 }
 // Callback Interface Implementation End
@@ -3994,7 +3994,7 @@ void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t e
 }
 #endif
 
-#ifdef DEEP_SLEEP_ENABLED
+#ifdef NETWORKED_STANDBY_MODE_ENABLED
 void ctrlm_voice_t::voice_nsm_session_request(void) {
     ctrlm_network_id_t network_id = CTRLM_MAIN_NETWORK_ID_DSP;
     ctrlm_controller_id_t controller_id = CTRLM_MAIN_CONTROLLER_ID_DSP;
@@ -4037,13 +4037,14 @@ xrsr_power_mode_t voice_xrsr_power_map(ctrlm_power_state_t ctrlm_power_state) {
 
    switch(ctrlm_power_state) {
       case CTRLM_POWER_STATE_DEEP_SLEEP:
-         #ifdef DEEP_SLEEP_ENABLED
-         xrsr_power_mode = ctrlm_main_iarm_networked_standby() ? XRSR_POWER_MODE_LOW : XRSR_POWER_MODE_SLEEP;
+         #ifdef NETWORKED_STANDBY_MODE_ENABLED
+         xrsr_power_mode = ctrlm_main_get_networked_standby_mode() ? XRSR_POWER_MODE_LOW : XRSR_POWER_MODE_SLEEP;
          #else
          xrsr_power_mode = XRSR_POWER_MODE_SLEEP;
          #endif
          break;
       case CTRLM_POWER_STATE_ON:
+      case CTRLM_POWER_STATE_STANDBY:
          xrsr_power_mode = XRSR_POWER_MODE_FULL;
          break;
       default:
@@ -4160,7 +4161,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
 
     // All attributes that need a re-route to apply
     if(attr.get_rfc_value(JSON_INT_NAME_VOICE_MINIMUM_DURATION,                              this->prefs.utterance_duration_min) |
-    #ifdef DEEP_SLEEP_ENABLED
+    #ifdef NETWORKED_STANDBY_MODE_ENABLED
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL,     this->prefs.dst_params_standby.connect_check_interval) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,            this->prefs.dst_params_standby.timeout_connect) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,         this->prefs.dst_params_standby.timeout_inactivity) |

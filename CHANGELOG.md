@@ -16,7 +16,6 @@ All notable changes to this project will be documented in this file.
 
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
-
 ## [1.1.0] - 2025-05-30
 
 ### Changed

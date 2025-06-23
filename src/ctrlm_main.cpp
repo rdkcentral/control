@@ -54,8 +54,10 @@
 #include "ctrlm_validation.h"
 #include "ctrlm_recovery.h"
 #include "ctrlm_ir_controller.h"
+#include "ctrlm_powermanager.h"
 #ifdef CTRLM_THUNDER
 #include "ctrlm_thunder_plugin_device_info.h"
+#include "ctrlm_rcp_ipc_iarm_thunder.h"
 #endif
 #ifdef AUTH_ENABLED
 #include "ctrlm_auth.h"
@@ -88,7 +90,6 @@
 #ifdef MEMORY_LOCK
 #include "clnl.h"
 #endif
-#include "ctrlm_rcp_ipc_iarm_thunder.h"
 
 using namespace std;
 
@@ -275,12 +276,13 @@ typedef struct {
 #ifdef CTRLM_THUNDER
    Thunder::DeviceInfo::ctrlm_thunder_plugin_device_info_t *thunder_device_info;
 #endif
+   ctrlm_powermanager_t              *power_manager;
    ctrlm_power_state_t                power_state;
    gboolean                           auto_ack;
    gboolean                           local_conf;
    guint                              telemetry_report_interval;
    ctrlm_ir_controller_t             *ir_controller;
-#ifdef DEEP_SLEEP_ENABLED
+#ifdef NETWORKED_STANDBY_MODE_ENABLED
    gboolean                           wake_with_voice_allowed;
 #endif
 } ctrlm_global_t;
@@ -570,7 +572,8 @@ int main(int argc, char *argv[]) {
    //g_ctrlm.precomission_table             = g_hash_table_new(g_str_hash, g_str_equal);
    g_ctrlm.loading_db                     = false;
    g_ctrlm.return_code                    = 0;
-   g_ctrlm.power_state                    = ctrlm_main_iarm_call_get_power_state();
+   g_ctrlm.power_manager                  = ctrlm_powermanager_t::get_instance();
+   g_ctrlm.power_state                    = ctrlm_main_get_system_power_state();
    g_ctrlm.auto_ack                       = true;
    g_ctrlm.local_conf                     = false;
    g_ctrlm.telemetry                      = NULL;
@@ -588,9 +591,9 @@ int main(int argc, char *argv[]) {
    g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_UNKNOWN;
    g_ctrlm.last_key_info.is_screen_bind_mode  = false;
    g_ctrlm.last_key_info.remote_keypad_config = CTRLM_REMOTE_KEYPAD_CONFIG_INVALID;
-#ifdef DEEP_SLEEP_ENABLED
+   #ifdef NETWORKED_STANDBY_MODE_ENABLED
    g_ctrlm.wake_with_voice_allowed            = false;
-#endif
+   #endif
    errno_t safec_rc = strcpy_s(g_ctrlm.last_key_info.source_name, sizeof(g_ctrlm.last_key_info.source_name), ctrlm_rcu_ir_remote_types_str(g_ctrlm.last_key_info.last_ir_remote_type));
    ERR_CHK(safec_rc);
 
@@ -872,6 +875,7 @@ int main(int argc, char *argv[]) {
    ctrlm_telemetry_t::destroy_instance();
    #endif
    ctrlm_ir_controller_t::destroy_instance();
+   ctrlm_powermanager_t::destroy_instance();
    ctrlm_irdb_interface_t::destroy_instance();
 
    if(g_ctrlm.rf4ce_handle != NULL) {
@@ -2694,7 +2698,7 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             if( (old_state == CTRLM_POWER_STATE_DEEP_SLEEP) && (dqm->new_state != CTRLM_POWER_STATE_DEEP_SLEEP) ) {
                XLOGD_INFO("power_state_change: wake DB and networks");
-               #ifdef DEEP_SLEEP_ENABLED
+               #ifdef NETWORKED_STANDBY_MODE_ENABLED
                g_ctrlm.wake_with_voice_allowed = true;
                #endif
                ctrlm_db_power_state_change(true);
@@ -2709,12 +2713,14 @@ gpointer ctrlm_main_thread(gpointer param) {
                }
             }
 
-            #ifdef DEEP_SLEEP_ENABLED
+            #ifdef NETWORKED_STANDBY_MODE_ENABLED
             //Wake with voice? Handle NSM voice, do not change power state
             if(dqm->new_state == CTRLM_POWER_STATE_ON) {
                bool wake_with_voice_allowed = g_ctrlm.wake_with_voice_allowed;
+
                g_ctrlm.wake_with_voice_allowed = false;
-               if( (wake_with_voice_allowed == true) && (ctrlm_main_iarm_wakeup_reason_voice() == true) ) {
+
+               if((wake_with_voice_allowed == true) && (g_ctrlm.power_manager->get_wakeup_reason_voice())) {
                   if( g_ctrlm.voice_session->nsm_voice_session == true ) {
                      XLOGD_INFO("Handling NSM voice session, ignore ON");
                   } else {
@@ -2729,9 +2735,9 @@ gpointer ctrlm_main_thread(gpointer param) {
             g_ctrlm.power_state = dqm->new_state;
 
             XLOGD_INFO("Enter power state <%s>", ctrlm_power_state_str(g_ctrlm.power_state));
-            #ifdef DEEP_SLEEP_ENABLED
+            #ifdef NETWORKED_STANDBY_MODE_ENABLED
             if(g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP) {
-               XLOGD_INFO("NSM is <%s>",  ctrlm_main_iarm_networked_standby()?"ENABLED":"DISABLED");
+               XLOGD_INFO("NSM is <%s>", (ctrlm_main_get_networked_standby_mode())?"ENABLED":"DISABLED");
             }
             #endif
 
@@ -2741,7 +2747,7 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-#ifdef AUTH_ENABLED
+         #ifdef AUTH_ENABLED
          case CTRLM_MAIN_QUEUE_MSG_TYPE_AUTHSERVICE_POLL: {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_AUTHSERVICE_POLL");
 
@@ -2761,7 +2767,7 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-#endif
+         #endif
          case CTRLM_MAIN_QUEUE_MSG_TYPE_NOTIFY_FIRMWARE: {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_NOTIFY_FIRMWARE");
             if(g_ctrlm.rf4ce_enabled) {
@@ -5859,6 +5865,30 @@ gboolean ctrlm_power_state_change(ctrlm_power_state_t power_state) {
    return(true);
 }
 
+ctrlm_power_state_t ctrlm_main_get_system_power_state(void) {
+   ctrlm_power_state_t power_state = CTRLM_POWER_STATE_ON;
+
+   if(g_ctrlm.power_manager == NULL) {
+      XLOGD_ERROR("power_manager is invalid, defaulting to ON");
+   } else {
+      power_state = g_ctrlm.power_manager->get_power_state();
+   }
+   return power_state;
+}
+
+gboolean ctrlm_main_get_networked_standby_mode(void) {
+   bool networked_standby_mode = false;
+
+   #ifdef NETWORKED_STANDBY_MODE_ENABLED
+   if(g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP) {
+      networked_standby_mode = g_ctrlm.power_manager->get_networked_standby_mode();
+   }
+   #endif
+
+   return networked_standby_mode ? true : false;
+}
+
+
 ctrlm_controller_id_t ctrlm_last_used_controller_get(ctrlm_network_type_t network_type) {
    if (network_type == CTRLM_NETWORK_TYPE_RF4CE) {
       return g_ctrlm.last_key_info.controller_id;
@@ -6054,7 +6084,7 @@ gboolean ctrlm_start_iarm(gpointer user_data) {
    return false;
 }
 
-ctrlm_power_state_t ctrlm_main_get_power_state(void) {
+ctrlm_power_state_t ctrlm_main_get_internal_power_state(void) {
    return(g_ctrlm.power_state);
 }
 

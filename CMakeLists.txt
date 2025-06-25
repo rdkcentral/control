@@ -70,6 +70,7 @@ option(XRSR_HTTP "Enable XRSR_HTTP" OFF)
 option(XRSR_SDT "Enable XRSR_SDT" OFF)
 option(ENABLE_ASYNC_SRVR_MSG "Enable Asynchronous Server Messaging Feature" OFF)
 option(ENABLE_AVS_WITH_SDT "Enable SDT Based AVS Support" OFF)
+option(USE_DEPRECATED_HDMI_INPUT_PLUGIN "Use deprecated HDMI Input plugin instead of AV Input plugin" OFF)
 
 # BUILD SYSTEM
 set(STAGING_BINDIR_NATIVE, "invalid" CACHE PATH "staging bin dir native")
@@ -338,6 +339,10 @@ if(VOICE_KEYWORD_BEEP)
    add_compile_definitions(BEEP_ON_KWD_ENABLED)
    add_definitions(-DBEEP_ON_KWD_FILE=\"${CMAKE_DATADIR}/${BEEP_ON_KWD_FILE}\")
    install(FILES ${CMAKE_SOURCE_DIR}/../${BEEP_ON_KWD_FILE} DESTINATION share )
+endif()
+
+if(USE_DEPRECATED_HDMI_INPUT_PLUGIN)
+   add_compile_definitions(USE_DEPRECATED_HDMI_INPUT_PLUGIN)
 endif()
 
 install(TARGETS  controlMgr RUNTIME DESTINATION bin)

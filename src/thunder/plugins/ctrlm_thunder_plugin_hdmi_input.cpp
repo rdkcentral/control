@@ -16,7 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-#include "ctrlm_thunder_plugin_av_input.h"
+#include "ctrlm_thunder_plugin_hdmi_input.h"
 #include "ctrlm_log.h"
 #include <WPEFramework/core/core.h>
 #include <WPEFramework/websocket/websocket.h>
@@ -24,11 +24,11 @@
 #include <glib.h>
 
 using namespace Thunder;
-using namespace AVInput;
+using namespace HDMIInput;
 using namespace WPEFramework;
 
 static int _on_hotplug_thread(void *data) {
-    auto params = (std::pair<ctrlm_thunder_plugin_av_input_t *, JsonObject> *)data;
+    auto params = (std::pair<ctrlm_thunder_plugin_hdmi_input_t *, JsonObject> *)data;
     if(params) {
         if(params->first) {
             params->first->check_device_list((void *)&params->second);
@@ -42,12 +42,12 @@ static int _on_hotplug_thread(void *data) {
     return(0);
 }
 
-static void _on_hotplug(ctrlm_thunder_plugin_av_input_t *plugin, JsonObject params) {
-    g_idle_add(_on_hotplug_thread, new std::pair<ctrlm_thunder_plugin_av_input_t *, JsonObject>(plugin, params));
+static void _on_hotplug(ctrlm_thunder_plugin_hdmi_input_t *plugin, JsonObject params) {
+    g_idle_add(_on_hotplug_thread, new std::pair<ctrlm_thunder_plugin_hdmi_input_t *, JsonObject>(plugin, params));
 }
 
 static int _on_device_status_change_thread(void *data) {
-    auto params = (std::pair<ctrlm_thunder_plugin_av_input_t *, JsonObject> *)data;
+    auto params = (std::pair<ctrlm_thunder_plugin_hdmi_input_t *, JsonObject> *)data;
     if(params) {
         if(params->first) {
             if(params->second.HasLabel("id") && params->second.HasLabel("status")) {
@@ -55,7 +55,7 @@ static int _on_device_status_change_thread(void *data) {
             } else {
                 std::string response_str;
                 params->second.ToString(response_str);
-                XLOGD_ERROR("AVInput device status change malformed: <%s>", response_str.c_str());
+                XLOGD_ERROR("HDMIInput device status changemalformed: <%s>", response_str.c_str());
             }
         } else {
             XLOGD_ERROR("Plugin NULL");
@@ -67,26 +67,26 @@ static int _on_device_status_change_thread(void *data) {
     return(0);
 }
 
-static void _on_device_status_change(ctrlm_thunder_plugin_av_input_t *plugin, JsonObject params) {
-    g_idle_add(_on_device_status_change_thread, new std::pair<ctrlm_thunder_plugin_av_input_t *, JsonObject>(plugin, params));
+static void _on_device_status_change(ctrlm_thunder_plugin_hdmi_input_t *plugin, JsonObject params) {
+    g_idle_add(_on_device_status_change_thread, new std::pair<ctrlm_thunder_plugin_hdmi_input_t *, JsonObject>(plugin, params));
 }
 
-ctrlm_thunder_plugin_av_input_t::ctrlm_thunder_plugin_av_input_t() : ctrlm_thunder_plugin_t("AVInput", "org.rdk.AVInput", 1) {
+ctrlm_thunder_plugin_hdmi_input_t::ctrlm_thunder_plugin_hdmi_input_t() : ctrlm_thunder_plugin_t("HdmiInput", "org.rdk.HdmiInput", 2) {
     sem_init(&this->semaphore, 0, 1);
     this->registered_events = false;
 }
 
-ctrlm_thunder_plugin_av_input_t::~ctrlm_thunder_plugin_av_input_t() {
+ctrlm_thunder_plugin_hdmi_input_t::~ctrlm_thunder_plugin_hdmi_input_t() {
 
 }
 
-ctrlm_thunder_plugin_av_input_t *ctrlm_thunder_plugin_av_input_t::getInstance() {
-    XLOGD_INFO("AV Input Plugin");
-    static ctrlm_thunder_plugin_av_input_t instance;
+ctrlm_thunder_plugin_hdmi_input_t *ctrlm_thunder_plugin_hdmi_input_t::getInstance() {
+    XLOGD_INFO("HDMI Input Plugin");
+    static ctrlm_thunder_plugin_hdmi_input_t instance;
     return &instance;
 }
 
-void ctrlm_thunder_plugin_av_input_t::get_infoframes(std::map<int, std::vector<uint8_t> > &infoframes) {
+void ctrlm_thunder_plugin_hdmi_input_t::get_infoframes(std::map<int, std::vector<uint8_t> > &infoframes) {
     // Lock sempahore as we are touching infoframe cache
     sem_wait(&this->semaphore);
     infoframes = this->infoframes;
@@ -94,18 +94,18 @@ void ctrlm_thunder_plugin_av_input_t::get_infoframes(std::map<int, std::vector<u
     sem_post(&this->semaphore);
 }
 
-bool ctrlm_thunder_plugin_av_input_t::_get_infoframe(int port) {
+bool ctrlm_thunder_plugin_hdmi_input_t::_get_infoframe(int port) {
     bool ret = false;
     JsonObject params, response;
 
-    XLOGD_INFO("Calling AVInput for infoframe data for port %d", port);
+    XLOGD_INFO("Calling HDMIInput for infoframe data for port %d", port);
 
     params["portId"] = port;
     // Lock sempahore as we are touching infoframe cache
     sem_wait(&this->semaphore);
     this->infoframes[port].clear();
 
-    if(this->call_plugin("getRawSPD", (void *)&params, (void *)&response)) {
+    if(this->call_plugin("getRawHDMISPD", (void *)&params, (void *)&response)) {
         if(response.HasLabel("HDMISPD")) {
             std::string infoframe_str = response["HDMISPD"].String();
             if(!infoframe_str.empty()) {
@@ -133,7 +133,6 @@ bool ctrlm_thunder_plugin_av_input_t::_get_infoframe(int port) {
                             this->infoframes[port].pop_back();
                         }
                     }
-                    XLOGD_INFO("Successfully parsed infoframe data for port %d", port);
                     ret = true;
                 } else {
                     XLOGD_ERROR("Failed to decode Infoframe base64!");
@@ -145,10 +144,10 @@ bool ctrlm_thunder_plugin_av_input_t::_get_infoframe(int port) {
         } else {
             std::string response_str;
             response.ToString(response_str);
-            XLOGD_ERROR("AVInput readINFOFRAME response malformed: <%s>", response_str.c_str());
+            XLOGD_ERROR("HDMIInput readINFOFRAME response malformed: <%s>", response_str.c_str());
         }
     } else {
-        XLOGD_ERROR("AVInput readINFOFRAME call failed!");
+        XLOGD_ERROR("HDMIInput readINFOFRAME call failed!");
     }
 
     // Unlock semaphore as we are done touching the infoframe cache
@@ -156,7 +155,7 @@ bool ctrlm_thunder_plugin_av_input_t::_get_infoframe(int port) {
     return(ret);
 }
 
-void ctrlm_thunder_plugin_av_input_t::_clear_infoframe(int port) {
+void ctrlm_thunder_plugin_hdmi_input_t::_clear_infoframe(int port) {
     XLOGD_INFO("Clearing infoframe data from cache for port %d", port);
     // Lock sempahore as we are touching infoframe cache
     sem_wait(&this->semaphore);
@@ -165,7 +164,7 @@ void ctrlm_thunder_plugin_av_input_t::_clear_infoframe(int port) {
     sem_post(&this->semaphore);
 }
 
-void ctrlm_thunder_plugin_av_input_t::on_device_status_change(int port, bool active) {
+void ctrlm_thunder_plugin_hdmi_input_t::on_device_status_change(int port, bool active) {
     XLOGD_INFO("Device status changed <%s>", (active ? "STARTED" : "STOPPED"));
     if(active) {
         XLOGD_INFO("Acquiring new infoframe data");
@@ -175,7 +174,7 @@ void ctrlm_thunder_plugin_av_input_t::on_device_status_change(int port, bool act
     }
 }
 
-bool ctrlm_thunder_plugin_av_input_t::register_events() {
+bool ctrlm_thunder_plugin_hdmi_input_t::register_events() {
     bool ret = this->registered_events;
     if(ret == false) {
         auto clientObject = (JSONRPC::LinkType<Core::JSON::IElement>*)this->plugin_client;
@@ -200,17 +199,17 @@ bool ctrlm_thunder_plugin_av_input_t::register_events() {
     return(ret);
 }
 
-void ctrlm_thunder_plugin_av_input_t::on_initial_activation() {
+void ctrlm_thunder_plugin_hdmi_input_t::on_initial_activation() {
     // Get initial INFOFRAME info
     JsonObject params, response;
-    if(this->call_plugin("getInputDevices", (void *)&params, (void *)&response)) {
+    if(this->call_plugin("getHDMIInputDevices", (void *)&params, (void *)&response)) {
         this->check_device_list((void *)&response);
     }
 
     Thunder::Plugin::ctrlm_thunder_plugin_t::on_initial_activation();
 }
 
-void ctrlm_thunder_plugin_av_input_t::check_device_list(void *params) {
+void ctrlm_thunder_plugin_hdmi_input_t::check_device_list(void *params) {
     JsonObject *root = (JsonObject *)params;
     if(root) {
         std::string response_st;

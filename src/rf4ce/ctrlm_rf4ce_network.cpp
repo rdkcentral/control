@@ -4906,46 +4906,110 @@ void ctrlm_obj_network_rf4ce_t::req_process_start_pairing(void *data, int size) 
 
    dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
 
-   ctrlm_main_iarm_call_property_t property = {};
-   property.api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION;
-   property.result       = CTRLM_IARM_CALL_RESULT_INVALID;
-   property.network_id   = CTRLM_MAIN_NETWORK_ID_ALL;
-   property.name         = CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND;
-   property.value        = dqm->params->timeout * 1000;
+   if(dqm->params->screen_bind_enable) {
+      XLOGD_INFO("screen bind enable is not requested");
+   } else {
+      ctrlm_main_iarm_call_property_t property = {};
+      property.api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION;
+      property.result       = CTRLM_IARM_CALL_RESULT_INVALID;
+      property.network_id   = CTRLM_MAIN_NETWORK_ID_ALL;
+      property.name         = CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND;
+      property.value        = dqm->params->timeout * 1000;
 
-   ctrlm_main_iarm_call_property_set_(&property);
-   if (property.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
-       XLOGD_ERROR("Failed to set ACTIVE PERIOD SCREENBIND property");
-       set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
-       dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
+      ctrlm_main_iarm_call_property_set_(&property);
+      if (property.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
+         XLOGD_ERROR("Failed to set ACTIVE PERIOD SCREENBIND property");
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
 
-       if (dqm->semaphore) {
-           sem_post(dqm->semaphore);
-       }
-       return ;
+         if (dqm->semaphore) {
+            sem_post(dqm->semaphore);
+         }
+         return ;
+      }
+
+      ctrlm_main_iarm_call_control_service_pairing_mode_t pairing = {};
+      pairing.api_revision       = CTRLM_MAIN_IARM_BUS_API_REVISION;
+      pairing.network_id         = network_id_get();
+      pairing.pairing_mode       = 1;
+      pairing.restrict_by_remote = 0;
+      pairing.result             = CTRLM_IARM_CALL_RESULT_INVALID;
+
+      ctrlm_main_iarm_call_control_service_start_pairing_mode_(&pairing);
+      if (pairing.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
+         XLOGD_ERROR("Failed to start pairing mode timer");
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
+
+         if (dqm->semaphore) {
+            sem_post(dqm->semaphore);
+         }
+         return ;
+      }
+
+      set_rf_pair_state(CTRLM_RF_PAIR_STATE_SEARCHING);
+      iarm_event_rcu_status();
    }
-
-   ctrlm_main_iarm_call_control_service_pairing_mode_t pairing = {};
-   pairing.api_revision       = CTRLM_MAIN_IARM_BUS_API_REVISION;
-   pairing.network_id         = network_id_get();
-   pairing.pairing_mode       = 1;
-   pairing.restrict_by_remote = 0;
-   pairing.result             = CTRLM_IARM_CALL_RESULT_INVALID;
-
-   ctrlm_main_iarm_call_control_service_start_pairing_mode_(&pairing);
-   if (pairing.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
-       XLOGD_ERROR("Failed to start pairing mode timer");
-       set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
-       dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
-
-       if (dqm->semaphore) {
-           sem_post(dqm->semaphore);
-       }
-       return ;
+   if (dqm->semaphore) {
+       sem_post(dqm->semaphore);
    }
+}
 
-   set_rf_pair_state(CTRLM_RF_PAIR_STATE_SEARCHING);
-   iarm_event_rcu_status();
+void ctrlm_obj_network_rf4ce_t::req_process_stop_pairing(void *data, int size) {
+   THREAD_ID_VALIDATE();
+   ctrlm_main_queue_msg_stop_pairing_t *dqm = (ctrlm_main_queue_msg_stop_pairing_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_stop_pairing_t));
+
+   dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+
+   if(dqm->params->screen_bind_disable) {
+      XLOGD_INFO("screen bind disable is not requested");
+   } else {
+      /* TODO
+      ctrlm_main_iarm_call_property_t property = {};
+      property.api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION;
+      property.result       = CTRLM_IARM_CALL_RESULT_INVALID;
+      property.network_id   = CTRLM_MAIN_NETWORK_ID_ALL;
+      property.name         = CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND;
+      property.value        = dqm->params->timeout * 1000;
+
+      ctrlm_main_iarm_call_property_set_(&property);
+      if (property.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
+         XLOGD_ERROR("Failed to set ACTIVE PERIOD SCREENBIND property");
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
+
+         if (dqm->semaphore) {
+            sem_post(dqm->semaphore);
+         }
+         return ;
+      }
+
+      ctrlm_main_iarm_call_control_service_pairing_mode_t pairing = {};
+      pairing.api_revision       = CTRLM_MAIN_IARM_BUS_API_REVISION;
+      pairing.network_id         = network_id_get();
+      pairing.pairing_mode       = 1;
+      pairing.restrict_by_remote = 0;
+      pairing.result             = CTRLM_IARM_CALL_RESULT_INVALID;
+
+      ctrlm_main_iarm_call_control_service_start_pairing_mode_(&pairing);
+      if (pairing.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
+         XLOGD_ERROR("Failed to start pairing mode timer");
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
+
+         if (dqm->semaphore) {
+            sem_post(dqm->semaphore);
+         }
+         return ;
+      }
+
+      set_rf_pair_state(CTRLM_RF_PAIR_STATE_SEARCHING);
+      iarm_event_rcu_status();
+      */
+   }
    if (dqm->semaphore) {
        sem_post(dqm->semaphore);
    }

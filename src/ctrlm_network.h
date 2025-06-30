@@ -39,8 +39,16 @@
 typedef struct : public ctrlm_network_all_ipc_result_wrapper_t {
    unsigned char            api_revision;
    unsigned int             timeout;
+   bool                     screen_bind_enable;
+   bool                     scan_enable;
    std::vector<uint64_t>    ieee_address_list;
 } ctrlm_iarm_call_StartPairing_params_t;
+
+typedef struct : public ctrlm_network_all_ipc_result_wrapper_t {
+   unsigned char            api_revision;
+   bool                     screen_bind_disable;
+   bool                     scan_disable;
+} ctrlm_iarm_call_StopPairing_params_t;
 
 typedef struct : public ctrlm_network_all_ipc_result_wrapper_t {
    ctrlm_fmr_alarm_level_t  level;
@@ -92,6 +100,12 @@ typedef struct {
    std::shared_ptr<ctrlm_iarm_call_StartPairing_params_t> params;
    sem_t *                                   semaphore;
 } ctrlm_main_queue_msg_start_pairing_t;
+
+typedef struct {
+   ctrlm_main_queue_msg_header_t             header;
+   std::shared_ptr<ctrlm_iarm_call_StopPairing_params_t> params;
+   sem_t *                                   semaphore;
+} ctrlm_main_queue_msg_stop_pairing_t;
 
 typedef struct {
    ctrlm_main_queue_msg_header_t                header;
@@ -242,6 +256,7 @@ public:
    virtual void         req_process_voice_session_end(void *data, int size);
 
    virtual void         req_process_start_pairing(void *data, int size);
+   virtual void         req_process_stop_pairing(void *data, int size);
    virtual void         req_process_pair_with_code(void *data, int size);
    virtual void         req_process_get_rcu_status(void *data, int size);
    virtual void         req_process_get_last_keypress(void *data, int size);

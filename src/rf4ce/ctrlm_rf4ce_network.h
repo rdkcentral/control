@@ -447,6 +447,7 @@ public:
    void                                 req_process_program_ir_codes(void *data, int size);
    void                                 req_process_ir_clear_codes(void *data, int size);
    virtual void                         req_process_start_pairing(void *data, int size) override;
+   virtual void                         req_process_stop_pairing(void *data, int size) override;
    virtual void                         req_process_find_my_remote(void *data, int size);
    virtual std::vector<ctrlm_obj_controller_t *> get_controller_obj_list() const;
    void                                 rcu_timeout_key_release(void *data, int data_size);

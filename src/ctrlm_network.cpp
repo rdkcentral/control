@@ -656,6 +656,18 @@ void ctrlm_obj_network_t::req_process_start_pairing(void *data, int size){
    }
 }
 
+void ctrlm_obj_network_t::req_process_stop_pairing(void *data, int size){
+   XLOGD_WARN("request is not valid for %s network", name_get());
+   ctrlm_main_queue_msg_stop_pairing_t *dqm = (ctrlm_main_queue_msg_stop_pairing_t *)data;
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_stop_pairing_t));
+
+   // post the semaphore just to ensure nothing blocks
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
+}
+
 void ctrlm_obj_network_t::req_process_pair_with_code(void *data, int size){
    XLOGD_WARN("request is not valid for %s network", name_get());
    ctrlm_main_queue_msg_pair_with_code_t *dqm = (ctrlm_main_queue_msg_pair_with_code_t *)data;

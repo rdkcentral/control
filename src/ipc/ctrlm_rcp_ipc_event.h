@@ -154,6 +154,31 @@ private:
     ctrlm_iarm_call_result_t  result_           = CTRLM_IARM_CALL_RESULT_INVALID;
 };
 
+class ctrlm_rcp_ipc_validation_status_t : public ctrlm_virtual_json_t
+{
+public:
+    ctrlm_rcp_ipc_validation_status_t() = default;
+    ~ctrlm_rcp_ipc_validation_status_t();
+
+    virtual json_t    *to_json() const;
+    char              *to_string() const;
+    //bool               get_result() const                                   { return (result_ == CTRLM_IARM_CALL_RESULT_SUCCESS) ? true : false; }
+    //void               set_result(ctrlm_iarm_call_result_t result)          { result_ = result; }
+    //ctrlm_network_id_t get_net_id() const                                   { return net_id_; }
+    //void               set_net_id(ctrlm_network_id_t net_id)                { net_id_ = net_id; }
+    void               populate_status(const ctrlm_obj_controller_t &rcu);
+
+    //std::string        session_id = "";
+
+private:
+    //ctrlm_network_id_t        net_id_           = 0;
+    //ctrlm_ieee_addr_t         ieee_address_;
+    //uint8_t                   percent_complete_ = 0;
+    //ctrlm_rcu_upgrade_state_t state_            = CTRLM_RCU_UPGRADE_STATE_INVALID;
+    //std::string               error_msg_        = "";
+    //ctrlm_iarm_call_result_t  result_           = CTRLM_IARM_CALL_RESULT_INVALID;
+};
+
 class ctrlm_network_all_ipc_result_wrapper_t {
 private:
     ctrlm_network_id_t network_id_;

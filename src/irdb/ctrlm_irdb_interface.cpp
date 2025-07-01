@@ -118,12 +118,12 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
     m_platform_tv = platform_tv;
     m_irdbPluginHandle = NULL;
 
-    m_irdbPluginHandle = dlopen ("/vendor/input/lib/universal_remote.so", RTLD_NOW);
+    m_irdbPluginHandle = dlopen ("/vendor/lib/libuniversal_remote.so", RTLD_NOW);
     if (!m_irdbPluginHandle) {
-        XLOGD_ERROR("Failed to load IR database plugin universal_remote.so <%s>, trying deprecated libctrlm-irdb-plugin.so.", dlerror());
+        XLOGD_ERROR("Failed to load IR database plugin libuniversal_remote.so <%s>, trying deprecated libctrlm-irdb-plugin.so.", dlerror());
         m_irdbPluginHandle = dlopen ("libctrlm-irdb-plugin.so", RTLD_NOW);
     } else {
-        XLOGD_INFO("IR database plugin universal_remote.so loaded successfully");
+        XLOGD_INFO("IR database plugin <libuniversal_remote.so> loaded successfully");
     }
     
     if (!m_irdbPluginHandle) {

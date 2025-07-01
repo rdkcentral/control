@@ -16,6 +16,20 @@ All notable changes to this project will be documented in this file.
 
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
+## [1.1.1] - 2025-06-25
+
+### Changed
+- Use the deprecated HDMI Input plugin instead of the new AV Input plugin if compile flag is set
+
+### Fixed
+- BLE audio pipe size too small, set minimum size
+- enable RF4CE Advanced Secure Binding (ASB)
+
+### Added
+- receive RF4CE IR binding key codes over IR input device
+- use new Power Manager Thunder Plugin for power state events, switch to deprecated IARM interface with compile flag
+    
+
 ## [1.1.0] - 2025-05-30
 
 ### Changed

@@ -37,10 +37,10 @@ using namespace std;
 ConfigModelSettingsData::ConfigModelSettingsData()
     : m_valid(false)
     , m_disabled(false)
+    , m_voiceKeyCodePresent(false)
     , m_typeZ(false)
     , m_hasConnParams(false)
     , m_servicesType(ConfigModelSettings::GattServiceType)
-    , m_voiceKeyCodePresent(false)
 {
 }
 
@@ -51,6 +51,8 @@ ConfigModelSettingsData::ConfigModelSettingsData(const ConfigModelSettingsData &
     , m_pairingNameFormat(other.m_pairingNameFormat)
     , m_otaProductName(other.m_otaProductName)
     , m_standbyMode(other.m_standbyMode)
+    , m_voiceKeyCode(other.m_voiceKeyCode)
+    , m_voiceKeyCodePresent(other.m_voiceKeyCodePresent)
     , m_typeZ(other.m_typeZ)
     , m_connParamUpdateBeforeOtaVersion(other.m_connParamUpdateBeforeOtaVersion)
     , m_upgradePauseVersion(other.m_upgradePauseVersion)
@@ -60,8 +62,6 @@ ConfigModelSettingsData::ConfigModelSettingsData(const ConfigModelSettingsData &
     , m_servicesType(other.m_servicesType)
     , m_servicesRequired(other.m_servicesRequired)
     , m_servicesOptional(other.m_servicesOptional)
-    , m_voiceKeyCode(other.m_voiceKeyCode)
-    , m_voiceKeyCodePresent(other.m_voiceKeyCodePresent)
 {
 }
 
@@ -108,13 +108,13 @@ ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
     , m_pairingNameFormat("")
     , m_otaProductName("")
     , m_standbyMode("")
+    , m_voiceKeyCodePresent(false)
     , m_typeZ(false)
     , m_connParamUpdateBeforeOtaVersion("")
     , m_upgradePauseVersion("")
     , m_upgradeStuckVersion("")
     , m_hasConnParams(false)
     , m_servicesType(ConfigModelSettings::GattServiceType)
-    , m_voiceKeyCodePresent(false)
 {
     // name field
     json_t *obj = json_object_get(json, "name");

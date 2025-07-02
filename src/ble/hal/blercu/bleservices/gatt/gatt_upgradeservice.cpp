@@ -855,7 +855,7 @@ void GattUpgradeService::sendDATA()
         packet.header[1] = uint8_t(blockId & 0xff);
         int64_t pos = blockId * FIRMWARE_PACKET_MTU;
         if (pos > 100) {
-#if 1
+#if 0
             // OTA error condition1
             XLOGD_WARN("Sending invalid op code OPCODE_ERROR for RDKTV-13686 to test error condition in RCU!!!!!!!!!!!!!!!!!!");
             packet.header[0] = OPCODE_ERROR | uint8_t((blockId >> 8) & 0x3f);

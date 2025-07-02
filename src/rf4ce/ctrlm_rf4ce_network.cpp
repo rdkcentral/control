@@ -4967,26 +4967,6 @@ void ctrlm_obj_network_rf4ce_t::req_process_stop_pairing(void *data, int size) {
    if(dqm->params->screen_bind_disable) {
       XLOGD_INFO("screen bind disable is not requested");
    } else {
-      /* TODO
-      ctrlm_main_iarm_call_property_t property = {};
-      property.api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION;
-      property.result       = CTRLM_IARM_CALL_RESULT_INVALID;
-      property.network_id   = CTRLM_MAIN_NETWORK_ID_ALL;
-      property.name         = CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND;
-      property.value        = dqm->params->timeout * 1000;
-
-      ctrlm_main_iarm_call_property_set_(&property);
-      if (property.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
-         XLOGD_ERROR("Failed to set ACTIVE PERIOD SCREENBIND property");
-         set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
-         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
-
-         if (dqm->semaphore) {
-            sem_post(dqm->semaphore);
-         }
-         return ;
-      }
-
       ctrlm_main_iarm_call_control_service_pairing_mode_t pairing = {};
       pairing.api_revision       = CTRLM_MAIN_IARM_BUS_API_REVISION;
       pairing.network_id         = network_id_get();
@@ -4994,9 +4974,9 @@ void ctrlm_obj_network_rf4ce_t::req_process_stop_pairing(void *data, int size) {
       pairing.restrict_by_remote = 0;
       pairing.result             = CTRLM_IARM_CALL_RESULT_INVALID;
 
-      ctrlm_main_iarm_call_control_service_start_pairing_mode_(&pairing);
+      ctrlm_main_iarm_call_control_service_end_pairing_mode(&pairing);
       if (pairing.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
-         XLOGD_ERROR("Failed to start pairing mode timer");
+         XLOGD_ERROR("Failed to end pairing mode");
          set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
          dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
 
@@ -5008,7 +4988,6 @@ void ctrlm_obj_network_rf4ce_t::req_process_stop_pairing(void *data, int size) {
 
       set_rf_pair_state(CTRLM_RF_PAIR_STATE_SEARCHING);
       iarm_event_rcu_status();
-      */
    }
    if (dqm->semaphore) {
        sem_post(dqm->semaphore);

@@ -98,7 +98,6 @@ json_t *ctrlm_rcp_ipc_net_status_t::to_json() const
     json_t *status             = json_object();
     json_t *net_type_supported = json_array();
     json_t *remote_data_array  = json_array();
-    json_t *manual_pair_code   = json_array();
     int err                    = 0;
 
     for (auto const &it : ctrlm_network_types_get()) {
@@ -114,14 +113,6 @@ json_t *ctrlm_rcp_ipc_net_status_t::to_json() const
     err |= json_object_set_new_nocheck(status, NET_TYPE,            json_integer(net_type_));
     err |= json_object_set_new_nocheck(status, PAIRING_STATE,       json_string(ctrlm_rf_pair_state_str(pair_state_)));
     err |= json_object_set_new_nocheck(status, IR_PROG_STATE,       json_string(ctrlm_ir_state_str(irdb_state_)));
-
-    std::vector<ctrlm_key_code_t> golden_code = ctrlm_validation_golden_code_get();
-    if (!golden_code.empty()) {
-       for (auto digit : golden_code) {
-           err |= json_array_append_new(manual_pair_code, json_integer(atoi(ctrlm_key_code_str(digit))));
-       }
-       err |= json_object_set_new_nocheck(status, MANUAL_PAIR_CODE, manual_pair_code);
-    }
 
     return (err) ? NULL : status;
 }
@@ -180,6 +171,48 @@ json_t *ctrlm_rcp_ipc_upgrade_status_t::to_json() const
 }
 
 char *ctrlm_rcp_ipc_upgrade_status_t::to_string() const
+{
+    return json_dumps(to_json(), JSON_ENCODE_ANY);
+}
+
+ctrlm_rcp_ipc_validation_status_t::~ctrlm_rcp_ipc_validation_status_t()
+{
+}
+
+void ctrlm_rcp_ipc_validation_status_t::populate_status()
+{
+    validation_status_ = CTRLM_RCU_VALIDATION_RESULT_PENDING; // TODO
+    validation_key_    = CTRLM_KEY_CODE_INVALID;              // TODO
+}
+
+json_t *ctrlm_rcp_ipc_validation_status_t::to_json() const
+{
+    json_t *status = json_object();
+    int     err    = 0;
+
+    err |= json_object_set_new_nocheck(status, VALIDATION_STATUS, json_string(ctrlm_rcu_validation_result_str(validation_status_)));
+
+    if(validation_status_ == CTRLM_RCU_VALIDATION_RESULT_PENDING) {
+        if(validation_key_ == CTRLM_KEY_CODE_INVALID) {
+            std::vector<ctrlm_key_code_t> golden_code = ctrlm_validation_golden_code_get();
+            if (!golden_code.empty()) {
+                json_t *code = json_array();
+                for (auto digit : golden_code) {
+                    // convert from CTRLM_KEY_CODE_DIGIT_0 - 9 to KEY_0 - 9
+                    err |= json_array_append_new(code, json_integer(KEY_0 + digit - CTRLM_KEY_CODE_DIGIT_0));
+                }
+                err |= json_object_set_new_nocheck(status, VALIDATION_CODE, code);
+            }
+        } else {
+            // convert from CTRLM_KEY_CODE_DIGIT_0 - 9 to KEY_0 - 9
+            err |= json_object_set_new_nocheck(status, VALIDATION_KEY, json_integer(KEY_0 + validation_key_ - CTRLM_KEY_CODE_DIGIT_0));
+        }
+    }
+
+    return (err) ? NULL : status;
+}
+
+char *ctrlm_rcp_ipc_validation_status_t::to_string() const
 {
     return json_dumps(to_json(), JSON_ENCODE_ANY);
 }

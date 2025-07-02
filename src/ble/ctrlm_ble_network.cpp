@@ -608,27 +608,25 @@ void ctrlm_obj_network_ble_t::req_process_start_pairing(void *data, int size) {
 
    if (!ready_) {
       XLOGD_FATAL("Network is not ready!");
+   } else if(dqm->params->scan_enable) {
+      XLOGD_INFO("scan enable is not requested");
    } else {
-      if(dqm->params->scan_enable) {
-         XLOGD_INFO("scan enable is not requested");
-      } else {
-         if (ble_rcu_interface_) {
-            bool ret = true;
-            if (dqm->params->ieee_address_list.size() == 0) {
-               if(!ble_rcu_interface_->pairAutoWithTimeout(dqm->params->timeout * 1000)) {
-                  XLOGD_ERROR("failed to start BLE remote scan");
-                  ret = false;
-               }
-            } else {
-               XLOGD_INFO("Starting pairing with a list of mac addresses! Pairing with first available...");
-               if(!ble_rcu_interface_->pairWithMacAddrs(dqm->params->ieee_address_list)) {
-                  XLOGD_ERROR("failed to start BLE remote scan");
-                  ret = false;
-               }
+      if (ble_rcu_interface_) {
+         bool ret = true;
+         if (dqm->params->ieee_address_list.size() == 0) {
+            if(!ble_rcu_interface_->pairAutoWithTimeout(dqm->params->timeout * 1000)) {
+               XLOGD_ERROR("failed to start BLE remote scan");
+               ret = false;
             }
-            if (ret) {
-               dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+         } else {
+            XLOGD_INFO("Starting pairing with a list of mac addresses! Pairing with first available...");
+            if(!ble_rcu_interface_->pairWithMacAddrs(dqm->params->ieee_address_list)) {
+               XLOGD_ERROR("failed to start BLE remote scan");
+               ret = false;
             }
+         }
+         if (ret) {
+            dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
          }
       }
    }
@@ -649,29 +647,18 @@ void ctrlm_obj_network_ble_t::req_process_stop_pairing(void *data, int size) {
 
    if (!ready_) {
       XLOGD_FATAL("Network is not ready!");
+   } else if(dqm->params->scan_disable) {
+      XLOGD_INFO("scan disable is not requested");
    } else {
-      if(dqm->params->scan_disable) {
-         XLOGD_INFO("scan disable is not requested");
-      } else {
-         if (ble_rcu_interface_) {
-            bool ret = true;
-            /* TODO
-            if (dqm->params->ieee_address_list.size() == 0) {
-               if(!ble_rcu_interface_->pairAutoWithTimeout(dqm->params->timeout * 1000)) {
-                  XLOGD_ERROR("failed to start BLE remote scan");
-                  ret = false;
-               }
-            } else {
-               XLOGD_INFO("Starting pairing with a list of mac addresses! Pairing with first available...");
-               if(!ble_rcu_interface_->pairWithMacAddrs(dqm->params->ieee_address_list)) {
-                  XLOGD_ERROR("failed to start BLE remote scan");
-                  ret = false;
-               }
-            }
-            */
-            if (ret) {
-               dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
-            }
+      if (ble_rcu_interface_) {
+         bool ret = true;
+         XLOGD_INFO("Cancel pairing operations.");
+         if(!ble_rcu_interface_->pairCancel()) {
+            XLOGD_ERROR("failed to cancel BLE remote scan");
+            ret = false;
+         }
+         if (ret) {
+            dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
          }
       }
    }

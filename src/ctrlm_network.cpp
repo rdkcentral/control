@@ -1021,6 +1021,21 @@ void ctrlm_obj_network_t::iarm_event_rcu_status(void) {
    }
 }
 
+void ctrlm_obj_network_t::iarm_event_rcu_validation_status(void) {
+   XLOGD_DEBUG("Enter...");
+
+   ctrlm_rcp_ipc_validation_status_t msg;
+   msg.populate_status();
+
+   XLOGD_INFO("Broadcasting IARM message %s RCU Validation Status....", name_get());
+   XLOGD_DEBUG("%s", msg.to_string());
+
+   ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
+   if (!rcp_ipc->on_validation_status(msg)) {
+       XLOGD_ERROR("Error broadcasting IARM message");
+   }
+}
+
 void ctrlm_obj_network_t::iarm_event_rcu_firmware_status(const ctrlm_obj_controller_t &rcu) {
    XLOGD_DEBUG("Enter...");
    ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();

@@ -128,6 +128,32 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_status(const ctrlm_rcp_ipc_net_status_t &n
     return broadcast_iarm_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_RCU_STATUS, ret);
 }
 
+bool ctrlm_rcp_ipc_iarm_thunder_t::on_validation_status(const ctrlm_rcp_ipc_validation_status_t &validation_status) const
+{
+    if (!is_running(atomic_running_)) {
+        XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state");
+        return(false);
+    }
+
+    if (validation_status.get_api_revision() != CTRLM_MAIN_IARM_BUS_API_REVISION) {
+        XLOGD_ERROR("Wrong ctrlm API revision - should be %d, event is %d", CTRLM_MAIN_IARM_BUS_API_REVISION, validation_status.get_api_revision());
+        return(false);
+    }
+
+    json_t *ret = json_object();
+    int err = 0;
+
+    err |= json_object_set_new_nocheck(ret, STATUS, validation_status.to_json());
+
+    if (err) {
+        XLOGD_ERROR("JSON object set error");
+        json_decref(ret);
+        return(false);
+    }
+
+    return broadcast_iarm_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_VALIDATION_STATUS, ret);
+}
+
 bool ctrlm_rcp_ipc_iarm_thunder_t::on_firmware_update_progress(const ctrlm_rcp_ipc_upgrade_status_t &upgrade_status) const
 {
     if (!is_running(atomic_running_)) {

@@ -77,6 +77,7 @@ public:
     bool is_thunder_device_update_enabled() const;
 
     bool on_status(const ctrlm_rcp_ipc_net_status_t &net_status) const;
+    bool on_validation_status(const ctrlm_rcp_ipc_validation_status_t &validation_status) const;
     bool on_firmware_update_progress(const ctrlm_rcp_ipc_upgrade_status_t &upgrade_status) const;
     bool on_validation(const ctrlm_rcp_ipc_validation_status_t &validation_status) const;
 

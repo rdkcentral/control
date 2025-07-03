@@ -43,7 +43,7 @@
       "voice_data_retry_max"             :         0,
       "voice_csma_backoff_max"           :         4,
       "voice_data_backoff_exp_min"       :         0,
-      "voice_command_encryption"         :         0,
+      "voice_command_encryption"         :         1,
       "rib_update_check_interval"        :        24,
       "auto_check_validation_period"     :       500,
       "link_lost_wait_time"              :     10000,

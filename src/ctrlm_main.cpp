@@ -1316,7 +1316,7 @@ gboolean ctrlm_load_device_mac(void) {
       XLOGD_INFO("Device Mac set to <%s>", ctrlm_is_pii_mask_enabled() ? "***" : mac.c_str());
    } else {
       XLOGD_ERROR("Failed to get MAC address for device mac");
-      g_ctrlm.device_mac = "UNKNOWN";
+      g_ctrlm.device_mac = "";
    }
 
    return(ret);

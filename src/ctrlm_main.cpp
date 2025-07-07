@@ -2454,7 +2454,16 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             ctrlm_validation_begin(hdr->network_id, dqm->controller_id, obj_net->ctrlm_controller_type_get(dqm->controller_id));
             obj_net->bind_validation_begin(dqm);
-            obj_net->iarm_event_rcu_status();
+            obj_net->iarm_event_rcu_validation_status();
+            break;
+         }
+         case CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_KEY: {
+            ctrlm_main_queue_msg_bind_validation_key_t *dqm = (ctrlm_main_queue_msg_bind_validation_key_t *)msg;
+            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_KEY");
+
+            ctrlm_validation_key(hdr->network_id, dqm->controller_id, obj_net->ctrlm_controller_type_get(dqm->controller_id), dqm->key_code);
+            obj_net->bind_validation_key(dqm);
+            obj_net->iarm_event_rcu_validation_status();
             break;
          }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_END: {
@@ -2463,7 +2472,7 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             ctrlm_validation_end(hdr->network_id, dqm->controller_id, obj_net->ctrlm_controller_type_get(dqm->controller_id), dqm->binding_type, dqm->validation_type, dqm->result, dqm->semaphore, dqm->cmd_result);
             obj_net->bind_validation_end(dqm);
-            obj_net->iarm_event_rcu_status();
+            obj_net->iarm_event_rcu_validation_status();
             break;
          }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_FAILED_TIMEOUT: {

@@ -34,9 +34,25 @@ void ctrlm_obj_network_rf4ce_t::bind_validation_begin(ctrlm_main_queue_msg_bind_
       return;
    }
    set_rf_pair_state(CTRLM_RF_PAIR_STATE_PAIRING);
+   // Set the result for validation status
+   validation_result_set(CTRLM_RCU_VALIDATION_RESULT_PENDING);
+   validation_key_set(CTRLM_KEY_CODE_INVALID);
+
    XLOGD_INFO("Controller Id %u 0x%016llX", dqm->controller_id, dqm->ieee_address);
    // Destroy the timeout because we switch the state at validation end
    ctrlm_timeout_destroy(&binding_in_progress_tag_);
+}
+
+void ctrlm_obj_network_rf4ce_t::bind_validation_key(ctrlm_main_queue_msg_bind_validation_key_t *dqm) {
+   THREAD_ID_VALIDATE();
+   if(NULL == dqm) {
+      XLOGD_ERROR("dqm is null");
+      return;
+   }
+   // Set key code for validation status
+   validation_key_set(dqm->key_code);
+   
+   XLOGD_INFO("Controller Id %u key <%s>", dqm->controller_id, ctrlm_key_code_str(dqm->key_code));
 }
 
 // Validation finish from control manager
@@ -69,6 +85,10 @@ void ctrlm_obj_network_rf4ce_t::bind_validation_end(ctrlm_main_queue_msg_bind_va
       case CTRLM_RCU_VALIDATION_RESULT_FAILURE:
       default:                                          result_rf4ce = CTRLM_RF4CE_RESULT_VALIDATION_FAILURE;         set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED); break;
    }
+
+   // Set the result for validation status
+   validation_result_set(dqm->result);
+   validation_key_set(CTRLM_KEY_CODE_INVALID);
 
    if(!controller_exists(dqm->controller_id)) { 
       XLOGD_INFO("Controller Id %u does not exist!", dqm->controller_id);

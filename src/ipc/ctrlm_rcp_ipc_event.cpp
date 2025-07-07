@@ -179,10 +179,15 @@ ctrlm_rcp_ipc_validation_status_t::~ctrlm_rcp_ipc_validation_status_t()
 {
 }
 
-void ctrlm_rcp_ipc_validation_status_t::populate_status()
+void ctrlm_rcp_ipc_validation_status_t::populate_status(const ctrlm_obj_network_t &network)
 {
-    validation_status_ = CTRLM_RCU_VALIDATION_RESULT_PENDING; // TODO
-    validation_key_    = CTRLM_KEY_CODE_INVALID;              // TODO
+    ctrlm_rcu_validation_result_t status = CTRLM_RCU_VALIDATION_RESULT_MAX;
+    ctrlm_key_code_t key = CTRLM_KEY_CODE_INVALID;
+
+    network.validation_status_get(&status, &key);
+
+    set_status(status);
+    set_key(key);
 }
 
 json_t *ctrlm_rcp_ipc_validation_status_t::to_json() const

@@ -195,6 +195,9 @@ public:
    gboolean             mask_key_codes_get()  const;
    void                 stb_name_set(const std::string& stb_name);
    std::string          stb_name_get() const;
+   void                 validation_result_set(ctrlm_rcu_validation_result_t result);
+   void                 validation_key_set(ctrlm_key_code_t key);
+   void                 validation_status_get(ctrlm_rcu_validation_result_t *result, ctrlm_key_code_t *key) const;
    virtual ctrlm_hal_result_t network_init(GThread *ctrlm_main_thread);
    virtual void         network_destroy();
    void                 hal_api_main_set(ctrlm_hal_network_main_t main);
@@ -240,6 +243,7 @@ public:
    virtual void         recovery_set(ctrlm_recovery_type_t recovery);
    virtual bool         backup_hal_nvm();
    virtual void         bind_validation_begin(ctrlm_main_queue_msg_bind_validation_begin_t *dqm);
+   virtual void         bind_validation_key(ctrlm_main_queue_msg_bind_validation_key_t *dqm);
    virtual void         bind_validation_end(ctrlm_main_queue_msg_bind_validation_end_t *dqm);
    virtual bool         bind_validation_timeout(ctrlm_controller_id_t controller_id);
    virtual std::vector<ctrlm_obj_controller_t *> get_controller_obj_list() const;
@@ -311,17 +315,20 @@ protected:
    virtual gboolean     key_event_hook(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_key_status_t key_status, ctrlm_key_code_t key_code);
 
 private:
-   gboolean                     mask_key_codes_ = true;
-   std::string                  receiver_id_;
-   std::string                  device_id_;
-   std::string                  service_account_id_;
-   std::string                  partner_id_;
-   std::string                  experience_;
-   std::string                  stb_name_;
-   ctrlm_hal_network_main_t     hal_api_main_         = NULL;
-   ctrlm_hal_req_property_get_t hal_api_property_get_ = NULL;
-   ctrlm_hal_req_property_set_t hal_api_property_set_ = NULL;
-   ctrlm_hal_req_term_t         hal_api_term_         = NULL;
+   gboolean                      mask_key_codes_ = true;
+   std::string                   receiver_id_;
+   std::string                   device_id_;
+   std::string                   service_account_id_;
+   std::string                   partner_id_;
+   std::string                   experience_;
+   std::string                   stb_name_;
+   ctrlm_rcu_validation_result_t validation_result_ = CTRLM_RCU_VALIDATION_RESULT_MAX;
+   ctrlm_key_code_t              validation_key_    = CTRLM_KEY_CODE_INVALID;
+
+   ctrlm_hal_network_main_t      hal_api_main_         = NULL;
+   ctrlm_hal_req_property_get_t  hal_api_property_get_ = NULL;
+   ctrlm_hal_req_property_set_t  hal_api_property_set_ = NULL;
+   ctrlm_hal_req_term_t          hal_api_term_         = NULL;
 
    static gpointer      terminate_hal(gpointer data);
 };

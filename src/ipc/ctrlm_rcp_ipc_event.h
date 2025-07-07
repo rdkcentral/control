@@ -169,7 +169,7 @@ public:
     void               set_result(ctrlm_iarm_call_result_t result)          { result_ = result; }
     void               set_status(ctrlm_rcu_validation_result_t status)     { validation_status_ = status; }
     void               set_key(ctrlm_key_code_t key)                        { (key >= CTRLM_KEY_CODE_DIGIT_0 && key <= CTRLM_KEY_CODE_DIGIT_9) ? validation_key_ = key : validation_key_ = CTRLM_KEY_CODE_INVALID; }
-    void               populate_status();
+    void               populate_status(const ctrlm_obj_network_t &network);
 
 private:
     uint8_t                       api_revision_      = CTRLM_MAIN_IARM_BUS_API_REVISION;

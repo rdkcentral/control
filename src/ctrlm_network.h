@@ -167,8 +167,6 @@ public:
    const char *         name_get() const;
    const char *         version_get() const;
    virtual std::string  db_name_get() const;
-   void                 receiver_id_set(const std::string& receiver_id);
-   std::string          receiver_id_get()  const;
    virtual void         device_id_set(const std::string& device_id);
    std::string          device_id_get()  const;
    void                 service_account_id_set(const std::string& service_account_id);
@@ -296,7 +294,6 @@ protected:
 
 private:
    gboolean                     mask_key_codes_ = true;
-   std::string                  receiver_id_;
    std::string                  device_id_;
    std::string                  service_account_id_;
    std::string                  partner_id_;

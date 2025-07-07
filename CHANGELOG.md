@@ -17,6 +17,10 @@ All notable changes to this project will be documented in this file.
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
 
+## [1.1.0p1] - 2025-07-07
+### Fixed
+- proper initialization of remote config voice key default values
+
 ## [1.1.0] - 2025-05-30
 
 ### Changed

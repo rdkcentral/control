@@ -536,32 +536,6 @@ typedef struct {
    char                     controller_type[CTRLM_RCU_MAX_USER_STRING_LENGTH]; ///< Remote control's type string
 } ctrlm_rcu_iarm_event_key_press_t;
 
-/// @brief Structure of Remote Control's Validation Begin IARM event
-/// @details This event notifies listeners that a validation attempt has begun.
-typedef struct {
-   unsigned char               api_revision;                                      ///< Revision of this API
-   ctrlm_network_id_t          network_id;                                        ///< identifier of network on which the controller is bound
-   ctrlm_network_type_t        network_type;                                      ///< type of network on which the controller is bound
-   ctrlm_controller_id_t       controller_id;                                     ///< identifier of the controller on which the validation is being performed
-   ctrlm_rcu_binding_type_t    binding_type;                                      ///< Type of binding that is being performed
-   ctrlm_rcu_validation_type_t validation_type;                                   ///< Type of validation that is being performed
-   ctrlm_key_code_t            validation_keys[CTRLM_RCU_VALIDATION_KEY_QTY];     ///< Validation keys to be displayed for internal validation
-   char                        controller_type[CTRLM_RCU_MAX_USER_STRING_LENGTH]; ///< Remote control's type string
-} ctrlm_rcu_iarm_event_validation_begin_t;
-
-/// @brief Structure of Remote Control's Validation End IARM event
-/// @details This event notifies listeners that a validation attempt has completed.
-typedef struct {
-   unsigned char                 api_revision;                                      ///< Revision of this API
-   ctrlm_network_id_t            network_id;                                        ///< identifier of network on which the controller is bound
-   ctrlm_network_type_t          network_type;                                      ///< type of network on which the controller is bound
-   ctrlm_controller_id_t         controller_id;                                     ///< identifier of the controller on which the validation was performed
-   ctrlm_rcu_binding_type_t      binding_type;                                      ///< Type of binding that was performed
-   ctrlm_rcu_validation_type_t   validation_type;                                   ///< Type of validation that was performed
-   ctrlm_rcu_validation_result_t result;                                            ///< Result of the validation attempt
-   char                          controller_type[CTRLM_RCU_MAX_USER_STRING_LENGTH]; ///< Remote control's type string
-} ctrlm_rcu_iarm_event_validation_end_t;
-
 /// @brief Structure of Remote Control's Configuration Complete IARM event
 /// @details This event notifies listeners that a validation attempt has completed.
 typedef struct {
@@ -786,9 +760,6 @@ typedef struct {
 /// | Bus Name                 | Event Name                                 | Argument                                  | Description |
 /// | :-------                 | :---------                                 | :-------                                  | :---------- |
 /// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_RCU_IARM_EVENT_KEY_PRESS             | ctrlm_rcu_iarm_event_key_press_t *        | Generated each time a key event occurs (down, repeat, up) |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_RCU_IARM_EVENT_VALIDATION_BEGIN      | ctrlm_rcu_iarm_event_validation_begin_t * | Generated at the beginning of a validation attempt |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_RCU_IARM_EVENT_VALIDATION_KEY_UPDATE | ctrlm_rcu_iarm_event_key_press_t *        | Generated when the user enters a validation code digit/letter |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_RCU_IARM_EVENT_VALIDATION_END        | ctrlm_rcu_iarm_event_validation_end_t *   | Generated at the end of a validation attempt |
 /// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_RCU_IARM_EVENT_KEY_SETUP             | ctrlm_rcu_iarm_event_key_setup_t *        | Generated when the setup key combo is entered on a controller |
 /// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_RCU_IARM_EVENT_KEY_GHOST             | ctrlm_rcu_iarm_event_key_ghost_t *        | Generated when a ghost code is received from a controller |
 /// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_RCU_IARM_EVENT_RIB_ACCESS_CONTROLLER | ctrlm_rcu_iarm_event_rib_entry_access_t * | Generated when a controller accesses the RIB |

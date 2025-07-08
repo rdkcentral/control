@@ -106,10 +106,6 @@ ctrlm_network_id_t ctrlm_obj_controller_t::network_id_get() const {
    return(obj_network_->network_id_get());
 }
 
-string ctrlm_obj_controller_t::receiver_id_get() const {
-   return(obj_network_->receiver_id_get());
-}
-
 string ctrlm_obj_controller_t::device_id_get() const {
    return(obj_network_->device_id_get());
 }

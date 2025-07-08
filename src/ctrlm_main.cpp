@@ -189,7 +189,6 @@ typedef struct {
    sem_t                              ctrlm_utils_sem;
    GAsyncQueue *                      queue;
    string                             stb_name;
-   string                             receiver_id;
    string                             device_id;
    ctrlm_device_type_t                device_type;
    string                             service_account_id;
@@ -206,7 +205,6 @@ typedef struct {
    string                             image_build_time;
    string                             db_path;
    string                             minidump_path;
-   gboolean                           has_receiver_id;
    gboolean                           has_device_id;
    gboolean                           has_device_type;
    gboolean                           has_service_account_id;
@@ -293,10 +291,6 @@ static ctrlm_global_t g_ctrlm;
 #ifdef AUTH_ENABLED
 static gboolean ctrlm_has_authservice_data(void);
 static gboolean ctrlm_load_authservice_data(void);
-#ifdef AUTH_RECEIVER_ID
-static gboolean ctrlm_load_receiver_id(void);
-static void     ctrlm_main_has_receiver_id_set(gboolean has_id);
-#endif
 #ifdef AUTH_DEVICE_ID
 static gboolean ctrlm_load_device_id(void);
 static void     ctrlm_main_has_device_id_set(gboolean has_id);
@@ -579,7 +573,6 @@ int main(int argc, char *argv[]) {
    g_ctrlm.telemetry                      = NULL;
    g_ctrlm.telemetry_report_interval      = JSON_INT_VALUE_CTRLM_GLOBAL_TELEMETRY_REPORT_INTERVAL;
    g_ctrlm.service_access_token.clear();
-   g_ctrlm.has_receiver_id                = false;
    g_ctrlm.has_device_id                  = false;
    g_ctrlm.has_device_type                = false;
    g_ctrlm.has_service_account_id         = false;
@@ -1316,7 +1309,7 @@ gboolean ctrlm_load_device_mac(void) {
       XLOGD_INFO("Device Mac set to <%s>", ctrlm_is_pii_mask_enabled() ? "***" : mac.c_str());
    } else {
       XLOGD_ERROR("Failed to get MAC address for device mac");
-      g_ctrlm.device_mac = "UNKNOWN";
+      g_ctrlm.device_mac = "";
    }
 
    return(ret);
@@ -1377,31 +1370,6 @@ void ctrlm_main_auth_start_poll() {
                                                          ctrlm_authservice_poll,
                                                          NULL);
 }
-
-#ifdef AUTH_RECEIVER_ID
-gboolean ctrlm_main_has_receiver_id_get(void) {
-   return(g_ctrlm.has_receiver_id);
-}
-
-void ctrlm_main_has_receiver_id_set(gboolean has_id) {
-   g_ctrlm.has_receiver_id = has_id;
-}
-
-gboolean ctrlm_load_receiver_id(void) {
-   if(!g_ctrlm.authservice->get_receiver_id(g_ctrlm.receiver_id)) {
-      ctrlm_main_has_receiver_id_set(false);
-      return(false);
-   }
-
-   g_ctrlm.voice_session->voice_stb_data_receiver_id_set(g_ctrlm.receiver_id);
-
-   for(auto const &itr : g_ctrlm.networks) {
-      itr.second->receiver_id_set(g_ctrlm.receiver_id);
-   }
-   ctrlm_main_has_receiver_id_set(true);
-   return(true);
-}
-#endif
 
 #ifdef AUTH_DEVICE_ID
 void ctrlm_main_has_device_id_set(gboolean has_id) {
@@ -1550,12 +1518,6 @@ gboolean ctrlm_load_service_access_token(void) {
 gboolean ctrlm_has_authservice_data(void) {
    gboolean ret = TRUE;
 #ifdef AUTH_ENABLED
-#ifdef AUTH_RECEIVER_ID
-   if(!ctrlm_main_has_receiver_id_get()) {
-      ret = FALSE;
-   }
-#endif
-
 #ifdef AUTH_DEVICE_ID
    if(!ctrlm_main_has_device_id_get()) {
       ret = FALSE;
@@ -1594,18 +1556,6 @@ gboolean ctrlm_load_authservice_data(void) {
    gboolean ret = TRUE;
 #ifdef AUTH_ENABLED
    if(g_ctrlm.authservice->is_ready()) {
-#ifdef AUTH_RECEIVER_ID
-   if(!ctrlm_main_has_receiver_id_get()) {
-      XLOGD_INFO("load receiver id");
-      if(!ctrlm_load_receiver_id()) {
-         XLOGD_TELEMETRY("failed to load receiver id");
-         ret = FALSE;
-      } else {
-         XLOGD_INFO("load receiver id successfully <%s>", ctrlm_is_pii_mask_enabled() ? "***" : g_ctrlm.receiver_id.c_str());
-      }
-   }
-#endif
-
 #ifdef AUTH_DEVICE_ID
    if(!ctrlm_main_has_device_id_get()) {
       XLOGD_INFO("load device id");
@@ -3298,10 +3248,6 @@ void ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *status) {
    safec_rc = strncpy_s(status->stb_device_id, sizeof(status->stb_device_id), g_ctrlm.device_id.c_str(), CTRLM_MAIN_DEVICE_ID_MAX_LENGTH - 1);
    ERR_CHK(safec_rc);
    status->stb_device_id[CTRLM_MAIN_DEVICE_ID_MAX_LENGTH - 1] = '\0';
-
-   safec_rc = strncpy_s(status->stb_receiver_id, sizeof(status->stb_receiver_id), g_ctrlm.receiver_id.c_str(), CTRLM_MAIN_RECEIVER_ID_MAX_LENGTH - 1);
-   ERR_CHK(safec_rc);
-   status->stb_receiver_id[CTRLM_MAIN_RECEIVER_ID_MAX_LENGTH - 1] = '\0';
 }
 
 gboolean ctrlm_main_iarm_call_ir_remote_usage_get(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage) {
@@ -4824,10 +4770,6 @@ ctrlm_auth_t* ctrlm_main_auth_get() {
 #else
    return(NULL);
 #endif
-}
-
-string ctrlm_receiver_id_get(){
-   return g_ctrlm.receiver_id;
 }
 
 string ctrlm_device_id_get(){

@@ -453,7 +453,6 @@ gboolean                           ctrlm_is_one_touch_autobind_active(void);
 gboolean                           ctrlm_is_binding_table_empty(void);
 gboolean                           ctrlm_is_binding_table_full(void);
 bool                               ctrlm_is_pii_mask_enabled(void);
-gboolean                           ctrlm_main_has_receiver_id_get(void);
 gboolean                           ctrlm_main_has_device_id_get(void);
 gboolean                           ctrlm_main_has_device_type_get(void);
 gboolean                           ctrlm_main_has_service_account_id_get(void);
@@ -508,7 +507,6 @@ void        ctrlm_update_last_key_info(int controller_id, ctrlm_key_source_t sou
 ctrlm_irdb_interface_t* ctrlm_main_irdb_get();
 ctrlm_auth_t* ctrlm_main_auth_get();
 void          ctrlm_main_auth_start_poll();
-std::string ctrlm_receiver_id_get();
 std::string ctrlm_device_id_get();
 std::string ctrlm_stb_name_get();
 std::string ctrlm_device_mac_get();

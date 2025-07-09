@@ -204,13 +204,13 @@ json_t *ctrlm_rcp_ipc_validation_status_t::to_json() const
                 json_t *code = json_array();
                 for (auto digit : golden_code) {
                     // convert from CTRLM_KEY_CODE_DIGIT_0 - 9 to KEY_0 - 9
-                    err |= json_array_append_new(code, json_integer(KEY_0 + digit - CTRLM_KEY_CODE_DIGIT_0));
+                    err |= json_array_append_new(code, json_integer(ctrlm_key_code_to_linux_key(digit)));
                 }
                 err |= json_object_set_new_nocheck(status, VALIDATION_CODE, code);
             }
         } else {
             // convert from CTRLM_KEY_CODE_DIGIT_0 - 9 to KEY_0 - 9
-            err |= json_object_set_new_nocheck(status, VALIDATION_KEY, json_integer(KEY_0 + validation_key_ - CTRLM_KEY_CODE_DIGIT_0));
+            err |= json_object_set_new_nocheck(status, VALIDATION_KEY, json_integer(ctrlm_key_code_to_linux_key(validation_key_)));
         }
     }
 

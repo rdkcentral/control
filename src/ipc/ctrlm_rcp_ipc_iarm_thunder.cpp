@@ -187,11 +187,6 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_validation(const ctrlm_rcp_ipc_validation_
         return(false);
     }
 
-    if (!thunder_device_update_enabled_) {
-        XLOGD_WARN("This event is not currently enabled - discarding event");
-        return(false);
-    }
-
     json_t *ret = json_object();
     int err = 0;
 

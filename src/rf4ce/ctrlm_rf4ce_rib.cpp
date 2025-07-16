@@ -349,8 +349,6 @@ void ctrlm_obj_controller_rf4ce_t::rf4ce_rib_get(gboolean target, ctrlm_timestam
                   status = CTRLM_RF4CE_RIB_RSP_STATUS_INVALID_INDEX;
                } else if(index == CTRLM_RF4CE_RIB_ATTR_INDEX_TARGET_ID_DATA_DEVICE_ID) {
                   value_length = property_read_device_id(data_buf, CTRLM_RF4CE_RIB_ATTR_LEN_TARGET_ID_DATA);
-               } else if(index == CTRLM_RF4CE_RIB_ATTR_INDEX_TARGET_ID_DATA_RECEIVER_ID) {
-                  value_length = property_read_receiver_id(data_buf, CTRLM_RF4CE_RIB_ATTR_LEN_TARGET_ID_DATA);
                } else {
                   XLOGD_WARN("Account ID not implemented yet");
                   value_length = 0;
@@ -851,8 +849,6 @@ void ctrlm_obj_controller_rf4ce_t::rf4ce_rib_set(gboolean target, ctrlm_timestam
                   status = CTRLM_RF4CE_RIB_RSP_STATUS_INVALID_INDEX;
                } else if(index == CTRLM_RF4CE_RIB_ATTR_INDEX_TARGET_ID_DATA_DEVICE_ID) {
                   property_write_device_id(data, CTRLM_RF4CE_RIB_ATTR_LEN_TARGET_ID_DATA);
-               } else if(index == CTRLM_RF4CE_RIB_ATTR_INDEX_TARGET_ID_DATA_RECEIVER_ID) {
-                  property_write_receiver_id(data, CTRLM_RF4CE_RIB_ATTR_LEN_TARGET_ID_DATA);
                } else {
                   XLOGD_WARN("Account ID not implemented yet");
                   status = CTRLM_RF4CE_RIB_RSP_STATUS_UNSUPPORTED_ATTRIBUTE;

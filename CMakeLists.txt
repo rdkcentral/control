@@ -197,8 +197,11 @@ if(ANSI_CODES_DISABLED)
 endif()
 
 if(ASB)
+   message(STATUS "ASB is ENABLED")
    add_compile_definitions(ASB)
    target_link_libraries(controlMgr ${ASB_LIBS})
+else()
+   message(STATUS "ASB is NOT ENABLED")
 endif()
 
 if(ASSERT_ON_WRONG_THREAD)

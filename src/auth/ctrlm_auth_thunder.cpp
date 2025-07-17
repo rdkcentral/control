@@ -33,6 +33,11 @@ bool ctrlm_auth_thunder_t::is_ready() {
    return(ret);
 }
 
+bool ctrlm_auth_thunder_t::get_receiver_id(std::string &receiver_id) {
+   bool ret = this->plugin->get_receiver_id(receiver_id);
+   return(ret);
+}
+
 bool ctrlm_auth_thunder_t::get_device_id(std::string &device_id) {
    bool ret = this->plugin->get_device_id(device_id);
    return(ret);

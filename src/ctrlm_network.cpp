@@ -155,6 +155,16 @@ const char * ctrlm_obj_network_t::version_get() const {
    return(version_.c_str());
 }
 
+void ctrlm_obj_network_t::receiver_id_set(const string& receiver_id) {
+   THREAD_ID_VALIDATE();
+   receiver_id_ = receiver_id;
+}
+
+string ctrlm_obj_network_t::receiver_id_get() const {
+   THREAD_ID_VALIDATE();
+   return(receiver_id_);
+}
+
 void ctrlm_obj_network_t::device_id_set(const string& device_id) {
    THREAD_ID_VALIDATE();
     device_id_ = device_id;

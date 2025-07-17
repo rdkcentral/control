@@ -71,6 +71,7 @@ bool ctrlm_voice_endpoint_http_t::open() {
     }
 
     std::string device_id      = this->voice_obj->voice_stb_data_device_id_get();
+    std::string receiver_id    = this->voice_obj->voice_stb_data_receiver_id_get();
     std::string partner_id     = this->voice_obj->voice_stb_data_partner_id_get();
     std::string experience     = this->voice_obj->voice_stb_data_experience_get();
     std::string app_id         = this->voice_obj->voice_stb_data_app_id_http_get();
@@ -78,6 +79,7 @@ bool ctrlm_voice_endpoint_http_t::open() {
 
     xrsv_http_params_t    params_http = {
        .device_id        = device_id.c_str(),
+       .receiver_id      = receiver_id.c_str(),
        .partner_id       = partner_id.c_str(),
        .experience       = experience.c_str(),
        .app_id           = app_id.c_str(),
@@ -124,6 +126,12 @@ bool ctrlm_voice_endpoint_http_t::get_handlers(xrsr_handlers_t *handlers) {
         return(false);
     }
     return(true);
+}
+
+void ctrlm_voice_endpoint_http_t::voice_stb_data_receiver_id_set(std::string &receiver_id) {
+    if(this->xrsv_obj_http) {
+        xrsv_http_update_receiver_id(this->xrsv_obj_http, receiver_id.c_str());
+    }
 }
 
 void ctrlm_voice_endpoint_http_t::voice_stb_data_device_id_set(std::string &device_id) {

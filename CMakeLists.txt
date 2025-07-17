@@ -216,6 +216,7 @@ if(AUTH_ENABLED)
          add_compile_definitions(AUTH_ACTIVATION_STATUS)
       endif()
       #By default disabled but can be enabled
+      #add_compile_definitions(AUTH_RECEIVER_ID)
       #add_compile_definitions(AUTH_EXPERIENCE)
       target_link_libraries(controlMgr ctrlm-hal-certificate)
    else()

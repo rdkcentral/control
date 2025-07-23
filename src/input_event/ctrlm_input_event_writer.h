@@ -73,19 +73,19 @@ const std::map<ctrlm_key_code_t, linux_ui_code_values_t> ctrlm_key_to_linux_map 
     {CTRLM_KEY_CODE_POWER_ON,     linux_ui_code_values_t(KEY_F1,           0x0,  KEY_RESERVED)},
     {CTRLM_KEY_CODE_POWER_OFF,    linux_ui_code_values_t(KEY_F1,           0x0,  KEY_RESERVED)},
     {CTRLM_KEY_CODE_POWER_TOGGLE, linux_ui_code_values_t(KEY_F1,           0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_EXIT,         linux_ui_code_values_t(KEY_ESC,          0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_PAGE_UP,      linux_ui_code_values_t(KEY_RESERVED,     0x0,  KEY_RESERVED)}, // TODO XR15v2/XRA page up
-    {CTRLM_KEY_CODE_PAGE_DOWN,    linux_ui_code_values_t(KEY_RESERVED,     0x0,  KEY_RESERVED)}, // TODO XR15v2/XRA page down
-    {CTRLM_KEY_CODE_RECORD,       linux_ui_code_values_t(KEY_F7,           0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_EXIT,         linux_ui_code_values_t(KEY_HOME,         0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_PAGE_UP,      linux_ui_code_values_t(KEY_SCROLLUP,     0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_PAGE_DOWN,    linux_ui_code_values_t(KEY_SCROLLDOWN,   0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_RECORD,       linux_ui_code_values_t(KEY_F16,          0x0,  KEY_RESERVED)},
     {CTRLM_KEY_CODE_REWIND,       linux_ui_code_values_t(KEY_F10,          0x0,  KEY_RESERVED)},
     {CTRLM_KEY_CODE_FAST_FORWARD, linux_ui_code_values_t(KEY_F12,          0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_GUIDE,        linux_ui_code_values_t(KEY_PROGRAM,      0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_PLAY_PAUSE,   linux_ui_code_values_t(KEY_PLAYPAUSE,    0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_OCAP_A,       linux_ui_code_values_t(KEY_KPRIGHTPAREN, 0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_OCAP_B,       linux_ui_code_values_t(KEY_KPLEFTPAREN,  0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_OCAP_C,       linux_ui_code_values_t(KEY_KPCOMMA,      0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_OCAP_D,       linux_ui_code_values_t(KEY_RESERVED,     0x0,  KEY_RESERVED)}, // TODO XR15v2 d
-    {CTRLM_KEY_CODE_ASTERISK,     linux_ui_code_values_t(KEY_RESERVED,     0x0,  KEY_RESERVED)}, // TODO XR16/XRA asterisk key
+    {CTRLM_KEY_CODE_GUIDE,        linux_ui_code_values_t(KEY_EPG,          0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_PLAY_PAUSE,   linux_ui_code_values_t(KEY_F11,          0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_OCAP_A,       linux_ui_code_values_t(KEY_KPDOT,        0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_OCAP_B,       linux_ui_code_values_t(KEY_F14,          0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_OCAP_C,       linux_ui_code_values_t(KEY_RESERVED,     0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_OCAP_D,       linux_ui_code_values_t(KEY_RESERVED,     0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_ASTERISK,     linux_ui_code_values_t(KEY_F14,          0x0,  KEY_RESERVED)},
 };
 
 enum class key_stroke {

@@ -161,9 +161,6 @@ void ctrlm_thunder_plugin_t::on_activation_change(plugin_state_t state) {
     if(state == PLUGIN_ACTIVATED || state == PLUGIN_BOOT_ACTIVATED) {
         g_timeout_add(100, &ctrlm_thunder_plugin_t::on_plugin_activated, (void *)this);
     }
-    for(auto &itr : this->activation_callbacks) {
-        itr.first(state, itr.second);
-    }
 }
 
 void ctrlm_thunder_plugin_t::on_thunder_ready(bool boot) {
@@ -254,5 +251,10 @@ bool ctrlm_thunder_plugin_t::register_events() {
 }
 
 void ctrlm_thunder_plugin_t::on_initial_activation() {
-    // Nothing needed here for now
+    if (this->controller) {
+        plugin_state_t state = this->controller->get_plugin_state(this->callsign);
+        for(auto &itr : this->activation_callbacks) {
+            itr.first(state, itr.second);
+        }
+    }
 }

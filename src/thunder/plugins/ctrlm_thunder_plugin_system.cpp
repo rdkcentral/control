@@ -32,6 +32,7 @@ static void _on_firmware_update_state_change(ctrlm_thunder_plugin_system_t *plug
 
 ctrlm_thunder_plugin_system_t::ctrlm_thunder_plugin_system_t() : ctrlm_thunder_plugin_t("System", "org.rdk.System", 1) {
     this->registered_events = false;
+    this->estb_mac = "";
 }
 
 ctrlm_thunder_plugin_system_t::~ctrlm_thunder_plugin_system_t() {
@@ -67,7 +68,6 @@ void ctrlm_thunder_plugin_system_t::remove_event_handler(system_event_handler_t 
         }
     }
 }
-
 
 void ctrlm_thunder_plugin_system_t::on_firmware_update_state_change(firmware_update_state_t state) {
     XLOGD_INFO("state: %s", system_firmware_update_state_str(state));
@@ -117,4 +117,30 @@ const char *Thunder::System::system_firmware_update_state_str(firmware_update_st
         default:break;
     }
     return("UNKNOWN");
+}
+
+void ctrlm_thunder_plugin_system_t::_get_device_info_mac() {
+    JsonObject params, response;
+    JsonArray param_array;
+
+    XLOGD_INFO("Invoking getDeviceInfo call for estb_mac");
+
+    param_array.Add("estb_mac");
+    params["params"] = param_array;
+    if (!this->call_plugin("getDeviceInfo", &params, &response) ||
+        !response.HasLabel("success") || !response["success"].Boolean() ||
+        !response.HasLabel("estb_mac")) {
+        XLOGD_ERROR("Failed to get estb mac address from %s", this->name.c_str());
+        this->estb_mac = "";
+    }
+
+    this->estb_mac = response["estb_mac"].String();
+}
+
+bool ctrlm_thunder_plugin_system_t::get_device_info_mac(std::string &mac_addr) {
+    if (this->estb_mac.empty()) {
+        _get_device_info_mac();
+    }
+    mac_addr = this->estb_mac;
+    return(!mac_addr.empty());
 }

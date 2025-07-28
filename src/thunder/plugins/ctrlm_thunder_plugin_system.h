@@ -70,6 +70,13 @@ public:
      */
     void remove_event_handler(system_event_handler_t handler);
 
+    /**
+     * This function is used to get the estb mac address from this System Thunder object
+     * @param mac_addr MAC address string in AA:BB:CC:DD:EE:FF format and empty string if method failed
+     * @return True if the mac address string is non-empty, otherwise False.
+     */
+    bool get_device_info_mac(std::string &mac_addr);
+
 public:
     /** 
      * This function is technically used internally but from static function. This is used to broadcast System update state change events.
@@ -86,9 +93,15 @@ protected:
      * @return True if the events were registered for successfully otherwise False.
      */
     virtual bool register_events();
+    /**
+     * This function is an internal function that calls the System Plugin for device mac
+     */
+    void _get_device_info_mac();
+
 
 private:
     std::vector<std::pair<system_event_handler_t, void *> > event_callbacks;
+    std::string estb_mac;
     bool registered_events;
 };
 

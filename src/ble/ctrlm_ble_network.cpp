@@ -608,7 +608,7 @@ void ctrlm_obj_network_ble_t::req_process_start_pairing(void *data, int size) {
 
    if (!ready_) {
       XLOGD_FATAL("Network is not ready!");
-   } else if(dqm->params->scan_enable) {
+   } else if(!dqm->params->scan_enable) {
       XLOGD_INFO("scan enable is not requested");
    } else {
       if (ble_rcu_interface_) {

@@ -4894,7 +4894,7 @@ void ctrlm_obj_network_rf4ce_t::req_process_start_pairing(void *data, int size) 
 
    dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
 
-   if(dqm->params->screen_bind_enable) {
+   if(!dqm->params->screen_bind_enable) {
       XLOGD_INFO("screen bind enable is not requested");
    } else {
       ctrlm_main_iarm_call_property_t property = {};
@@ -4952,7 +4952,7 @@ void ctrlm_obj_network_rf4ce_t::req_process_stop_pairing(void *data, int size) {
 
    dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
 
-   if(dqm->params->screen_bind_disable) {
+   if(!dqm->params->screen_bind_disable) {
       XLOGD_INFO("screen bind disable is not requested");
    } else {
       ctrlm_main_iarm_call_control_service_pairing_mode_t pairing = {};

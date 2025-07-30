@@ -83,6 +83,13 @@ public:
      */
     virtual void on_thunder_ready(bool boot = false);
 
+
+    /**
+     * This function is technically used internally but from static function.
+     * This function is called on activation state changes to iterate through all registered callbacks.
+     * */
+    void iterate_activation_callbacks(plugin_state_t state);
+
 protected:
     /**
      * This is the Constructor for the base class object. It is protected, as the derived Thunder Plugins will be Singletons.

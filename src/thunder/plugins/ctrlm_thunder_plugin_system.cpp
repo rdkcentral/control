@@ -144,3 +144,8 @@ bool ctrlm_thunder_plugin_system_t::get_device_info_mac(std::string &mac_addr) {
     mac_addr = this->estb_mac;
     return(!mac_addr.empty());
 }
+
+void ctrlm_thunder_plugin_system_t::on_initial_activation() {
+    this->_get_device_info_mac();
+    ctrlm_thunder_plugin_t::on_initial_activation();
+}

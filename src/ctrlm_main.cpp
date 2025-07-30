@@ -329,7 +329,7 @@ static void     ctrlm_device_type_loaded(ctrlm_device_type_t device_type);
 static void     ctrlm_main_has_device_type_set(gboolean has_type);
 #ifdef CTRLM_THUNDER
 static void ctrlm_device_info_activated(void *user_data);
-static void ctrlm_system_activated(void *user_data);
+static void ctrlm_system_activated(Thunder::plugin_state_t state, void *user_data);
 #endif
 
 static void *   ctrlm_load_plugin_rf4ce_hal(void);
@@ -1317,7 +1317,7 @@ gboolean ctrlm_load_version(void) {
 }
 
 #ifdef CTRLM_THUNDER
-void ctrlm_system_activated(void *user_data) {
+void ctrlm_system_activated(Thunder::plugin_state_t state, void *user_data) {
    std::string mac;
    if (!g_ctrlm.thunder_system->get_device_info_mac(mac)) {
        g_ctrlm.device_mac = "";
@@ -1330,36 +1330,11 @@ void ctrlm_system_activated(void *user_data) {
 #endif
 
 gboolean ctrlm_load_device_mac(void) {
-   gboolean ret = false;
 #ifdef CTRLM_THUNDER
    g_ctrlm.thunder_system = Thunder::System::ctrlm_thunder_plugin_system_t::getInstance();
    g_ctrlm.thunder_system->add_activation_handler((Thunder::Plugin::plugin_activation_handler_t)ctrlm_system_activated);
-   ret = true;
-#else
-   std::string mac;
-   std::string file;
-   std::ifstream ifs;
-   const char *interface = NULL;
-
-   // First check environment variable to find ESTB interface, or fall back to default
-   interface = getenv("ESTB_INTERFACE");
-   file = "/sys/class/net/" + std::string((interface != NULL ? interface : CTRLM_DEFAULT_DEVICE_MAC_INTERFACE)) + "/address";
-
-   // Open file and read mac address
-   ifs.open(file.c_str(), std::ifstream::in);
-   if(ifs.is_open()) {
-      ifs >> mac;
-      std::transform(mac.begin(), mac.end(), mac.begin(), ::toupper);
-      g_ctrlm.device_mac = mac;
-      ret = true;
-      XLOGD_INFO("Device Mac set to <%s>", ctrlm_is_pii_mask_enabled() ? "***" : mac.c_str());
-   } else {
-      XLOGD_ERROR("Failed to get MAC address for device mac");
-      g_ctrlm.device_mac = "";
-   }
 #endif
-
-   return(ret);
+   return(true);
 }
 
 #ifdef CTRLM_THUNDER

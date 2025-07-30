@@ -97,6 +97,10 @@ protected:
      * This function is an internal function that calls the System Plugin for device mac
      */
     void _get_device_info_mac();
+    /**
+     * This function is called when the initial activation of the plugin occurs.
+     */
+    virtual void on_initial_activation();
 
 
 private:

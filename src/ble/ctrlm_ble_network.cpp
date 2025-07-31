@@ -56,7 +56,7 @@ using namespace std;
 #define CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT    (MINUTE_IN_MILLISECONDS * 5)    // 5 minutes
 #define CTRLM_BLE_UPGRADE_PAUSE_TIMEOUT       (MINUTE_IN_MILLISECONDS * 2)    // 2 minutes
 
-#define CTRLM_VENDOR_BLE_NETWORK_DISABLE_FILE  "/etc/vendor/ctrlm/ble_network_disable"
+#define CTRLM_VENDOR_BLE_NETWORK_DISABLE_FILE  "/etc/vendor/input/ble_network_disable"
 #define CTRLM_VENDOR_BLE_REMOTE_WHITELIST_FILE "/etc/vendor/input/ble_remote_whitelist.json"
 #define CTRLM_VENDOR_BLE_NETWORK_TIMEOUTS_FILE "/etc/vendor/input/ble_network_timeouts.json"
 
@@ -127,7 +127,7 @@ static int ctrlm_ble_network_factory(vendor_network_opts_t *opts, json_t *json_c
 
    if(ctrlm_file_exists(vendor_network_disable_file)) {
       XLOGD_INFO("BLE is disabled by vendor config.");
-      return(num_networks_added)
+      return(num_networks_added);
    }
 
    json_t *json_obj_net_ble = NULL;

@@ -56,6 +56,7 @@ using namespace std;
 #define CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT    (MINUTE_IN_MILLISECONDS * 5)    // 5 minutes
 #define CTRLM_BLE_UPGRADE_PAUSE_TIMEOUT       (MINUTE_IN_MILLISECONDS * 2)    // 2 minutes
 
+#define CTRLM_VENDOR_BLE_NETWORK_DISABLE_FILE  "/etc/vendor/input/ble_network_disable"
 #define CTRLM_VENDOR_BLE_REMOTE_WHITELIST_FILE "/etc/vendor/input/ble_remote_whitelist.json"
 #define CTRLM_VENDOR_BLE_NETWORK_TIMEOUTS_FILE "/etc/vendor/input/ble_network_timeouts.json"
 
@@ -120,10 +121,15 @@ void ctrlm_ble_unpair_metrics_t::log_rcu_unpair_event() {
 
 // Network class factory
 static int ctrlm_ble_network_factory(vendor_network_opts_t *opts, json_t *json_config_root, networks_map_t& networks) {
-
    int num_networks_added = 0;
 
-   #ifdef CTRLM_NETWORK_BLE
+   const char *vendor_network_disable_file = CTRLM_VENDOR_BLE_NETWORK_DISABLE_FILE;
+
+   if(ctrlm_file_exists(vendor_network_disable_file)) {
+      XLOGD_INFO("BLE is disabled by vendor config.");
+      return(num_networks_added);
+   }
+
    json_t *json_obj_net_ble = NULL;
    if(json_config_root != NULL) { // Extract the BLE network configuration object
       json_obj_net_ble = json_object_get(json_config_root, JSON_OBJ_NAME_NETWORK_BLE);
@@ -212,7 +218,6 @@ static int ctrlm_ble_network_factory(vendor_network_opts_t *opts, json_t *json_c
       networks[network_id] = new ctrlm_obj_network_ble_t(CTRLM_NETWORK_TYPE_BLUETOOTH_LE, network_id, "BLE", opts->mask_key_codes, json_obj_net_ble, g_thread_self());
       ++num_networks_added;
    }
-   #endif
 
    return num_networks_added;
 }

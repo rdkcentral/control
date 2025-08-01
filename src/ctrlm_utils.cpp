@@ -690,7 +690,7 @@ const char *ctrlm_voice_session_abort_reason_str(ctrlm_voice_session_abort_reaso
       case CTRLM_VOICE_SESSION_ABORT_REASON_DEVICE_UPDATE:         return("DEVICE_UPDATE");
       case CTRLM_VOICE_SESSION_ABORT_REASON_FAILURE:               return("FAILURE");
       case CTRLM_VOICE_SESSION_ABORT_REASON_VOICE_DISABLED:        return("VOICE_DISABLED");
-      case CTRLM_VOICE_SESSION_ABORT_REASON_NO_RECEIVER_ID:        return("NO RECEIVER_ID");
+      case CTRLM_VOICE_SESSION_ABORT_REASON_NO_AUTH_DATA:          return("NO_AUTH_DATA");
       case CTRLM_VOICE_SESSION_ABORT_REASON_NEW_SESSION:           return("NEW_SESSION");
       case CTRLM_VOICE_SESSION_ABORT_REASON_INVALID_CONTROLLER_ID: return("INVALID_CONTROLLER_ID");
       case CTRLM_VOICE_SESSION_ABORT_REASON_APPLICATION_RESTART:   return("APPLICATION_RESTART");
@@ -1263,6 +1263,27 @@ const char *ctrlm_key_code_str(ctrlm_key_code_t key_code) {
       return(ctrlm_key_code_to_string[key_code]);
    }
    return(ctrlm_invalid_return(key_code));
+}
+
+static const map<ctrlm_key_code_t, uint16_t> ctrlm_key_code_to_linux_key_map {
+   {CTRLM_KEY_CODE_DIGIT_0, KEY_0},
+   {CTRLM_KEY_CODE_DIGIT_1, KEY_1},
+   {CTRLM_KEY_CODE_DIGIT_2, KEY_2},
+   {CTRLM_KEY_CODE_DIGIT_3, KEY_3},
+   {CTRLM_KEY_CODE_DIGIT_4, KEY_4},
+   {CTRLM_KEY_CODE_DIGIT_5, KEY_5},
+   {CTRLM_KEY_CODE_DIGIT_6, KEY_6},
+   {CTRLM_KEY_CODE_DIGIT_7, KEY_7},
+   {CTRLM_KEY_CODE_DIGIT_8, KEY_8},
+   {CTRLM_KEY_CODE_DIGIT_9, KEY_9}
+};
+
+uint16_t ctrlm_key_code_to_linux_key(ctrlm_key_code_t code) {
+   if (ctrlm_key_code_to_linux_key_map.end() != ctrlm_key_code_to_linux_key_map.find(code)) {
+      return ctrlm_key_code_to_linux_key_map.at(code);
+   } else {
+      return KEY_RESERVED;
+   }
 }
 
 // map to convert a key code to its identifiable name on the remote.

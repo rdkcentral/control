@@ -173,24 +173,23 @@ class ctrlm_obj_network_rf4ce_t;
 
 #define CTRLM_RF4CE_RIB_ATTR_LEN_CONTROLLER_IRDB_STATUS_MINUS_LOAD_STATUS_BYTES (13)
 
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_SOFTWARE          (0x00)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_HARDWARE          (0x01)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_IRDB              (0x02)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_BUILD_ID          (0x03)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_DSP               (0x04)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_KEYWORD_MODEL     (0x05)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_ARM               (0x06)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_DSP_BUILD_ID      (0x07)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_UPDATE_VERSIONING_BOOTLOADER (0x01)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_UPDATE_VERSIONING_GOLDEN     (0x02)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_UPDATE_VERSIONING_AUDIO_DATA (0x10)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_TARGET_ID_DATA_RECEIVER_ID   (0x01)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_TARGET_ID_DATA_DEVICE_ID     (0x02)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_POLLING_CONFIGURATION_MAC    (0x01)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_SOFTWARE             (0x00)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_HARDWARE             (0x01)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_IRDB                 (0x02)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_BUILD_ID             (0x03)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_DSP                  (0x04)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_KEYWORD_MODEL        (0x05)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_ARM                  (0x06)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_DSP_BUILD_ID         (0x07)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_UPDATE_VERSIONING_BOOTLOADER    (0x01)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_UPDATE_VERSIONING_GOLDEN        (0x02)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_UPDATE_VERSIONING_AUDIO_DATA    (0x10)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_TARGET_ID_DATA_DEVICE_ID        (0x02)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_POLLING_CONFIGURATION_MAC       (0x01)
 #define CTRLM_RF4CE_RIB_ATTR_INDEX_POLLING_CONFIGURATION_HEARTBEAT (0x00)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_MFG_TEST                     (0x00)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_MFG_TEST_RESULT              (0x01)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_GENERAL                      (0x00)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_MFG_TEST                        (0x00)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_MFG_TEST_RESULT                 (0x01)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_GENERAL                         (0x00)
 
 
 #define CTRLM_RF4CE_LEN_VOICE_METRICS                      (44)
@@ -843,7 +842,6 @@ private:
    guchar property_read_reboot_diagnostics(guchar *data, guchar length);
    guchar property_read_memory_statistics(guchar *data, guchar length);
    guchar property_read_time_last_checkin_for_device_update(guchar *data, guchar length);
-   guchar property_read_receiver_id(guchar *data, guchar length);
    guchar property_read_device_id(guchar *data, guchar length);
    guchar property_read_mfg_test(guchar *data, guchar length);
    guchar property_read_mfg_test_result(guchar *data, guchar length);
@@ -900,7 +898,6 @@ private:
 
    guchar property_write_reboot_stats(guchar *data, guchar length);
    guchar property_write_memory_stats(guchar *data, guchar length);
-   guchar property_write_receiver_id(guchar *data, guchar length);
    guchar property_write_device_id(guchar *data, guchar length);
    guchar property_write_mfg_test(guchar *data, guchar length);
    guchar property_write_mfg_test_result(guchar *data, guchar length);

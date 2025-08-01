@@ -608,7 +608,7 @@ void ctrlm_obj_network_ble_t::req_process_start_pairing(void *data, int size) {
 
    if (!ready_) {
       XLOGD_FATAL("Network is not ready!");
-   } else if(dqm->params->scan_enable) {
+   } else if(!dqm->params->scan_enable) {
       XLOGD_INFO("scan enable is not requested");
    } else {
       if (ble_rcu_interface_) {
@@ -647,7 +647,7 @@ void ctrlm_obj_network_ble_t::req_process_stop_pairing(void *data, int size) {
 
    if (!ready_) {
       XLOGD_FATAL("Network is not ready!");
-   } else if(dqm->params->scan_disable) {
+   } else if(!dqm->params->scan_disable) {
       XLOGD_INFO("scan disable is not requested");
    } else {
       if (ble_rcu_interface_) {
@@ -2304,6 +2304,17 @@ void ctrlm_obj_network_ble_t::ind_process_voice_session_end(void *data, int size
    if(!controller_exists(controller_id)) {
       XLOGD_ERROR("Controller object doesn't exist for controller id %u!", controller_id);
       return;
+   }
+
+   unsigned long long ieee_address = controllers_[controller_id]->ieee_address_get().get_value();;
+
+   if (ble_rcu_interface_) {
+      int32_t audioDuration = -1;
+      if (!ble_rcu_interface_->stopAudioStreaming(ieee_address, audioDuration)) {
+         XLOGD_ERROR("failed to end voice session for controller id <%u>", controller_id);
+      } else {
+         XLOGD_INFO("voice session ended for controller id <%u>", controller_id);
+      }
    }
 }
 

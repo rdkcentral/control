@@ -2167,44 +2167,13 @@ void ctrlm_obj_controller_rf4ce_t::irdb_entry_id_name_set(ctrlm_irdb_dev_type_t 
    }
 }
 
-guchar ctrlm_obj_controller_rf4ce_t::property_write_receiver_id(guchar *data, guchar length) {
-   if(length != CTRLM_RF4CE_RIB_ATTR_LEN_TARGET_ID_DATA) {
-      XLOGD_ERROR("INVALID PARAMETERS");
-      return(0);
-   }
-
-   // We do not want to support overwriting the receiver id
-   XLOGD_WARN("Wrting the receiver id is NOT allowed");
-   return(0);
-}
-
-guchar ctrlm_obj_controller_rf4ce_t::property_read_receiver_id(guchar *data, guchar length) {
-   std::string receiver_id;
-   guchar      len;
-
-   if(length != CTRLM_RF4CE_RIB_ATTR_LEN_TARGET_ID_DATA) {
-      XLOGD_ERROR("INVALID PARAMETERS");
-      return(0);
-   }
-
-   receiver_id = receiver_id_get();
-   len = (receiver_id.length() > length ? length : receiver_id.length());
-
-   // Copy receiver id to data buf
-   errno_t safec_rc = strncpy_s((gchar *)data, CTRLM_HAL_RF4CE_CONST_MAX_RIB_ATTRIBUTE_SIZE, receiver_id.c_str(),len);
-   ERR_CHK(safec_rc);
-
-   return(len);
-
-}
-
 guchar ctrlm_obj_controller_rf4ce_t::property_write_device_id(guchar *data, guchar length) {
    if(length != CTRLM_RF4CE_RIB_ATTR_LEN_TARGET_ID_DATA) {
       XLOGD_ERROR("INVALID PARAMETERS");
       return(0);
    }
 
-   // We do not want to support overwriting the receiver id
+   // We do not want to support overwriting the device id
    XLOGD_WARN("Wrting the device id is NOT allowed");
    return(0);
 }
@@ -2221,7 +2190,7 @@ guchar ctrlm_obj_controller_rf4ce_t::property_read_device_id(guchar *data, gucha
    device_id = device_id_get();
    len = (device_id.length() > length ? length : device_id.length());
 
-   // Copy receiver id to data buf
+   // Copy device id to data buf
    errno_t safec_rc = strncpy_s((gchar *)data, CTRLM_HAL_RF4CE_CONST_MAX_RIB_ATTRIBUTE_SIZE, device_id.c_str(),len);
    ERR_CHK(safec_rc);
 

@@ -2903,7 +2903,6 @@ void ctrlm_obj_network_rf4ce_t::polling_config_tr181_read() {
 
    bool b_has_default_mac_config = false;
 
-#ifdef MAC_POLLING
    bool mac_polling_enabled = false;
    if(CTRLM_TR181_RESULT_SUCCESS == ctrlm_tr181_bool_get(CTRLM_RF4CE_TR181_MAC_POLLING_CONFIGURATION_ENABLE, &mac_polling_enabled)) {
       XLOGD_INFO("Default Mac Polling Configuration from TR181");
@@ -2917,7 +2916,6 @@ void ctrlm_obj_network_rf4ce_t::polling_config_tr181_read() {
       }
 
    }
-#endif
    for(int i = 0; i < RF4CE_CONTROLLER_TYPE_INVALID; i++) {
      XLOGD_INFO("Polling Configuration Remote Type <%s>", ctrlm_rf4ce_controller_type_str((ctrlm_rf4ce_controller_type_t)i));
      const char *controller_tr181_str = 0;
@@ -3002,10 +3000,8 @@ void ctrlm_obj_network_rf4ce_t::polling_config_read(json_config *conf) {
 
    json_config target_obj;
    if(conf->config_object_get(JSON_OBJ_NAME_NETWORK_RF4CE_POLLING_TARGET, target_obj)) { // has target object
-      #ifdef MAC_POLLING
       target_obj.config_value_get(JSON_INT_NAME_NETWORK_RF4CE_POLLING_TARGET_METHODS, polling_methods_);
       target_obj.config_value_get(JSON_INT_NAME_NETWORK_RF4CE_POLLING_TARGET_FMR_CONTROLLERS_MAX, max_fmr_controllers_);
-      #endif
    }
 
    json_config generic_polling_obj;
@@ -4755,19 +4751,11 @@ void ctrlm_obj_network_rf4ce_t::rfc_retrieved_handler(const ctrlm_rfc_attr_t& at
 
    // Polling
    if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_POLLING JSON_PATH_SEPERATOR JSON_OBJ_NAME_NETWORK_RF4CE_POLLING_TARGET JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_POLLING_TARGET_METHODS, polling_methods_)) {
-      #ifndef MAC_POLLING
-      if(polling_methods_ & POLLING_METHODS_FLAG_MAC) {
-         XLOGD_ERROR("mac polling is disabled");
-         polling_methods_ &= ~POLLING_METHODS_FLAG_MAC;
-      }
-      #endif
       XLOGD_INFO("target polling methods <%s>", ctrlm_rf4ce_controller_polling_methods_str(polling_methods_));
    }
-   #ifdef MAC_POLLING
    if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_POLLING JSON_PATH_SEPERATOR JSON_OBJ_NAME_NETWORK_RF4CE_POLLING_TARGET JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_POLLING_TARGET_FMR_CONTROLLERS_MAX, max_fmr_controllers_)) {
       XLOGD_INFO("target fmr controllers max <%u>", max_fmr_controllers_);
    }
-   #endif
    if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_POLLING JSON_PATH_SEPERATOR JSON_OBJ_NAME_NETWORK_RF4CE_POLLING_HB_GENERIC_CONFIG JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_POLLING_HB_GENERIC_CONFIG_UPTIME_MULTIPLIER, controller_generic_polling_configuration_.uptime_multiplier)) {
       XLOGD_INFO("polling hb generic config - uptime multiplier <%u>", controller_generic_polling_configuration_.uptime_multiplier);
    }
@@ -4906,7 +4894,7 @@ void ctrlm_obj_network_rf4ce_t::req_process_start_pairing(void *data, int size) 
 
    dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
 
-   if(dqm->params->screen_bind_enable) {
+   if(!dqm->params->screen_bind_enable) {
       XLOGD_INFO("screen bind enable is not requested");
    } else {
       if(dqm->params->timeout != 0) { // use a timeout
@@ -4967,7 +4955,7 @@ void ctrlm_obj_network_rf4ce_t::req_process_stop_pairing(void *data, int size) {
 
    dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
 
-   if(dqm->params->screen_bind_disable) {
+   if(!dqm->params->screen_bind_disable) {
       XLOGD_INFO("screen bind disable is not requested");
    } else {
       ctrlm_main_iarm_call_control_service_pairing_mode_t pairing = {};

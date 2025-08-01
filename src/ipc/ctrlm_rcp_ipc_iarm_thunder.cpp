@@ -187,11 +187,6 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_validation(const ctrlm_rcp_ipc_validation_
         return(false);
     }
 
-    if (!thunder_device_update_enabled_) {
-        XLOGD_WARN("This event is not currently enabled - discarding event");
-        return(false);
-    }
-
     json_t *ret = json_object();
     int err = 0;
 
@@ -230,11 +225,6 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_pairing(void *arg)
         return(IARM_RESULT_INVALID_PARAM);
     }
 
-    int net_type = CTRLM_NETWORK_TYPE_INVALID;
-    if (!config.config_value_get(NET_TYPE, net_type)) {
-        XLOGD_INFO("Missing %s parameter - defaulting to all networks", NET_TYPE);
-    }
-
     int timeout = 0;
     if (!config.config_value_get(TIMEOUT, timeout)) {
         XLOGD_INFO("Missing %s parameter - defaulting to no timeout (0s)", TIMEOUT);
@@ -271,22 +261,38 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_pairing(void *arg)
         }
     }
 
-    std::shared_ptr<ctrlm_iarm_call_StartPairing_params_t> params = std::make_shared<ctrlm_iarm_call_StartPairing_params_t>();
-    params->set_net_id((net_type == CTRLM_NETWORK_TYPE_INVALID) ? CTRLM_MAIN_NETWORK_ID_ALL : ctrlm_network_id_get(static_cast<ctrlm_network_type_t>(net_type)));
-    params->timeout            = timeout;
-    params->screen_bind_enable = screenBindEnable;
-    params->scan_enable        = scanEnable;
-    params->ieee_address_list  = mac_addr_list;
+    if(!scanEnable && mac_addr_list.size() > 0) {
+        XLOGD_WARN("scanEnable is false but macAddressList is not empty.  Ignoring macAddressList.");
+        mac_addr_list.clear();
+    }
 
-    sync_send_netw_handler_to_main_queue_new<ctrlm_iarm_call_StartPairing_params_t,
-                                             ctrlm_main_queue_msg_start_pairing_t>
-                                             (params,
-                                             (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_start_pairing);
+    if(!scanEnable && timeout != 0) {
+        XLOGD_WARN("scanEnable is false but timeout is not 0.  Ignoring timeout.");
+        timeout = 0;
+    }
+
+    bool result = true;
+    if(!screenBindEnable && !scanEnable) {
+        XLOGD_WARN("screen bind and scan enable are both false.  Nothing to do.");
+    } else {
+        std::shared_ptr<ctrlm_iarm_call_StartPairing_params_t> params = std::make_shared<ctrlm_iarm_call_StartPairing_params_t>();
+        params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
+        params->timeout            = timeout;
+        params->screen_bind_enable = screenBindEnable;
+        params->scan_enable        = scanEnable;
+        params->ieee_address_list  = mac_addr_list;
+
+        sync_send_netw_handler_to_main_queue_new<ctrlm_iarm_call_StartPairing_params_t,
+                                                ctrlm_main_queue_msg_start_pairing_t>
+                                                (params,
+                                                (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_start_pairing);
+        result = params->get_result();
+    }
 
     json_t *ret = json_object();
     int err = 0;
 
-    err |= json_object_set_new_nocheck(ret, SUCCESS, json_boolean(params->get_result()));
+    err |= json_object_set_new_nocheck(ret, SUCCESS, json_boolean(result));
 
     if (err) {
         XLOGD_ERROR("JSON object set error");
@@ -336,20 +342,26 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::stop_pairing(void *arg)
         XLOGD_INFO("Missing %s parameter - defaulting to %s", SCAN_DISABLE, scanDisable ? "true" : "false");
     }
 
-    std::shared_ptr<ctrlm_iarm_call_StopPairing_params_t> params = std::make_shared<ctrlm_iarm_call_StopPairing_params_t>();
-    params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
-    params->screen_bind_disable = screenBindDisable;
-    params->scan_disable        = scanDisable;
+    bool result = true;
+    if(!screenBindDisable && !scanDisable) {
+        XLOGD_WARN("screen bind and scan disable are both false.  Nothing to do.");
+    } else {
+        std::shared_ptr<ctrlm_iarm_call_StopPairing_params_t> params = std::make_shared<ctrlm_iarm_call_StopPairing_params_t>();
+        params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
+        params->screen_bind_disable = screenBindDisable;
+        params->scan_disable        = scanDisable;
 
-    sync_send_netw_handler_to_main_queue_new<ctrlm_iarm_call_StopPairing_params_t,
-                                             ctrlm_main_queue_msg_stop_pairing_t>
-                                             (params,
-                                             (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_stop_pairing);
+        sync_send_netw_handler_to_main_queue_new<ctrlm_iarm_call_StopPairing_params_t,
+                                                ctrlm_main_queue_msg_stop_pairing_t>
+                                                (params,
+                                                (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_stop_pairing);
+        result = params->get_result();
+    }
 
     json_t *ret = json_object();
     int err = 0;
 
-    err |= json_object_set_new_nocheck(ret, SUCCESS, json_boolean(params->get_result()));
+    err |= json_object_set_new_nocheck(ret, SUCCESS, json_boolean(result));
 
     if (err) {
         XLOGD_ERROR("JSON object set error");

@@ -271,9 +271,9 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_pairing(void *arg)
         timeout = 0;
     }
 
-    bool result = false;
+    bool result = true;
     if(!screenBindEnable && !scanEnable) {
-        XLOGD_WARN("screen bind and scan are both false.  Nothing to do.");
+        XLOGD_WARN("screen bind and scan enable are both false.  Nothing to do.");
     } else {
         std::shared_ptr<ctrlm_iarm_call_StartPairing_params_t> params = std::make_shared<ctrlm_iarm_call_StartPairing_params_t>();
         params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
@@ -342,20 +342,26 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::stop_pairing(void *arg)
         XLOGD_INFO("Missing %s parameter - defaulting to %s", SCAN_DISABLE, scanDisable ? "true" : "false");
     }
 
-    std::shared_ptr<ctrlm_iarm_call_StopPairing_params_t> params = std::make_shared<ctrlm_iarm_call_StopPairing_params_t>();
-    params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
-    params->screen_bind_disable = screenBindDisable;
-    params->scan_disable        = scanDisable;
+    bool result = true;
+    if(!screenBindDisable && !scanDisable) {
+        XLOGD_WARN("screen bind and scan disable are both false.  Nothing to do.");
+    } else {
+        std::shared_ptr<ctrlm_iarm_call_StopPairing_params_t> params = std::make_shared<ctrlm_iarm_call_StopPairing_params_t>();
+        params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
+        params->screen_bind_disable = screenBindDisable;
+        params->scan_disable        = scanDisable;
 
-    sync_send_netw_handler_to_main_queue_new<ctrlm_iarm_call_StopPairing_params_t,
-                                             ctrlm_main_queue_msg_stop_pairing_t>
-                                             (params,
-                                             (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_stop_pairing);
+        sync_send_netw_handler_to_main_queue_new<ctrlm_iarm_call_StopPairing_params_t,
+                                                ctrlm_main_queue_msg_stop_pairing_t>
+                                                (params,
+                                                (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_stop_pairing);
+        result = params->get_result();
+    }
 
     json_t *ret = json_object();
     int err = 0;
 
-    err |= json_object_set_new_nocheck(ret, SUCCESS, json_boolean(params->get_result()));
+    err |= json_object_set_new_nocheck(ret, SUCCESS, json_boolean(result));
 
     if (err) {
         XLOGD_ERROR("JSON object set error");

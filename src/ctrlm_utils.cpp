@@ -1315,6 +1315,7 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_F19,           {"YouTube App",          "YouTube App"}},
    {KEY_F20,           {"Info",                 "Info"}},
    {KEY_F21,           {"Guide",                "Guide"}},
+   {KEY_EPG,           {"Guide",                "Guide"}},
    {KEY_F22,           {"Accessibility",        "Accessibility"}},
    {KEY_F8,            {"Voice",                "Voice"}},
    {KEY_ESC,           {"Dismiss",              "Dismiss"}},
@@ -1328,6 +1329,8 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_DELETE,        {"Prime Video App",      "Prime Video App"}},  // APP key for PLATCO
    {KEY_PAGEUP,        {"Channel+",             "Channel+"}},
    {KEY_PAGEDOWN,      {"Channel-",             "Channel-"}},
+   {KEY_SCROLLUP,      {"Page+",                "Page+"}},
+   {KEY_SCROLLDOWN,    {"Page-",                "Page-"}},
    {KEY_F2,            {"Help/Cog",             "Help/Cog"}},
    {KEY_F5,            {"Apps",                 "Apps"}},
    {KEY_F10,           {"Rewind",               "Rewind"}},
@@ -1336,7 +1339,8 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_F7,            {"Record",               "Record"}},
    {KEY_F3,            {"Search",               "Search"}},
    {KEY_F6,            {"Provider",             "Provider"}},
-   {KEY_F14,           {"Quick Access",         "Quick Access"}},
+   {KEY_KPDOT,         {"App A",                "App A"}},        // A key for RF4CE remotes (also asterisk key)
+   {KEY_F14,           {"Quick Access",         "Quick Access"}}, // B key for RF4CE remotes (C and D are not defined yet)
    {KEY_KPRIGHTPAREN,  {"App 1",                "App 1"}}, // APP key for LLAMA
    {KEY_KPLEFTPAREN,   {"App 2",                "App 2"}}, // APP key for LLAMA
    {KEY_KPCOMMA,       {"App 3",                "App 3"}}, // APP key for LLAMA

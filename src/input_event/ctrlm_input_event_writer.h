@@ -46,46 +46,46 @@ public:
 
 const std::map<ctrlm_key_code_t, linux_ui_code_values_t> ctrlm_key_to_linux_map =
 {
-    {CTRLM_KEY_CODE_OK,           linux_ui_code_values_t(KEY_ENTER,      0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_UP_ARROW,     linux_ui_code_values_t(KEY_UP,         0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_DOWN_ARROW,   linux_ui_code_values_t(KEY_DOWN,       0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_LEFT_ARROW,   linux_ui_code_values_t(KEY_LEFT,       0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_RIGHT_ARROW,  linux_ui_code_values_t(KEY_RIGHT,      0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_MENU,         linux_ui_code_values_t(KEY_HOME,       0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_DIGIT_0,      linux_ui_code_values_t(KEY_0,          0x00, KEY_RESERVED)},
-    {CTRLM_KEY_CODE_DIGIT_1,      linux_ui_code_values_t(KEY_1,          0x01, KEY_RESERVED)},
-    {CTRLM_KEY_CODE_DIGIT_2,      linux_ui_code_values_t(KEY_2,          0x02, KEY_RESERVED)},
-    {CTRLM_KEY_CODE_DIGIT_3,      linux_ui_code_values_t(KEY_3,          0x03, KEY_RESERVED)},
-    {CTRLM_KEY_CODE_DIGIT_4,      linux_ui_code_values_t(KEY_4,          0x04, KEY_RESERVED)},
-    {CTRLM_KEY_CODE_DIGIT_5,      linux_ui_code_values_t(KEY_5,          0x05, KEY_RESERVED)},
-    {CTRLM_KEY_CODE_DIGIT_6,      linux_ui_code_values_t(KEY_6,          0x06, KEY_RESERVED)},
-    {CTRLM_KEY_CODE_DIGIT_7,      linux_ui_code_values_t(KEY_7,          0x07, KEY_RESERVED)},
-    {CTRLM_KEY_CODE_DIGIT_8,      linux_ui_code_values_t(KEY_8,          0x08, KEY_RESERVED)},
-    {CTRLM_KEY_CODE_DIGIT_9,      linux_ui_code_values_t(KEY_9,          0x09, KEY_RESERVED)},
-    {CTRLM_KEY_CODE_CH_UP,        linux_ui_code_values_t(KEY_PAGEUP,     0x58, KEY_LEFTCTRL)},
-    {CTRLM_KEY_CODE_CH_DOWN,      linux_ui_code_values_t(KEY_PAGEDOWN,   0x59, KEY_LEFTCTRL)},
-    {CTRLM_KEY_CODE_LAST,         linux_ui_code_values_t(KEY_ESC,        0x0,  KEY_LEFTCTRL)},
-    {CTRLM_KEY_CODE_INPUT_SELECT, linux_ui_code_values_t(KEY_F15,        0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_INFO,         linux_ui_code_values_t(KEY_F9,         0xcb, KEY_LEFTCTRL)},
-    {CTRLM_KEY_CODE_VOL_UP,       linux_ui_code_values_t(KEY_KPPLUS,     0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_VOL_DOWN,     linux_ui_code_values_t(KEY_KPMINUS,    0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_MUTE,         linux_ui_code_values_t(KEY_KPASTERISK, 0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_POWER_ON,     linux_ui_code_values_t(KEY_F1,         0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_POWER_OFF,    linux_ui_code_values_t(KEY_F1,         0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_POWER_TOGGLE, linux_ui_code_values_t(KEY_F1,         0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_EXIT,         linux_ui_code_values_t(KEY_RESERVED,   0x0,  KEY_RESERVED)}, // TODO XR15v2/XRA exit
-    {CTRLM_KEY_CODE_PAGE_UP,      linux_ui_code_values_t(KEY_RESERVED,   0x0,  KEY_RESERVED)}, // TODO XR15v2/XRA page up
-    {CTRLM_KEY_CODE_PAGE_DOWN,    linux_ui_code_values_t(KEY_RESERVED,   0x0,  KEY_RESERVED)}, // TODO XR15v2/XRA page down
-    {CTRLM_KEY_CODE_RECORD,       linux_ui_code_values_t(KEY_RESERVED,   0x0,  KEY_RESERVED)}, // TODO XR15v2/XRA record
-    {CTRLM_KEY_CODE_REWIND,       linux_ui_code_values_t(KEY_RESERVED,   0x0,  KEY_RESERVED)}, // TODO XR15v2/XRA <<
-    {CTRLM_KEY_CODE_FAST_FORWARD, linux_ui_code_values_t(KEY_RESERVED,   0x0,  KEY_RESERVED)}, // TODO XR15v2/XRA >>
-    {CTRLM_KEY_CODE_GUIDE,        linux_ui_code_values_t(KEY_RESERVED,   0x0,  KEY_RESERVED)}, // TODO XR15v2/XRA guide
-    {CTRLM_KEY_CODE_PLAY_PAUSE,   linux_ui_code_values_t(KEY_RESERVED,   0x0,  KEY_RESERVED)}, // TODO XR15v2/XRA play/pause
-    {CTRLM_KEY_CODE_OCAP_B,       linux_ui_code_values_t(KEY_RESERVED,   0x0,  KEY_RESERVED)}, // TODO XR15v2 b
-    {CTRLM_KEY_CODE_OCAP_C,       linux_ui_code_values_t(KEY_RESERVED,   0x0,  KEY_RESERVED)}, // TODO XR15v2 c
-    {CTRLM_KEY_CODE_OCAP_D,       linux_ui_code_values_t(KEY_RESERVED,   0x0,  KEY_RESERVED)}, // TODO XR15v2 d
-    {CTRLM_KEY_CODE_OCAP_A,       linux_ui_code_values_t(KEY_RESERVED,   0x0,  KEY_RESERVED)}, // TODO XR15v2 a
-    {CTRLM_KEY_CODE_ASTERISK,     linux_ui_code_values_t(KEY_RESERVED,   0x0,  KEY_RESERVED)}, // TODO XR16/XRA asterisk key
+    {CTRLM_KEY_CODE_OK,           linux_ui_code_values_t(KEY_ENTER,        0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_UP_ARROW,     linux_ui_code_values_t(KEY_UP,           0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_DOWN_ARROW,   linux_ui_code_values_t(KEY_DOWN,         0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_LEFT_ARROW,   linux_ui_code_values_t(KEY_LEFT,         0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_RIGHT_ARROW,  linux_ui_code_values_t(KEY_RIGHT,        0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_MENU,         linux_ui_code_values_t(KEY_HOME,         0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_DIGIT_0,      linux_ui_code_values_t(KEY_0,            0x00, KEY_RESERVED)},
+    {CTRLM_KEY_CODE_DIGIT_1,      linux_ui_code_values_t(KEY_1,            0x01, KEY_RESERVED)},
+    {CTRLM_KEY_CODE_DIGIT_2,      linux_ui_code_values_t(KEY_2,            0x02, KEY_RESERVED)},
+    {CTRLM_KEY_CODE_DIGIT_3,      linux_ui_code_values_t(KEY_3,            0x03, KEY_RESERVED)},
+    {CTRLM_KEY_CODE_DIGIT_4,      linux_ui_code_values_t(KEY_4,            0x04, KEY_RESERVED)},
+    {CTRLM_KEY_CODE_DIGIT_5,      linux_ui_code_values_t(KEY_5,            0x05, KEY_RESERVED)},
+    {CTRLM_KEY_CODE_DIGIT_6,      linux_ui_code_values_t(KEY_6,            0x06, KEY_RESERVED)},
+    {CTRLM_KEY_CODE_DIGIT_7,      linux_ui_code_values_t(KEY_7,            0x07, KEY_RESERVED)},
+    {CTRLM_KEY_CODE_DIGIT_8,      linux_ui_code_values_t(KEY_8,            0x08, KEY_RESERVED)},
+    {CTRLM_KEY_CODE_DIGIT_9,      linux_ui_code_values_t(KEY_9,            0x09, KEY_RESERVED)},
+    {CTRLM_KEY_CODE_CH_UP,        linux_ui_code_values_t(KEY_PAGEUP,       0x58, KEY_LEFTCTRL)},
+    {CTRLM_KEY_CODE_CH_DOWN,      linux_ui_code_values_t(KEY_PAGEDOWN,     0x59, KEY_LEFTCTRL)},
+    {CTRLM_KEY_CODE_LAST,         linux_ui_code_values_t(KEY_ESC,          0x0,  KEY_LEFTCTRL)},
+    {CTRLM_KEY_CODE_INPUT_SELECT, linux_ui_code_values_t(KEY_F15,          0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_INFO,         linux_ui_code_values_t(KEY_F9,           0xcb, KEY_LEFTCTRL)},
+    {CTRLM_KEY_CODE_VOL_UP,       linux_ui_code_values_t(KEY_KPPLUS,       0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_VOL_DOWN,     linux_ui_code_values_t(KEY_KPMINUS,      0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_MUTE,         linux_ui_code_values_t(KEY_KPASTERISK,   0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_POWER_ON,     linux_ui_code_values_t(KEY_F1,           0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_POWER_OFF,    linux_ui_code_values_t(KEY_F1,           0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_POWER_TOGGLE, linux_ui_code_values_t(KEY_F1,           0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_EXIT,         linux_ui_code_values_t(KEY_HOME,         0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_PAGE_UP,      linux_ui_code_values_t(KEY_SCROLLUP,     0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_PAGE_DOWN,    linux_ui_code_values_t(KEY_SCROLLDOWN,   0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_RECORD,       linux_ui_code_values_t(KEY_F16,          0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_REWIND,       linux_ui_code_values_t(KEY_F10,          0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_FAST_FORWARD, linux_ui_code_values_t(KEY_F12,          0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_GUIDE,        linux_ui_code_values_t(KEY_EPG,          0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_PLAY_PAUSE,   linux_ui_code_values_t(KEY_F11,          0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_OCAP_A,       linux_ui_code_values_t(KEY_KPDOT,        0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_OCAP_B,       linux_ui_code_values_t(KEY_F14,          0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_OCAP_C,       linux_ui_code_values_t(KEY_RESERVED,     0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_OCAP_D,       linux_ui_code_values_t(KEY_RESERVED,     0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_ASTERISK,     linux_ui_code_values_t(KEY_F14,          0x0,  KEY_RESERVED)},
 };
 
 enum class key_stroke {

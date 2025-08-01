@@ -700,6 +700,7 @@ typedef struct {
    ctrlm_network_id_t           network_id;                                     ///< Identifier of network or CTRLM_MAIN_NETWORK_ID_ALL for all networks
    unsigned char                pairing_mode;                                   ///< Indicates the pairing mode
    unsigned char                restrict_by_remote;                             ///< Indicates the remote bucket (no restrictions, only voice remotes, only voice assistants)
+   unsigned char                use_timeout;                                    ///< Indicates whether to use a timeout for the pairing mode (0 - do not use timeout, otherwise use timeout)
    unsigned int                 bind_status;                                    ///< OUT - The bind status of the pairing session
 } ctrlm_main_iarm_call_control_service_pairing_mode_t;
 

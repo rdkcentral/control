@@ -5402,8 +5402,9 @@ void ctrlm_main_iarm_call_control_service_start_pairing_mode_(ctrlm_main_iarm_ca
       case CTRLM_PAIRING_MODE_SCREEN_BIND: {
          pairing->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
          g_ctrlm.binding_screen_active = true;
-         // Set a timer to limit the binding mode window
-         g_ctrlm.screen_bind_timeout_tag = ctrlm_timeout_create(g_ctrlm.screen_bind_timeout_val, ctrlm_timeout_screen_bind, NULL);
+         if(pairing->use_timeout != 0) { // Set a timer to limit the binding mode window
+            g_ctrlm.screen_bind_timeout_tag = ctrlm_timeout_create(g_ctrlm.screen_bind_timeout_val, ctrlm_timeout_screen_bind, NULL);
+         }
          XLOGD_INFO("SCREEN BIND STATE <ACTIVE>");
          break;
       }

@@ -29,7 +29,6 @@
 // STB Platforms
 #include "ctrlm_thunder_controller.h"
 #include "ctrlm_thunder_plugin_display_settings.h"
-#include "ctrlm_thunder_plugin_cec.h"
 #include "ctrlm_thunder_plugin_cec_source.h"
 // TV Platforms
 #ifdef USE_DEPRECATED_HDMI_INPUT_PLUGIN
@@ -80,13 +79,13 @@ typedef struct {
     ctrlm_ipc_iarm_t                                                    *irdb_ipc;
     #ifdef CTRLM_THUNDER
     Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t   *display_settings;
-    Thunder::CEC::ctrlm_thunder_plugin_cec_t                            *cec;
+    Thunder::CEC::ctrlm_thunder_plugin_cec_source_t                     *cec_source;
+    Thunder::CECSink::ctrlm_thunder_plugin_cec_sink_t                   *cec_sink;
     #ifdef USE_DEPRECATED_HDMI_INPUT_PLUGIN
     Thunder::HDMIInput::ctrlm_thunder_plugin_hdmi_input_t               *av_input;
     #else
     Thunder::AVInput::ctrlm_thunder_plugin_av_input_t                   *av_input;
     #endif
-    Thunder::CECSink::ctrlm_thunder_plugin_cec_sink_t                   *cec_sink;
    #endif
 } ctrlm_irdb_global_t;
 
@@ -305,17 +304,17 @@ void ctrlm_irdb_interface_t::on_thunder_ready() {
 
     if(m_platform_tv == false) {
         g_irdb.display_settings = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
-        g_irdb.cec = Thunder::CEC::ctrlm_thunder_plugin_cec_t::getInstance();
-        if(!g_irdb.cec->is_activated()) {
-            XLOGD_INFO("CEC Thunder Plugin not activated.. Activating..");
-            if(g_irdb.cec->activate()) {
-                if(g_irdb.cec->enable(true)) {
+        g_irdb.cec_source = Thunder::CEC::ctrlm_thunder_plugin_cec_source_t::getInstance();
+        if(!g_irdb.cec_source->is_activated()) {
+            XLOGD_INFO("CEC Source Thunder Plugin not activated.. Activating..");
+            if(g_irdb.cec_source->activate()) {
+                if(g_irdb.cec_source->enable(true)) {
                     XLOGD_INFO("CEC enabled");
                 } else {
                     XLOGD_WARN("CEC failed to enable");
                 }
             } else {
-                XLOGD_TELEMETRY("failed to activate CEC Plugin");
+                XLOGD_TELEMETRY("failed to activate CEC Source Plugin");
             }
         }
     } else {
@@ -414,10 +413,10 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
         } else {
             XLOGD_ERROR("display_settings is NULL");
         }
-        if(g_irdb.cec) {
+        if(g_irdb.cec_source) {
             // Check CEC data
             std::vector<Thunder::CEC::cec_device_t> cec_devices;
-            g_irdb.cec->get_cec_devices(cec_devices);
+            g_irdb.cec_source->get_cec_devices(cec_devices);
             if(cec_devices.size() > 0) {
                 for(auto &itr : cec_devices) {
                     ctrlm_irdb_dev_type_t type = CTRLM_IRDB_DEV_TYPE_INVALID;

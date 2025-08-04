@@ -4966,7 +4966,7 @@ void ctrlm_obj_network_rf4ce_t::req_process_stop_pairing(void *data, int size) {
       pairing.use_timeout        = 0;
       pairing.result             = CTRLM_IARM_CALL_RESULT_INVALID;
 
-      ctrlm_main_iarm_call_control_service_end_pairing_mode(&pairing);
+      ctrlm_main_iarm_call_control_service_end_pairing_mode_(&pairing);
       if (pairing.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
          XLOGD_ERROR("Failed to end pairing mode");
          set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);

@@ -362,7 +362,6 @@ static void     ctrlm_main_update_export_controller_list(void);
 static void     ctrlm_main_iarm_call_ir_remote_usage_get_(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage);
 static void     ctrlm_main_iarm_call_pairing_metrics_get_(ctrlm_main_iarm_call_pairing_metrics_t *pairing_metrics);
 static void     ctrlm_main_iarm_call_last_key_info_get_(ctrlm_main_iarm_call_last_key_info_t *last_key_info);
-static void     ctrlm_main_iarm_call_control_service_end_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 static void     ctrlm_stop_one_touch_autobind_(ctrlm_network_id_t network_id);
 static void     ctrlm_close_pairing_window_(ctrlm_network_id_t network_id, ctrlm_close_pairing_window_reason reason);
 static void     ctrlm_pairing_window_bind_status_set_(ctrlm_bind_status_t bind_status);

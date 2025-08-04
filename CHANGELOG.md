@@ -16,6 +16,27 @@ All notable changes to this project will be documented in this file.
 
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
+## [1.1.2] - 2025-08-04
+
+### Changed
+- use HdmiCecSource instead of deprecated HdmiCec (#93)
+- update key code mapping (#91)
+- stop BLE audio stream on the RCU when server ends session early (#76)
+
+### Added
+- BLE network discovery (#94)
+- try to load VL provided IRDB, upon failure fallback to existing IRDB in MW (#79)
+- print raw EDID data at debug log level
+
+### Fixed
+- Voice not initiated due to voice key not initialized to default value
+    
+### Removed
+- remove receiver ID, its no longer used (#85)
+- Remove RF4CE HAL from the middleware layer (#75)
+
+    
+
 ## [1.1.1] - 2025-06-25
 
 ### Changed

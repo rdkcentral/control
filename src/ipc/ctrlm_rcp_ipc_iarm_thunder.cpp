@@ -240,6 +240,7 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_pairing(void *arg)
 IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_net_status(void *arg)
 {
     XLOGD_INFO("");
+    printf("RMDEBUG: ctrlm_rcp_ipc_iarm_thunder_t::get_net_status\n");
 
     if (!is_running(atomic_running_)) {
         XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state");
@@ -255,17 +256,18 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_net_status(void *arg)
 
     json_t *payload = json_loads(call_data->payload, JSON_DECODE_ANY, NULL);
     json_config config(payload);
+    printf("RMDEBUG: ctrlm_rcp_ipc_iarm_thunder_t::get_net_status - config read get object\n");
 
     if (!payload || !config.current_object_get()) {
         XLOGD_ERROR("Bad payload from call data");
         return(IARM_RESULT_INVALID_PARAM);
     }
-
+    printf("RMDEBUG: ctrlm_rcp_ipc_iarm_thunder_t::get_net_status - config read\n");
     int net_type = CTRLM_NETWORK_TYPE_INVALID;
     if (!config.config_value_get(NET_TYPE, net_type)) {
         XLOGD_INFO("Missing %s parameter - defaulting to all networks", NET_TYPE);
     }
-
+    printf("RMDEBUG: ctrlm_rcp_ipc_iarm_thunder_t::get_net_status - config read complete\n");
     std::shared_ptr<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>> params = std::make_shared<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>>();
     params->set_net_id((net_type == CTRLM_NETWORK_TYPE_INVALID) ? CTRLM_MAIN_NETWORK_ID_ALL : ctrlm_network_id_get(static_cast<ctrlm_network_type_t>(net_type)));
 

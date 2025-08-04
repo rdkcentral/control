@@ -77,8 +77,10 @@ bool json_config::config_array_get(const char* key, json_t **array) const {
 }
 
 bool json_config::config_value_get(const char* key, bool& val, int index) const {
+   printf("RMDEBUG: config_value_get 5\n");
 
    json_t *json_obj = json_object_get(json_section_obj, key);
+   printf("RMDEBUG: config_value_get start read \n");
    if(json_obj != 0 && index >= 0) { // Handle array index
       if(!json_is_array(json_obj)) {
          XLOGD_ERROR("%-25s - not an array", key);
@@ -102,6 +104,7 @@ bool json_config::config_value_get(const char* key, bool& val, int index) const 
 }
 
 bool json_config::config_value_get(const char* key, int& val, int min_val, int max_val, int index) const {
+   printf("RMDEBUG: config_value_get 1\n");
 
    json_t *json_obj = json_object_get(json_section_obj, key);
    if(json_obj != 0 && index >= 0) { // Handle array index
@@ -116,6 +119,7 @@ bool json_config::config_value_get(const char* key, int& val, int min_val, int m
          json_obj = json_element;
       }
    }
+    printf("RMDEBUG: config_value_get start read \n");
 
    if(json_obj == 0 || (!json_is_integer(json_obj) && !json_is_boolean(json_obj) && !json_is_string(json_obj))) {
       XLOGD_INFO("%-25s - ABSENT", key);
@@ -156,6 +160,7 @@ bool json_config::config_value_get(const char* key, int& val, int min_val, int m
 }
 
 bool json_config::config_value_get(const char* key, double& val, double min_val, double max_val, int index) const {
+   printf("RMDEBUG: config_value_get 2 \n");
 
    json_t *json_obj = json_object_get(json_section_obj, key);
    if(json_obj != 0 && index >= 0) { // Handle array index
@@ -170,6 +175,7 @@ bool json_config::config_value_get(const char* key, double& val, double min_val,
          json_obj = json_element;
       }
    }
+   printf("RMDEBUG: config_value_get start read \n");
 
    if(json_obj == 0 || !json_is_real(json_obj) ) {
       XLOGD_INFO("%-25s - ABSENT", key);
@@ -187,8 +193,10 @@ bool json_config::config_value_get(const char* key, double& val, double min_val,
 }
 
 bool json_config::config_value_get(const char* key, std::string& val) const{
+   printf("RMDEBUG: config_value_get 3\n");
 
    json_t *json_obj = json_object_get(json_section_obj, key);
+   printf("RMDEBUG: config_value_get start read \n");
    if(json_obj == 0 || !json_is_string(json_obj)) {
       XLOGD_INFO("%-25s - ABSENT", key);
       return false;
@@ -199,7 +207,9 @@ bool json_config::config_value_get(const char* key, std::string& val) const{
 }
 
 bool json_config::config_value_get(const char* key, std::vector<std::string> &val) const {
+   printf("RMDEBUG: config_value_get 4\n");
    json_t *json_obj = json_object_get(json_section_obj, key);
+   printf("RMDEBUG: config_value_get start read \n");
    if(json_obj == NULL || !json_is_array(json_obj)) {
       XLOGD_INFO("%-25s - ABSENT", key);
       return(false);
@@ -225,6 +235,7 @@ bool json_config::config_value_get(const char* key, std::vector<std::string> &va
 bool json_config::config_object_get(const char* key, json_config& config_object) const {
 
    json_t *json_obj = json_object_get(json_section_obj, key);
+   printf("RMDEBUG: config_value_get start read \n");
    if(json_obj == 0 || !json_is_object(json_obj)) {
       XLOGD_INFO("%-25s - ABSENT", key);
       return false;

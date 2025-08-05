@@ -193,9 +193,7 @@
 #define CTRLM_MIN_IR_COMMAND_REPEATS  (1)
 #define CTRLM_MAX_IR_COMMAND_REPEATS  (10)
 
-#ifdef ASB
 #define CTRLM_ASB_ENABLED_DEFAULT                 (false)
-#endif
 #define CTRLM_OPEN_CHIME_ENABLED_DEFAULT          (false)
 #define CTRLM_CLOSE_CHIME_ENABLED_DEFAULT         (true)
 #define CTRLM_PRIVACY_CHIME_ENABLED_DEFAULT       (true)
@@ -203,9 +201,7 @@
 #define CTRLM_CHIME_VOLUME_DEFAULT                (CTRLM_CHIME_VOLUME_MEDIUM)
 #define CTRLM_IR_COMMAND_REPEATS_DEFAULT          (3)
 
-#ifdef ASB
 #define CTRLM_ASB_ENABLED_LEN                     (1)
-#endif
 #define CTRLM_OPEN_CHIME_ENABLED_LEN              (1)
 #define CTRLM_CLOSE_CHIME_ENABLED_LEN             (1)
 #define CTRLM_PRIVACY_CHIME_ENABLED_LEN           (1)

@@ -216,6 +216,14 @@ typedef struct {
    bool                               rf4ce_enabled;
    void *                             rf4ce_handle;
    ctrlm_hal_rf4ce_main_t             rf4ce_hal_main;
+   bool                               rf4ce_asb_supported;
+   void *                             rf4ce_asb_handle;
+
+   ctrlm_hal_rf4ce_asb_init_t           rf4ce_hal_asb_init;
+   ctrlm_hal_rf4ce_asb_methods_get_t    rf4ce_hal_asb_methods_get;
+   ctrlm_hal_rf4ce_asb_key_derivation_t rf4ce_hal_asb_key_derivation;
+   ctrlm_hal_rf4ce_asb_destroy_t        rf4ce_hal_asb_destroy;
+
    guint                              thread_monitor_timeout_val;
    guint                              thread_monitor_timeout_tag;
    guint                              thread_monitor_index;
@@ -322,6 +330,7 @@ static void ctrlm_device_info_activated(void *user_data);
 #endif
 
 static void *   ctrlm_load_hal_rf4ce(void);
+static void *   ctrlm_load_hal_rf4ce_asb(void);
 
 static gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, json_t **json_obj_voice, json_t **json_obj_device_update, json_t **json_obj_validation, json_t **json_obj_vsdk);
 static gboolean ctrlm_iarm_init(void);
@@ -524,6 +533,17 @@ int main(int argc, char *argv[]) {
    g_ctrlm.production_build               = true;
    g_ctrlm.rf4ce_handle                   = ctrlm_load_hal_rf4ce();
    g_ctrlm.rf4ce_enabled                  = (NULL == g_ctrlm.rf4ce_handle) ? false : true;
+   if(g_ctrlm.rf4ce_enabled) { // Check for ASB support
+      g_ctrlm.rf4ce_asb_handle            = ctrlm_load_hal_rf4ce_asb();
+      g_ctrlm.rf4ce_asb_supported         = (NULL == g_ctrlm.rf4ce_asb_handle) ? false : true;
+   } else {
+      g_ctrlm.rf4ce_asb_handle             = NULL;
+      g_ctrlm.rf4ce_asb_supported          = false;
+      g_ctrlm.rf4ce_hal_asb_init           = NULL;
+      g_ctrlm.rf4ce_hal_asb_methods_get    = NULL;
+      g_ctrlm.rf4ce_hal_asb_key_derivation = NULL;
+      g_ctrlm.rf4ce_hal_asb_destroy        = NULL;
+   }
    g_ctrlm.has_service_access_token       = false;
    g_ctrlm.sat_enabled                    = true;
    g_ctrlm.service_access_token_expiration_tag = 0;
@@ -870,6 +890,12 @@ int main(int argc, char *argv[]) {
    ctrlm_ir_controller_t::destroy_instance();
    ctrlm_powermanager_t::destroy_instance();
    ctrlm_irdb_interface_t::destroy_instance();
+
+   if(g_ctrlm.rf4ce_asb_handle != NULL) {
+      XLOGD_INFO("unload rf4ce asb hal");
+      dlclose(g_ctrlm.rf4ce_asb_handle);
+      g_ctrlm.rf4ce_asb_handle = NULL;
+   }
 
    if(g_ctrlm.rf4ce_handle != NULL) {
       XLOGD_INFO("unload rf4ce hal");
@@ -2080,6 +2106,11 @@ gboolean ctrlm_networks_pre_init(json_t *json_obj_net_rf4ce, json_t *json_config
       ctrlm_obj_network_rf4ce_t *obj_net_rf4ce = new ctrlm_obj_network_rf4ce_t(CTRLM_NETWORK_TYPE_RF4CE, network_id, "RF4CE", g_ctrlm.mask_pii, json_obj_net_rf4ce, g_thread_self());
       // Set main function for the RF4CE Network object
       obj_net_rf4ce->hal_api_main_set(g_ctrlm.rf4ce_hal_main);
+
+      if(ctrlm_is_rf4ce_asb_supported()) {
+         // Set ASB function for the RF4CE Network object
+         obj_net_rf4ce->hal_api_asb_set(g_ctrlm.rf4ce_hal_asb_init, g_ctrlm.rf4ce_hal_asb_methods_get, g_ctrlm.rf4ce_hal_asb_key_derivation, g_ctrlm.rf4ce_hal_asb_destroy);
+      }
       g_ctrlm.networks[network_id]      = obj_net_rf4ce;
       //g_ctrlm.networks[network_id].net.rf4ce = obj_net_rf4ce;
       g_ctrlm.network_type[network_id]       = g_ctrlm.networks[network_id]->type_get();
@@ -2797,14 +2828,14 @@ gpointer ctrlm_main_thread(gpointer param) {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_SET_VALUES");
 
             if(settings->available & CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_ASB_ENABLED) {
-#ifdef ASB
-               // Write new asb_enabled flag to NVM
-               ctrlm_db_asb_enabled_write(&settings->asb_enabled, CTRLM_ASB_ENABLED_LEN); 
-               g_ctrlm.cs_values.asb_enable = settings->asb_enabled;
-               XLOGD_INFO("ASB Enabled Set Values <%s>", g_ctrlm.cs_values.asb_enable ? "true" : "false");
-#else
-               XLOGD_INFO("ASB Enabled Set Values <false>, ASB Not Supported");
-#endif
+               if(ctrlm_is_rf4ce_asb_supported()) {
+                  // Write new asb_enabled flag to NVM
+                  ctrlm_db_asb_enabled_write(&settings->asb_enabled, CTRLM_ASB_ENABLED_LEN); 
+                  g_ctrlm.cs_values.asb_enable = settings->asb_enabled;
+                  XLOGD_INFO("ASB Enabled Set Values <%s>", g_ctrlm.cs_values.asb_enable ? "true" : "false");
+               } else {
+                  XLOGD_INFO("ASB Enabled Set Values <false>, ASB Not Supported");
+               }
             }
             if(settings->available & CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_OPEN_CHIME_ENABLED) {
                // Write new open_chime_enabled flag to NVM
@@ -2871,12 +2902,13 @@ gpointer ctrlm_main_thread(gpointer param) {
             ctrlm_main_queue_msg_main_control_service_settings_t *dqm = (ctrlm_main_queue_msg_main_control_service_settings_t *) msg;
             ctrlm_main_iarm_call_control_service_settings_t *settings = dqm->settings;
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES");
-#ifdef ASB
-            settings->asb_supported = true;
-#else
-            settings->asb_supported = false;
-#endif
-            settings->asb_enabled   = g_ctrlm.cs_values.asb_enable;
+            if(ctrlm_is_rf4ce_asb_supported()) {
+               settings->asb_supported = true;
+            } else {
+               settings->asb_supported = false;
+            }
+
+            settings->asb_enabled                 = g_ctrlm.cs_values.asb_enable;
             settings->open_chime_enabled          = g_ctrlm.cs_values.chime_open_enable;
             settings->close_chime_enabled         = g_ctrlm.cs_values.chime_close_enable;
             settings->privacy_chime_enabled       = g_ctrlm.cs_values.chime_privacy_enable;
@@ -5872,22 +5904,23 @@ void control_service_values_read_from_db() {
    guchar *data = NULL;
    guint32 length;
 
-#ifdef ASB
-   //ASB enabled
-   gboolean asb_enabled = CTRLM_ASB_ENABLED_DEFAULT;
-   ctrlm_db_asb_enabled_read(&data, &length);
-   if(data == NULL) {
-      XLOGD_WARN("Not read from DB - ASB Enabled.  Using default of <%s>.", asb_enabled ? "true" : "false");
-      // Write new asb_enabled flag to NVM
-      ctrlm_db_asb_enabled_write((guchar *)&asb_enabled, CTRLM_ASB_ENABLED_LEN); 
-   } else {
-      asb_enabled = data[0];
-      ctrlm_db_free(data);
-      data = NULL;
-      XLOGD_INFO("ASB Enabled read from DB <%s>", asb_enabled ? "YES" : "NO");
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      //ASB enabled
+      gboolean asb_enabled = CTRLM_ASB_ENABLED_DEFAULT;
+      ctrlm_db_asb_enabled_read(&data, &length);
+      if(data == NULL) {
+         XLOGD_WARN("Not read from DB - ASB Enabled.  Using default of <%s>.", asb_enabled ? "true" : "false");
+         // Write new asb_enabled flag to NVM
+         ctrlm_db_asb_enabled_write((guchar *)&asb_enabled, CTRLM_ASB_ENABLED_LEN); 
+      } else {
+         asb_enabled = data[0];
+         ctrlm_db_free(data);
+         data = NULL;
+         XLOGD_INFO("ASB Enabled read from DB <%s>", asb_enabled ? "YES" : "NO");
+      }
+      g_ctrlm.cs_values.asb_enable = asb_enabled;
    }
-   g_ctrlm.cs_values.asb_enable = asb_enabled;
-#endif
+
    // Open Chime Enabled
    gboolean open_chime_enabled = CTRLM_OPEN_CHIME_ENABLED_DEFAULT;
    ctrlm_db_open_chime_enabled_read(&data, &length);
@@ -6068,4 +6101,65 @@ void *ctrlm_load_hal_rf4ce(void) {
 
 gboolean ctrlm_is_rf4ce_enabled(void) {
    return(g_ctrlm.rf4ce_enabled);
+}
+
+void *ctrlm_load_hal_rf4ce_asb(void) {
+   void *handle = dlopen("libctrlm_hal_rf4ce_asb.so", RTLD_NOW);
+   if(NULL == handle) {
+      if(ctrlm_file_exists("/usr/lib/libctrlm_hal_rf4ce_asb.so") || ctrlm_file_exists("/vendor/lib/libctrlm_hal_rf4ce_asb.so")) {
+         XLOGD_ERROR("Failed to load RF4CE ASB HAL plugin <%s>", dlerror());
+      } else {
+         XLOGD_INFO("RF4CE ASB HAL is not present.");
+      }
+      return(NULL);
+   }
+
+   dlerror();  // Clear any existing error
+
+   ctrlm_hal_rf4ce_asb_init_t asb_init = (ctrlm_hal_rf4ce_asb_init_t)dlsym(handle, "asb_init");
+   char *error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (asb_init), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   ctrlm_hal_rf4ce_asb_methods_get_t asb_methods_get = (ctrlm_hal_rf4ce_asb_methods_get_t)dlsym(handle, "asb_key_derivation_methods_get");
+   error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (asb_key_derivation_methods_get), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   ctrlm_hal_rf4ce_asb_key_derivation_t asb_key_derivation = (ctrlm_hal_rf4ce_asb_key_derivation_t)dlsym(handle, "asb_key_derivation");
+   error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (asb_key_derivation), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   ctrlm_hal_rf4ce_asb_destroy_t asb_destroy = (ctrlm_hal_rf4ce_asb_destroy_t)dlsym(handle, "asb_destroy");
+   error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (asb_destroy), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   g_ctrlm.rf4ce_hal_asb_init           = asb_init;
+   g_ctrlm.rf4ce_hal_asb_methods_get    = asb_methods_get;
+   g_ctrlm.rf4ce_hal_asb_key_derivation = asb_key_derivation;
+   g_ctrlm.rf4ce_hal_asb_destroy        = asb_destroy;
+
+   return(handle);
+}
+
+gboolean ctrlm_is_rf4ce_asb_supported(void) {
+   return(g_ctrlm.rf4ce_asb_supported);
 }

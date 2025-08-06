@@ -2798,11 +2798,13 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             if(settings->available & CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_ASB_ENABLED) {
 #ifdef ASB
-               // Write new asb_enabled flag to NVM
+#error ASB_ENABLED
+     		    // Write new asb_enabled flag to NVM
                ctrlm_db_asb_enabled_write(&settings->asb_enabled, CTRLM_ASB_ENABLED_LEN); 
                g_ctrlm.cs_values.asb_enable = settings->asb_enabled;
                XLOGD_INFO("ASB Enabled Set Values <%s>", g_ctrlm.cs_values.asb_enable ? "true" : "false");
 #else
+#error ASB_NOT_ENABLED
                XLOGD_INFO("ASB Enabled Set Values <false>, ASB Not Supported");
 #endif
             }

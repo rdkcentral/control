@@ -509,6 +509,8 @@ class ctrlm_voice_t {
     std::string                           voice_stb_data_stb_name_get() const;
     virtual void                          voice_stb_data_account_number_set(std::string &account_number);
     std::string                           voice_stb_data_account_number_get() const;
+    virtual void                          voice_stb_data_receiver_id_set(std::string &receiver_id);
+    std::string                           voice_stb_data_receiver_id_get() const;
     virtual void                          voice_stb_data_device_id_set(std::string &device_id);
     std::string                           voice_stb_data_device_id_get() const;
     virtual void                          voice_stb_data_device_type_set(ctrlm_device_type_t device_type);
@@ -655,6 +657,7 @@ public:
     std::string              account_number;
     std::string              device_id;
     ctrlm_device_type_t      device_type;
+    std::string              receiver_id;
     std::string              partner_id;
     std::string              experience;
     char                     sat_token[XRSR_SAT_TOKEN_LEN_MAX];

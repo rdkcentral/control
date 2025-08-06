@@ -156,6 +156,7 @@
 #define CTRLM_MAIN_MAX_BOUND_CONTROLLERS                          (9) ///< Maximum number of bound controllers
 #define CTRLM_MAIN_MAX_CHIPSET_LENGTH                            (16) ///< Maximum length of chipset name string (including null termination)
 #define CTRLM_MAIN_COMMIT_ID_MAX_LENGTH                          (48) ///< Maximum length of commit ID string (including null termination)
+#define CTRLM_MAIN_RECEIVER_ID_MAX_LENGTH                        (40) ///< Maximum length of receiver ID string (including null termination)
 #define CTRLM_MAIN_DEVICE_ID_MAX_LENGTH                          (24) ///< Maximum length of device ID string (including null termination)
 
 #define CTRLM_PROPERTY_ACTIVE_PERIOD_BUTTON_VALUE_MIN               (5000) ///< Minimum active period (in ms) for button binding.
@@ -499,6 +500,7 @@ typedef struct {
    char                     ctrlm_version[CTRLM_MAIN_VERSION_LENGTH];           ///< OUT - Software version of Control Manager
    char                     ctrlm_commit_id[CTRLM_MAIN_COMMIT_ID_MAX_LENGTH];   ///< OUT - Last commit ID of Control Manager
    char                     stb_device_id[CTRLM_MAIN_DEVICE_ID_MAX_LENGTH];     ///< OUT - Device ID obtained from the Set-Top Box
+   char                     stb_receiver_id[CTRLM_MAIN_RECEIVER_ID_MAX_LENGTH]; ///< OUT - Receiver ID obtained from the Set-Top Box
 } ctrlm_main_iarm_call_status_t;
 
 /// @brief RF Channel Structure

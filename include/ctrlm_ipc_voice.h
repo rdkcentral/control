@@ -119,7 +119,7 @@ typedef enum {
    CTRLM_VOICE_SESSION_ABORT_REASON_FAILURE               =  3, ///< Session aborted for any other reason
    CTRLM_VOICE_SESSION_ABORT_REASON_VOICE_DISABLED        =  4, ///< Session aborted because the voice feature is disabled
    CTRLM_VOICE_SESSION_ABORT_REASON_DEVICE_UPDATE         =  5, ///< Session aborted due to device update in progress
-   CTRLM_VOICE_SESSION_ABORT_REASON_NO_AUTH_DATA          =  6, ///< Session aborted due to missing authorization data
+   CTRLM_VOICE_SESSION_ABORT_REASON_NO_RECEIVER_ID        =  6, ///< Session aborted because there is no receiver id
    CTRLM_VOICE_SESSION_ABORT_REASON_NEW_SESSION           =  7, ///< Session aborted because the remote's previous session is still active
    CTRLM_VOICE_SESSION_ABORT_REASON_INVALID_CONTROLLER_ID =  8, ///< Session aborted because the controller id isn't valid
    CTRLM_VOICE_SESSION_ABORT_REASON_APPLICATION_RESTART   =  9, ///< Session aborted due to restarting controlMgr.

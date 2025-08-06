@@ -1359,7 +1359,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
 #ifdef AUTH_ENABLED
     else if(this->voice_session_requires_stb_data(device_type) && !this->voice_session_has_stb_data()) {
         XLOGD_ERROR("Authentication Data missing");
-        this->voice_session_notify_abort(network_id, controller_id, 0, CTRLM_VOICE_SESSION_ABORT_REASON_NO_AUTH_DATA);
+        this->voice_session_notify_abort(network_id, controller_id, 0, CTRLM_VOICE_SESSION_ABORT_REASON_NO_RECEIVER_ID);
         return(VOICE_SESSION_RESPONSE_SERVER_NOT_READY);
     }
 #endif
@@ -2253,6 +2253,18 @@ std::string ctrlm_voice_t::voice_stb_data_account_number_get() const {
     return(this->account_number);
 }
 
+void ctrlm_voice_t::voice_stb_data_receiver_id_set(std::string &receiver_id) {
+    XLOGD_DEBUG("Receiver ID set to %s", receiver_id.c_str());
+    this->receiver_id = receiver_id;
+    for(const auto &itr : this->endpoints) {
+        itr->voice_stb_data_receiver_id_set(receiver_id);
+    }
+}
+
+std::string ctrlm_voice_t::voice_stb_data_receiver_id_get() const {
+    return(this->receiver_id);
+}
+
 void ctrlm_voice_t::voice_stb_data_device_id_set(std::string &device_id) {
     XLOGD_DEBUG("Device ID set to %s", device_id.c_str());
     this->device_id = device_id;
@@ -2444,9 +2456,9 @@ bool ctrlm_voice_t::voice_session_requires_stb_data(ctrlm_voice_device_t device_
 }
 
 bool ctrlm_voice_t::voice_session_has_stb_data() {
-#ifdef AUTH_DEVICE_ID
-    if(this->device_id == "") {
-        XLOGD_TELEMETRY("No device id");
+#if defined(AUTH_RECEIVER_ID) || defined(AUTH_DEVICE_ID)
+    if(this->receiver_id == "" && this->device_id == "") {
+        XLOGD_TELEMETRY("No receiver/device id");
         return(false);
     }
 #endif

@@ -60,6 +60,7 @@ public:
 
    ctrlm_controller_id_t   controller_id_get() const;
    ctrlm_network_id_t      network_id_get() const;
+   std::string             receiver_id_get() const;
    std::string             device_id_get() const;
    std::string             service_account_id_get() const;
    std::string             partner_id_get() const;

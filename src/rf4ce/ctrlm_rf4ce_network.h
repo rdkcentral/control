@@ -267,10 +267,10 @@ public:
    void                                 hal_init_confirm(ctrlm_hal_rf4ce_cfm_init_params_t params);
    void                                 hal_api_main_set(ctrlm_hal_rf4ce_network_main_t main);
 
-   void                                 hal_api_asb_set(ctrlm_hal_rf4ce_asb_init_t           init, 
-                                                        ctrlm_hal_rf4ce_asb_methods_get_t    methods_get,
-                                                        ctrlm_hal_rf4ce_asb_key_derivation_t key_derivation,
-                                                        ctrlm_hal_rf4ce_asb_destroy_t        destroy);
+   void                                 hal_api_asb_set(ctrlm_hal_rf4ce_asb_init_t        init, 
+                                                        ctrlm_hal_rf4ce_asb_methods_get_t methods_get,
+                                                        ctrlm_hal_rf4ce_asb_key_derive_t  key_derive,
+                                                        ctrlm_hal_rf4ce_asb_destroy_t     destroy);
 
    void                                 hal_rf4ce_api_set(ctrlm_hal_rf4ce_req_pair_t                   pair,
                                                           ctrlm_hal_rf4ce_req_unpair_t                 unpair,
@@ -418,7 +418,7 @@ public:
    void                                 asb_link_key_validation_timeout(void *data, int size);
    void                                 rf4ce_asb_destroy(void *data, int size);
 
-   int                                  hal_asb_key_derivation(uint8_t *input, uint8_t *output, asb_key_derivation_method_t method);
+   int                                  hal_asb_key_derive(uint8_t *input, uint8_t *output, asb_key_derivation_method_t method);
    void                                 hal_asb_destroy(void);
    // End ASB Functions
 
@@ -466,10 +466,10 @@ protected:
 private:
    ctrlm_hal_rf4ce_network_main_t     hal_api_main_;
 
-   ctrlm_hal_rf4ce_asb_init_t           hal_api_asb_init_; 
-   ctrlm_hal_rf4ce_asb_methods_get_t    hal_api_asb_methods_get_;
-   ctrlm_hal_rf4ce_asb_key_derivation_t hal_api_asb_key_derivation_;
-   ctrlm_hal_rf4ce_asb_destroy_t        hal_api_asb_destroy_;
+   ctrlm_hal_rf4ce_asb_init_t         hal_api_asb_init_; 
+   ctrlm_hal_rf4ce_asb_methods_get_t  hal_api_asb_methods_get_;
+   ctrlm_hal_rf4ce_asb_key_derive_t   hal_api_asb_key_derive_;
+   ctrlm_hal_rf4ce_asb_destroy_t      hal_api_asb_destroy_;
 
    ctrlm_hal_rf4ce_req_pair_t         hal_api_pair_;
    ctrlm_hal_rf4ce_req_unpair_t       hal_api_unpair_;

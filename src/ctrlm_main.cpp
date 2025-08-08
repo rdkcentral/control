@@ -219,10 +219,10 @@ typedef struct {
    bool                               rf4ce_asb_supported;
    void *                             rf4ce_asb_handle;
 
-   ctrlm_hal_rf4ce_asb_init_t           rf4ce_hal_asb_init;
-   ctrlm_hal_rf4ce_asb_methods_get_t    rf4ce_hal_asb_methods_get;
-   ctrlm_hal_rf4ce_asb_key_derivation_t rf4ce_hal_asb_key_derivation;
-   ctrlm_hal_rf4ce_asb_destroy_t        rf4ce_hal_asb_destroy;
+   ctrlm_hal_rf4ce_asb_init_t         rf4ce_hal_asb_init;
+   ctrlm_hal_rf4ce_asb_methods_get_t  rf4ce_hal_asb_methods_get;
+   ctrlm_hal_rf4ce_asb_key_derive_t   rf4ce_hal_asb_key_derive;
+   ctrlm_hal_rf4ce_asb_destroy_t      rf4ce_hal_asb_destroy;
 
    guint                              thread_monitor_timeout_val;
    guint                              thread_monitor_timeout_tag;
@@ -537,12 +537,12 @@ int main(int argc, char *argv[]) {
       g_ctrlm.rf4ce_asb_handle            = ctrlm_load_hal_rf4ce_asb();
       g_ctrlm.rf4ce_asb_supported         = (NULL == g_ctrlm.rf4ce_asb_handle) ? false : true;
    } else {
-      g_ctrlm.rf4ce_asb_handle             = NULL;
-      g_ctrlm.rf4ce_asb_supported          = false;
-      g_ctrlm.rf4ce_hal_asb_init           = NULL;
-      g_ctrlm.rf4ce_hal_asb_methods_get    = NULL;
-      g_ctrlm.rf4ce_hal_asb_key_derivation = NULL;
-      g_ctrlm.rf4ce_hal_asb_destroy        = NULL;
+      g_ctrlm.rf4ce_asb_handle            = NULL;
+      g_ctrlm.rf4ce_asb_supported         = false;
+      g_ctrlm.rf4ce_hal_asb_init          = NULL;
+      g_ctrlm.rf4ce_hal_asb_methods_get   = NULL;
+      g_ctrlm.rf4ce_hal_asb_key_derive    = NULL;
+      g_ctrlm.rf4ce_hal_asb_destroy       = NULL;
    }
    g_ctrlm.has_service_access_token       = false;
    g_ctrlm.sat_enabled                    = true;
@@ -2109,7 +2109,7 @@ gboolean ctrlm_networks_pre_init(json_t *json_obj_net_rf4ce, json_t *json_config
 
       if(ctrlm_is_rf4ce_asb_supported()) {
          // Set ASB function for the RF4CE Network object
-         obj_net_rf4ce->hal_api_asb_set(g_ctrlm.rf4ce_hal_asb_init, g_ctrlm.rf4ce_hal_asb_methods_get, g_ctrlm.rf4ce_hal_asb_key_derivation, g_ctrlm.rf4ce_hal_asb_destroy);
+         obj_net_rf4ce->hal_api_asb_set(g_ctrlm.rf4ce_hal_asb_init, g_ctrlm.rf4ce_hal_asb_methods_get, g_ctrlm.rf4ce_hal_asb_key_derive, g_ctrlm.rf4ce_hal_asb_destroy);
       }
       g_ctrlm.networks[network_id]      = obj_net_rf4ce;
       //g_ctrlm.networks[network_id].net.rf4ce = obj_net_rf4ce;
@@ -6075,13 +6075,20 @@ void ctrlm_trigger_startup_actions(void) {
 }
 
 void *ctrlm_load_hal_rf4ce(void) {
-   void *handle = dlopen("libctrlm_hal_rf4ce.so", RTLD_NOW);
+   void *handle = NULL;
+   const char *so_path_vd = "/vendor/lib/libctrlm_hal_rf4ce.so";
+   const char *so_path_mw = "/usr/lib/libctrlm_hal_rf4ce.so";
+   if(ctrlm_file_exists(so_path_vd)) {
+      handle = dlopen(so_path_vd, RTLD_NOW);
+   } else if(ctrlm_file_exists(so_path_mw)) {
+      handle = dlopen(so_path_mw, RTLD_NOW);
+   } else {
+      XLOGD_INFO("RF4CE HAL is not present.");
+      return(NULL);
+   }
+
    if(NULL == handle) {
-      if(ctrlm_file_exists("/usr/lib/libctrlm_hal_rf4ce.so") || ctrlm_file_exists("/vendor/lib/libctrlm_hal_rf4ce.so")) {
-         XLOGD_ERROR("Failed to load RF4CE HAL plugin <%s>", dlerror());
-      } else {
-         XLOGD_INFO("RF4CE HAL is not present.");
-      }
+      XLOGD_ERROR("Failed to load RF4CE HAL plugin <%s>", dlerror());
       return(NULL);
    }
 
@@ -6104,13 +6111,20 @@ gboolean ctrlm_is_rf4ce_enabled(void) {
 }
 
 void *ctrlm_load_hal_rf4ce_asb(void) {
-   void *handle = dlopen("libctrlm_hal_rf4ce_asb.so", RTLD_NOW);
+   void *handle = NULL;
+   const char *so_path_vd = "/vendor/lib/libctrlm-hal-asb.so";
+   const char *so_path_mw = "/usr/lib/libctrlm-hal-asb.so";
+   if(ctrlm_file_exists(so_path_vd)) {
+      handle = dlopen(so_path_vd, RTLD_NOW);
+   } else if(ctrlm_file_exists(so_path_mw)) {
+      handle = dlopen(so_path_mw, RTLD_NOW);
+   } else {
+      XLOGD_INFO("RF4CE ASB HAL is not present.");
+      return(NULL);
+   }
+
    if(NULL == handle) {
-      if(ctrlm_file_exists("/usr/lib/libctrlm_hal_rf4ce_asb.so") || ctrlm_file_exists("/vendor/lib/libctrlm_hal_rf4ce_asb.so")) {
-         XLOGD_ERROR("Failed to load RF4CE ASB HAL plugin <%s>", dlerror());
-      } else {
-         XLOGD_INFO("RF4CE ASB HAL is not present.");
-      }
+      XLOGD_ERROR("Failed to load RF4CE ASB HAL plugin <%s>", dlerror());
       return(NULL);
    }
 
@@ -6134,7 +6148,7 @@ void *ctrlm_load_hal_rf4ce_asb(void) {
       return(NULL);
    }
 
-   ctrlm_hal_rf4ce_asb_key_derivation_t asb_key_derivation = (ctrlm_hal_rf4ce_asb_key_derivation_t)dlsym(handle, "asb_key_derivation");
+   ctrlm_hal_rf4ce_asb_key_derive_t asb_key_derive = (ctrlm_hal_rf4ce_asb_key_derive_t)dlsym(handle, "asb_key_derivation");
    error = dlerror();
 
    if(error != NULL) {
@@ -6152,10 +6166,10 @@ void *ctrlm_load_hal_rf4ce_asb(void) {
       return(NULL);
    }
 
-   g_ctrlm.rf4ce_hal_asb_init           = asb_init;
-   g_ctrlm.rf4ce_hal_asb_methods_get    = asb_methods_get;
-   g_ctrlm.rf4ce_hal_asb_key_derivation = asb_key_derivation;
-   g_ctrlm.rf4ce_hal_asb_destroy        = asb_destroy;
+   g_ctrlm.rf4ce_hal_asb_init        = asb_init;
+   g_ctrlm.rf4ce_hal_asb_methods_get = asb_methods_get;
+   g_ctrlm.rf4ce_hal_asb_key_derive  = asb_key_derive;
+   g_ctrlm.rf4ce_hal_asb_destroy     = asb_destroy;
 
    return(handle);
 }

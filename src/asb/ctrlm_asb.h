@@ -75,7 +75,7 @@ void                         asb_destroy();
 
 typedef int                          (*ctrlm_hal_rf4ce_asb_init_t)(void);
 typedef asb_key_derivation_bitmask_t (*ctrlm_hal_rf4ce_asb_methods_get_t)(void);
-typedef int                          (*ctrlm_hal_rf4ce_asb_key_derivation_t)(uint8_t *input, uint8_t *output, asb_key_derivation_method_t method);
+typedef int                          (*ctrlm_hal_rf4ce_asb_key_derive_t)(uint8_t *input, uint8_t *output, asb_key_derivation_method_t method);
 typedef void                         (*ctrlm_hal_rf4ce_asb_destroy_t)(void);
 
 #endif

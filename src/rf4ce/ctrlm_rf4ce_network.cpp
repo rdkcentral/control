@@ -123,10 +123,10 @@ ctrlm_obj_network_rf4ce_t::ctrlm_obj_network_rf4ce_t(ctrlm_network_type_t type, 
    hal_api_rib_data_import_ = NULL;
    hal_api_rib_data_export_ = NULL;
 
-   hal_api_asb_init_           = NULL; 
-   hal_api_asb_methods_get_    = NULL;
-   hal_api_asb_key_derivation_ = NULL;
-   hal_api_asb_destroy_        = NULL;
+   hal_api_asb_init_        = NULL; 
+   hal_api_asb_methods_get_ = NULL;
+   hal_api_asb_key_derive_  = NULL;
+   hal_api_asb_destroy_     = NULL;
 
    errno_t safec_rc = -1;
 
@@ -337,12 +337,12 @@ void ctrlm_obj_network_rf4ce_t::hal_api_main_set(ctrlm_hal_rf4ce_network_main_t 
 
 void ctrlm_obj_network_rf4ce_t::hal_api_asb_set(ctrlm_hal_rf4ce_asb_init_t init, 
                                                 ctrlm_hal_rf4ce_asb_methods_get_t methods_get,
-                                                ctrlm_hal_rf4ce_asb_key_derivation_t key_derivation,
+                                                ctrlm_hal_rf4ce_asb_key_derive_t key_derive,
                                                 ctrlm_hal_rf4ce_asb_destroy_t destroy) {
    THREAD_ID_VALIDATE();
    hal_api_asb_init_           = init;
    hal_api_asb_methods_get_    = methods_get;
-   hal_api_asb_key_derivation_ = key_derivation;
+   hal_api_asb_key_derive_     = key_derive;
    hal_api_asb_destroy_        = destroy;
 }
 
@@ -3517,9 +3517,9 @@ void ctrlm_obj_network_rf4ce_t::rf4ce_asb_destroy(void *data, int size) {
    }
 }
 
-int  ctrlm_obj_network_rf4ce_t::hal_asb_key_derivation(uint8_t *input, uint8_t *output, asb_key_derivation_method_t method) {
-   if(hal_api_asb_key_derivation_ != NULL) {
-      return (*hal_api_asb_key_derivation_)(input, output, method);
+int  ctrlm_obj_network_rf4ce_t::hal_asb_key_derive(uint8_t *input, uint8_t *output, asb_key_derivation_method_t method) {
+   if(hal_api_asb_key_derive_ != NULL) {
+      return (*hal_api_asb_key_derive_)(input, output, method);
    }
    return(-1);
 }

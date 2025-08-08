@@ -3115,7 +3115,7 @@ void ctrlm_obj_controller_rf4ce_t::asb_key_derivation_perform() {
    }
    // Perform link key derivation
 
-   if(obj_network_rf4ce_->hal_asb_key_derivation(property.aes128_key, new_aes128_key, asb_key_derivation_method_used_)) {
+   if(obj_network_rf4ce_->hal_asb_key_derive(property.aes128_key, new_aes128_key, asb_key_derivation_method_used_)) {
       XLOGD_ERROR("Failed to perform key derivation");
       obj_network_rf4ce_->hal_asb_destroy();
       return;

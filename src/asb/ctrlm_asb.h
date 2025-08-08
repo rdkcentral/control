@@ -34,6 +34,10 @@ typedef uint8_t asb_key_derivation_bitmask_t;
  */
 typedef uint8_t asb_key_derivation_method_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* -- API Function Declarations -- */
 /**
  * @brief The ASB Library init function.
@@ -51,7 +55,7 @@ int                          asb_init();
  *
  * @return The bitmask of supported key derivation methods.
  */
-asb_key_derivation_bitmask_t asb_key_derivation_methods_get();
+asb_key_derivation_bitmask_t asb_key_derivation_methods_get(void);
 /**
  * @brief The ASB Library API for key derivation.
  *
@@ -66,7 +70,11 @@ int                          asb_key_derivation(uint8_t *input, uint8_t *output,
  * This function writes over the secrets with null data and then cleans up resources.
  *
  */
-void                         asb_destroy();
+void                         asb_destroy(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 /* -- Defines -- */
 #define AES_KEY_LEN             (16)         ///< AES Key Length

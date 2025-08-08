@@ -6112,8 +6112,8 @@ gboolean ctrlm_is_rf4ce_enabled(void) {
 
 void *ctrlm_load_hal_rf4ce_asb(void) {
    void *handle = NULL;
-   const char *so_path_vd = "/vendor/lib/libctrlm-hal-asb.so";
-   const char *so_path_mw = "/usr/lib/libctrlm-hal-asb.so";
+   const char *so_path_vd = "/vendor/lib/libctrlm-rf4ce-asb-plugin.so";
+   const char *so_path_mw = "/usr/lib/libctrlm-rf4ce-asb-plugin.so";
    if(ctrlm_file_exists(so_path_vd)) {
       handle = dlopen(so_path_vd, RTLD_NOW);
    } else if(ctrlm_file_exists(so_path_mw)) {

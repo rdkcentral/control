@@ -214,7 +214,7 @@ typedef struct {
    gboolean                           sat_enabled;
    gboolean                           production_build;
    bool                               rf4ce_enabled;
-   void *                             rf4ce_handle;
+   void *                             rf4ce_hal_handle;
    ctrlm_hal_rf4ce_main_t             rf4ce_hal_main;
    bool                               rf4ce_asb_supported;
    void *                             rf4ce_asb_handle;
@@ -329,8 +329,8 @@ static void     ctrlm_main_has_device_type_set(gboolean has_type);
 static void ctrlm_device_info_activated(void *user_data);
 #endif
 
-static void *   ctrlm_load_hal_rf4ce(void);
-static void *   ctrlm_load_hal_rf4ce_asb(void);
+static void *   ctrlm_load_plugin_rf4ce_hal(void);
+static void *   ctrlm_load_plugin_rf4ce_asb(void);
 
 static gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, json_t **json_obj_voice, json_t **json_obj_device_update, json_t **json_obj_validation, json_t **json_obj_vsdk);
 static gboolean ctrlm_iarm_init(void);
@@ -531,10 +531,10 @@ int main(int argc, char *argv[]) {
    g_ctrlm.main_thread                    = NULL;
    g_ctrlm.queue                          = NULL;
    g_ctrlm.production_build               = true;
-   g_ctrlm.rf4ce_handle                   = ctrlm_load_hal_rf4ce();
-   g_ctrlm.rf4ce_enabled                  = (NULL == g_ctrlm.rf4ce_handle) ? false : true;
+   g_ctrlm.rf4ce_hal_handle               = ctrlm_load_plugin_rf4ce_hal();
+   g_ctrlm.rf4ce_enabled                  = (NULL == g_ctrlm.rf4ce_hal_handle) ? false : true;
    if(g_ctrlm.rf4ce_enabled) { // Check for ASB support
-      g_ctrlm.rf4ce_asb_handle            = ctrlm_load_hal_rf4ce_asb();
+      g_ctrlm.rf4ce_asb_handle            = ctrlm_load_plugin_rf4ce_asb();
       g_ctrlm.rf4ce_asb_supported         = (NULL == g_ctrlm.rf4ce_asb_handle) ? false : true;
    } else {
       g_ctrlm.rf4ce_asb_handle            = NULL;
@@ -897,10 +897,10 @@ int main(int argc, char *argv[]) {
       g_ctrlm.rf4ce_asb_handle = NULL;
    }
 
-   if(g_ctrlm.rf4ce_handle != NULL) {
+   if(g_ctrlm.rf4ce_hal_handle != NULL) {
       XLOGD_INFO("unload rf4ce hal");
-      dlclose(g_ctrlm.rf4ce_handle);
-      g_ctrlm.rf4ce_handle = NULL;
+      dlclose(g_ctrlm.rf4ce_hal_handle);
+      g_ctrlm.rf4ce_hal_handle = NULL;
    }
 
    XLOGD_INFO("exit program");
@@ -6074,7 +6074,7 @@ void ctrlm_trigger_startup_actions(void) {
    }
 }
 
-void *ctrlm_load_hal_rf4ce(void) {
+void *ctrlm_load_plugin_rf4ce_hal(void) {
    void *handle = NULL;
    const char *so_path_vd = "/vendor/lib/libctrlm_hal_rf4ce.so";
    const char *so_path_mw = "/usr/lib/libctrlm_hal_rf4ce.so";
@@ -6083,7 +6083,7 @@ void *ctrlm_load_hal_rf4ce(void) {
    } else if(ctrlm_file_exists(so_path_mw)) {
       handle = dlopen(so_path_mw, RTLD_NOW);
    } else {
-      XLOGD_INFO("RF4CE HAL is not present.");
+      XLOGD_INFO("RF4CE HAL plugin is not present.");
       return(NULL);
    }
 
@@ -6102,6 +6102,8 @@ void *ctrlm_load_hal_rf4ce(void) {
       dlclose(handle);
       return(NULL);
    }
+
+   XLOGD_INFO("RF4CE HAL plugin is loaded.");
    
    return(handle);
 }
@@ -6110,7 +6112,7 @@ gboolean ctrlm_is_rf4ce_enabled(void) {
    return(g_ctrlm.rf4ce_enabled);
 }
 
-void *ctrlm_load_hal_rf4ce_asb(void) {
+void *ctrlm_load_plugin_rf4ce_asb(void) {
    void *handle = NULL;
    const char *so_path_vd = "/vendor/lib/libctrlm-rf4ce-asb-plugin.so";
    const char *so_path_mw = "/usr/lib/libctrlm-rf4ce-asb-plugin.so";
@@ -6119,12 +6121,12 @@ void *ctrlm_load_hal_rf4ce_asb(void) {
    } else if(ctrlm_file_exists(so_path_mw)) {
       handle = dlopen(so_path_mw, RTLD_NOW);
    } else {
-      XLOGD_INFO("RF4CE ASB HAL is not present.");
+      XLOGD_INFO("RF4CE ASB plugin is not present.");
       return(NULL);
    }
 
    if(NULL == handle) {
-      XLOGD_ERROR("Failed to load RF4CE ASB HAL plugin <%s>", dlerror());
+      XLOGD_ERROR("Failed to load RF4CE ASB plugin <%s>", dlerror());
       return(NULL);
    }
 
@@ -6170,6 +6172,8 @@ void *ctrlm_load_hal_rf4ce_asb(void) {
    g_ctrlm.rf4ce_hal_asb_methods_get = asb_methods_get;
    g_ctrlm.rf4ce_hal_asb_key_derive  = asb_key_derive;
    g_ctrlm.rf4ce_hal_asb_destroy     = asb_destroy;
+
+   XLOGD_INFO("RF4CE ASB plugin is loaded.");
 
    return(handle);
 }

@@ -4892,10 +4892,9 @@ void ctrlm_obj_network_rf4ce_t::req_process_start_pairing(void *data, int size) 
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_start_pairing_t));
 
-   dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
-
    if(!dqm->params->screen_bind_enable) {
       XLOGD_INFO("screen bind enable is not requested");
+      dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
    } else {
       if(dqm->params->timeout != 0) { // use a timeout
          ctrlm_main_iarm_call_property_t property = {};
@@ -4931,15 +4930,11 @@ void ctrlm_obj_network_rf4ce_t::req_process_start_pairing(void *data, int size) 
          XLOGD_ERROR("Failed to start pairing mode timer");
          set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
          dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
-
-         if (dqm->semaphore) {
-            sem_post(dqm->semaphore);
-         }
-         return ;
+      } else {
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_SEARCHING);
+         iarm_event_rcu_status();
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
       }
-
-      set_rf_pair_state(CTRLM_RF_PAIR_STATE_SEARCHING);
-      iarm_event_rcu_status();
    }
    if (dqm->semaphore) {
        sem_post(dqm->semaphore);
@@ -4953,10 +4948,9 @@ void ctrlm_obj_network_rf4ce_t::req_process_stop_pairing(void *data, int size) {
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_stop_pairing_t));
 
-   dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
-
    if(!dqm->params->screen_bind_disable) {
       XLOGD_INFO("screen bind disable is not requested");
+      dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
    } else {
       ctrlm_main_iarm_call_control_service_pairing_mode_t pairing = {};
       pairing.api_revision       = CTRLM_MAIN_IARM_BUS_API_REVISION;
@@ -4971,15 +4965,11 @@ void ctrlm_obj_network_rf4ce_t::req_process_stop_pairing(void *data, int size) {
          XLOGD_ERROR("Failed to end pairing mode");
          set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
          dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
-
-         if (dqm->semaphore) {
-            sem_post(dqm->semaphore);
-         }
-         return ;
+      } else {
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_SEARCHING);
+         iarm_event_rcu_status();
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
       }
-
-      set_rf_pair_state(CTRLM_RF_PAIR_STATE_SEARCHING);
-      iarm_event_rcu_status();
    }
    if (dqm->semaphore) {
        sem_post(dqm->semaphore);

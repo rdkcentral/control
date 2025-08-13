@@ -266,11 +266,6 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_pairing(void *arg)
         mac_addr_list.clear();
     }
 
-    if(!scanEnable && timeout != 0) {
-        XLOGD_WARN("scanEnable is false but timeout is not 0.  Ignoring timeout.");
-        timeout = 0;
-    }
-
     bool result = true;
     if(!screenBindEnable && !scanEnable) {
         XLOGD_WARN("screen bind and scan enable are both false.  Nothing to do.");

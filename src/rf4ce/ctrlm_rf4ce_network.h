@@ -36,6 +36,7 @@
 #include "ctrlm_ir_rf_db.h"
 #include "network/attributes/ctrlm_rf4ce_network_attr_config.h"
 #include "ctrlm_rfc.h"
+#include "ctrlm_asb.h"
 
 #define CTRLM_RF4CE_AUTOBIND_OCTET       ((JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_FAIL << 3) | JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_PASS)
 #define CTRLM_RF4CE_AUTOBIND_OCTET_RESET (0x40 | (JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_FAIL << 3) | JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_PASS)
@@ -53,10 +54,9 @@
 
 #define CTRLM_RF4CE_DISCOVERY_USER_STRING_EXPIRATION_TIME_MS (300000) // 5 min in msec
 #define CTRLM_RF4CE_DISCOVERY_EXPIRATION_TIME_MS             (2000)   // 2 sec in msec
-#ifdef ASB
+
 #define CTRLM_RF4CE_DISCOVERY_ASB_EXPIRATION_TIME_MS         (2000)    // 250ms
 #define CTRLM_RF4CE_DISCOVERY_ASB_OCTET_ENABLED              (0x80)
-#endif
 
 #define IR_RF_DATABASE_STATUS_FORCE_DOWNLOAD            (0x01)
 #define IR_RF_DATABASE_STATUS_DOWNLOAD_TV_5_DIGIT_CODE  (0x02)
@@ -266,6 +266,12 @@ public:
    ctrlm_hal_result_t                   hal_init_request(GThread *ctrlm_main_thread);
    void                                 hal_init_confirm(ctrlm_hal_rf4ce_cfm_init_params_t params);
    void                                 hal_api_main_set(ctrlm_hal_rf4ce_network_main_t main);
+
+   void                                 hal_api_asb_set(ctrlm_hal_rf4ce_asb_init_t        init, 
+                                                        ctrlm_hal_rf4ce_asb_methods_get_t methods_get,
+                                                        ctrlm_hal_rf4ce_asb_key_derive_t  key_derive,
+                                                        ctrlm_hal_rf4ce_asb_destroy_t     destroy);
+
    void                                 hal_rf4ce_api_set(ctrlm_hal_rf4ce_req_pair_t                   pair,
                                                           ctrlm_hal_rf4ce_req_unpair_t                 unpair,
                                                           ctrlm_hal_rf4ce_req_data_t                   data,
@@ -400,7 +406,7 @@ public:
    void                                 polling_action_push(void *data, int size);
    virtual bool                         is_fmr_supported() const;
    // End Polling Functions
-#ifdef ASB
+
    // ASB Functions
    bool                                 rf4ce_asb_init(void *data, int size);
    void                                 asb_configuration(json_config *conf);
@@ -412,8 +418,11 @@ public:
    void                                 asb_link_key_derivation_perform(void *data, int size);
    void                                 asb_link_key_validation_timeout(void *data, int size);
    void                                 rf4ce_asb_destroy(void *data, int size);
+
+   int                                  hal_asb_key_derive(uint8_t *input, uint8_t *output, asb_key_derivation_method_t method);
+   void                                 hal_asb_destroy(void);
    // End ASB Functions
-#endif
+
    void                                 open_chime_enable_set(bool open_chime_enabled);
    bool                                 open_chime_enable_get();
    void                                 close_chime_enable_set(bool close_chime_enabled);
@@ -458,6 +467,12 @@ protected:
 
 private:
    ctrlm_hal_rf4ce_network_main_t     hal_api_main_;
+
+   ctrlm_hal_rf4ce_asb_init_t         hal_api_asb_init_; 
+   ctrlm_hal_rf4ce_asb_methods_get_t  hal_api_asb_methods_get_;
+   ctrlm_hal_rf4ce_asb_key_derive_t   hal_api_asb_key_derive_;
+   ctrlm_hal_rf4ce_asb_destroy_t      hal_api_asb_destroy_;
+
    ctrlm_hal_rf4ce_req_pair_t         hal_api_pair_;
    ctrlm_hal_rf4ce_req_unpair_t       hal_api_unpair_;
    ctrlm_hal_rf4ce_req_data_t         hal_api_data_;
@@ -536,7 +551,6 @@ private:
    ctrlm_rf4ce_polling_generic_config_t    controller_generic_polling_configuration_;
    // End Polling Variables
 
-#ifdef ASB
    // ASB Variables
    bool                                    asb_enabled_;
    asb_key_derivation_bitmask_t            asb_key_derivation_methods_;
@@ -545,7 +559,6 @@ private:
    discovery_deadlines_t                   asb_discovery_deadlines_;
    bool                                    asb_force_settings_;
    // End ASB Variables
-#endif
 
    ctrlm_voice_session_rsp_confirm_t       voice_session_rsp_confirm_;
    void *                                  voice_session_rsp_confirm_param_;
@@ -621,10 +634,8 @@ private:
 
    void                  dsp_configuration_xconf();
 
-#ifdef ASB
    gboolean              is_asb_active(ctrlm_hal_rf4ce_ieee_address_t ieee_address);
    static gboolean       asb_link_validation_timeout(gpointer user_data);
-#endif
 
    bool                  reverse_cmd_begin_event(void*, int data_size);
    bool                  reverse_cmd_end_event(void*, int data_size);

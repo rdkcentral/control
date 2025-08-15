@@ -31,9 +31,9 @@
 #include "rf4ce/controller/attributes/ctrlm_rf4ce_controller_attr_battery.h"
 #include "rf4ce/controller/attributes/ctrlm_rf4ce_controller_attr_voice.h"
 #include "rf4ce/controller/attributes/ctrlm_rf4ce_controller_attr_irdb.h"
-#ifdef ASB
+
 #include "ctrlm_asb.h"
-#endif
+
 #include "ctrlm_voice_obj.h"
 #include "ctrlm_input_event_writer.h"
 
@@ -45,9 +45,8 @@ class ctrlm_obj_network_rf4ce_t;
 #define CTRLM_RF4CE_CONST_RESPONSE_IDLE_TIME                (50) // time a device must wait after the successful transmission of a request command frame before enabling its receiver to receive a response command frame
 #define CTRLM_RF4CE_CONST_RESPONSE_IDLE_TIME_FF             (15) // time a device must wait after the successful transmission of a request command frame before enabling its receiver to receive a response command frame for Far Field Devices
 #define CTRLM_RF4CE_CONST_RESPONSE_WAIT_TIME               (100) // The maximum time in ms a device MUST wait after the aplcResponseIdle WaitTime expired, to receive a response command frame following a request command frame
-#ifdef ASB
+
 #define CTRLM_RF4CE_CONST_ASB_BLACKOUT_TIME                 (50) // The time dedicated to ASB key derivation during the pairing process.
-#endif
 
 #define CTRLM_RF4CE_VENDOR_ID_COMCAST                   (0x109D) //
 
@@ -655,12 +654,12 @@ public:
    
    void binding_security_type_set(ctrlm_rcu_binding_security_type_t type);
    ctrlm_rcu_binding_security_type_t binding_security_type_get();
-#ifdef ASB
+
    void asb_key_derivation_method_set(asb_key_derivation_method_t method);
    asb_key_derivation_method_t asb_key_derivation_method_get();
    void asb_key_derivation_start(ctrlm_network_id_t network_id);
    void asb_key_derivation_perform();
-#endif
+
    ctrlm_timestamp_t last_mac_poll_checkin_time_get();
 
    void handle_controller_metrics(void *data = NULL, int size = 0);
@@ -762,13 +761,12 @@ private:
    // End Polling variables
    ctrlm_rf4ce_rib_configuration_complete_status_t rib_configuration_complete_status_; // NEXT
 
-#ifdef ASB
    // ASB variables
    asb_key_derivation_method_t             asb_key_derivation_method_used_; // NEXT
    ctrlm_timestamp_t                       asb_key_derivation_ts_start_;
    guint                                   asb_tag_;
    // End ASB variables
-#endif
+
    guint                                   metrics_tag_;
 
    // HACK for XR15-704

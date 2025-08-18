@@ -62,6 +62,7 @@ typedef enum {
 typedef enum {
    // Network based messages
    CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_BEGIN                 = 0,
+   CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_KEY,
    CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_END,
    CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_CONFIGURATION_COMPLETE,
    CTRLM_MAIN_QUEUE_MSG_TYPE_NETWORK_PROPERTY_SET,
@@ -490,6 +491,7 @@ gboolean ctrlm_main_iarm_call_control_service_can_find_my_remote(ctrlm_main_iarm
 gboolean ctrlm_main_iarm_call_control_service_start_pairing_mode(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 void     ctrlm_main_iarm_call_control_service_start_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 gboolean ctrlm_main_iarm_call_control_service_end_pairing_mode(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
+void     ctrlm_main_iarm_call_control_service_end_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 gboolean ctrlm_main_iarm_call_chip_status_get(ctrlm_main_iarm_call_chip_status_t *status);
 
 ctrlm_power_state_t ctrlm_main_get_system_power_state(void);

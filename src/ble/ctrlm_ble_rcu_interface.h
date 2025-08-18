@@ -95,6 +95,7 @@ public:
     bool pairWithMacHash(unsigned int code);
     bool pairWithMacAddrs(const std::vector<uint64_t> &macAddrList);
     bool pairAutoWithTimeout(int timeoutMs);
+    bool pairCancel();
     bool unpairDevice(uint64_t ieee_address);
 
     bool findMe(uint64_t ieee_address, ctrlm_fmr_alarm_level_t level);

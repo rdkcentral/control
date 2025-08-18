@@ -371,7 +371,6 @@ static void     ctrlm_main_update_export_controller_list(void);
 static void     ctrlm_main_iarm_call_ir_remote_usage_get_(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage);
 static void     ctrlm_main_iarm_call_pairing_metrics_get_(ctrlm_main_iarm_call_pairing_metrics_t *pairing_metrics);
 static void     ctrlm_main_iarm_call_last_key_info_get_(ctrlm_main_iarm_call_last_key_info_t *last_key_info);
-static void     ctrlm_main_iarm_call_control_service_end_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 static void     ctrlm_stop_one_touch_autobind_(ctrlm_network_id_t network_id);
 static void     ctrlm_close_pairing_window_(ctrlm_network_id_t network_id, ctrlm_close_pairing_window_reason reason);
 static void     ctrlm_pairing_window_bind_status_set_(ctrlm_bind_status_t bind_status);
@@ -2435,7 +2434,16 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             ctrlm_validation_begin(hdr->network_id, dqm->controller_id, obj_net->ctrlm_controller_type_get(dqm->controller_id));
             obj_net->bind_validation_begin(dqm);
-            obj_net->iarm_event_rcu_status();
+            obj_net->iarm_event_rcu_validation_status();
+            break;
+         }
+         case CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_KEY: {
+            ctrlm_main_queue_msg_bind_validation_key_t *dqm = (ctrlm_main_queue_msg_bind_validation_key_t *)msg;
+            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_KEY");
+
+            ctrlm_validation_key(hdr->network_id, dqm->controller_id, obj_net->ctrlm_controller_type_get(dqm->controller_id), dqm->key_code);
+            obj_net->bind_validation_key(dqm);
+            obj_net->iarm_event_rcu_validation_status();
             break;
          }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_END: {
@@ -2444,7 +2452,7 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             ctrlm_validation_end(hdr->network_id, dqm->controller_id, obj_net->ctrlm_controller_type_get(dqm->controller_id), dqm->binding_type, dqm->validation_type, dqm->result, dqm->semaphore, dqm->cmd_result);
             obj_net->bind_validation_end(dqm);
-            obj_net->iarm_event_rcu_status();
+            obj_net->iarm_event_rcu_validation_status();
             break;
          }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_FAILED_TIMEOUT: {
@@ -5367,8 +5375,9 @@ void ctrlm_main_iarm_call_control_service_start_pairing_mode_(ctrlm_main_iarm_ca
       case CTRLM_PAIRING_MODE_SCREEN_BIND: {
          pairing->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
          g_ctrlm.binding_screen_active = true;
-         // Set a timer to limit the binding mode window
-         g_ctrlm.screen_bind_timeout_tag = ctrlm_timeout_create(g_ctrlm.screen_bind_timeout_val, ctrlm_timeout_screen_bind, NULL);
+         if(pairing->use_timeout != 0) { // Set a timer to limit the binding mode window
+            g_ctrlm.screen_bind_timeout_tag = ctrlm_timeout_create(g_ctrlm.screen_bind_timeout_val, ctrlm_timeout_screen_bind, NULL);
+         }
          XLOGD_INFO("SCREEN BIND STATE <ACTIVE>");
          break;
       }

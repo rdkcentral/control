@@ -1292,7 +1292,7 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_F17,           {"Proximity Sensor",     "Proximity Sensor"}},
    {KEY_F18,           {"Xumo App",             "Xumo App"}},
    {KEY_F19,           {"YouTube App",          "YouTube App"}},
-   {KEY_F20,           {"Info",                 "Info"}},
+   {KEY_F20,           {"AMC App",              "AMC App"}},
    {KEY_F21,           {"Guide",                "Guide"}},
    {KEY_EPG,           {"Guide",                "Guide"}},
    {KEY_F22,           {"Accessibility",        "Accessibility"}},

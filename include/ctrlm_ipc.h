@@ -133,6 +133,7 @@
 #define CTRLM_MAIN_IARM_CALL_GET_RCU_STATUS                      "Main_GetRcuStatus"            ///< IARM Call get the RCU status info (same as what's provided by CTRLM_RCU_IARM_EVENT_RCU_STATUS)
 #define CTRLM_MAIN_IARM_CALL_START_PAIRING                       "Main_StartPairing"            ///< IARM Call to initiate searching for a remote to pair with
 #define CTRLM_MAIN_IARM_CALL_START_PAIR_WITH_CODE                "Main_StartPairWithCode"       ///< IARM Call to initiate searching for a remote to pair with
+#define CTRLM_MAIN_IARM_CALL_STOP_PAIRING                        "Main_StopPairing"             ///< IARM Call to cancel an active search for a remote to pair with
 #define CTRLM_MAIN_IARM_CALL_FIND_MY_REMOTE                      "Main_FindMyRemote"            ///< IARM Call to trigger the Find My Remote alarm on a specified remote
 #define CTRLM_MAIN_IARM_CALL_WRITE_RCU_WAKEUP_CONFIG             "Main_WriteAdvertisingConfig"  ///< IARM Call to write the advertising configuration on all connected remotes
 #define CTRLM_MAIN_IARM_CALL_START_FIRMWARE_UPDATE               "Main_StartFirmwareUpdate"     ///< IARM Call to start a firmware update session
@@ -300,7 +301,8 @@ typedef enum {
    CTRLM_RCU_IARM_EVENT_RCU_STATUS                  = 34, ///< Generated when something changes in the BLE remote
    CTRLM_RCU_IARM_EVENT_RF4CE_PAIRING_WINDOW_TIMEOUT = 35, ///< Indicates that a battery milestone event occured
    CTRLM_RCU_IARM_EVENT_FIRMWARE_UPDATE_PROGRESS    = 36, ///< Generated when an milestone is reached for remote firmware upgrade 
-   CTRLM_MAIN_IARM_EVENT_MAX                        = 37  ///< Placeholder for the last event (used in registration)
+   CTRLM_RCU_IARM_EVENT_VALIDATION_STATUS           = 37, ///< Generated when the validation status changes
+   CTRLM_MAIN_IARM_EVENT_MAX                        = 38  ///< Placeholder for the last event (used in registration)
 } ctrlm_main_iarm_event_t;
 
 /// @brief Remote Control Key Status
@@ -695,6 +697,7 @@ typedef struct {
    ctrlm_network_id_t           network_id;                                     ///< Identifier of network or CTRLM_MAIN_NETWORK_ID_ALL for all networks
    unsigned char                pairing_mode;                                   ///< Indicates the pairing mode
    unsigned char                restrict_by_remote;                             ///< Indicates the remote bucket (no restrictions, only voice remotes, only voice assistants)
+   unsigned char                use_timeout;                                    ///< Indicates whether to use a timeout for the pairing mode (0 - do not use timeout, otherwise use timeout)
    unsigned int                 bind_status;                                    ///< OUT - The bind status of the pairing session
 } ctrlm_main_iarm_call_control_service_pairing_mode_t;
 

@@ -206,6 +206,23 @@ string ctrlm_obj_network_t::stb_name_get() const {
    return(stb_name_);
 }
 
+void ctrlm_obj_network_t::validation_result_set(ctrlm_rcu_validation_result_t result) {
+   validation_result_ = result;
+}
+
+void ctrlm_obj_network_t::validation_key_set(ctrlm_key_code_t key) {
+   validation_key_    = key;
+}
+
+void ctrlm_obj_network_t::validation_status_get(ctrlm_rcu_validation_result_t *result, ctrlm_key_code_t *key) const {
+   if(result) {
+      *result = validation_result_;
+   }
+   if(key) {
+      *key = validation_key_;
+   }
+}
+
 bool ctrlm_obj_network_t::is_ready() const {
    THREAD_ID_VALIDATE();
    return(ready_);
@@ -646,6 +663,18 @@ void ctrlm_obj_network_t::req_process_start_pairing(void *data, int size){
    }
 }
 
+void ctrlm_obj_network_t::req_process_stop_pairing(void *data, int size){
+   XLOGD_WARN("request is not valid for %s network", name_get());
+   ctrlm_main_queue_msg_stop_pairing_t *dqm = (ctrlm_main_queue_msg_stop_pairing_t *)data;
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_stop_pairing_t));
+
+   // post the semaphore just to ensure nothing blocks
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
+}
+
 void ctrlm_obj_network_t::req_process_pair_with_code(void *data, int size){
    XLOGD_WARN("request is not valid for %s network", name_get());
    ctrlm_main_queue_msg_pair_with_code_t *dqm = (ctrlm_main_queue_msg_pair_with_code_t *)data;
@@ -932,6 +961,10 @@ void ctrlm_obj_network_t::bind_validation_begin(ctrlm_main_queue_msg_bind_valida
    XLOGD_WARN("not implemented for %s network", name_get());
 }
 
+void ctrlm_obj_network_t::bind_validation_key(ctrlm_main_queue_msg_bind_validation_key_t *dqm) {
+   XLOGD_WARN("not implemented for %s network", name_get());
+}
+
 void ctrlm_obj_network_t::bind_validation_end(ctrlm_main_queue_msg_bind_validation_end_t *dqm) {
    XLOGD_WARN("not implemented for %s network", name_get());
 }
@@ -995,6 +1028,21 @@ void ctrlm_obj_network_t::iarm_event_rcu_status(void) {
 
    ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
    if (!rcp_ipc->on_status(msg)) {
+       XLOGD_ERROR("Error broadcasting IARM message");
+   }
+}
+
+void ctrlm_obj_network_t::iarm_event_rcu_validation_status(void) {
+   XLOGD_DEBUG("Enter...");
+
+   ctrlm_rcp_ipc_validation_status_t msg;
+   msg.populate_status(*this);
+
+   XLOGD_INFO("Broadcasting IARM message %s RCU Validation Status....", name_get());
+   XLOGD_DEBUG("%s", msg.to_string());
+
+   ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
+   if (!rcp_ipc->on_validation_status(msg)) {
        XLOGD_ERROR("Error broadcasting IARM message");
    }
 }

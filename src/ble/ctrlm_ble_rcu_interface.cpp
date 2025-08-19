@@ -760,6 +760,22 @@ bool ctrlm_ble_rcu_interface_t::pairAutoWithTimeout(int timeoutMs)
     return true;
 }
 
+bool ctrlm_ble_rcu_interface_t::pairCancel()
+{
+    if (!m_controller) {
+        XLOGD_ERROR("m_controller is NULL!!!");
+        return false;
+    }
+
+    XLOGD_INFO("Canceling BLE pairing operations.");
+    if (!m_controller->cancelPairing()) {
+        BleRcuError error = m_controller->lastError();
+        XLOGD_ERROR("controller failed to cancel pairing, %s: %s", error.name().c_str(), error.message().c_str());
+        return false;
+    }
+    return true;
+}
+
 bool ctrlm_ble_rcu_interface_t::unpairDevice(uint64_t ieee_address)
 {
     BleAddress address(ieee_address);

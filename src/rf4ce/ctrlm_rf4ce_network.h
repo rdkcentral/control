@@ -325,6 +325,7 @@ public:
 
    void                                 process_pair_result(ctrlm_controller_id_t controller_id, unsigned long long ieee_address, ctrlm_hal_result_pair_t result);
    void                                 bind_validation_begin(ctrlm_main_queue_msg_bind_validation_begin_t *dqm);
+   void                                 bind_validation_key(ctrlm_main_queue_msg_bind_validation_key_t *dqm);
    void                                 bind_validation_end(ctrlm_main_queue_msg_bind_validation_end_t *dqm);
    bool                                 bind_validation_timeout(ctrlm_controller_id_t controller_id);
    bool                                 remove_validation_failed_controller(ctrlm_controller_id_t controller_id);
@@ -456,6 +457,7 @@ public:
    void                                 req_process_program_ir_codes(void *data, int size);
    void                                 req_process_ir_clear_codes(void *data, int size);
    virtual void                         req_process_start_pairing(void *data, int size) override;
+   virtual void                         req_process_stop_pairing(void *data, int size) override;
    virtual void                         req_process_find_my_remote(void *data, int size);
    virtual std::vector<ctrlm_obj_controller_t *> get_controller_obj_list() const;
    void                                 rcu_timeout_key_release(void *data, int data_size);

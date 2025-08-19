@@ -16,6 +16,15 @@ All notable changes to this project will be documented in this file.
 
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
+## [1.1.3] - 2025-08-19
+
+### Changed
+- Modify Remote Control plugin for RF4CE support (#80)
+- Mac address fetch (#92)
+
+### Added
+- Runtime detection of ASB (#96)
+
 ## [1.1.2] - 2025-08-04
 
 ### Changed

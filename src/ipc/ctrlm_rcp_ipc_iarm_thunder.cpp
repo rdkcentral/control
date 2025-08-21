@@ -76,6 +76,7 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::register_ipc() const
     }
 
     if(!register_iarm_call(CTRLM_MAIN_IARM_CALL_START_PAIRING,           start_pairing))           { ret = false; }
+    if(!register_iarm_call(CTRLM_MAIN_IARM_CALL_STOP_PAIRING,            stop_pairing))            { ret = false; }
     if(!register_iarm_call(CTRLM_MAIN_IARM_CALL_GET_RCU_STATUS,          get_net_status))          { ret = false; }
     if(!register_iarm_call(CTRLM_MAIN_IARM_CALL_LAST_KEYPRESS_GET,       get_last_keypress))       { ret = false; }
     if(!register_iarm_call(CTRLM_MAIN_IARM_CALL_FIND_MY_REMOTE,          find_my_remote))          { ret = false; }
@@ -127,6 +128,32 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_status(const ctrlm_rcp_ipc_net_status_t &n
     return broadcast_iarm_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_RCU_STATUS, ret);
 }
 
+bool ctrlm_rcp_ipc_iarm_thunder_t::on_validation_status(const ctrlm_rcp_ipc_validation_status_t &validation_status) const
+{
+    if (!is_running(atomic_running_)) {
+        XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state");
+        return(false);
+    }
+
+    if (validation_status.get_api_revision() != CTRLM_MAIN_IARM_BUS_API_REVISION) {
+        XLOGD_ERROR("Wrong ctrlm API revision - should be %d, event is %d", CTRLM_MAIN_IARM_BUS_API_REVISION, validation_status.get_api_revision());
+        return(false);
+    }
+
+    json_t *ret = json_object();
+    int err = 0;
+
+    err |= json_object_set_new_nocheck(ret, STATUS, validation_status.to_json());
+
+    if (err) {
+        XLOGD_ERROR("JSON object set error");
+        json_decref(ret);
+        return(false);
+    }
+
+    return broadcast_iarm_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_VALIDATION_STATUS, ret);
+}
+
 bool ctrlm_rcp_ipc_iarm_thunder_t::on_firmware_update_progress(const ctrlm_rcp_ipc_upgrade_status_t &upgrade_status) const
 {
     if (!is_running(atomic_running_)) {
@@ -153,6 +180,27 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_firmware_update_progress(const ctrlm_rcp_i
     return broadcast_iarm_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_FIRMWARE_UPDATE_PROGRESS, ret);
 }
 
+bool ctrlm_rcp_ipc_iarm_thunder_t::on_validation(const ctrlm_rcp_ipc_validation_status_t &validation_status) const
+{
+    if (!is_running(atomic_running_)) {
+        XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state");
+        return(false);
+    }
+
+    json_t *ret = json_object();
+    int err = 0;
+
+    err |= json_object_set_new_nocheck(ret, STATUS, validation_status.to_json());
+
+    if (err) {
+        XLOGD_ERROR("JSON object set error");
+        json_decref(ret);
+        return(false);
+    }
+
+    return broadcast_iarm_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_VALIDATION_STATUS, ret);
+}
+
 IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_pairing(void *arg)
 {
     XLOGD_INFO("");
@@ -177,14 +225,19 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_pairing(void *arg)
         return(IARM_RESULT_INVALID_PARAM);
     }
 
-    int net_type = CTRLM_NETWORK_TYPE_INVALID;
-    if (!config.config_value_get(NET_TYPE, net_type)) {
-        XLOGD_INFO("Missing %s parameter - defaulting to all networks", NET_TYPE);
-    }
-
     int timeout = 0;
     if (!config.config_value_get(TIMEOUT, timeout)) {
         XLOGD_INFO("Missing %s parameter - defaulting to no timeout (0s)", TIMEOUT);
+    }
+
+    bool screenBindEnable = true;
+    if (!config.config_value_get(SCREEN_BIND_ENABLE, screenBindEnable)) {
+        XLOGD_INFO("Missing %s parameter - defaulting to %s", SCREEN_BIND_ENABLE, screenBindEnable ? "true" : "false");
+    }
+
+    bool scanEnable       = true;
+    if (!config.config_value_get(SCAN_ENABLE, scanEnable)) {
+        XLOGD_INFO("Missing %s parameter - defaulting to %s", SCAN_ENABLE, scanEnable ? "true" : "false");
     }
 
     json_t *mac_addr_array = nullptr;
@@ -208,20 +261,102 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_pairing(void *arg)
         }
     }
 
-    std::shared_ptr<ctrlm_iarm_call_StartPairing_params_t> params = std::make_shared<ctrlm_iarm_call_StartPairing_params_t>();
-    params->set_net_id((net_type == CTRLM_NETWORK_TYPE_INVALID) ? CTRLM_MAIN_NETWORK_ID_ALL : ctrlm_network_id_get(static_cast<ctrlm_network_type_t>(net_type)));
-    params->timeout = timeout;
-    params->ieee_address_list = mac_addr_list;
+    if(!scanEnable && mac_addr_list.size() > 0) {
+        XLOGD_WARN("scanEnable is false but macAddressList is not empty.  Ignoring macAddressList.");
+        mac_addr_list.clear();
+    }
 
-    sync_send_netw_handler_to_main_queue_new<ctrlm_iarm_call_StartPairing_params_t,
-                                             ctrlm_main_queue_msg_start_pairing_t>
-                                             (params,
-                                             (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_start_pairing);
+    bool result = true;
+    if(!screenBindEnable && !scanEnable) {
+        XLOGD_WARN("screen bind and scan enable are both false.  Nothing to do.");
+    } else {
+        std::shared_ptr<ctrlm_iarm_call_StartPairing_params_t> params = std::make_shared<ctrlm_iarm_call_StartPairing_params_t>();
+        params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
+        params->timeout            = timeout;
+        params->screen_bind_enable = screenBindEnable;
+        params->scan_enable        = scanEnable;
+        params->ieee_address_list  = mac_addr_list;
+
+        sync_send_netw_handler_to_main_queue_new<ctrlm_iarm_call_StartPairing_params_t,
+                                                ctrlm_main_queue_msg_start_pairing_t>
+                                                (params,
+                                                (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_start_pairing);
+        result = params->get_result();
+    }
 
     json_t *ret = json_object();
     int err = 0;
 
-    err |= json_object_set_new_nocheck(ret, SUCCESS, json_boolean(params->get_result()));
+    err |= json_object_set_new_nocheck(ret, SUCCESS, json_boolean(result));
+
+    if (err) {
+        XLOGD_ERROR("JSON object set error");
+        json_decref(ret);
+        return(IARM_RESULT_INVALID_STATE);
+    }
+
+    if (!ctrlm_json_to_iarm_call_data_result(ret, call_data)) {
+        json_decref(ret);
+        return(IARM_RESULT_INVALID_STATE);
+    }
+
+    return(IARM_RESULT_SUCCESS);
+}
+
+IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::stop_pairing(void *arg)
+{
+    XLOGD_INFO("");
+
+    if (!is_running(atomic_running_)) {
+        XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state");
+        return(IARM_RESULT_INVALID_STATE);
+    }
+
+    ctrlm_main_iarm_call_json_t *call_data = static_cast<ctrlm_main_iarm_call_json_t *>(arg);
+
+    if (!call_data || call_data->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
+        XLOGD_ERROR("NULL parameter");
+        return(IARM_RESULT_INVALID_PARAM);
+    }
+
+    json_t *payload = json_loads(call_data->payload, JSON_DECODE_ANY, NULL);
+    json_config config(payload);
+
+    if (!payload || !config.current_object_get()) {
+        XLOGD_ERROR("Bad payload from call data");
+        return(IARM_RESULT_INVALID_PARAM);
+    }
+
+    bool screenBindDisable = true;
+    if (!config.config_value_get(SCREEN_BIND_DISABLE, screenBindDisable)) {
+        XLOGD_INFO("Missing %s parameter - defaulting to %s", SCREEN_BIND_DISABLE, screenBindDisable ? "true" : "false");
+    }
+
+    bool scanDisable       = true;
+    if (!config.config_value_get(SCAN_DISABLE, scanDisable)) {
+        XLOGD_INFO("Missing %s parameter - defaulting to %s", SCAN_DISABLE, scanDisable ? "true" : "false");
+    }
+
+    bool result = true;
+    if(!screenBindDisable && !scanDisable) {
+        XLOGD_WARN("screen bind and scan disable are both false.  Nothing to do.");
+    } else {
+        std::shared_ptr<ctrlm_iarm_call_StopPairing_params_t> params = std::make_shared<ctrlm_iarm_call_StopPairing_params_t>();
+        params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
+        params->screen_bind_disable = screenBindDisable;
+        params->scan_disable        = scanDisable;
+
+        sync_send_netw_handler_to_main_queue_new<ctrlm_iarm_call_StopPairing_params_t,
+                                                ctrlm_main_queue_msg_stop_pairing_t>
+                                                (params,
+                                                (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_stop_pairing);
+        result = params->get_result();
+    }
+
+    json_t *ret = json_object();
+    int err = 0;
+
+    err |= json_object_set_new_nocheck(ret, SUCCESS, json_boolean(result));
 
     if (err) {
         XLOGD_ERROR("JSON object set error");

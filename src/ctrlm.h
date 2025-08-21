@@ -62,6 +62,7 @@ typedef enum {
 typedef enum {
    // Network based messages
    CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_BEGIN                 = 0,
+   CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_KEY,
    CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_END,
    CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_CONFIGURATION_COMPLETE,
    CTRLM_MAIN_QUEUE_MSG_TYPE_NETWORK_PROPERTY_SET,
@@ -431,6 +432,7 @@ gboolean                           ctrlm_main_iarm_init(void);
 void                               ctrlm_main_iarm_terminate(void);
 gboolean                           ctrlm_is_production_build(void);
 gboolean                           ctrlm_is_rf4ce_enabled(void);
+gboolean                           ctrlm_is_rf4ce_asb_supported(void);
 void                               ctrlm_network_list_get(std::vector<ctrlm_network_id_t> *list);
 gboolean                           ctrlm_network_id_is_valid(ctrlm_network_id_t network_id);
 gboolean                           ctrlm_controller_id_is_valid(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id);
@@ -489,6 +491,7 @@ gboolean ctrlm_main_iarm_call_control_service_can_find_my_remote(ctrlm_main_iarm
 gboolean ctrlm_main_iarm_call_control_service_start_pairing_mode(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 void     ctrlm_main_iarm_call_control_service_start_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 gboolean ctrlm_main_iarm_call_control_service_end_pairing_mode(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
+void     ctrlm_main_iarm_call_control_service_end_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 gboolean ctrlm_main_iarm_call_chip_status_get(ctrlm_main_iarm_call_chip_status_t *status);
 
 ctrlm_power_state_t ctrlm_main_get_system_power_state(void);

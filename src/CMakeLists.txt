@@ -81,7 +81,6 @@ target_sources(controlMgr PRIVATE
    voice/endpoints/ctrlm_voice_endpoint_ws_nsp.cpp
    voice/ipc/ctrlm_voice_ipc_iarm_all.cpp
    voice/ipc/ctrlm_voice_ipc_iarm_legacy.cpp
-   voice/ipc/ctrlm_voice_ipc_request_type.c
    )
 
 if(BLE_ENABLED)
@@ -209,6 +208,7 @@ if(THUNDER)
       thunder/plugins/ctrlm_thunder_plugin_system.cpp
       ipc/ctrlm_rcp_ipc_iarm_thunder.cpp
       voice/ipc/ctrlm_voice_ipc_iarm_thunder.cpp
+      voice/ipc/ctrlm_voice_ipc_request_type.c
    )
 
    if(AUTH_ENABLED)

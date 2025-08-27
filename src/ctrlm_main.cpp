@@ -809,10 +809,12 @@ int main(int argc, char *argv[]) {
    g_ctrlm.ir_controller->db_load();
    g_ctrlm.ir_controller->print_status();
 
+   #ifdef CTRLM_THUNDER
    ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
    if (rcp_ipc) {
        rcp_ipc->register_ipc();
    }
+   #endif
 
    XLOGD_INFO("init voice");
    g_ctrlm.voice_session->voice_configure_config_file_json(json_obj_voice, json_obj_vsdk, g_ctrlm.local_conf );

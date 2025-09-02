@@ -28,6 +28,7 @@
 #include "ctrlm_ipc_voice.h"
 #include "ctrlm.h"
 #include "ctrlm_auth.h"
+#include "ctrlm_auth_certificate.h"
 #include "jansson.h"
 #include "json_config.h"
 #include "xr_timestamp.h"

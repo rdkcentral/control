@@ -197,9 +197,9 @@ typedef struct {
    guint32                                         rf4ce_session_active_count;
    guint32                                         rf4ce_session_count;
    map<ctrlm_controller_id_t, ctrlm_device_update_rf4ce_session_t> rf4ce_sessions;
-   // HACK for XR15-704
+   
    gboolean                                        xr15_crash_update;
-   // HACK for XR15-704
+   
    vector<rf4ce_device_update_session_resume_info_t> *sessions;
 } ctrlm_device_update_t;
 
@@ -276,10 +276,9 @@ void ctrlm_device_update_init(json_t *json_obj_device_update) {
    g_ctrlm_device_update.prefs.update_dirs.push_back(JSON_ARRAY_VAL_STR_DEVICE_UPDATE_DEVICE_UPDATE_DIRS_3);
    g_ctrlm_device_update.prefs.update_dirs.push_back(JSON_ARRAY_VAL_STR_DEVICE_UPDATE_DEVICE_UPDATE_DIRS_4);
    g_ctrlm_device_update.prefs.update_dirs.push_back(JSON_ARRAY_VAL_STR_DEVICE_UPDATE_DEVICE_UPDATE_DIRS_5);
-  
-   // HACK for XR15-704
+   
    g_ctrlm_device_update.xr15_crash_update                = false;
-   // HACK for XR15-704
+   
    g_ctrlm_device_update.sessions = NULL;
 
    // Create an asynchronous queue to receive incoming messages from the networks
@@ -859,13 +858,12 @@ void ctrlm_device_update_process_device_file(const std::string &file_path_archiv
                g_ctrlm_device_update.rf4ce_images->at(image_info.id) = image_info;
             }
 
-            // HACK FOR XR15-704
             version_software_t version_bug = {XR15_DEVICE_UPDATE_BUG_FIRMWARE_MAJOR, XR15_DEVICE_UPDATE_BUG_FIRMWARE_MINOR, XR15_DEVICE_UPDATE_BUG_FIRMWARE_REVISION, XR15_DEVICE_UPDATE_BUG_FIRMWARE_PATCH};
             if(RF4CE_CONTROLLER_TYPE_XR15 == controller_type && ctrlm_device_update_rf4ce_is_software_version_min_met(image_info.version_software, version_bug)) {
                XLOGD_INFO("XR15v1 image >= 2.0.0.0 available, enabling crash code for XR15v1s running < 2.0.0.0");
                g_ctrlm_device_update.xr15_crash_update = true;
             }
-            // HACK FOR XR15-704
+            
             if(ctrlm_is_rf4ce_enabled()) {
                // Firmware Notify message
                errno_t safec_rc = -1;
@@ -2443,11 +2441,9 @@ string ctrlm_device_update_get_software_version(guint16 image_id){
    return string(sw_version);
 }
 
-// HACK for XR15-704
 gboolean ctrlm_device_update_xr15_crash_update_get() {
    return g_ctrlm_device_update.xr15_crash_update;
 }
-// HACK for XR15-704
 
 void ctrlm_device_update_rf4ce_session_resume(vector<rf4ce_device_update_session_resume_info_t> *sessions) {
    // Store sessions vector

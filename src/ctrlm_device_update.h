@@ -28,12 +28,10 @@
 #define CTRLM_DEVICE_UPDATE_EXTENDED_TIMEOUT_VALUE (45)
 #define CTRLM_DEVICE_UPDATE_USE_DEFAULT_TIMEOUT (0)
 
-// HACK FOR XR15-704
 #define XR15_DEVICE_UPDATE_BUG_FIRMWARE_MAJOR    (2)
 #define XR15_DEVICE_UPDATE_BUG_FIRMWARE_MINOR    (0)
 #define XR15_DEVICE_UPDATE_BUG_FIRMWARE_REVISION (0)
 #define XR15_DEVICE_UPDATE_BUG_FIRMWARE_PATCH    (0)
-// HACK FOR XR15-704
 
 typedef enum {
    // locations to check for firmware and audio updates
@@ -136,9 +134,7 @@ std::string ctrlm_device_update_get_software_version(guint16 image_id);
 void     ctrlm_device_update_rf4ce_session_resume(std::vector<rf4ce_device_update_session_resume_info_t> *sessions);
 guint32 ctrlm_device_update_request_timeout_get(void);
 
-// HACK for XR15-704
 gboolean ctrlm_device_update_xr15_crash_update_get();
-// HACK for XR15-704
 
 #ifdef __cplusplus
 }

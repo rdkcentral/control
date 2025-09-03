@@ -215,6 +215,7 @@ if(THUNDER)
       target_sources(controlMgr PRIVATE
          auth/ctrlm_auth.cpp
          auth/ctrlm_auth_thunder.cpp
+         auth/ctrlm_auth_certificate.cpp
          auth/ctrlm_thunder_plugin_authservice.cpp
       )
   endif()

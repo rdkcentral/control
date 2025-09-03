@@ -1317,6 +1317,7 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_F21,           {"Guide",                "Guide"}},
    {KEY_EPG,           {"Guide",                "Guide"}},
    {KEY_F22,           {"Accessibility",        "Accessibility"}},
+   {KEY_F23,           {"AMC App",              "AMC App"}},
    {KEY_F8,            {"Voice",                "Voice"}},
    {KEY_ESC,           {"Dismiss",              "Dismiss"}},
    {KEY_F9,            {"Quick Access Menu",    "Quick Access Menu"}},

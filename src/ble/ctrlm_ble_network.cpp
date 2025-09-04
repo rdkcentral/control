@@ -451,10 +451,6 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
 
    dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR;
 
-#ifdef DISABLE_BLE_VOICE
-   XLOGD_WARN("BLE Voice is disabled in ControlMgr, so not starting a voice session.");
-   dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-#else
    if (!ready_) {
       XLOGD_FATAL("Network is not ready!");
    } else {
@@ -536,7 +532,6 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
          }
       }
    }
-#endif   //DISABLE_BLE_VOICE
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
    }
@@ -577,9 +572,6 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_end(void *data, int size
    g_assert(size == sizeof(ctrlm_main_queue_msg_voice_session_t));
 
    dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR;
-#ifdef DISABLE_BLE_VOICE
-   dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-#else
    if (!ready_) {
       XLOGD_FATAL("Network is not ready!");
    } else {
@@ -595,7 +587,6 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_end(void *data, int size
          }
       }
    }
-#endif   //DISABLE_BLE_VOICE
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
    }

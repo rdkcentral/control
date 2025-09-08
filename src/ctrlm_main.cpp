@@ -62,7 +62,7 @@
 #endif
 #ifdef AUTH_ENABLED
 #include "ctrlm_auth.h"
-#include "ctrlm_hal_certificate.h"
+#include "ctrlm_auth_certificate.h"
 #endif
 #include "ctrlm_rfc.h"
 #include "ctrlm_telemetry.h"
@@ -278,7 +278,7 @@ typedef struct {
    ctrlm_cs_values_t                  cs_values;
 #ifdef AUTH_ENABLED
    ctrlm_auth_t                      *authservice;
-   ctrlm_hal_certificate_t           *hal_certificate;
+   ctrlm_auth_certificate_t          *auth_certificate;
 #endif
 #ifdef CTRLM_THUNDER
    Thunder::DeviceInfo::ctrlm_thunder_plugin_device_info_t *thunder_device_info;
@@ -694,14 +694,14 @@ int main(int argc, char *argv[]) {
 
 #ifdef AUTH_ENABLED
    XLOGD_INFO("ctrlm_auth init");
-   g_ctrlm.authservice     = ctrlm_auth_service_create(g_ctrlm.server_url_authservice);
-   g_ctrlm.hal_certificate = ctrlm_hal_certificate_get();
+   g_ctrlm.authservice      = ctrlm_auth_service_create(g_ctrlm.server_url_authservice);
+   g_ctrlm.auth_certificate = ctrlm_auth_certificate_get();
 
    ctrlm_voice_cert_t device_cert;
    bool ocsp_verify_stapling = false;
    bool ocsp_verify_ca       = false;
 
-   if(!g_ctrlm.hal_certificate->device_cert_get(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
+   if(!g_ctrlm.auth_certificate->device_cert_get(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
       XLOGD_ERROR("unable to get device certificate");
    } else {
       if(!g_ctrlm.voice_session->voice_stb_data_device_certificate_set(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {

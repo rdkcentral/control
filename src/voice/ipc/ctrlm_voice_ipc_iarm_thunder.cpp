@@ -653,8 +653,9 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
 
                 json_t *obj_type = json_object_get(obj, "type");
                 std::string str_type = "";
-                std::string str_transcription = "";
-                std::string str_audio_file    = "";
+                std::string str_transcription  = "";
+                std::string str_audio_file     = "";
+                std::string str_name_of_source = "";
                 int fd = -1;
                 if(obj_type == NULL || !json_is_string(obj_type)) {
                     XLOGD_ERROR("request type parameter not present");
@@ -776,6 +777,17 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                                    }
                                 }
                             }
+                            if (request_config.requires_name_of_source) {
+                                json_t *obj_name_of_source = json_object_get(obj, "name");
+                                if(obj_name_of_source == NULL || !json_is_string(obj_name_of_source)) {
+                                    XLOGD_WARN("invalid name parameter, but this is optional");
+                                } else {
+                                    str_name_of_source = std::string(json_string_value(obj_name_of_source));
+                                    if(str_name_of_source.empty()) {
+                                        XLOGD_WARN("Empty name, but this is optional");
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -783,7 +795,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                 if (true == result) {
                     ctrlm_voice_session_response_status_t voice_status = voice_obj->voice_session_req(
                             CTRLM_MAIN_NETWORK_ID_INVALID, CTRLM_MAIN_CONTROLLER_ID_INVALID, 
-                            request_config.device, request_config.format, NULL, "APPLICATION", "0.0.0.0", "0.0.0.0", 0.0,
+                            request_config.device, request_config.format, NULL, str_name_of_source.c_str(), "0.0.0.0", "0.0.0.0", 0.0,
                             false, NULL, NULL, NULL, (fd >= 0) ? true : false, true, str_transcription.empty() ? NULL : str_transcription.c_str(), str_audio_file.empty() ? NULL : str_audio_file.c_str(), &request_uuid, request_config.low_latency, request_config.low_cpu_util, fd);
                     if (voice_status != VOICE_SESSION_RESPONSE_AVAILABLE && 
                         voice_status != VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
@@ -1005,24 +1017,26 @@ bool broadcast_event(const char *bus_name, int event, const char *str) {
 }
 
 bool ctrlm_voice_ipc_request_supported_ptt_transcription(ctrlm_voice_ipc_request_config_t *config) {
-   config->requires_transcription = true;
-   config->requires_audio_file    = false;
-   config->supports_named_pipe    = false;
-   config->device                 = CTRLM_VOICE_DEVICE_PTT;
-   config->format                 = { .type = CTRLM_VOICE_FORMAT_INVALID };
-   config->low_latency            = false;
-   config->low_cpu_util           = false;
+   config->requires_transcription  = true;
+   config->requires_audio_file     = false;
+   config->requires_name_of_source = false;
+   config->supports_named_pipe     = false;
+   config->device                  = CTRLM_VOICE_DEVICE_PTT;
+   config->format                  = { .type = CTRLM_VOICE_FORMAT_INVALID };
+   config->low_latency             = false;
+   config->low_cpu_util            = false;
    return(true);
 }
 
 bool ctrlm_voice_ipc_request_supported_ptt_audio_file(ctrlm_voice_ipc_request_config_t *config) {
-   config->requires_transcription = false;
-   config->requires_audio_file    = true;
-   config->supports_named_pipe    = true;
-   config->device                 = CTRLM_VOICE_DEVICE_PTT;
-   config->format                 = { .type = CTRLM_VOICE_FORMAT_PCM };
-   config->low_latency            = false;
-   config->low_cpu_util           = false;
+   config->requires_transcription  = false;
+   config->requires_audio_file     = true;
+   config->requires_name_of_source = true;
+   config->supports_named_pipe     = true;
+   config->device                  = CTRLM_VOICE_DEVICE_PTT;
+   config->format                  = { .type = CTRLM_VOICE_FORMAT_PCM };
+   config->low_latency             = false;
+   config->low_cpu_util            = false;
    return(true);
 }
 
@@ -1045,13 +1059,14 @@ bool ctrlm_voice_ipc_request_supported_mic_audio_file(ctrlm_voice_ipc_request_co
    #ifndef CTRLM_LOCAL_MIC
    return(false);
    #else
-   config->requires_transcription = false;
-   config->requires_audio_file    = true;
-   config->supports_named_pipe    = false;
-   config->device                 = CTRLM_VOICE_DEVICE_MICROPHONE;
-   config->format                 = { .type = CTRLM_VOICE_FORMAT_PCM };
-   config->low_latency            = false;
-   config->low_cpu_util           = false;
+   config->requires_transcription  = false;
+   config->requires_audio_file     = true;
+   config->requires_name_of_source = false;
+   config->supports_named_pipe     = false;
+   config->device                  = CTRLM_VOICE_DEVICE_MICROPHONE;
+   config->format                  = { .type = CTRLM_VOICE_FORMAT_PCM };
+   config->low_latency             = false;
+   config->low_cpu_util            = false;
    return(true);
    #endif
 }
@@ -1075,13 +1090,14 @@ bool ctrlm_voice_ipc_request_supported_mic_stream_single(ctrlm_voice_ipc_request
    #ifndef CTRLM_LOCAL_MIC
    return(false);
    #else
-   config->requires_transcription = false;
-   config->requires_audio_file    = false;
-   config->supports_named_pipe    = false;
-   config->device                 = CTRLM_VOICE_DEVICE_MICROPHONE;
-   config->format                 = { .type = CTRLM_VOICE_FORMAT_PCM_32_BIT };
-   config->low_latency            = true;
-   config->low_cpu_util           = false;
+   config->requires_transcription  = false;
+   config->requires_audio_file     = false;
+   config->requires_name_of_source = false;
+   config->supports_named_pipe     = false;
+   config->device                  = CTRLM_VOICE_DEVICE_MICROPHONE;
+   config->format                  = { .type = CTRLM_VOICE_FORMAT_PCM_32_BIT };
+   config->low_latency             = true;
+   config->low_cpu_util            = false;
    return(true);
    #endif
 }
@@ -1090,13 +1106,14 @@ bool ctrlm_voice_ipc_request_supported_mic_stream_multi(ctrlm_voice_ipc_request_
    #ifndef CTRLM_LOCAL_MIC
    return(false);
    #else
-   config->requires_transcription = false;
-   config->requires_audio_file    = false;
-   config->supports_named_pipe    = false;
-   config->device                 = CTRLM_VOICE_DEVICE_MICROPHONE;
-   config->format                 = { .type = CTRLM_VOICE_FORMAT_PCM_32_BIT_MULTI };
-   config->low_latency            = true;
-   config->low_cpu_util           = false;
+   config->requires_transcription  = false;
+   config->requires_audio_file     = false;
+   config->requires_name_of_source = false;
+   config->supports_named_pipe     = false;
+   config->device                  = CTRLM_VOICE_DEVICE_MICROPHONE;
+   config->format                  = { .type = CTRLM_VOICE_FORMAT_PCM_32_BIT_MULTI };
+   config->low_latency             = true;
+   config->low_cpu_util            = false;
    return(true);
    #endif
 }
@@ -1105,13 +1122,14 @@ bool ctrlm_voice_ipc_request_supported_mic_tap_stream_single(ctrlm_voice_ipc_req
    #ifndef CTRLM_LOCAL_MIC_TAP
    return(false);
    #else
-   config->requires_transcription = false;
-   config->requires_audio_file    = false;
-   config->supports_named_pipe    = false;
-   config->device                 = CTRLM_VOICE_DEVICE_MICROPHONE_TAP;
-   config->format                 = { .type = CTRLM_VOICE_FORMAT_PCM_32_BIT };
-   config->low_latency            = true;
-   config->low_cpu_util           = true;
+   config->requires_transcription  = false;
+   config->requires_audio_file     = false;
+   config->requires_name_of_source = false;
+   config->supports_named_pipe     = false;
+   config->device                  = CTRLM_VOICE_DEVICE_MICROPHONE_TAP;
+   config->format                  = { .type = CTRLM_VOICE_FORMAT_PCM_32_BIT };
+   config->low_latency             = true;
+   config->low_cpu_util            = true;
    return(true);
    #endif
 }
@@ -1120,35 +1138,38 @@ bool ctrlm_voice_ipc_request_supported_mic_tap_stream_multi(ctrlm_voice_ipc_requ
    #ifndef CTRLM_LOCAL_MIC_TAP
    return(false);
    #else
-   config->requires_transcription = false;
-   config->requires_audio_file    = false;
-   config->supports_named_pipe    = false;
-   config->device                 = CTRLM_VOICE_DEVICE_MICROPHONE_TAP;
-   config->format                 = { .type = CTRLM_VOICE_FORMAT_PCM_32_BIT_MULTI };
-   config->low_latency            = true;
-   config->low_cpu_util           = true;
+   config->requires_transcription  = false;
+   config->requires_audio_file     = false;
+   config->requires_name_of_source = false;
+   config->supports_named_pipe     = false;
+   config->device                  = CTRLM_VOICE_DEVICE_MICROPHONE_TAP;
+   config->format                  = { .type = CTRLM_VOICE_FORMAT_PCM_32_BIT_MULTI };
+   config->low_latency             = true;
+   config->low_cpu_util            = true;
    return(true);
    #endif
 }
 
 bool ctrlm_voice_ipc_request_supported_mic_factory_test(ctrlm_voice_ipc_request_config_t *config) {
    #ifdef CTRLM_LOCAL_MIC_TAP
-   config->requires_transcription = false;
-   config->requires_audio_file    = false;
-   config->supports_named_pipe    = false;
-   config->device                 = CTRLM_VOICE_DEVICE_MICROPHONE_TAP;
-   config->format                 = { .type = CTRLM_VOICE_FORMAT_PCM_RAW };
-   config->low_latency            = true;
-   config->low_cpu_util           = true;
+   config->requires_transcription  = false;
+   config->requires_audio_file     = false;
+   config->requires_name_of_source = false;
+   config->supports_named_pipe     = false;
+   config->device                  = CTRLM_VOICE_DEVICE_MICROPHONE_TAP;
+   config->format                  = { .type = CTRLM_VOICE_FORMAT_PCM_RAW };
+   config->low_latency             = true;
+   config->low_cpu_util            = true;
    return(true);
    #elif defined(CTRLM_LOCAL_MIC)
-   config->requires_transcription = false;
-   config->requires_audio_file    = false;
-   config->supports_named_pipe    = false;
-   config->device                 = CTRLM_VOICE_DEVICE_MICROPHONE;
-   config->format                 = { .type = CTRLM_VOICE_FORMAT_PCM_RAW };
-   config->low_latency            = true;
-   config->low_cpu_util           = false;
+   config->requires_transcription  = false;
+   config->requires_audio_file     = false;
+   config->requires_name_of_source = false;
+   config->supports_named_pipe     = false;
+   config->device                  = CTRLM_VOICE_DEVICE_MICROPHONE;
+   config->format                  = { .type = CTRLM_VOICE_FORMAT_PCM_RAW };
+   config->low_latency             = true;
+   config->low_cpu_util            = false;
    return(true);
    #else
    return(false);

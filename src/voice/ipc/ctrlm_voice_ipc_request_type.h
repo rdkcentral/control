@@ -27,6 +27,7 @@
 typedef struct {
    bool                 requires_transcription;
    bool                 requires_audio_file;
+   bool                 requires_name_of_source;
    bool                 supports_named_pipe;
    ctrlm_voice_device_t device;
    ctrlm_voice_format_t format;

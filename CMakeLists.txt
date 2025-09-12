@@ -31,7 +31,7 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_NO_SYSTEM_FROM_IMPORTED ON)
 
 # PROJECT
-project(ctrlm-main)
+project(ctrlm-main VERSION ${CMAKE_PROJECT_VERSION})
 
 # OPTIONS
 option(A5000_ENABLE "ES1 A5000 use libse051" OFF)
@@ -48,7 +48,6 @@ option(ENABLE_NETWORKED_STANDBY_MODE "Enable Networked Standby Mode)" OFF)
 option(FACTORY_AUDIO_PLAYBACK "Factory test audio playback" OFF)
 option(FACTORY_CUSTOM_AUDIO_ANALYSIS "Factory custom audio analysis" OFF)
 option(FDC_ENABLED "Enable FDC" OFF)
-option(CTRLM_VERSION, "Control Manager component revision" OFF)
 option(IP_ENABLED "Enable IP" OFF)
 option(LOCAL_MIC "Local Microphone" OFF)
 option(LOCAL_MIC_DISABLE_VIA_PRIVACY "Use Privacy to disable microphone" OFF)
@@ -336,7 +335,7 @@ add_custom_command( OUTPUT ctrlm_version_build.h
    COMMAND echo "\"" >> ctrlm_version_build.h
    COMMAND echo -n "#define CTRLM_MAIN_COMMIT_ID " >> ctrlm_version_build.h
    COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} log --format=\"%H\" -n 1 >> ctrlm_version_build.h
-   COMMAND echo -n "#define CTRLM_MAIN_VERSION \"${CTRLM_VERSION}" >> ctrlm_version_build.h
+   COMMAND echo -n "#define CTRLM_MAIN_VERSION \"${CMAKE_PROJECT_VERSION}" >> ctrlm_version_build.h
    COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} diff --quiet || echo -n "++" >> ctrlm_version_build.h
    COMMAND echo "\"" >> ctrlm_version_build.h
    VERBATIM

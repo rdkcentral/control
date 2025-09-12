@@ -144,7 +144,7 @@ add_subdirectory(src)
 
 # COMPILER OPTIONS
 target_compile_options(controlMgr PUBLIC -fPIC -rdynamic -Wall -Werror)
-add_compile_definitions(_REENTRANT _POSIX_C_SOURCE=200809L _GNU_SOURCE SYSTEMD_NOTIFY XR15_704 _REENTRANT)
+add_compile_definitions(_REENTRANT _POSIX_C_SOURCE=200809L _GNU_SOURCE _REENTRANT)
 
 target_link_libraries(
       controlMgr

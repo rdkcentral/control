@@ -48,7 +48,6 @@ option(ENABLE_NETWORKED_STANDBY_MODE "Enable Networked Standby Mode)" OFF)
 option(FACTORY_AUDIO_PLAYBACK "Factory test audio playback" OFF)
 option(FACTORY_CUSTOM_AUDIO_ANALYSIS "Factory custom audio analysis" OFF)
 option(FDC_ENABLED "Enable FDC" OFF)
-option(CTRLM_BRANCH, "Control Manager Repository Branch" OFF)
 option(CTRLM_VERSION, "Control Manager component revision" OFF)
 option(IP_ENABLED "Enable IP" OFF)
 option(LOCAL_MIC "Local Microphone" OFF)
@@ -332,7 +331,9 @@ install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json.template DESTINATION ${CMAKE
 
 # GENERATED FILES
 add_custom_command( OUTPUT ctrlm_version_build.h
-   COMMAND echo "#define CTRLM_MAIN_BRANCH    \"${CTRLM_BRANCH}\"" >> ctrlm_version_build.h
+   COMMAND echo -n "#define CTRLM_MAIN_BRANCH    \"" >> ctrlm_version_build.h
+   COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} rev-parse --abbrev-ref HEAD | tr -d '\\n' >> ctrlm_version_build.h
+   COMMAND echo "\"" >> ctrlm_version_build.h
    COMMAND echo -n "#define CTRLM_MAIN_COMMIT_ID " >> ctrlm_version_build.h
    COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} log --format=\"%H\" -n 1 >> ctrlm_version_build.h
    COMMAND echo -n "#define CTRLM_MAIN_VERSION \"${CTRLM_VERSION}" >> ctrlm_version_build.h

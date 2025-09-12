@@ -1126,9 +1126,11 @@ void ctrlm_obj_network_ble_t::factory_reset(void) {
 
    XLOGD_INFO("Sending RCU action unpair to all controllers.");
 
-   // Since we are factory resetting anyway, don't waste time unpairing the remote after the
-   // remote notifies us of unpair reason through RemoteControl service
-   this->unpair_on_remote_request_ = false;
+   // Need to unpair the remote on the target side as well even though a factory
+   // reset will clear out the entire pairing table.  This is because a reconnection 
+   // attempt could occur with the remote before factory reset completes which would
+   // prevent the remote from auto-pairing after the reset.
+   this->unpair_on_remote_request_ = true;
 
    for (auto const &controller : controllers_) {
       if (ble_rcu_interface_) {

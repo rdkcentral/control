@@ -335,7 +335,7 @@ add_custom_command( OUTPUT ctrlm_version_build.h
    COMMAND echo "\"" >> ctrlm_version_build.h
    COMMAND echo -n "#define CTRLM_MAIN_COMMIT_ID " >> ctrlm_version_build.h
    COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} log --format=\"%H\" -n 1 >> ctrlm_version_build.h
-   COMMAND echo -n "#define CTRLM_MAIN_VERSION \"${CMAKE_PROJECT_VERSION}" >> ctrlm_version_build.h
+   COMMAND echo -n "#define CTRLM_MAIN_VERSION   \"${CMAKE_PROJECT_VERSION}" >> ctrlm_version_build.h
    COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} diff --quiet || echo -n "++" >> ctrlm_version_build.h
    COMMAND echo "\"" >> ctrlm_version_build.h
    VERBATIM

@@ -42,9 +42,7 @@ option(BLE_ENABLED "Enable BLE" ON)
 option(BLE_SERVICES "Enable BLE Services" OFF)
 option(BREAKPAD "Enable BREAKPAD" OFF)
 option(BUILD_CTRLM_FACTORY "Build Control Factory Test" OFF)
-option(CPC "Enable CPC" OFF)
 option(DEEPSLEEP_CLOSE_DB "Deep Sleep Close DB" OFF)
-option(DUNFELL_BUILD_SUPPORT "Enable DUNFELL_BUILD_SUPPORT" OFF)
 option(ENABLE_NETWORKED_STANDBY_MODE "Enable Networked Standby Mode)" OFF)
 option(FACTORY_AUDIO_PLAYBACK "Factory test audio playback" OFF)
 option(FACTORY_CUSTOM_AUDIO_ANALYSIS "Factory custom audio analysis" OFF)
@@ -57,7 +55,6 @@ option(MEM_DEBUG "Enable memory debugging" OFF)
 option(MEMORY_LOCK "Memory Lock" OFF)
 option(MIC_TAP "Enable MIC_TAP" OFF)
 option(RF4CE_ENABLED "Enable RF4CE" ON)
-option(RF4CE_PACKET_ANALYSIS "Enable RF4CE_PACKET_ANALYSIS" OFF)
 option(TELEMETRY_SUPPORT "Enable TELEMETRY_SUPPORT" OFF)
 option(THUNDER "Enable THUNDER" OFF)
 option(THUNDER_SECURITY "Enable THUNDER_SECURITY" OFF)
@@ -145,7 +142,7 @@ add_subdirectory(src)
 
 # COMPILER OPTIONS
 target_compile_options(controlMgr PUBLIC -fPIC -rdynamic -Wall -Werror)
-add_compile_definitions(_REENTRANT _POSIX_C_SOURCE=200809L _GNU_SOURCE SYSTEMD_NOTIFY XR15_704 _REENTRANT)
+add_compile_definitions(_REENTRANT _POSIX_C_SOURCE=200809L _GNU_SOURCE _REENTRANT)
 
 target_link_libraries(
       controlMgr
@@ -223,10 +220,6 @@ endif()
 if(BREAKPAD)
    target_link_libraries(controlMgr breakpadwrapper)
    add_compile_definitions(BREAKPAD_SUPPORT)
-endif()
-
-if(CPC_ENABLED)
-   target_link_libraries(controlMgr ${CTRLM_CPC_LIBRARY})
 endif()
 
 if(DEEPSLEEP_CLOSE_DB)

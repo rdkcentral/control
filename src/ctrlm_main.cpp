@@ -518,7 +518,7 @@ int main(int argc, char *argv[]) {
          XLOGD_INFO("name <%-24s> version <%-7s> branch <%-20s> commit <%s>", entry->name ? entry->name : "NULL", entry->version ? entry->version : "NULL", entry->branch ? entry->branch : "NULL", entry->commit_id ? entry->commit_id : "NULL");
       }
    }
-   vsdk_init();
+   vsdk_init(true);
 
    //struct sched_param param;
    //param.sched_priority = 10;

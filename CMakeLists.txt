@@ -42,7 +42,6 @@ option(BLE_ENABLED "Enable BLE" ON)
 option(BLE_SERVICES "Enable BLE Services" OFF)
 option(BREAKPAD "Enable BREAKPAD" OFF)
 option(BUILD_CTRLM_FACTORY "Build Control Factory Test" OFF)
-option(DISABLE_BLE_VOICE "Disable BLE voice" OFF)
 option(DEEPSLEEP_CLOSE_DB "Deep Sleep Close DB" OFF)
 option(ENABLE_NETWORKED_STANDBY_MODE "Enable Networked Standby Mode)" OFF)
 option(FACTORY_AUDIO_PLAYBACK "Factory test audio playback" OFF)
@@ -225,10 +224,6 @@ endif()
 
 if(DEEPSLEEP_CLOSE_DB)
    add_compile_definitions(DEEPSLEEP_CLOSE_DB)
-endif()
-
-if(DISABLE_BLE_VOICE)
-   add_compile_definitions(DISABLE_BLE_VOICE)
 endif()
 
 if(ENABLE_ASYNC_SRVR_MSG)

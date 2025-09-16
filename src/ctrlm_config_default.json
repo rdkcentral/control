@@ -219,6 +219,9 @@
       }
    },
    "network_ble" : {
+      "options": {
+         "disable_voice"                 :     false
+      },
       "timeouts": {
          "discovery": 15000,
          "pair": 20000,

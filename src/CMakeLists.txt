@@ -173,16 +173,6 @@ if(RF4CE_ENABLED)
       rf4ce/rib/ctrlm_rf4ce_rib.cpp
       rf4ce/rib/ctrlm_rf4ce_rib_attr.cpp
    )
-
-   if(RF4CE_PACKET_ANALYSIS)
-      target_sources(controlMgr PRIVATE
-      ctrlm_rf4ce_voice_packet_analysis.cpp
-   )
-   else()
-      target_sources(controlMgr PRIVATE
-      stubs/stubs_voice_packet_analysis.cpp
-   )
-   endif()
 endif()
 
 if(TELEMETRY_SUPPORT)

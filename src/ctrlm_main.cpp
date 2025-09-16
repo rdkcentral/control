@@ -75,9 +75,7 @@
 #include "dsMgr.h"
 #include "dsRpc.h"
 #include "dsDisplay.h"
-#ifdef SYSTEMD_NOTIFY
 #include <systemd/sd-daemon.h>
-#endif
 #include <systemd/sd-bus.h>
 #include "xr_voice_sdk.h"
 #include "ctrlm_voice_obj.h"
@@ -6060,10 +6058,9 @@ gboolean ctrlm_start_iarm(gpointer user_data) {
 
    ctrlm_main_iarm_init();
 
-#ifdef SYSTEMD_NOTIFY
    XLOGD_INFO("Notifying systemd of successful initialization");
    sd_notifyf(0, "READY=1\nSTATUS=ctrlm-main has successfully initialized\nMAINPID=%lu", (unsigned long)getpid());
-#endif
+
    return false;
 }
 

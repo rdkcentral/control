@@ -86,9 +86,6 @@
 #include "xr_fdc.h"
 #endif
 #include<features.h>
-#ifdef MEMORY_LOCK
-#include "clnl.h"
-#endif
 
 using namespace std;
 
@@ -402,17 +399,6 @@ static void     control_service_values_read_from_db();
 #ifdef USE_DEPRECATED_IRMGR
 static void     ctrlm_check_for_key_tag(int key_tag) __attribute__((unused)); //USE_DEPRECATED_IRMGR
 #endif
-#ifdef MEMORY_LOCK
-const char *memory_lock_progs[] = {
-"/usr/bin/controlMgr",
-"/usr/lib/libctrlm_hal_rf4ce.so.0.0.0",
-"/usr/lib/libxraudio.so.0.0.0",
-"/usr/lib/libxraudio-hal.so.0.0.0",
-"/usr/lib/libxr_mq.so.0.0.0",
-"/usr/lib/libxr-timer.so.0.0.0",
-"/usr/lib/libxr-timestamp.so.0.0.0"
-};
-#endif
 
 #if CTRLM_HAL_RF4CE_API_VERSION >= 9
 static void ctrlm_crash_recovery_check();
@@ -447,21 +433,6 @@ int main(int argc, char *argv[]) {
    setvbuf(stdout, NULL, _IOLBF, 0);
 
    XLOGD_INFO("name <%-24s> version <%-7s> branch <%-20s> commit <%s>", "ctrlm-main", CTRLM_MAIN_VERSION, CTRLM_MAIN_BRANCH, CTRLM_MAIN_COMMIT_ID);
-
-#ifdef MEMORY_LOCK
-   clnl_init();
-   for(unsigned int i = 0; i < (sizeof(memory_lock_progs) / sizeof(memory_lock_progs[0])); i++) {
-      if(ctrlm_file_exists(memory_lock_progs[i])) {
-         if(clnl_lock(memory_lock_progs[i], SECTION_TEXT)) {
-            XLOGD_ERROR("failed to lock instructions to memory <%s>", memory_lock_progs[i]);
-         } else {
-            XLOGD_INFO("successfully locked to memory <%s>", memory_lock_progs[i]);
-         }
-      } else {
-         XLOGD_DEBUG("file doesn't exist, cannot lock to memory <%s>", memory_lock_progs[i]);
-      }
-   }
-#endif
 
    ctrlm_signals_register();
 
@@ -874,15 +845,6 @@ int main(int argc, char *argv[]) {
 #endif
 
    sem_destroy(&g_ctrlm.ctrlm_utils_sem);
-
-#ifdef MEMORY_LOCK
-   for(unsigned int i = 0; i < (sizeof(memory_lock_progs) / sizeof(memory_lock_progs[0])); i++) {
-      if(ctrlm_file_exists(memory_lock_progs[i])) {
-         clnl_unlock(memory_lock_progs[i], SECTION_TEXT);
-      }
-   }
-   clnl_destroy();
-#endif
 
    ctrlm_config_t::destroy_instance();
    ctrlm_rfc_t::destroy_instance();

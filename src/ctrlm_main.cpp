@@ -446,7 +446,7 @@ int main(int argc, char *argv[]) {
    // Set stdout to be line buffered
    setvbuf(stdout, NULL, _IOLBF, 0);
 
-   XLOGD_INFO("name <%-24s> version <%-7s> branch <%-20s> commit <%s>", "ctrlm-main", CTRLM_MAIN_VERSION, CTRLM_MAIN_BRANCH, CTRLM_MAIN_COMMIT_ID);
+   XLOGD_INFO("name <%-24s> version <%-9s> branch <%-20s> commit <%s>", "ctrlm-main", CTRLM_MAIN_VERSION, CTRLM_MAIN_BRANCH, CTRLM_MAIN_COMMIT_ID);
 
 #ifdef MEMORY_LOCK
    clnl_init();
@@ -515,7 +515,7 @@ int main(int argc, char *argv[]) {
    for(uint32_t index = 0; index < qty_vsdk; index++) {
       vsdk_version_info_t *entry = &version_info[index];
       if(entry->name != NULL) {
-         XLOGD_INFO("name <%-24s> version <%-7s> branch <%-20s> commit <%s>", entry->name ? entry->name : "NULL", entry->version ? entry->version : "NULL", entry->branch ? entry->branch : "NULL", entry->commit_id ? entry->commit_id : "NULL");
+         XLOGD_INFO("name <%-24s> version <%-9s> branch <%-20s> commit <%s>", entry->name ? entry->name : "NULL", entry->version ? entry->version : "NULL", entry->branch ? entry->branch : "NULL", entry->commit_id ? entry->commit_id : "NULL");
       }
    }
    vsdk_init();

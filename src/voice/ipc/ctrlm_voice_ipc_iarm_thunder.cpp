@@ -778,10 +778,12 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                                 }
                             }
                             json_t *obj_name_of_source = json_object_get(obj, "name");
-                            if(obj_name_of_source != NULL && !json_is_string(obj_name_of_source)) {
-                                XLOGD_WARN("invalid name parameter, but this is optional");
-                            } else {
-                                str_name_of_source = std::string(json_string_value(obj_name_of_source));
+                            if(obj_name_of_source != NULL) {
+                                if(!json_is_string(obj_name_of_source)) {
+                                    XLOGD_WARN("name parameter is not a string - ignoring");
+                                } else {
+                                    str_name_of_source = std::string(json_string_value(obj_name_of_source));
+                                }
                             }
                         }
                     }

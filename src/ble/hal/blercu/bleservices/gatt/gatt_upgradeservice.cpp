@@ -885,6 +885,9 @@ static gboolean timerEvent(gpointer user_data)
         result = us->m_ptr->onTimeout();
     }
 
+    /* GLib timeout repeats on true so it needs this data
+     * only delete when the timer is complete (e.g. returns false)
+     * */
     if (!result) {
         delete us;
     }

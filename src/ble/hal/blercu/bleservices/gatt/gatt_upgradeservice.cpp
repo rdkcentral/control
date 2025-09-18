@@ -885,7 +885,9 @@ static gboolean timerEvent(gpointer user_data)
         result = us->m_ptr->onTimeout();
     }
 
-    delete us;
+    if (!result) {
+        delete us;
+    }
     return result;
 }
 

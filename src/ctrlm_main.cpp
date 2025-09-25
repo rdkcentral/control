@@ -423,13 +423,6 @@ static void ctrlm_ir_controller_thread_poll(void *data);
 static void ctrlm_vsdk_thread_poll(void *data);
 static void ctrlm_vsdk_thread_response(void *data);
 
-#ifdef MEM_DEBUG
-static gboolean ctrlm_memory_profile(gpointer user_data) {
-   g_mem_profile();
-   return(TRUE);
-}
-#endif
-
 #ifdef BREAKPAD_SUPPORT
 static bool ctrlm_minidump_callback(const google_breakpad::MinidumpDescriptor& descriptor, void* context, bool succeeded) {
   XLOGD_FATAL("Minidump location: %s Status: %s", descriptor.path(), succeeded ? "SUCCEEDED" : "FAILED");
@@ -493,11 +486,6 @@ int main(int argc, char *argv[]) {
    } else {
       XLOGD_INFO("Glib run-time library is compatible");
    }
-
-#ifdef MEM_DEBUG
-   XLOGD_WARN("Memory debug is ENABLED.");
-   g_mem_set_vtable(glib_mem_profiler_table);
-#endif
 
    sem_init(&g_ctrlm.ctrlm_utils_sem, 0, 1);
 
@@ -611,11 +599,6 @@ int main(int argc, char *argv[]) {
    ERR_CHK(safec_rc);
 
    g_ctrlm.discovery_remote_type[0] = '\0';
-
-#ifdef MEM_DEBUG
-   g_mem_profile();
-   g_timeout_add_seconds(10, ctrlm_memory_profile, NULL);
-#endif
 
    XLOGD_INFO("load version");
    if(!ctrlm_load_version()) {

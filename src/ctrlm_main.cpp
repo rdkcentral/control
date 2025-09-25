@@ -466,6 +466,7 @@ int main(int argc, char *argv[]) {
    ctrlm_signals_register();
 
 #ifdef BREAKPAD_SUPPORT
+   XLOGD_INFO("breakpad enabled");
    std::string minidump_path = "/opt/minidumps";
    #ifdef BREAKPAD_MINIDUMP_PATH_OVERRIDE
    minidump_path = BREAKPAD_MINIDUMP_PATH_OVERRIDE;
@@ -481,6 +482,8 @@ int main(int argc, char *argv[]) {
    google_breakpad::ExceptionHandler eh(descriptor, NULL, ctrlm_minidump_callback, NULL, true, -1);
 
    //ctrlm_crash();
+#else
+   XLOGD_INFO("breakpad disabled");
 #endif
 
    XLOGD_INFO("glib     run-time version... %d.%d.%d", glib_major_version, glib_minor_version, glib_micro_version);

@@ -178,9 +178,7 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                     url = &this->prefs.server_url_src_ptt;
                     break;
                 }
-                #ifdef CTRLM_LOCAL_MIC
                 case CTRLM_VOICE_DEVICE_MICROPHONE:
-                #endif
                 case CTRLM_VOICE_DEVICE_FF: {
                     url = &this->prefs.server_url_src_ff;
                     break;

@@ -521,7 +521,7 @@ class ctrlm_voice_t {
     bool                                  voice_stb_data_bypass_wuw_verify_failure_get() const;
     virtual void                          voice_stb_data_pii_mask_set(bool mask_pii);
     bool                                  voice_stb_data_pii_mask_get() const;
-    virtual void                          voice_stb_data_local_mic_tap_set(bool local_mic_tap);
+    bool                                  voice_stb_data_local_mic_get() const;
     bool                                  voice_stb_data_local_mic_tap_get() const;
     virtual bool                          voice_stb_data_device_certificate_set(ctrlm_voice_cert_t &device_cert, bool &ocsp_verify_stapling, bool &ocsp_verify_ca);
     virtual bool                          voice_stb_data_device_certificate_set(const char *p12_cert, const char *p12_pass);
@@ -657,6 +657,7 @@ public:
     bool                     mtls_required;
     bool                     secure_url_required;
     bool                     mask_pii;
+    bool                     local_mic;
     bool                     local_mic_tap;
     bool                     local_mic_disable_via_privacy;
     bool                     ocsp_verify_stapling;
@@ -755,19 +756,11 @@ xrsr_src_t voice_device_to_xrsr(ctrlm_voice_device_t device);
 
 
 __inline bool ctrlm_voice_device_is_mic(ctrlm_voice_device_t device) {
-    #ifdef CTRLM_LOCAL_MIC
     return(device == CTRLM_VOICE_DEVICE_MICROPHONE || device == CTRLM_VOICE_DEVICE_MICROPHONE_TAP);
-    #else
-    return(false);
-    #endif
 }
 
 __inline bool ctrlm_voice_xrsr_src_is_mic(xrsr_src_t src) {
-    #ifdef CTRLM_LOCAL_MIC
     return(src == XRSR_SRC_MICROPHONE || src == XRSR_SRC_MICROPHONE_TAP);
-    #else
-    return(false);
-    #endif
 }
 
 #endif

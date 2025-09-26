@@ -584,14 +584,16 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_types(void *data) {
         int rc = json_array_append_new(obj_types, json_string("ptt_transcription"));
         rc |= json_array_append_new(obj_types, json_string("ptt_audio_file"));
 
-        #ifdef CTRLM_LOCAL_MIC
-        rc |= json_array_append_new(obj_types, json_string("mic_audio_file"));
-        rc |= json_array_append_new(obj_types, json_string("mic_stream_single"));
-        rc |= json_array_append_new(obj_types, json_string("mic_stream_multi"));
-        rc |= json_array_append_new(obj_types, json_string("mic_tap_stream_single"));
-        rc |= json_array_append_new(obj_types, json_string("mic_tap_stream_multi"));
-        rc |= json_array_append_new(obj_types, json_string("mic_factory_test"));
-        #endif
+        if(voice_obj->voice_stb_data_local_mic_get()) {
+            rc |= json_array_append_new(obj_types, json_string("mic_audio_file"));
+            rc |= json_array_append_new(obj_types, json_string("mic_stream_single"));
+            rc |= json_array_append_new(obj_types, json_string("mic_stream_multi"));
+            if(voice_obj->voice_stb_data_local_mic_tap_get()) {
+                rc |= json_array_append_new(obj_types, json_string("mic_tap_stream_single"));
+                rc |= json_array_append_new(obj_types, json_string("mic_tap_stream_multi"));
+            }
+            rc |= json_array_append_new(obj_types, json_string("mic_factory_test"));
+        }
 
         rc |= json_object_set_new_nocheck(obj_result, JSON_TYPES, obj_types);
         rc |= json_object_set_new_nocheck(obj_result, JSON_THUNDER_RESULT, json_true());
@@ -962,10 +964,8 @@ const char *voice_device_str(ctrlm_voice_device_t device) {
     switch(device) {
         case CTRLM_VOICE_DEVICE_PTT:            return("ptt");
         case CTRLM_VOICE_DEVICE_FF:             return("ff");
-        #ifdef CTRLM_LOCAL_MIC
         case CTRLM_VOICE_DEVICE_MICROPHONE:     return("mic");
         case CTRLM_VOICE_DEVICE_MICROPHONE_TAP: return("mic_tap");
-        #endif
         default: break;
     }
     return("invalid");
@@ -1047,9 +1047,9 @@ bool ctrlm_voice_ipc_request_supported_mic_transcription(ctrlm_voice_ipc_request
 }
 
 bool ctrlm_voice_ipc_request_supported_mic_audio_file(ctrlm_voice_ipc_request_config_t *config) {
-   #ifndef CTRLM_LOCAL_MIC
-   return(false);
-   #else
+   if(!ctrlm_get_voice_obj()->voice_stb_data_local_mic_get()) {
+      return(false);
+   }
    config->requires_transcription = false;
    config->requires_audio_file    = true;
    config->supports_named_pipe    = false;
@@ -1058,7 +1058,6 @@ bool ctrlm_voice_ipc_request_supported_mic_audio_file(ctrlm_voice_ipc_request_co
    config->low_latency            = false;
    config->low_cpu_util           = false;
    return(true);
-   #endif
 }
 
 bool ctrlm_voice_ipc_request_supported_mic_stream_default(ctrlm_voice_ipc_request_config_t *config) {
@@ -1077,9 +1076,9 @@ bool ctrlm_voice_ipc_request_supported_mic_stream_default(ctrlm_voice_ipc_reques
 }
 
 bool ctrlm_voice_ipc_request_supported_mic_stream_single(ctrlm_voice_ipc_request_config_t *config) {
-   #ifndef CTRLM_LOCAL_MIC
-   return(false);
-   #else
+   if(!ctrlm_get_voice_obj()->voice_stb_data_local_mic_get()) {
+      return(false);
+   }
    config->requires_transcription = false;
    config->requires_audio_file    = false;
    config->supports_named_pipe    = false;
@@ -1088,13 +1087,12 @@ bool ctrlm_voice_ipc_request_supported_mic_stream_single(ctrlm_voice_ipc_request
    config->low_latency            = true;
    config->low_cpu_util           = false;
    return(true);
-   #endif
 }
 
 bool ctrlm_voice_ipc_request_supported_mic_stream_multi(ctrlm_voice_ipc_request_config_t *config) {
-   #ifndef CTRLM_LOCAL_MIC
-   return(false);
-   #else
+   if(!ctrlm_get_voice_obj()->voice_stb_data_local_mic_get()) {
+      return(false);
+   }
    config->requires_transcription = false;
    config->requires_audio_file    = false;
    config->supports_named_pipe    = false;
@@ -1103,7 +1101,6 @@ bool ctrlm_voice_ipc_request_supported_mic_stream_multi(ctrlm_voice_ipc_request_
    config->low_latency            = true;
    config->low_cpu_util           = false;
    return(true);
-   #endif
 }
 
 bool ctrlm_voice_ipc_request_supported_mic_tap_stream_single(ctrlm_voice_ipc_request_config_t *config) {
@@ -1145,7 +1142,9 @@ bool ctrlm_voice_ipc_request_supported_mic_factory_test(ctrlm_voice_ipc_request_
       config->low_cpu_util           = true;
       return(true);
    }
-   #if defined(CTRLM_LOCAL_MIC)
+   if(!ctrlm_get_voice_obj()->voice_stb_data_local_mic_get()) {
+      return(false);
+   }
    config->requires_transcription = false;
    config->requires_audio_file    = false;
    config->supports_named_pipe    = false;
@@ -1154,7 +1153,4 @@ bool ctrlm_voice_ipc_request_supported_mic_factory_test(ctrlm_voice_ipc_request_
    config->low_latency            = true;
    config->low_cpu_util           = false;
    return(true);
-   #else
-   return(false);
-   #endif
 }

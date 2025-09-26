@@ -48,7 +48,6 @@ option(FACTORY_AUDIO_PLAYBACK "Factory test audio playback" OFF)
 option(FACTORY_CUSTOM_AUDIO_ANALYSIS "Factory custom audio analysis" OFF)
 option(FDC_ENABLED "Enable FDC" OFF)
 option(IP_ENABLED "Enable IP" OFF)
-option(LOCAL_MIC "Local Microphone" OFF)
 option(MEM_DEBUG "Enable memory debugging" OFF)
 option(MEMORY_LOCK "Memory Lock" OFF)
 option(RF4CE_ENABLED "Enable RF4CE" ON)
@@ -227,10 +226,6 @@ endif()
 
 if(IP_ENABLED)
    add_compile_definitions(CTRLM_NETWORK_IP CTRLM_IP_HAL_LOG_ENABLED)
-endif()
-
-if(LOCAL_MIC)
-   add_compile_definitions(CTRLM_LOCAL_MIC)
 endif()
 
 if(MEM_DEBUG)

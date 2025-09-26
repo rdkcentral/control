@@ -658,6 +658,7 @@ public:
     bool                     secure_url_required;
     bool                     mask_pii;
     bool                     local_mic_tap;
+    bool                     local_mic_disable_via_privacy;
     bool                     ocsp_verify_stapling;
     bool                     ocsp_verify_ca;
     bool                     capture_active;

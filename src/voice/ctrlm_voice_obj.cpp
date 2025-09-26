@@ -139,6 +139,7 @@ ctrlm_voice_t::ctrlm_voice_t() {
     this->software_version                = "N/A";
     this->mask_pii                        = ctrlm_is_production_build() ? JSON_ARRAY_VAL_BOOL_CTRLM_GLOBAL_MASK_PII_0 : JSON_ARRAY_VAL_BOOL_CTRLM_GLOBAL_MASK_PII_1;
     this->local_mic_tap                   = true; // TODO Need to get this value from voice sdk
+    this->local_mic_disable_via_privacy   = true; // TODO Need to get this value from voice sdk
     this->ocsp_verify_stapling            = false;
     this->ocsp_verify_ca                  = false;
     this->capture_active                  = false;
@@ -820,22 +821,22 @@ bool ctrlm_voice_t::voice_configure(json_t *settings, bool db_write) {
         if(conf.config_object_get("mic", device_config)) {
             if(device_config.config_value_get("enable", enable)) {
                 XLOGD_TELEMETRY("Voice Control MIC is <%s>", enable ? "ENABLED" : "DISABLED");
-                #ifdef CTRLM_LOCAL_MIC_DISABLE_VIA_PRIVACY
-                bool privacy_enabled = this->voice_is_privacy_enabled();
-                if(enable) {
-                    if(privacy_enabled) {
-                        this->voice_privacy_disable(true);
+                if(this->local_mic_disable_via_privacy) {
+                    bool privacy_enabled = this->voice_is_privacy_enabled();
+                    if(enable) {
+                        if(privacy_enabled) {
+                            this->voice_privacy_disable(true);
+                        }
+                    } else if(!privacy_enabled) {
+                        this->voice_privacy_enable(true);
                     }
-                } else if(!privacy_enabled) {
-                    this->voice_privacy_enable(true);
-                }
-                #else
-                if(enable) {
-                    this->voice_device_enable(CTRLM_VOICE_DEVICE_MICROPHONE, db_write, &update_routes);
                 } else {
-                    this->voice_device_disable(CTRLM_VOICE_DEVICE_MICROPHONE, db_write, &update_routes);
+                    if(enable) {
+                        this->voice_device_enable(CTRLM_VOICE_DEVICE_MICROPHONE, db_write, &update_routes);
+                    } else {
+                        this->voice_device_disable(CTRLM_VOICE_DEVICE_MICROPHONE, db_write, &update_routes);
+                    }
                 }
-                #endif
             }
         }
         #endif
@@ -3850,11 +3851,11 @@ void ctrlm_voice_t::voice_privacy_enable(bool update_vsdk) {
     this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] |= CTRLM_VOICE_DEVICE_STATUS_PRIVACY;
     ctrlm_db_voice_write_device_status(CTRLM_VOICE_DEVICE_MICROPHONE, (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_MASK_DB));
 
-    #ifdef CTRLM_LOCAL_MIC_DISABLE_VIA_PRIVACY
-    if(update_vsdk && this->xrsr_opened && !xrsr_privacy_mode_set(true)) {
-        XLOGD_ERROR("xrsr_privacy_mode_set failed");
+    if(this->local_mic_disable_via_privacy) {
+        if(update_vsdk && this->xrsr_opened && !xrsr_privacy_mode_set(true)) {
+            XLOGD_ERROR("xrsr_privacy_mode_set failed");
+        }
     }
-    #endif
 
     sem_post(&this->device_status_semaphore);
     #endif
@@ -3872,11 +3873,11 @@ void ctrlm_voice_t::voice_privacy_disable(bool update_vsdk) {
     this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] &= ~CTRLM_VOICE_DEVICE_STATUS_PRIVACY;
     ctrlm_db_voice_write_device_status(CTRLM_VOICE_DEVICE_MICROPHONE, (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_MASK_DB));
 
-    #ifdef CTRLM_LOCAL_MIC_DISABLE_VIA_PRIVACY
-    if(update_vsdk && this->xrsr_opened && !xrsr_privacy_mode_set(false)) {
-        XLOGD_ERROR("xrsr_privacy_mode_set failed");
+    if(this->local_mic_disable_via_privacy) {
+        if(update_vsdk && this->xrsr_opened && !xrsr_privacy_mode_set(false)) {
+            XLOGD_ERROR("xrsr_privacy_mode_set failed");
+        }
     }
-    #endif
     sem_post(&this->device_status_semaphore);
     #endif
 }
@@ -3966,12 +3967,12 @@ void ctrlm_voice_t::voice_nsm_session_request(void) {
     ctrlm_voice_device_t device = CTRLM_VOICE_DEVICE_MICROPHONE;
     ctrlm_voice_format_t format = { .type = CTRLM_VOICE_FORMAT_PCM_32_BIT };
 
-    #ifdef CTRLM_LOCAL_MIC_DISABLE_VIA_PRIVACY
-    //If the user un-muted the microphones in standby, we must un-mute our components
-    if(this->voice_is_privacy_enabled()) {
-        this->voice_privacy_disable(true);
+    if(this->local_mic_disable_via_privacy) {
+        //If the user un-muted the microphones in standby, we must un-mute our components
+        if(this->voice_is_privacy_enabled()) {
+            this->voice_privacy_disable(true);
+        }
     }
-    #endif
 
     this->nsm_voice_session = true;
     voice_session_req(network_id, controller_id, device, format, NULL, "NSM", "0.0.0.0",  "0.0.0.0",  0.0);

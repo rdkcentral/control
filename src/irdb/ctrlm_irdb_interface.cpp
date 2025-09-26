@@ -29,10 +29,13 @@
 // STB Platforms
 #include "ctrlm_thunder_controller.h"
 #include "ctrlm_thunder_plugin_display_settings.h"
-#include "ctrlm_thunder_plugin_cec.h"
 #include "ctrlm_thunder_plugin_cec_source.h"
 // TV Platforms
+#ifdef USE_DEPRECATED_HDMI_INPUT_PLUGIN
+#include "ctrlm_thunder_plugin_hdmi_input.h"
+#else
 #include "ctrlm_thunder_plugin_av_input.h"
+#endif
 #include "ctrlm_thunder_plugin_cec_sink.h"
 #endif
 
@@ -76,9 +79,13 @@ typedef struct {
     ctrlm_ipc_iarm_t                                                    *irdb_ipc;
     #ifdef CTRLM_THUNDER
     Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t   *display_settings;
-    Thunder::CEC::ctrlm_thunder_plugin_cec_t                            *cec;
-    Thunder::AVInput::ctrlm_thunder_plugin_av_input_t                   *av_input;
+    Thunder::CEC::ctrlm_thunder_plugin_cec_source_t                     *cec_source;
     Thunder::CECSink::ctrlm_thunder_plugin_cec_sink_t                   *cec_sink;
+    #ifdef USE_DEPRECATED_HDMI_INPUT_PLUGIN
+    Thunder::HDMIInput::ctrlm_thunder_plugin_hdmi_input_t               *av_input;
+    #else
+    Thunder::AVInput::ctrlm_thunder_plugin_av_input_t                   *av_input;
+    #endif
    #endif
 } ctrlm_irdb_global_t;
 
@@ -110,7 +117,14 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
     m_platform_tv = platform_tv;
     m_irdbPluginHandle = NULL;
 
-    m_irdbPluginHandle = dlopen ("libctrlm-irdb-plugin.so", RTLD_NOW);
+    m_irdbPluginHandle = dlopen ("/vendor/lib/libuniversal_remote.so", RTLD_NOW);
+    if (!m_irdbPluginHandle) {
+        XLOGD_ERROR("Failed to load IR database plugin libuniversal_remote.so <%s>, trying deprecated libctrlm-irdb-plugin.so.", dlerror());
+        m_irdbPluginHandle = dlopen ("libctrlm-irdb-plugin.so", RTLD_NOW);
+    } else {
+        XLOGD_INFO("IR database plugin <libuniversal_remote.so> loaded successfully");
+    }
+    
     if (!m_irdbPluginHandle) {
         XLOGD_ERROR("Failed to load IR database plugin <%s>, using stub implementation.", dlerror());
         g_irdb.pluginOpen = STUB_ctrlm_irdb_open;
@@ -290,21 +304,25 @@ void ctrlm_irdb_interface_t::on_thunder_ready() {
 
     if(m_platform_tv == false) {
         g_irdb.display_settings = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
-        g_irdb.cec = Thunder::CEC::ctrlm_thunder_plugin_cec_t::getInstance();
-        if(!g_irdb.cec->is_activated()) {
-            XLOGD_INFO("CEC Thunder Plugin not activated.. Activating..");
-            if(g_irdb.cec->activate()) {
-                if(g_irdb.cec->enable(true)) {
+        g_irdb.cec_source = Thunder::CEC::ctrlm_thunder_plugin_cec_source_t::getInstance();
+        if(!g_irdb.cec_source->is_activated()) {
+            XLOGD_INFO("CEC Source Thunder Plugin not activated.. Activating..");
+            if(g_irdb.cec_source->activate()) {
+                if(g_irdb.cec_source->enable(true)) {
                     XLOGD_INFO("CEC enabled");
                 } else {
                     XLOGD_WARN("CEC failed to enable");
                 }
             } else {
-                XLOGD_TELEMETRY("failed to activate CEC Plugin");
+                XLOGD_TELEMETRY("failed to activate CEC Source Plugin");
             }
         }
     } else {
+        #ifdef USE_DEPRECATED_HDMI_INPUT_PLUGIN
+        g_irdb.av_input = Thunder::HDMIInput::ctrlm_thunder_plugin_hdmi_input_t::getInstance();
+        #else
         g_irdb.av_input = Thunder::AVInput::ctrlm_thunder_plugin_av_input_t::getInstance();
+        #endif
         g_irdb.cec_sink = Thunder::CECSink::ctrlm_thunder_plugin_cec_sink_t::getInstance();
     }
     #endif
@@ -395,10 +413,10 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
         } else {
             XLOGD_ERROR("display_settings is NULL");
         }
-        if(g_irdb.cec) {
+        if(g_irdb.cec_source) {
             // Check CEC data
             std::vector<Thunder::CEC::cec_device_t> cec_devices;
-            g_irdb.cec->get_cec_devices(cec_devices);
+            g_irdb.cec_source->get_cec_devices(cec_devices);
             if(cec_devices.size() > 0) {
                 for(auto &itr : cec_devices) {
                     ctrlm_irdb_dev_type_t type = CTRLM_IRDB_DEV_TYPE_INVALID;

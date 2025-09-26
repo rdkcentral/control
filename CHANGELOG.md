@@ -16,6 +16,70 @@ All notable changes to this project will be documented in this file.
 
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
+## [1.1.4] - 2025-09-17
+
+### Changed
+- move certselector logic into ctrlm-main repo (#102)
+- use version/branch from recipe (#109)
+
+### Added
+- update AMC APP key mapping (#98)
+
+### Fixed
+- getNetStatus call time out due to SAT download retries (#97)   
+- remove device from bluez during factory reset (#100)
+- Missing Thunder cflags in ctrlm implemenation (#103)
+
+### Removed
+- remove ctrlm compile flags (#104)
+- remove ctrlm build flags - CPC, DUNFELL (#105)
+- remove ctrlm build flags - RF4CE_PACKET_ANALYSIS (#107)
+- remove ctrlm build flags - DISABLE_BLE_VOICE (#106)
+
+## [1.1.3] - 2025-08-19
+
+### Changed
+- Modify Remote Control plugin for RF4CE support (#80)
+- Mac address fetch (#92)
+
+### Added
+- Runtime detection of ASB (#96)
+
+## [1.1.2] - 2025-08-04
+
+### Changed
+- use HdmiCecSource instead of deprecated HdmiCec (#93)
+- update key code mapping (#91)
+- stop BLE audio stream on the RCU when server ends session early (#76)
+
+### Added
+- BLE network discovery (#94)
+- try to load VL provided IRDB, upon failure fallback to existing IRDB in MW (#79)
+- print raw EDID data at debug log level
+
+### Fixed
+- Voice not initiated due to voice key not initialized to default value
+    
+### Removed
+- remove receiver ID, its no longer used (#85)
+- Remove RF4CE HAL from the middleware layer (#75)
+
+    
+
+## [1.1.1] - 2025-06-25
+
+### Changed
+- Use the deprecated HDMI Input plugin instead of the new AV Input plugin if compile flag is set
+
+### Fixed
+- BLE audio pipe size too small, set minimum size
+- enable RF4CE Advanced Secure Binding (ASB)
+
+### Added
+- receive RF4CE IR binding key codes over IR input device
+- use new Power Manager Thunder Plugin for power state events, switch to deprecated IARM interface with compile flag
+    
+
 ## [1.1.0] - 2025-05-30
 
 ### Changed

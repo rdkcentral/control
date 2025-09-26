@@ -48,9 +48,7 @@
 #include "ctrlm_config_default.h"
 #include "ctrlm_tr181.h"
 #include "ctrlm_rcu.h"
-#ifdef ASB
 #include "ctrlm_asb.h"
-#endif
 #include <zlib.h>
 #include "ctrlm_voice_obj.h"
 #include "comcastIrKeyCodes.h"
@@ -124,6 +122,12 @@ ctrlm_obj_network_rf4ce_t::ctrlm_obj_network_rf4ce_t(ctrlm_network_type_t type, 
    hal_api_data_            = NULL;
    hal_api_rib_data_import_ = NULL;
    hal_api_rib_data_export_ = NULL;
+
+   hal_api_asb_init_        = NULL; 
+   hal_api_asb_methods_get_ = NULL;
+   hal_api_asb_key_derive_  = NULL;
+   hal_api_asb_destroy_     = NULL;
+
    errno_t safec_rc = -1;
 
    discovery_config_normal_.enabled               = JSON_BOOL_VALUE_NETWORK_RF4CE_DISCOVERY_CONFIG_ENABLE;
@@ -197,7 +201,6 @@ ctrlm_obj_network_rf4ce_t::ctrlm_obj_network_rf4ce_t(ctrlm_network_type_t type, 
 
    default_polling_configuration();
 
-#ifdef ASB
    // ASB Config
    asb_enabled_                  = JSON_BOOL_VALUE_NETWORK_RF4CE_ASB_ENABLE; // DEFAULT FALSE
    asb_key_derivation_methods_   = JSON_INT_VALUE_NETWORK_RF4CE_ASB_DERIVATION_METHODS;
@@ -205,7 +208,6 @@ ctrlm_obj_network_rf4ce_t::ctrlm_obj_network_rf4ce_t(ctrlm_network_type_t type, 
    asb_fallback_count_threshold_ = JSON_INT_VALUE_NETWORK_RF4CE_ASB_FALLBACK_THRESHOLD;
    asb_force_settings_           = JSON_BOOL_VALUE_NETWORK_RF4CE_ASB_FORCE_SETTINGS; // DEFAULT FALSE
    // End ASB Config
-#endif
 
    voice_session_rsp_confirm_ = NULL;
    voice_session_rsp_confirm_param_ = NULL;
@@ -331,6 +333,17 @@ ctrlm_obj_network_rf4ce_t::~ctrlm_obj_network_rf4ce_t() {
 void ctrlm_obj_network_rf4ce_t::hal_api_main_set(ctrlm_hal_rf4ce_network_main_t main) {
    THREAD_ID_VALIDATE();
    hal_api_main_ = main;
+}
+
+void ctrlm_obj_network_rf4ce_t::hal_api_asb_set(ctrlm_hal_rf4ce_asb_init_t init, 
+                                                ctrlm_hal_rf4ce_asb_methods_get_t methods_get,
+                                                ctrlm_hal_rf4ce_asb_key_derive_t key_derive,
+                                                ctrlm_hal_rf4ce_asb_destroy_t destroy) {
+   THREAD_ID_VALIDATE();
+   hal_api_asb_init_           = init;
+   hal_api_asb_methods_get_    = methods_get;
+   hal_api_asb_key_derive_     = key_derive;
+   hal_api_asb_destroy_        = destroy;
 }
 
 ctrlm_hal_result_t ctrlm_obj_network_rf4ce_t::hal_init_request(GThread *ctrlm_main_thread) {
@@ -650,13 +663,11 @@ gboolean ctrlm_obj_network_rf4ce_t::load_config(json_t *json_obj_net_rf4ce) {
          polling_config_read(&sub_conf);
       }
 
-#ifdef ASB
       if(conf.config_object_get(JSON_OBJ_NAME_NETWORK_RF4CE_ASB, sub_conf)) {
          asb_configuration(&sub_conf);
       } else {
          asb_configuration(NULL);
       }
-#endif
 
       if(conf.config_object_get(JSON_OBJ_NAME_NETWORK_RF4CE_VOICE, sub_conf)) {
         sub_conf.config_value_get(JSON_INT_NAME_NETWORK_RF4CE_VOICE_STREAM_BEGIN, stream_begin_, 0);
@@ -737,10 +748,10 @@ gboolean ctrlm_obj_network_rf4ce_t::load_config(json_t *json_obj_net_rf4ce) {
 #if (CTRLM_HAL_RF4CE_API_VERSION >= 11)
    XLOGD_INFO("DPI Pattern List              %u", dpi_pattern_list);
 #endif
-#ifdef ASB
+   if(ctrlm_is_rf4ce_asb_supported()) {
    XLOGD_INFO("ASB Force Settings            <%s>", (asb_force_settings_ ? "YES" : "NO"));
    XLOGD_INFO("ASB Enabled                   <%s>", (asb_enabled_ ? "YES" : "NO"));
-#endif
+   }
    XLOGD_INFO("FF Voice Stream Begin         %d", (int)stream_begin_);
    XLOGD_INFO("FF Voice Stream Offset        %d", stream_offset_);
 
@@ -1194,9 +1205,7 @@ void ctrlm_obj_network_rf4ce_t::controller_insert(ctrlm_controller_id_t controll
    } else {
       controllers_[controller_id] = new ctrlm_obj_controller_rf4ce_t(controller_id, *this, ieee_address, CTRLM_RF4CE_RESULT_VALIDATION_SUCCESS, CTRLM_RCU_CONFIGURATION_RESULT_SUCCESS);
       controllers_[controller_id]->db_load();
-#ifdef XR15_704
       controllers_[controller_id]->set_reset();
-#endif
       controllers_[controller_id]->update_polling_configurations();
    }
 }
@@ -2903,7 +2912,6 @@ void ctrlm_obj_network_rf4ce_t::polling_config_tr181_read() {
 
    bool b_has_default_mac_config = false;
 
-#ifdef MAC_POLLING
    bool mac_polling_enabled = false;
    if(CTRLM_TR181_RESULT_SUCCESS == ctrlm_tr181_bool_get(CTRLM_RF4CE_TR181_MAC_POLLING_CONFIGURATION_ENABLE, &mac_polling_enabled)) {
       XLOGD_INFO("Default Mac Polling Configuration from TR181");
@@ -2917,7 +2925,6 @@ void ctrlm_obj_network_rf4ce_t::polling_config_tr181_read() {
       }
 
    }
-#endif
    for(int i = 0; i < RF4CE_CONTROLLER_TYPE_INVALID; i++) {
      XLOGD_INFO("Polling Configuration Remote Type <%s>", ctrlm_rf4ce_controller_type_str((ctrlm_rf4ce_controller_type_t)i));
      const char *controller_tr181_str = 0;
@@ -3002,10 +3009,8 @@ void ctrlm_obj_network_rf4ce_t::polling_config_read(json_config *conf) {
 
    json_config target_obj;
    if(conf->config_object_get(JSON_OBJ_NAME_NETWORK_RF4CE_POLLING_TARGET, target_obj)) { // has target object
-      #ifdef MAC_POLLING
       target_obj.config_value_get(JSON_INT_NAME_NETWORK_RF4CE_POLLING_TARGET_METHODS, polling_methods_);
       target_obj.config_value_get(JSON_INT_NAME_NETWORK_RF4CE_POLLING_TARGET_FMR_CONTROLLERS_MAX, max_fmr_controllers_);
-      #endif
    }
 
    json_config generic_polling_obj;
@@ -3400,13 +3405,13 @@ void ctrlm_obj_network_rf4ce_t::process_xconf() {
 }
 
 // ASB Functions
-#ifdef ASB
 bool ctrlm_obj_network_rf4ce_t::rf4ce_asb_init(void *data, int size) {
-   if(asb_init()) {
+
+   if(hal_api_asb_init_ == NULL || (*hal_api_asb_init_)()) {
       XLOGD_ERROR("Failed to init ASB");
       return false;
    }
-   return true;   
+   return true;
 }
 
 bool ctrlm_obj_network_rf4ce_t::is_asb_force_settings() {
@@ -3422,7 +3427,11 @@ void ctrlm_obj_network_rf4ce_t::asb_enable_set(bool asb_enabled) {
 }
 
 asb_key_derivation_method_t ctrlm_obj_network_rf4ce_t::key_derivation_method_get(asb_key_derivation_bitmask_t bitmask_controller) {
-   asb_key_derivation_bitmask_t supported_methods = bitmask_controller & asb_key_derivation_methods_ & asb_key_derivation_methods_get();
+   if(hal_api_asb_methods_get_ == NULL) {
+      XLOGD_ERROR("Failed to get ASB key derivation method");
+      return(ASB_KEY_DERIVATION_NONE);
+   }
+   asb_key_derivation_bitmask_t supported_methods = bitmask_controller & asb_key_derivation_methods_ & (*hal_api_asb_methods_get_)();
    asb_key_derivation_method_t  ret = ASB_KEY_DERIVATION_NONE;
    if(ASB_KEY_DERIVATION_NONE != supported_methods) {
       // Get greatest support key derivation method.. Stored in least sig bit
@@ -3501,9 +3510,23 @@ void ctrlm_obj_network_rf4ce_t::asb_configuration(json_config *conf) {
 }
 
 void ctrlm_obj_network_rf4ce_t::rf4ce_asb_destroy(void *data, int size) {
-   asb_destroy();
+   if(hal_api_asb_destroy_ != NULL) {
+      (*hal_api_asb_destroy_)();
+   }
 }
-#endif
+
+int  ctrlm_obj_network_rf4ce_t::hal_asb_key_derive(uint8_t *input, uint8_t *output, asb_key_derivation_method_t method) {
+   if(hal_api_asb_key_derive_ != NULL) {
+      return (*hal_api_asb_key_derive_)(input, output, method);
+   }
+   return(-1);
+}
+
+void ctrlm_obj_network_rf4ce_t::hal_asb_destroy(void) {
+   if(hal_api_asb_destroy_ != NULL) {
+      (*hal_api_asb_destroy_)();
+   }
+}
 // End ASB Functions
 
 void ctrlm_obj_network_rf4ce_t::open_chime_enable_set(bool open_chime_enabled) {
@@ -4361,13 +4384,13 @@ void ctrlm_obj_network_rf4ce_t::cs_values_set(const ctrlm_cs_values_t *values, b
    }
 
    // ASB
-#ifdef ASB
-   if(!is_asb_force_settings()) {
-      asb_enabled_ = values->asb_enable;
-   } else {
-      XLOGD_WARN("%s network not using ASB cs_value due to force settings set to TRUE", name_get());
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      if(!is_asb_force_settings()) {
+         asb_enabled_ = values->asb_enable;
+      } else {
+         XLOGD_WARN("%s network not using ASB cs_value due to force settings set to TRUE", name_get());
+      }
    }
-#endif
 
    // Far Field Configuration
    far_field_configuration_t temp = ff_configuration_;
@@ -4755,19 +4778,11 @@ void ctrlm_obj_network_rf4ce_t::rfc_retrieved_handler(const ctrlm_rfc_attr_t& at
 
    // Polling
    if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_POLLING JSON_PATH_SEPERATOR JSON_OBJ_NAME_NETWORK_RF4CE_POLLING_TARGET JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_POLLING_TARGET_METHODS, polling_methods_)) {
-      #ifndef MAC_POLLING
-      if(polling_methods_ & POLLING_METHODS_FLAG_MAC) {
-         XLOGD_ERROR("mac polling is disabled");
-         polling_methods_ &= ~POLLING_METHODS_FLAG_MAC;
-      }
-      #endif
       XLOGD_INFO("target polling methods <%s>", ctrlm_rf4ce_controller_polling_methods_str(polling_methods_));
    }
-   #ifdef MAC_POLLING
    if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_POLLING JSON_PATH_SEPERATOR JSON_OBJ_NAME_NETWORK_RF4CE_POLLING_TARGET JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_POLLING_TARGET_FMR_CONTROLLERS_MAX, max_fmr_controllers_)) {
       XLOGD_INFO("target fmr controllers max <%u>", max_fmr_controllers_);
    }
-   #endif
    if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_POLLING JSON_PATH_SEPERATOR JSON_OBJ_NAME_NETWORK_RF4CE_POLLING_HB_GENERIC_CONFIG JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_POLLING_HB_GENERIC_CONFIG_UPTIME_MULTIPLIER, controller_generic_polling_configuration_.uptime_multiplier)) {
       XLOGD_INFO("polling hb generic config - uptime multiplier <%u>", controller_generic_polling_configuration_.uptime_multiplier);
    }
@@ -4839,22 +4854,22 @@ void ctrlm_obj_network_rf4ce_t::rfc_retrieved_handler(const ctrlm_rfc_attr_t& at
    ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, &ctrlm_obj_network_rf4ce_t::notify_controllers_polling_configuration, NULL, 0, (void*)this);
 
    // ASB
-#ifdef ASB
-   if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_BOOL_NAME_NETWORK_RF4CE_ASB_ENABLE, asb_enabled_)) {
-      XLOGD_INFO("TR181 ASB Enable set to %s", (asb_enabled_ ? "TRUE" : "FALSE"));
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_BOOL_NAME_NETWORK_RF4CE_ASB_ENABLE, asb_enabled_)) {
+         XLOGD_INFO("TR181 ASB Enable set to %s", (asb_enabled_ ? "TRUE" : "FALSE"));
+      }
+      if(asb_enabled_) {
+         if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_ASB_DERIVATION_METHODS, asb_key_derivation_methods_, 0x01, 0xFF)) {
+            XLOGD_INFO("TR181 ASB Key Derivation Method set to %d", asb_key_derivation_methods_);
+         }
+         if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_ASB_FALLBACK_THRESHOLD, asb_fallback_count_threshold_, 0x01, 0xFF)) {
+            XLOGD_INFO("TR181 ASB Fallback Threshold set to %d", asb_fallback_count_threshold_);
+         }
+         if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_BOOL_NAME_NETWORK_RF4CE_ASB_FORCE_SETTINGS, asb_force_settings_)) {
+            XLOGD_INFO("TR181 ASB Force Settings set to %s", (asb_force_settings_ ? "TRUE" : "FALSE"));
+         }
+      }
    }
-   if(asb_enabled_) {
-      if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_ASB_DERIVATION_METHODS, asb_key_derivation_methods_, 0x01, 0xFF)) {
-         XLOGD_INFO("TR181 ASB Key Derivation Method set to %d", asb_key_derivation_methods_);
-      }
-      if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_ASB_FALLBACK_THRESHOLD, asb_fallback_count_threshold_, 0x01, 0xFF)) {
-         XLOGD_INFO("TR181 ASB Fallback Threshold set to %d", asb_fallback_count_threshold_);
-      }
-      if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_BOOL_NAME_NETWORK_RF4CE_ASB_FORCE_SETTINGS, asb_force_settings_)) {
-         XLOGD_INFO("TR181 ASB Force Settings set to %s", (asb_force_settings_ ? "TRUE" : "FALSE"));
-      }
-   }
-#endif
    // End ASB
 
    // Voice
@@ -4904,48 +4919,85 @@ void ctrlm_obj_network_rf4ce_t::req_process_start_pairing(void *data, int size) 
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_start_pairing_t));
 
-   dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+   if(!dqm->params->screen_bind_enable) {
+      XLOGD_INFO("screen bind enable is not requested");
+      dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+   } else {
+      if(dqm->params->timeout != 0) { // use a timeout
+         ctrlm_main_iarm_call_property_t property = {};
+         property.api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION;
+         property.result       = CTRLM_IARM_CALL_RESULT_INVALID;
+         property.network_id   = CTRLM_MAIN_NETWORK_ID_ALL;
+         property.name         = CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND;
+         property.value        = dqm->params->timeout * 1000;
 
-   ctrlm_main_iarm_call_property_t property = {};
-   property.api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION;
-   property.result       = CTRLM_IARM_CALL_RESULT_INVALID;
-   property.network_id   = CTRLM_MAIN_NETWORK_ID_ALL;
-   property.name         = CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND;
-   property.value        = dqm->params->timeout * 1000;
+         ctrlm_main_iarm_call_property_set_(&property);
+         if (property.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
+            XLOGD_ERROR("Failed to set ACTIVE PERIOD SCREENBIND property");
+            set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+            dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
 
-   ctrlm_main_iarm_call_property_set_(&property);
-   if (property.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
-       XLOGD_ERROR("Failed to set ACTIVE PERIOD SCREENBIND property");
-       set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
-       dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
+            if (dqm->semaphore) {
+               sem_post(dqm->semaphore);
+            }
+            return;
+         }
+      }
 
-       if (dqm->semaphore) {
-           sem_post(dqm->semaphore);
-       }
-       return ;
+      ctrlm_main_iarm_call_control_service_pairing_mode_t pairing = {};
+      pairing.api_revision       = CTRLM_MAIN_IARM_BUS_API_REVISION;
+      pairing.network_id         = network_id_get();
+      pairing.pairing_mode       = 1;
+      pairing.restrict_by_remote = 0;
+      pairing.use_timeout        = (dqm->params->timeout == 0) ? 0 : 1;
+      pairing.result             = CTRLM_IARM_CALL_RESULT_INVALID;
+
+      ctrlm_main_iarm_call_control_service_start_pairing_mode_(&pairing);
+      if (pairing.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
+         XLOGD_ERROR("Failed to start pairing mode timer");
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
+      } else {
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_SEARCHING);
+         iarm_event_rcu_status();
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+      }
    }
-
-   ctrlm_main_iarm_call_control_service_pairing_mode_t pairing = {};
-   pairing.api_revision       = CTRLM_MAIN_IARM_BUS_API_REVISION;
-   pairing.network_id         = network_id_get();
-   pairing.pairing_mode       = 1;
-   pairing.restrict_by_remote = 0;
-   pairing.result             = CTRLM_IARM_CALL_RESULT_INVALID;
-
-   ctrlm_main_iarm_call_control_service_start_pairing_mode_(&pairing);
-   if (pairing.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
-       XLOGD_ERROR("Failed to start pairing mode timer");
-       set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
-       dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
-
-       if (dqm->semaphore) {
-           sem_post(dqm->semaphore);
-       }
-       return ;
+   if (dqm->semaphore) {
+       sem_post(dqm->semaphore);
    }
+}
 
-   set_rf_pair_state(CTRLM_RF_PAIR_STATE_SEARCHING);
-   iarm_event_rcu_status();
+void ctrlm_obj_network_rf4ce_t::req_process_stop_pairing(void *data, int size) {
+   THREAD_ID_VALIDATE();
+   ctrlm_main_queue_msg_stop_pairing_t *dqm = (ctrlm_main_queue_msg_stop_pairing_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_stop_pairing_t));
+
+   if(!dqm->params->screen_bind_disable) {
+      XLOGD_INFO("screen bind disable is not requested");
+      dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+   } else {
+      ctrlm_main_iarm_call_control_service_pairing_mode_t pairing = {};
+      pairing.api_revision       = CTRLM_MAIN_IARM_BUS_API_REVISION;
+      pairing.network_id         = network_id_get();
+      pairing.pairing_mode       = 1;
+      pairing.restrict_by_remote = 0;
+      pairing.use_timeout        = 0;
+      pairing.result             = CTRLM_IARM_CALL_RESULT_INVALID;
+
+      ctrlm_main_iarm_call_control_service_end_pairing_mode_(&pairing);
+      if (pairing.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
+         XLOGD_ERROR("Failed to end pairing mode");
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
+      } else {
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_SEARCHING);
+         iarm_event_rcu_status();
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+      }
+   }
    if (dqm->semaphore) {
        sem_post(dqm->semaphore);
    }

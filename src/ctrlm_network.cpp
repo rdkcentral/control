@@ -113,12 +113,14 @@ ctrlm_obj_network_t::~ctrlm_obj_network_t() {
       }
    }
 
+   #ifdef CTRLM_THUNDER
    ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
    if (rcp_ipc) {
        rcp_ipc->deregister_ipc();
    }
    // No need to also destroy rcp_ipc instance here because its a singleton and will get 
    // automatically destroyed at ctrlm-main shutdown.
+   #endif
 }
 
 ctrlm_network_id_t ctrlm_obj_network_t::network_id_get() const {
@@ -153,16 +155,6 @@ gboolean ctrlm_obj_network_t::mask_key_codes_get() const {
 const char * ctrlm_obj_network_t::version_get() const {
    THREAD_ID_VALIDATE();
    return(version_.c_str());
-}
-
-void ctrlm_obj_network_t::receiver_id_set(const string& receiver_id) {
-   THREAD_ID_VALIDATE();
-   receiver_id_ = receiver_id;
-}
-
-string ctrlm_obj_network_t::receiver_id_get() const {
-   THREAD_ID_VALIDATE();
-   return(receiver_id_);
 }
 
 void ctrlm_obj_network_t::device_id_set(const string& device_id) {
@@ -214,6 +206,23 @@ void ctrlm_obj_network_t::stb_name_set(const string& stb_name) {
 string ctrlm_obj_network_t::stb_name_get() const {
    THREAD_ID_VALIDATE();
    return(stb_name_);
+}
+
+void ctrlm_obj_network_t::validation_result_set(ctrlm_rcu_validation_result_t result) {
+   validation_result_ = result;
+}
+
+void ctrlm_obj_network_t::validation_key_set(ctrlm_key_code_t key) {
+   validation_key_    = key;
+}
+
+void ctrlm_obj_network_t::validation_status_get(ctrlm_rcu_validation_result_t *result, ctrlm_key_code_t *key) const {
+   if(result) {
+      *result = validation_result_;
+   }
+   if(key) {
+      *key = validation_key_;
+   }
 }
 
 bool ctrlm_obj_network_t::is_ready() const {
@@ -656,6 +665,18 @@ void ctrlm_obj_network_t::req_process_start_pairing(void *data, int size){
    }
 }
 
+void ctrlm_obj_network_t::req_process_stop_pairing(void *data, int size){
+   XLOGD_WARN("request is not valid for %s network", name_get());
+   ctrlm_main_queue_msg_stop_pairing_t *dqm = (ctrlm_main_queue_msg_stop_pairing_t *)data;
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_stop_pairing_t));
+
+   // post the semaphore just to ensure nothing blocks
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
+}
+
 void ctrlm_obj_network_t::req_process_pair_with_code(void *data, int size){
    XLOGD_WARN("request is not valid for %s network", name_get());
    ctrlm_main_queue_msg_pair_with_code_t *dqm = (ctrlm_main_queue_msg_pair_with_code_t *)data;
@@ -942,6 +963,10 @@ void ctrlm_obj_network_t::bind_validation_begin(ctrlm_main_queue_msg_bind_valida
    XLOGD_WARN("not implemented for %s network", name_get());
 }
 
+void ctrlm_obj_network_t::bind_validation_key(ctrlm_main_queue_msg_bind_validation_key_t *dqm) {
+   XLOGD_WARN("not implemented for %s network", name_get());
+}
+
 void ctrlm_obj_network_t::bind_validation_end(ctrlm_main_queue_msg_bind_validation_end_t *dqm) {
    XLOGD_WARN("not implemented for %s network", name_get());
 }
@@ -997,6 +1022,7 @@ ctrlm_rf_pair_state_t ctrlm_obj_network_t::get_rf_pair_state() const {
 void ctrlm_obj_network_t::iarm_event_rcu_status(void) {
    XLOGD_DEBUG("Enter...");
 
+   #ifdef CTRLM_THUNDER
    ctrlm_rcp_ipc_net_status_t msg;
    msg.populate_status(*this);
 
@@ -1007,10 +1033,30 @@ void ctrlm_obj_network_t::iarm_event_rcu_status(void) {
    if (!rcp_ipc->on_status(msg)) {
        XLOGD_ERROR("Error broadcasting IARM message");
    }
+   #endif
+}
+
+void ctrlm_obj_network_t::iarm_event_rcu_validation_status(void) {
+   XLOGD_DEBUG("Enter...");
+
+   #ifdef CTRLM_THUNDER
+   ctrlm_rcp_ipc_validation_status_t msg;
+   msg.populate_status(*this);
+
+   XLOGD_INFO("Broadcasting IARM message %s RCU Validation Status....", name_get());
+   XLOGD_DEBUG("%s", msg.to_string());
+
+   ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
+   if (!rcp_ipc->on_validation_status(msg)) {
+       XLOGD_ERROR("Error broadcasting IARM message");
+   }
+   #endif
 }
 
 void ctrlm_obj_network_t::iarm_event_rcu_firmware_status(const ctrlm_obj_controller_t &rcu) {
    XLOGD_DEBUG("Enter...");
+
+   #ifdef CTRLM_THUNDER
    ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
 
    if (!rcp_ipc->is_thunder_device_update_enabled()) {
@@ -1026,4 +1072,5 @@ void ctrlm_obj_network_t::iarm_event_rcu_firmware_status(const ctrlm_obj_control
    if (!rcp_ipc->on_firmware_update_progress(msg)) {
        XLOGD_ERROR("Error broadcasting IARM message");
    }
+   #endif
 }

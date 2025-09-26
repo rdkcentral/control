@@ -145,6 +145,7 @@ public:
    virtual void                  req_process_voice_session_end(void *data, int size);
 
    virtual void                  req_process_start_pairing(void *data, int size);
+   virtual void                  req_process_stop_pairing(void *data, int size);
    virtual void                  req_process_pair_with_code(void *data, int size);
    virtual void                  req_process_program_ir_codes(void *data, int size);
    virtual void                  req_process_ir_clear_codes(void *data, int size);
@@ -203,6 +204,7 @@ private:
    ctrlm_controller_id_t                     find_controller_from_upgrade_session_uuid(const std::string &uuid);
 
    json_t *                                  json_config_               = NULL;
+   bool                                      voice_disabled_            = false;
    bool                                      upgrade_in_progress_       = false;
    bool                                      unpair_on_remote_request_  = true;
    ctrlm_ble_unpair_metrics_t                last_rcu_unpair_metrics_;

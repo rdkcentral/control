@@ -653,8 +653,9 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
 
                 json_t *obj_type = json_object_get(obj, "type");
                 std::string str_type = "";
-                std::string str_transcription = "";
-                std::string str_audio_file    = "";
+                std::string str_transcription  = "";
+                std::string str_audio_file     = "";
+                std::string str_name_of_source = "APPLICATION";
                 int fd = -1;
                 if(obj_type == NULL || !json_is_string(obj_type)) {
                     XLOGD_ERROR("request type parameter not present");
@@ -776,6 +777,14 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                                    }
                                 }
                             }
+                            json_t *obj_name_of_source = json_object_get(obj, "name");
+                            if(obj_name_of_source != NULL) {
+                                if(!json_is_string(obj_name_of_source)) {
+                                    XLOGD_WARN("name parameter is not a string - ignoring");
+                                } else {
+                                    str_name_of_source = std::string(json_string_value(obj_name_of_source));
+                                }
+                            }
                         }
                     }
                 }
@@ -783,7 +792,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                 if (true == result) {
                     ctrlm_voice_session_response_status_t voice_status = voice_obj->voice_session_req(
                             CTRLM_MAIN_NETWORK_ID_INVALID, CTRLM_MAIN_CONTROLLER_ID_INVALID, 
-                            request_config.device, request_config.format, NULL, "APPLICATION", "0.0.0.0", "0.0.0.0", 0.0,
+                            request_config.device, request_config.format, NULL, str_name_of_source.c_str(), "0.0.0.0", "0.0.0.0", 0.0,
                             false, NULL, NULL, NULL, (fd >= 0) ? true : false, true, str_transcription.empty() ? NULL : str_transcription.c_str(), str_audio_file.empty() ? NULL : str_audio_file.c_str(), &request_uuid, request_config.low_latency, request_config.low_cpu_util, fd);
                     if (voice_status != VOICE_SESSION_RESPONSE_AVAILABLE && 
                         voice_status != VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {

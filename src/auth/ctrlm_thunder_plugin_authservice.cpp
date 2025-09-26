@@ -22,8 +22,6 @@
 #include <WPEFramework/websocket/websocket.h>
 #include <WPEFramework/plugins/plugins.h>
 
-#define SAT_TIMEOUT_RETRIES (2)
-
 using namespace Thunder;
 using namespace AuthService;
 using namespace WPEFramework;
@@ -69,24 +67,6 @@ bool ctrlm_thunder_plugin_authservice_t::is_device_activated() {
         }
     } else {
         XLOGD_WARN("Call for getActivationStatus failed");
-    }
-    return(ret);
-}
-
-bool ctrlm_thunder_plugin_authservice_t::get_receiver_id(std::string &receiver_id) {
-    bool ret = false;
-    JsonObject params, response;
-    if(this->call_plugin("getDeviceId", (void *)&params, (void *)&response)) {
-        if(response["success"].Boolean()) { // If success doesn't exist, it defaults to false which is fine.
-            receiver_id = response["deviceId"].String();
-            if(!receiver_id.empty()) {
-                ret = true;
-            }
-        } else {
-            XLOGD_WARN("Success for getDeviceId was false");
-        }
-    } else {
-        XLOGD_WARN("Call for getDeviceId failed");
     }
     return(ret);
 }
@@ -166,7 +146,7 @@ bool ctrlm_thunder_plugin_authservice_t::get_experience(std::string &experience)
 bool ctrlm_thunder_plugin_authservice_t::get_sat(std::string &sat, time_t &expiration) {
     bool ret = false;
     JsonObject params, response;
-    if(this->call_plugin("getServiceAccessToken", (void *)&params, (void *)&response, SAT_TIMEOUT_RETRIES)) {
+    if(this->call_plugin("getServiceAccessToken", (void *)&params, (void *)&response)) {
         if(response["success"].Boolean()) { // If success doesn't exist, it defaults to false which is fine.
             if(response["status"].Number() == 0) {
                std::string temp = response["token"].String();

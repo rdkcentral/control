@@ -29,7 +29,6 @@
 #include "ctrlm_hal.h"
 #include "ctrlm_hal_rf4ce.h"
 #include "ctrlm_hal_ble.h"
-#include "ctrlm_hal_certificate.h"
 #include "ctrlm_hal_ip.h"
 #include "ctrlm_ipc.h"
 #include "ctrlm_ipc_rcu.h"
@@ -62,6 +61,7 @@ typedef enum {
 typedef enum {
    // Network based messages
    CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_BEGIN                 = 0,
+   CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_KEY,
    CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_END,
    CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_CONFIGURATION_COMPLETE,
    CTRLM_MAIN_QUEUE_MSG_TYPE_NETWORK_PROPERTY_SET,
@@ -431,6 +431,7 @@ gboolean                           ctrlm_main_iarm_init(void);
 void                               ctrlm_main_iarm_terminate(void);
 gboolean                           ctrlm_is_production_build(void);
 gboolean                           ctrlm_is_rf4ce_enabled(void);
+gboolean                           ctrlm_is_rf4ce_asb_supported(void);
 void                               ctrlm_network_list_get(std::vector<ctrlm_network_id_t> *list);
 gboolean                           ctrlm_network_id_is_valid(ctrlm_network_id_t network_id);
 gboolean                           ctrlm_controller_id_is_valid(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id);
@@ -452,7 +453,6 @@ gboolean                           ctrlm_is_one_touch_autobind_active(void);
 gboolean                           ctrlm_is_binding_table_empty(void);
 gboolean                           ctrlm_is_binding_table_full(void);
 bool                               ctrlm_is_pii_mask_enabled(void);
-gboolean                           ctrlm_main_has_receiver_id_get(void);
 gboolean                           ctrlm_main_has_device_id_get(void);
 gboolean                           ctrlm_main_has_device_type_get(void);
 gboolean                           ctrlm_main_has_service_account_id_get(void);
@@ -490,6 +490,7 @@ gboolean ctrlm_main_iarm_call_control_service_can_find_my_remote(ctrlm_main_iarm
 gboolean ctrlm_main_iarm_call_control_service_start_pairing_mode(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 void     ctrlm_main_iarm_call_control_service_start_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 gboolean ctrlm_main_iarm_call_control_service_end_pairing_mode(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
+void     ctrlm_main_iarm_call_control_service_end_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 gboolean ctrlm_main_iarm_call_chip_status_get(ctrlm_main_iarm_call_chip_status_t *status);
 
 ctrlm_power_state_t ctrlm_main_get_system_power_state(void);
@@ -507,7 +508,6 @@ void        ctrlm_update_last_key_info(int controller_id, ctrlm_key_source_t sou
 ctrlm_irdb_interface_t* ctrlm_main_irdb_get();
 ctrlm_auth_t* ctrlm_main_auth_get();
 void          ctrlm_main_auth_start_poll();
-std::string ctrlm_receiver_id_get();
 std::string ctrlm_device_id_get();
 std::string ctrlm_stb_name_get();
 std::string ctrlm_device_mac_get();

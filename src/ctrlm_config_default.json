@@ -43,7 +43,7 @@
       "voice_data_retry_max"             :         0,
       "voice_csma_backoff_max"           :         4,
       "voice_data_backoff_exp_min"       :         0,
-      "voice_command_encryption"         :         0,
+      "voice_command_encryption"         :         1,
       "rib_update_check_interval"        :        24,
       "auto_check_validation_period"     :       500,
       "link_lost_wait_time"              :     10000,
@@ -219,6 +219,9 @@
       }
    },
    "network_ble" : {
+      "options": {
+         "disable_voice"                 :     false
+      },
       "timeouts": {
          "discovery": 15000,
          "pair": 20000,
@@ -245,7 +248,7 @@
       "minimum_duration"                 :       300,
       "ffv_leading_samples"              :      1600,
       "timeout_packet_initial"           :      3200,
-      "timeout_packet_subsequent"        :       250,
+      "timeout_packet_subsequent"        :      1000,
       "bitrate_minimum"                  :        64,
       "time_threshold"                   :      1000,
       "timeout_stats"                    :      3000,

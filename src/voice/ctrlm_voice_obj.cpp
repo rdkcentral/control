@@ -138,9 +138,18 @@ ctrlm_voice_t::ctrlm_voice_t() {
     this->session_id                      =  0;
     this->software_version                = "N/A";
     this->mask_pii                        = ctrlm_is_production_build() ? JSON_ARRAY_VAL_BOOL_CTRLM_GLOBAL_MASK_PII_0 : JSON_ARRAY_VAL_BOOL_CTRLM_GLOBAL_MASK_PII_1;
-    this->local_mic                       = true; // TODO Need to get this value from voice sdk
-    this->local_mic_tap                   = true; // TODO Need to get this value from voice sdk
-    this->local_mic_disable_via_privacy   = true; // TODO Need to get this value from voice sdk
+
+    xrsr_config_t xrsr_config;
+    if(xrsr_config_get(&xrsr_config)) {
+        this->local_mic                       = xrsr_config.local_mic;
+        this->local_mic_tap                   = xrsr_config.local_mic_tap;
+        this->local_mic_disable_via_privacy   = this->local_mic; // set if local mic is present for now
+    } else {
+        XLOGD_ERROR("xrsr_config_get failed");
+        this->local_mic                       = false;
+        this->local_mic_tap                   = false;
+        this->local_mic_disable_via_privacy   = false;
+    }
     this->ocsp_verify_stapling            = false;
     this->ocsp_verify_ca                  = false;
     this->capture_active                  = false;

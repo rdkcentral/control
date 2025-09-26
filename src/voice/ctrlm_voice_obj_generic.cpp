@@ -185,12 +185,10 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                     url = &this->prefs.server_url_src_ff;
                     break;
                 }
-                #ifdef CTRLM_LOCAL_MIC_TAP
                 case CTRLM_VOICE_DEVICE_MICROPHONE_TAP: {
                    url = &this->prefs.server_url_src_mic_tap;
                    break;
                 }
-                #endif
                 default: {
                     break;
                 }

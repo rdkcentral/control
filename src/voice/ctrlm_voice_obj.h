@@ -46,12 +46,8 @@
 
 typedef enum {
    VOICE_SESSION_GROUP_DEFAULT = 0, // Session index for regular voice sessions (PTT, FFV)
-   #ifdef CTRLM_LOCAL_MIC_TAP
    VOICE_SESSION_GROUP_MIC_TAP = 1, // Session index for microphone tap voice sessions
    VOICE_SESSION_GROUP_QTY     = 2
-   #else
-   VOICE_SESSION_GROUP_QTY     = 1
-   #endif
 } ctrlm_voice_session_group_t;
 
 #ifdef VOICE_BUFFER_STATS
@@ -282,9 +278,7 @@ typedef struct {
 typedef struct {
    std::string                 server_url_src_ptt;
    std::string                 server_url_src_ff;
-   #ifdef CTRLM_LOCAL_MIC_TAP
    std::string                 server_url_src_mic_tap;
-   #endif
    std::vector<std::string>    server_hosts;
    std::string                 aspect_ratio;
    std::string                 guide_language;
@@ -391,9 +385,7 @@ typedef struct {
 typedef struct {
    std::string                       urlPtt;
    std::string                       urlHf;
-   #ifdef CTRLM_LOCAL_MIC_TAP
    std::string                       urlMicTap;
-   #endif
    uint8_t                           status[CTRLM_VOICE_DEVICE_INVALID];
    bool                              prv_enabled;
    bool                              wwFeedback;
@@ -529,6 +521,8 @@ class ctrlm_voice_t {
     bool                                  voice_stb_data_bypass_wuw_verify_failure_get() const;
     virtual void                          voice_stb_data_pii_mask_set(bool mask_pii);
     bool                                  voice_stb_data_pii_mask_get() const;
+    virtual void                          voice_stb_data_local_mic_tap_set(bool local_mic_tap);
+    bool                                  voice_stb_data_local_mic_tap_get() const;
     virtual bool                          voice_stb_data_device_certificate_set(ctrlm_voice_cert_t &device_cert, bool &ocsp_verify_stapling, bool &ocsp_verify_ca);
     virtual bool                          voice_stb_data_device_certificate_set(const char *p12_cert, const char *p12_pass);
     virtual bool                          voice_stb_data_device_certificate_set(const char *pem_cert, const char *pem_pkey, const char *pem_chain, const char *pem_passphrase);
@@ -663,6 +657,7 @@ public:
     bool                     mtls_required;
     bool                     secure_url_required;
     bool                     mask_pii;
+    bool                     local_mic_tap;
     bool                     ocsp_verify_stapling;
     bool                     ocsp_verify_ca;
     bool                     capture_active;
@@ -760,11 +755,7 @@ xrsr_src_t voice_device_to_xrsr(ctrlm_voice_device_t device);
 
 __inline bool ctrlm_voice_device_is_mic(ctrlm_voice_device_t device) {
     #ifdef CTRLM_LOCAL_MIC
-    #ifdef CTRLM_LOCAL_MIC_TAP
     return(device == CTRLM_VOICE_DEVICE_MICROPHONE || device == CTRLM_VOICE_DEVICE_MICROPHONE_TAP);
-    #else
-    return(device == CTRLM_VOICE_DEVICE_MICROPHONE);
-    #endif
     #else
     return(false);
     #endif
@@ -772,11 +763,7 @@ __inline bool ctrlm_voice_device_is_mic(ctrlm_voice_device_t device) {
 
 __inline bool ctrlm_voice_xrsr_src_is_mic(xrsr_src_t src) {
     #ifdef CTRLM_LOCAL_MIC
-    #ifdef CTRLM_LOCAL_MIC_TAP
     return(src == XRSR_SRC_MICROPHONE || src == XRSR_SRC_MICROPHONE_TAP);
-    #else
-    return(src == XRSR_SRC_MICROPHONE);
-    #endif
     #else
     return(false);
     #endif

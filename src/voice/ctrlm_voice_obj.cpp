@@ -138,15 +138,14 @@ ctrlm_voice_t::ctrlm_voice_t() {
     this->session_id                      =  0;
     this->software_version                = "N/A";
     this->mask_pii                        = ctrlm_is_production_build() ? JSON_ARRAY_VAL_BOOL_CTRLM_GLOBAL_MASK_PII_0 : JSON_ARRAY_VAL_BOOL_CTRLM_GLOBAL_MASK_PII_1;
+    this->local_mic_tap                   = true; // TODO Need to get this value from voice sdk
     this->ocsp_verify_stapling            = false;
     this->ocsp_verify_ca                  = false;
     this->capture_active                  = false;
     this->device_cert.type                = CTRLM_VOICE_CERT_TYPE_NONE;
     this->prefs.server_url_src_ptt        = JSON_STR_VALUE_VOICE_URL_SRC_PTT;
     this->prefs.server_url_src_ff         = JSON_STR_VALUE_VOICE_URL_SRC_FF;
-    #ifdef CTRLM_LOCAL_MIC_TAP
     this->prefs.server_url_src_mic_tap    = JSON_STR_VALUE_VOICE_URL_SRC_MIC_TAP;
-    #endif
     #ifdef JSON_ARRAY_VAL_STR_VOICE_SERVER_HOSTS_0
     this->url_hostname_pattern_add(JSON_ARRAY_VAL_STR_VOICE_SERVER_HOSTS_0);
     #endif
@@ -229,10 +228,8 @@ ctrlm_voice_t::ctrlm_voice_t() {
     this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE]            = CTRLM_VOICE_DEVICE_STATUS_NONE;
     this->device_requires_stb_data[CTRLM_VOICE_DEVICE_MICROPHONE] = true;
 #endif
-#ifdef CTRLM_LOCAL_MIC_TAP
     this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE_TAP]            = CTRLM_VOICE_DEVICE_STATUS_NONE;
     this->device_requires_stb_data[CTRLM_VOICE_DEVICE_MICROPHONE_TAP] = true;
-#endif
     this->device_status[CTRLM_VOICE_DEVICE_INVALID]             = CTRLM_VOICE_DEVICE_STATUS_NOT_SUPPORTED;
     this->device_requires_stb_data[CTRLM_VOICE_DEVICE_INVALID]  = true;
 
@@ -422,9 +419,7 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             conf.config_value_get(JSON_BOOL_NAME_VOICE_ENABLE,                      enabled);
             conf.config_value_get(JSON_STR_NAME_VOICE_URL_SRC_PTT,                  this->prefs.server_url_src_ptt);
             conf.config_value_get(JSON_STR_NAME_VOICE_URL_SRC_FF,                   this->prefs.server_url_src_ff);
-            #ifdef CTRLM_LOCAL_MIC_TAP
             conf.config_value_get(JSON_STR_NAME_VOICE_URL_SRC_MIC_TAP,              this->prefs.server_url_src_mic_tap);
-            #endif
             conf.config_value_get(JSON_STR_NAME_VOICE_LANGUAGE,                     this->prefs.guide_language);
             conf.config_value_get(JSON_INT_NAME_VOICE_MINIMUM_DURATION,             this->prefs.utterance_duration_min);
             if(conf.config_value_get(JSON_BOOL_NAME_VOICE_ENABLE_SAT,                  this->sat_token_required)) {
@@ -533,9 +528,7 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             }
             ctrlm_sm_voice_url_ptt_read(this->prefs.server_url_src_ptt);
             ctrlm_sm_voice_url_ff_read(this->prefs.server_url_src_ff);
-            #ifdef CTRLM_LOCAL_MIC_TAP
             ctrlm_sm_voice_url_mic_tap_read(this->prefs.server_url_src_mic_tap);
-            #endif
             ctrlm_sm_voice_sat_enable_read(this->sat_token_required);
             ctrlm_sm_voice_mtls_enable_read(this->mtls_required);
             ctrlm_sm_voice_secure_url_required_read(this->secure_url_required);
@@ -726,7 +719,6 @@ bool ctrlm_voice_t::voice_configure(ctrlm_voice_iarm_call_settings_t *settings, 
             ctrlm_sm_voice_url_ff_write(this->prefs.server_url_src_ff);
         }
     }
-    #ifdef CTRLM_LOCAL_MIC_TAP
     if(settings->available & CTRLM_VOICE_SETTINGS_MIC_TAP_SERVER_URL) {
         settings->server_url_src_mic_tap[CTRLM_VOICE_SERVER_URL_MAX_LENGTH - 1] = '\0';
         XLOGD_INFO("Mic tap URL <%s>", this->mask_pii ? "***" : settings->server_url_src_mic_tap);
@@ -736,7 +728,6 @@ bool ctrlm_voice_t::voice_configure(ctrlm_voice_iarm_call_settings_t *settings, 
             ctrlm_sm_voice_url_mic_tap_write(this->prefs.server_url_src_mic_tap);
         }
     }
-    #endif
 
     if(update_routes && this->xrsr_opened) {
         this->voice_sdk_update_routes();
@@ -781,9 +772,7 @@ bool ctrlm_voice_t::voice_configure(json_t *settings, bool db_write) {
             }
         }
         if(conf.config_value_get("urlAll", url)) {
-            #ifdef CTRLM_LOCAL_MIC_TAP
             this->prefs.server_url_src_mic_tap = url;
-            #endif
             this->prefs.server_url_src_ptt     = url;
             this->prefs.server_url_src_ff      = std::move(url);
             update_routes = true;
@@ -796,12 +785,10 @@ bool ctrlm_voice_t::voice_configure(json_t *settings, bool db_write) {
             this->prefs.server_url_src_ff  = std::move(url);
             update_routes = true;
         }
-        #ifdef CTRLM_LOCAL_MIC_TAP
         if(conf.config_value_get("urlMicTap", url)) {
             this->prefs.server_url_src_mic_tap  = std::move(url);
             update_routes = true;
         }
-        #endif
         if(conf.config_value_get("prv", prv_enabled)) {
             this->prefs.par_voice_enabled = prv_enabled;
             XLOGD_INFO("Press and Release Voice is <%s>", this->prefs.par_voice_enabled ? "ENABLED" : "DISABLED");
@@ -865,9 +852,7 @@ bool ctrlm_voice_t::voice_configure(json_t *settings, bool db_write) {
             if(db_write) {
                 ctrlm_sm_voice_url_ptt_write(this->prefs.server_url_src_ptt);
                 ctrlm_sm_voice_url_ff_write(this->prefs.server_url_src_ff);
-                #ifdef CTRLM_LOCAL_MIC_TAP
                 ctrlm_sm_voice_url_mic_tap_write(this->prefs.server_url_src_mic_tap);
-                #endif
             }
         }
     }
@@ -928,9 +913,7 @@ bool ctrlm_voice_t::voice_status(ctrlm_voice_status_t *status) {
     } else {
         status->urlPtt    = this->prefs.server_url_src_ptt;
         status->urlHf     = this->prefs.server_url_src_ff;
-        #ifdef CTRLM_LOCAL_MIC_TAP
         status->urlMicTap = this->prefs.server_url_src_mic_tap;
-        #endif
         sem_wait(&this->device_status_semaphore);
         for(int i = CTRLM_VOICE_DEVICE_PTT; i < CTRLM_VOICE_DEVICE_INVALID; i++) {
             status->status[i] = this->device_status[i];
@@ -2358,6 +2341,16 @@ bool ctrlm_voice_t::voice_stb_data_pii_mask_get() const {
    return(this->mask_pii);
 }
 
+void ctrlm_voice_t::voice_stb_data_local_mic_tap_set(bool local_mic_tap) {
+   if(this->local_mic_tap != local_mic_tap) {
+      this->local_mic_tap = local_mic_tap;
+   }
+}
+
+bool ctrlm_voice_t::voice_stb_data_local_mic_tap_get() const {
+   return(this->local_mic_tap);
+}
+
 bool ctrlm_voice_t::voice_stb_data_device_certificate_set(ctrlm_voice_cert_t &device_cert, bool &ocsp_verify_stapling, bool &ocsp_verify_ca) {
    this->ocsp_verify_stapling = ocsp_verify_stapling;
    this->ocsp_verify_ca       = ocsp_verify_ca;
@@ -2673,11 +2666,7 @@ void ctrlm_voice_t::voice_session_end_callback(ctrlm_voice_session_end_cb_t *ses
     }
 
     #ifdef CTRLM_LOCAL_MIC
-    #ifdef CTRLM_LOCAL_MIC_TAP
     if(session->voice_device == CTRLM_VOICE_DEVICE_MICROPHONE || session->voice_device == CTRLM_VOICE_DEVICE_MICROPHONE_TAP) {
-    #else
-    if(session->voice_device == CTRLM_VOICE_DEVICE_MICROPHONE) {
-    #endif
         XLOGD_INFO("src <%s> reason <%s> voice command status <%s>", ctrlm_voice_device_str(session->voice_device), xrsr_session_end_reason_str(stats->reason), ctrlm_voice_command_status_str(command_status));
     } else 
     #endif
@@ -3244,9 +3233,7 @@ const char *ctrlm_voice_device_str(ctrlm_voice_device_t device) {
        #ifdef CTRLM_LOCAL_MIC
        case CTRLM_VOICE_DEVICE_MICROPHONE:     return("MICROPHONE");
        #endif
-       #ifdef CTRLM_LOCAL_MIC_TAP
        case CTRLM_VOICE_DEVICE_MICROPHONE_TAP: return("MICROPHONE_TAP");
-       #endif
        case CTRLM_VOICE_DEVICE_INVALID:        return("INVALID");
    }
    return("UNKNOWN");
@@ -3313,12 +3300,10 @@ ctrlm_voice_device_t xrsr_to_voice_device(xrsr_src_t device) {
             break;
         }
         #endif
-        #ifdef CTRLM_LOCAL_MIC_TAP
         case XRSR_SRC_MICROPHONE_TAP: {
             ret = CTRLM_VOICE_DEVICE_MICROPHONE_TAP;
             break;
         }
-        #endif
         default: {
             XLOGD_ERROR("unrecognized device type %d", device);
             break;
@@ -3344,12 +3329,10 @@ xrsr_src_t voice_device_to_xrsr(ctrlm_voice_device_t device) {
             break;
         }
         #endif
-        #ifdef CTRLM_LOCAL_MIC_TAP
         case CTRLM_VOICE_DEVICE_MICROPHONE_TAP: {
             ret = XRSR_SRC_MICROPHONE_TAP;
             break;
         }
-        #endif
         default: {
             XLOGD_ERROR("unrecognized device type %d", device);
             break;
@@ -3359,11 +3342,9 @@ xrsr_src_t voice_device_to_xrsr(ctrlm_voice_device_t device) {
 }
 
 ctrlm_voice_session_group_t voice_device_to_session_group(ctrlm_voice_device_t device_type) {
-   #ifdef CTRLM_LOCAL_MIC_TAP
    if(device_type == CTRLM_VOICE_DEVICE_MICROPHONE_TAP) {
       return(VOICE_SESSION_GROUP_MIC_TAP);
    }
-   #endif
    return(VOICE_SESSION_GROUP_DEFAULT);
 }
 
@@ -3470,9 +3451,7 @@ bool ctrlm_voice_t::is_voice_assistant(ctrlm_voice_device_t device) {
             voice_assistant = true;
             break;
         }
-        #ifdef CTRLM_LOCAL_MIC_TAP
         case CTRLM_VOICE_DEVICE_MICROPHONE_TAP:
-        #endif
         case CTRLM_VOICE_DEVICE_PTT: 
         case CTRLM_VOICE_DEVICE_INVALID:
         default: {
@@ -3642,9 +3621,7 @@ const char *ctrlm_voice_session_response_status_str(ctrlm_voice_session_response
 const char *ctrlm_voice_session_group_str(ctrlm_voice_session_group_t group) {
    switch(group) {
       case VOICE_SESSION_GROUP_DEFAULT: return("DEFAULT");
-      #ifdef CTRLM_LOCAL_MIC_TAP
       case VOICE_SESSION_GROUP_MIC_TAP: return("MIC_TAP");
-      #endif
       case VOICE_SESSION_GROUP_QTY: break; // fall thru to return an invalid group
    }
    return(ctrlm_invalid_return(group));
@@ -4176,9 +4153,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
         attr.get_rfc_value(JSON_BOOL_NAME_VOICE_ENABLE,                      enabled);
         attr.get_rfc_value(JSON_STR_NAME_VOICE_URL_SRC_PTT,                  this->prefs.server_url_src_ptt);
         attr.get_rfc_value(JSON_STR_NAME_VOICE_URL_SRC_FF,                   this->prefs.server_url_src_ff);
-        #ifdef CTRLM_LOCAL_MIC_TAP
         attr.get_rfc_value(JSON_STR_NAME_VOICE_URL_SRC_MIC_TAP,              this->prefs.server_url_src_mic_tap);
-        #endif
         // Check if enabled
         if(!enabled) {
             for(int i = CTRLM_VOICE_DEVICE_PTT; i < CTRLM_VOICE_DEVICE_INVALID; i++) {

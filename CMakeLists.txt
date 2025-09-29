@@ -43,7 +43,6 @@ option(BLE_SERVICES "Enable BLE Services" OFF)
 option(BREAKPAD "Enable BREAKPAD" OFF)
 option(BUILD_CTRLM_FACTORY "Build Control Factory Test" OFF)
 option(DEEPSLEEP_CLOSE_DB "Deep Sleep Close DB" OFF)
-option(ENABLE_NETWORKED_STANDBY_MODE "Enable Networked Standby Mode)" OFF)
 option(FACTORY_AUDIO_PLAYBACK "Factory test audio playback" OFF)
 option(FACTORY_CUSTOM_AUDIO_ANALYSIS "Factory custom audio analysis" OFF)
 option(FDC_ENABLED "Enable FDC" OFF)
@@ -214,10 +213,6 @@ endif()
 
 if(ENABLE_AVS_WITH_SDT)
     add_compile_definitions(SUPPORT_VOICE_DEST_ALSA SUPPORT_ASYNC_SRVR_MSG)
-endif()
-
-if(ENABLE_NETWORKED_STANDBY_MODE)
-   add_compile_definitions(NETWORKED_STANDBY_MODE_ENABLED)
 endif()
 
 if(FDC_ENABLED)

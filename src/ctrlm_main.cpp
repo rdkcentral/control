@@ -288,9 +288,8 @@ typedef struct {
    gboolean                           local_conf;
    guint                              telemetry_report_interval;
    ctrlm_ir_controller_t             *ir_controller;
-#ifdef NETWORKED_STANDBY_MODE_ENABLED
+   bool                               networked_standby_supported;
    gboolean                           wake_with_voice_allowed;
-#endif
 } ctrlm_global_t;
 
 static ctrlm_global_t g_ctrlm;
@@ -604,9 +603,16 @@ int main(int argc, char *argv[]) {
    g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_UNKNOWN;
    g_ctrlm.last_key_info.is_screen_bind_mode  = false;
    g_ctrlm.last_key_info.remote_keypad_config = CTRLM_REMOTE_KEYPAD_CONFIG_INVALID;
-   #ifdef NETWORKED_STANDBY_MODE_ENABLED
+
+   xrsr_config_t xrsr_config;
+   if(xrsr_config_get(&xrsr_config)) {
+      g_ctrlm.networked_standby_supported = xrsr_config.networked_standby;
+   } else {
+      g_ctrlm.networked_standby_supported = false;
+   }
+   XLOGD_INFO("networked standby supported <%s>", g_ctrlm.networked_standby_supported ? "YES" : "NO");
+   
    g_ctrlm.wake_with_voice_allowed            = false;
-   #endif
    errno_t safec_rc = strcpy_s(g_ctrlm.last_key_info.source_name, sizeof(g_ctrlm.last_key_info.source_name), ctrlm_rcu_ir_remote_types_str(g_ctrlm.last_key_info.last_ir_remote_type));
    ERR_CHK(safec_rc);
 
@@ -2684,9 +2690,9 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             if( (old_state == CTRLM_POWER_STATE_DEEP_SLEEP) && (dqm->new_state != CTRLM_POWER_STATE_DEEP_SLEEP) ) {
                XLOGD_INFO("power_state_change: wake DB and networks");
-               #ifdef NETWORKED_STANDBY_MODE_ENABLED
-               g_ctrlm.wake_with_voice_allowed = true;
-               #endif
+               if(g_ctrlm.networked_standby_supported) {
+                  g_ctrlm.wake_with_voice_allowed = true;
+               }
                ctrlm_db_power_state_change(true);
                for(auto const &itr : g_ctrlm.networks) {
                   itr.second->power_state_change(true);
@@ -2699,9 +2705,8 @@ gpointer ctrlm_main_thread(gpointer param) {
                }
             }
 
-            #ifdef NETWORKED_STANDBY_MODE_ENABLED
             //Wake with voice? Handle NSM voice, do not change power state
-            if(dqm->new_state == CTRLM_POWER_STATE_ON) {
+            if(g_ctrlm.networked_standby_supported && dqm->new_state == CTRLM_POWER_STATE_ON) {
                bool wake_with_voice_allowed = g_ctrlm.wake_with_voice_allowed;
 
                g_ctrlm.wake_with_voice_allowed = false;
@@ -2715,17 +2720,14 @@ gpointer ctrlm_main_thread(gpointer param) {
                   break;
                }
             }
-            #endif
 
             //If execution reaches here, then change power state and inform VSDK of on or deep sleep states
             g_ctrlm.power_state = dqm->new_state;
 
             XLOGD_INFO("Enter power state <%s>", ctrlm_power_state_str(g_ctrlm.power_state));
-            #ifdef NETWORKED_STANDBY_MODE_ENABLED
-            if(g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP) {
+            if(g_ctrlm.networked_standby_supported && (g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP)) {
                XLOGD_INFO("NSM is <%s>", (ctrlm_main_get_networked_standby_mode())?"ENABLED":"DISABLED");
             }
-            #endif
 
             if(dqm->new_state != CTRLM_POWER_STATE_STANDBY) {
                // Set VSDK power state
@@ -3179,6 +3181,10 @@ gboolean ctrlm_is_binding_table_full(void) {
 
 bool ctrlm_is_pii_mask_enabled(void) {
    return(g_ctrlm.mask_pii);
+}
+
+bool ctrlm_is_networked_standby_supported(void) {
+   return(g_ctrlm.networked_standby_supported);
 }
 
 gboolean ctrlm_timeout_recently_booted(gpointer user_data) {
@@ -5859,11 +5865,9 @@ ctrlm_power_state_t ctrlm_main_get_system_power_state(void) {
 gboolean ctrlm_main_get_networked_standby_mode(void) {
    bool networked_standby_mode = false;
 
-   #ifdef NETWORKED_STANDBY_MODE_ENABLED
-   if(g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP) {
+   if(g_ctrlm.networked_standby_supported && (g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP)) {
       networked_standby_mode = g_ctrlm.power_manager->get_networked_standby_mode();
    }
-   #endif
 
    return networked_standby_mode ? true : false;
 }

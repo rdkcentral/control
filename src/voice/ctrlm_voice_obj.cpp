@@ -213,14 +213,12 @@ ctrlm_voice_t::ctrlm_voice_t() {
     }
     #endif
 
-    #ifdef NETWORKED_STANDBY_MODE_ENABLED
     this->prefs.dst_params_standby.connect_check_interval = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL;
     this->prefs.dst_params_standby.timeout_connect        = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT;
     this->prefs.dst_params_standby.timeout_inactivity     = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY;
     this->prefs.dst_params_standby.timeout_session        = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_TIMEOUT_SESSION;
     this->prefs.dst_params_standby.ipv4_fallback          = JSON_BOOL_VALUE_VOICE_DST_PARAMS_STANDBY_IPV4_FALLBACK;
     this->prefs.dst_params_standby.backoff_delay          = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_BACKOFF_DELAY;
-    #endif
 
     this->prefs.dst_params_low_latency.connect_check_interval = JSON_INT_VALUE_VOICE_DST_PARAMS_LOW_LATENCY_CONNECT_CHECK_INTERVAL;
     this->prefs.dst_params_low_latency.timeout_connect        = JSON_INT_VALUE_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_CONNECT;
@@ -487,14 +485,12 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
         conf.config_value_get(JSON_FLOAT_NAME_VOICE_AUDIO_DUCKING_LEVEL,        audio_settings.ducking_level, 0.0, 1.0);
         conf.config_value_get(JSON_BOOL_NAME_VOICE_AUDIO_DUCKING_BEEP,          audio_settings.ducking_beep);
 
-        #ifdef NETWORKED_STANDBY_MODE_ENABLED
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL, this->prefs.dst_params_standby.connect_check_interval);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,        this->prefs.dst_params_standby.timeout_connect);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,     this->prefs.dst_params_standby.timeout_inactivity);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_SESSION,        this->prefs.dst_params_standby.timeout_session);
         conf.config_value_get(JSON_BOOL_NAME_VOICE_DST_PARAMS_STANDBY_IPV4_FALLBACK,         this->prefs.dst_params_standby.ipv4_fallback);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_BACKOFF_DELAY,          this->prefs.dst_params_standby.backoff_delay);
-        #endif
 
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_CONNECT_CHECK_INTERVAL, this->prefs.dst_params_low_latency.connect_check_interval);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_CONNECT,        this->prefs.dst_params_low_latency.timeout_connect);
@@ -3950,7 +3946,6 @@ void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t e
 }
 #endif
 
-#ifdef NETWORKED_STANDBY_MODE_ENABLED
 void ctrlm_voice_t::voice_nsm_session_request(void) {
     ctrlm_network_id_t network_id = CTRLM_MAIN_NETWORK_ID_DSP;
     ctrlm_controller_id_t controller_id = CTRLM_MAIN_CONTROLLER_ID_DSP;
@@ -3968,7 +3963,6 @@ void ctrlm_voice_t::voice_nsm_session_request(void) {
     voice_session_req(network_id, controller_id, device, format, NULL, "NSM", "0.0.0.0",  "0.0.0.0",  0.0);
 
 }
-#endif
 
 int ctrlm_voice_t::packet_loss_threshold_get() const {
     return(this->packet_loss_threshold);
@@ -3993,11 +3987,11 @@ xrsr_power_mode_t voice_xrsr_power_map(ctrlm_power_state_t ctrlm_power_state) {
 
    switch(ctrlm_power_state) {
       case CTRLM_POWER_STATE_DEEP_SLEEP:
-         #ifdef NETWORKED_STANDBY_MODE_ENABLED
-         xrsr_power_mode = ctrlm_main_get_networked_standby_mode() ? XRSR_POWER_MODE_LOW : XRSR_POWER_MODE_SLEEP;
-         #else
-         xrsr_power_mode = XRSR_POWER_MODE_SLEEP;
-         #endif
+         if(ctrlm_is_networked_standby_supported()) {
+            xrsr_power_mode = ctrlm_main_get_networked_standby_mode() ? XRSR_POWER_MODE_LOW : XRSR_POWER_MODE_SLEEP;
+         } else {
+            xrsr_power_mode = XRSR_POWER_MODE_SLEEP;
+         }
          break;
       case CTRLM_POWER_STATE_ON:
       case CTRLM_POWER_STATE_STANDBY:
@@ -4117,14 +4111,13 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
 
     // All attributes that need a re-route to apply
     if(attr.get_rfc_value(JSON_INT_NAME_VOICE_MINIMUM_DURATION,                              this->prefs.utterance_duration_min) |
-    #ifdef NETWORKED_STANDBY_MODE_ENABLED
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL,     this->prefs.dst_params_standby.connect_check_interval) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,            this->prefs.dst_params_standby.timeout_connect) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,         this->prefs.dst_params_standby.timeout_inactivity) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_SESSION,            this->prefs.dst_params_standby.timeout_session) |
        attr.get_rfc_value(JSON_BOOL_NAME_VOICE_DST_PARAMS_STANDBY_IPV4_FALLBACK,             this->prefs.dst_params_standby.ipv4_fallback) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_BACKOFF_DELAY,              this->prefs.dst_params_standby.backoff_delay) |
-    #endif
+    
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_CONNECT_CHECK_INTERVAL, this->prefs.dst_params_low_latency.connect_check_interval) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_CONNECT,        this->prefs.dst_params_low_latency.timeout_connect) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_INACTIVITY,     this->prefs.dst_params_low_latency.timeout_inactivity) |

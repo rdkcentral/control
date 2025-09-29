@@ -1205,9 +1205,7 @@ void ctrlm_obj_network_rf4ce_t::controller_insert(ctrlm_controller_id_t controll
    } else {
       controllers_[controller_id] = new ctrlm_obj_controller_rf4ce_t(controller_id, *this, ieee_address, CTRLM_RF4CE_RESULT_VALIDATION_SUCCESS, CTRLM_RCU_CONFIGURATION_RESULT_SUCCESS);
       controllers_[controller_id]->db_load();
-#ifdef XR15_704
       controllers_[controller_id]->set_reset();
-#endif
       controllers_[controller_id]->update_polling_configurations();
    }
 }

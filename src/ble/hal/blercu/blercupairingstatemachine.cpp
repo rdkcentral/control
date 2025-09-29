@@ -930,10 +930,14 @@ void BleRcuPairingStateMachine::processDevice(const BleAddress &address,
             return;
         }
 
-        XLOGD_INFO("Found target device (%s, %s)", name.c_str(), address.toString().c_str());
+        if (m_targetAddress == BleAddress("20:9e:79:aa:db:ce")) {
+            XLOGD_INFO("EGDEBUG: forcing pairing with only this device!!!!!!!!!!!!!!!!!!");
 
-        // store the target address
-        m_targetAddress = address;
+            XLOGD_INFO("Found target device (%s, %s)", name.c_str(), address.toString().c_str());
+
+            // store the target address
+            m_targetAddress = address;
+        }
 
     } else if (m_targetAddress != address) {
 

@@ -56,14 +56,18 @@
 #define ADPCM_COMMAND_ID_MIN             (0x20)    ///< Minimum bound of command id as defined by XVP Spec.
 #define ADPCM_COMMAND_ID_MAX             (0x3F)    ///< Maximum bound of command id as defined by XVP Spec.
 
+#define BEEP_ON_KWD_FILE_VD "/vendor/usr/share/keyword_beep.wav"
+#define BEEP_ON_KWD_FILE_MW "/usr/share/keyword_beep.wav"
+
+#define BEEP_ON_KWD_SAP_VD "file://" BEEP_ON_KWD_FILE_VD
+#define BEEP_ON_KWD_SAP_MW "file://" BEEP_ON_KWD_FILE_MW
+
 static void ctrlm_voice_session_response_confirm(bool result, signed long long rsp_time, unsigned int rsp_window, const std::string &err_str, ctrlm_timestamp_t *timestamp, void *user_data);
 static void ctrlm_voice_data_post_processing_cb(int bytes_sent, void *user_data);
 
 static ctrlm_voice_session_group_t voice_device_to_session_group(ctrlm_voice_device_t device_type);
 
-#ifdef BEEP_ON_KWD_ENABLED
 static void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t event, void *user_data);
-#endif
 
 static xrsr_power_mode_t voice_xrsr_power_map(ctrlm_power_state_t ctrlm_power_state);
 
@@ -149,7 +153,20 @@ ctrlm_voice_t::ctrlm_voice_t() {
         this->local_mic                       = false;
         this->local_mic_tap                   = false;
         this->local_mic_disable_via_privacy   = false;
+        
     }
+
+    if(ctrlm_file_exists(BEEP_ON_KWD_FILE_VD)) {
+        this->beep_on_kwd_file            = BEEP_ON_KWD_SAP_VD;
+        this->beep_on_kwd_supported       = true;
+    } else if(ctrlm_file_exists(BEEP_ON_KWD_FILE_MW)) {
+        this->beep_on_kwd_file            = BEEP_ON_KWD_SAP_MW;
+        this->beep_on_kwd_supported       = true;
+    } else {
+        this->beep_on_kwd_file            = NULL;
+        this->beep_on_kwd_supported       = false;
+    }
+
     this->ocsp_verify_stapling            = false;
     this->ocsp_verify_ca                  = false;
     this->capture_active                  = false;
@@ -251,14 +268,14 @@ ctrlm_voice_t::ctrlm_voice_t() {
     // These semaphores are used to make sure we have all the data before calling the session begin callback
     sem_init(&this->vsr_semaphore, 0, 0);
 
-    #ifdef BEEP_ON_KWD_ENABLED
-    this->obj_sap = Thunder::SystemAudioPlayer::ctrlm_thunder_plugin_system_audio_player_t::getInstance();
-    this->obj_sap->add_event_handler(ctrlm_voice_system_audio_player_event_handler, this);
-    this->sap_opened = this->obj_sap->open(SYSTEM_AUDIO_PLAYER_AUDIO_TYPE_WAV, SYSTEM_AUDIO_PLAYER_SOURCE_TYPE_FILE, SYSTEM_AUDIO_PLAYER_PLAY_MODE_SYSTEM);
-    if(!this->sap_opened) {
-       XLOGD_WARN("unable to open system audio player");
+    if(this->beep_on_kwd_supported) {
+        this->obj_sap = Thunder::SystemAudioPlayer::ctrlm_thunder_plugin_system_audio_player_t::getInstance();
+        this->obj_sap->add_event_handler(ctrlm_voice_system_audio_player_event_handler, this);
+        this->sap_opened = this->obj_sap->open(SYSTEM_AUDIO_PLAYER_AUDIO_TYPE_WAV, SYSTEM_AUDIO_PLAYER_SOURCE_TYPE_FILE, SYSTEM_AUDIO_PLAYER_PLAY_MODE_SYSTEM);
+        if(!this->sap_opened) {
+            XLOGD_WARN("unable to open system audio player");
+        }
     }
-    #endif
 
     // Set audio mode to default
     ctrlm_voice_audio_settings_t settings = CTRLM_VOICE_AUDIO_SETTINGS_INITIALIZER;
@@ -297,14 +314,12 @@ ctrlm_voice_t::~ctrlm_voice_t() {
         }
     }
 
-    #ifdef BEEP_ON_KWD_ENABLED
-    if(this->sap_opened) {
+    if(this->beep_on_kwd_supported && this->sap_opened) {
         if(!this->obj_sap->close()) {
             XLOGD_WARN("unable to close system audio player");
         }
         this->sap_opened = false;
     }
-    #endif
 
     /* Close Voice SDK */
 
@@ -902,11 +917,7 @@ bool ctrlm_voice_t::voice_status(ctrlm_voice_status_t *status) {
      */
     ctrlm_voice_status_capabilities_t capabilities = {
        .prv = true,
-    #ifdef BEEP_ON_KWD_ENABLED
-       .wwFeedback = true,
-    #else
-       .wwFeedback = false,
-    #endif
+       .wwFeedback = this->beep_on_kwd_supported,
     };
 
     if(!this->xrsr_opened) {
@@ -3064,8 +3075,7 @@ void ctrlm_voice_t::voice_action_keyword_verification_callback(const uuid_t uuid
 }
 
 void ctrlm_voice_t::voice_keyword_verified_action(void) {
-   #ifdef BEEP_ON_KWD_ENABLED
-   if(this->audio_ducking_beep_enabled) { // play beep audio before ducking audio
+   if(this->beep_on_kwd_supported && (this->beep_on_kwd_file != NULL) && this->audio_ducking_beep_enabled) { // play beep audio before ducking audio
       if(this->audio_ducking_beep_in_progress) {
          XLOGD_WARN("audio ducking beep already in progress!");
          this->obj_sap->close();
@@ -3087,8 +3097,8 @@ void ctrlm_voice_t::voice_keyword_verified_action(void) {
             }
          }
 
-         if(!this->obj_sap->play("file://" BEEP_ON_KWD_FILE)) {
-            XLOGD_WARN("unable to play beep file <%s>", BEEP_ON_KWD_FILE);
+         if(!this->obj_sap->play(this->beep_on_kwd_file)) {
+            XLOGD_WARN("unable to play beep file <%s>", this->beep_on_kwd_file);
             if(!this->obj_sap->close()) {
                XLOGD_WARN("unable to close system audio player");
             }
@@ -3105,11 +3115,9 @@ void ctrlm_voice_t::voice_keyword_verified_action(void) {
          return;
       } while(retry >= 0);
    }
-   #endif
    this->audio_state_set(true);
 }
 
-#ifdef BEEP_ON_KWD_ENABLED
 void ctrlm_voice_t::voice_keyword_beep_completed_normal(void *data, int size) {
    this->voice_keyword_beep_completed_callback(false, false);
 }
@@ -3144,7 +3152,6 @@ void ctrlm_voice_t::voice_keyword_beep_completed_callback(bool timeout, bool pla
       this->audio_state_set(true);
    }
 }
-#endif
 
 void ctrlm_voice_t::voice_session_transcription_callback(const uuid_t uuid, const char *transcription) {
     // Get session based on uuid
@@ -3557,12 +3564,10 @@ int ctrlm_voice_t::ctrlm_voice_controller_command_status_read_timeout(void *data
     return(false);
 }
 
-#ifdef BEEP_ON_KWD_ENABLED
 int ctrlm_voice_t::ctrlm_voice_keyword_beep_end_timeout(void *data) {
     ctrlm_get_voice_obj()->voice_keyword_beep_completed_callback(true, false);
     return(false);
 }
-#endif
 
 // Timeouts end
 
@@ -3904,7 +3909,6 @@ void ctrlm_voice_t::voice_device_disable(ctrlm_voice_device_t device, bool db_wr
     sem_post(&this->device_status_semaphore);
 }
 
-#ifdef BEEP_ON_KWD_ENABLED
 void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t event, void *user_data) {
    if(user_data == NULL) {
       return;
@@ -3944,7 +3948,6 @@ void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t e
       }
    }
 }
-#endif
 
 void ctrlm_voice_t::voice_nsm_session_request(void) {
     ctrlm_network_id_t network_id = CTRLM_MAIN_NETWORK_ID_DSP;

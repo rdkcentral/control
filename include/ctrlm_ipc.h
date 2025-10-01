@@ -796,16 +796,16 @@ typedef struct {
 /// @brief Control Manager General Thunder IARM IPC Call Structure
 /// @details The Control Manager General Thunder IARM IPC Call structure is used by multiple CTRLM_MAIN_IARM calls. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
-   unsigned char api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION; ///< Revision of this API
-   char          result[CTRLM_MAIN_IARM_CALL_RESULT_LEN_MAX];     ///< OUT - Result of the operation formatted in JSON
-   char          payload[];                                       ///< IN - Input params specific to RPC formatted in JSON (e.g. Network ID)
+   unsigned char api_revision;                                ///< Revision of this API
+   char          result[CTRLM_MAIN_IARM_CALL_RESULT_LEN_MAX]; ///< OUT - Result of the operation formatted in JSON
+   char          payload[];                                   ///< IN - Input params specific to RPC formatted in JSON (e.g. Network ID)
 } ctrlm_main_iarm_call_json_t;
 
 /// @brief Control Manager General Thunder IARM IPC Event Structure
 /// @details The Control Manager General Thunder IARM IPC Event structure is used by multiple CTRLM_MAIN_IARM events. See the @link CTRLM_IPC_MAIN_EVENTS Calls@endlink section for more details on invoking this call.
 typedef struct {
-   unsigned char api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION; ///< Revision of this API
-   char          payload[];                                       ///< OUT - Result of the operation formmated in JSON
+   unsigned char api_revision; ///< Revision of this API
+   char          payload[];    ///< OUT - Result of the operation formmated in JSON
 } ctrlm_main_iarm_event_json_t;
 
 /// @}

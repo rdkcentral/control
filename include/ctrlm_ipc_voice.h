@@ -297,22 +297,22 @@ typedef struct {
 //
 // The payload MUST be a NULL terminated JSON String.
 typedef struct {
-   unsigned char  api_revision = CTRLM_VOICE_IARM_BUS_API_REVISION;
+   unsigned char  api_revision;
    char           result[CTRLM_VOICE_IARM_CALL_RESULT_LEN_MAX];
    char           payload[];
 } ctrlm_voice_iarm_call_json_t;
 
 // IARM Event JSON
 // This structure is used for the following calls:
-//   CTRLM_VOICE_IARM_EVENT_SESSION_BEGIN_JSON 
-//   CTRLM_VOICE_IARM_EVENT_STREAM_BEGIN_JSON  
+//   CTRLM_VOICE_IARM_EVENT_SESSION_BEGIN_JSON
+//   CTRLM_VOICE_IARM_EVENT_STREAM_BEGIN_JSON
 //   CTRLM_VOICE_IARM_EVENT_SERVER_MESSAGE_JSON
-//   CTRLM_VOICE_IARM_EVENT_STREAM_END_JSON    
-//   CTRLM_VOICE_IARM_EVENT_SESSION_END_JSON   
+//   CTRLM_VOICE_IARM_EVENT_STREAM_END_JSON
+//   CTRLM_VOICE_IARM_EVENT_SESSION_END_JSON
 //
 // The payload MUST be a NULL terminated JSON String.
 typedef struct {
-   unsigned char  api_revision = CTRLM_VOICE_IARM_BUS_API_REVISION;
+   unsigned char  api_revision;
    char           payload[];
 } ctrlm_voice_iarm_event_json_t;
 

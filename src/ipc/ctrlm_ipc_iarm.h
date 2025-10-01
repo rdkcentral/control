@@ -42,11 +42,12 @@ protected:
     bool broadcast_iarm_event_legacy(const char *bus_name, int event, void *data, size_t data_size) const;
 
     template <typename T>
-    bool broadcast_iarm_event(const char *bus_name, int event, const char *str) const {
+    bool broadcast_iarm_event(const char *bus_name, unsigned char api_revision, int event, const char *str) const {
         bool ret = false;
         size_t str_size = strlen(str) + 1;
         size_t size = sizeof(T) + str_size;
         T *data = (T *)calloc(1, size);
+        data->api_revision = api_revision;
         if(!data) {
             return(ret);
         } else {

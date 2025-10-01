@@ -142,7 +142,7 @@ bool ctrlm_voice_ipc_iarm_thunder_t::session_begin(const ctrlm_voice_ipc_event_s
         if(json_str) {
             //TODO: surface the event through IARM
             XLOGD_INFO("%s", json_str);
-            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_SESSION_BEGIN, json_str);
+            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_BUS_API_REVISION, CTRLM_VOICE_IARM_EVENT_JSON_SESSION_BEGIN, json_str);
             free(json_str);
         } else {
             XLOGD_ERROR("Failed to encode JSON string");
@@ -171,7 +171,7 @@ bool ctrlm_voice_ipc_iarm_thunder_t::stream_begin(const ctrlm_voice_ipc_event_st
         if(json_str) {
             //TODO: surface the event through IARM
             XLOGD_INFO("%s", json_str);
-            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_STREAM_BEGIN, json_str);
+            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_BUS_API_REVISION,  CTRLM_VOICE_IARM_EVENT_JSON_STREAM_BEGIN, json_str);
             free(json_str);
         } else {
             XLOGD_ERROR("Failed to encode JSON string");
@@ -201,7 +201,7 @@ bool ctrlm_voice_ipc_iarm_thunder_t::stream_end(const ctrlm_voice_ipc_event_stre
         if(json_str) {
             //TODO: surface the event through IARM
             XLOGD_INFO("%s", json_str);
-            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_STREAM_END, json_str);
+            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_BUS_API_REVISION, CTRLM_VOICE_IARM_EVENT_JSON_STREAM_END, json_str);
             free(json_str);
         } else {
             XLOGD_ERROR("Failed to encode JSON string");
@@ -325,7 +325,7 @@ bool ctrlm_voice_ipc_iarm_thunder_t::session_end(const ctrlm_voice_ipc_event_ses
         if(json_str) {
             //TODO: surface the event through IARM
             XLOGD_INFO("<%s>", this->obj_voice->voice_stb_data_pii_mask_get() ? "***" : json_str);
-            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_SESSION_END, json_str);
+            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_BUS_API_REVISION, CTRLM_VOICE_IARM_EVENT_JSON_SESSION_END, json_str);
             free(json_str);
         } else {
             XLOGD_ERROR("Failed to encode JSON string");
@@ -341,7 +341,7 @@ bool ctrlm_voice_ipc_iarm_thunder_t::server_message(const char *message, unsigne
     bool    ret   = false;
     if(message) {
         XLOGD_INFO("%ul : <%s>", size, this->obj_voice->voice_stb_data_pii_mask_get() ? "***" : message);  //CID -160950 - Printargs
-        ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_SERVER_MESSAGE, message);
+        ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_BUS_API_REVISION, CTRLM_VOICE_IARM_EVENT_JSON_SERVER_MESSAGE, message);
     }
     return(ret);
 }
@@ -364,7 +364,7 @@ bool ctrlm_voice_ipc_iarm_thunder_t::keyword_verification(const ctrlm_voice_ipc_
         if(json_str) {
             //TODO: surface the event through IARM
             XLOGD_INFO("%s", json_str);
-            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_KEYWORD_VERIFICATION, json_str);
+            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_BUS_API_REVISION, CTRLM_VOICE_IARM_EVENT_JSON_KEYWORD_VERIFICATION, json_str);
             free(json_str);
         } else {
             XLOGD_ERROR("Failed to encode JSON string");

@@ -58,6 +58,7 @@ using namespace std;
 
 #define CTRLM_VENDOR_BLE_NETWORK_DISABLE_FILE  "/etc/vendor/input/ble_network_disable"
 #define CTRLM_VENDOR_BLE_REMOTE_WHITELIST_FILE "/etc/vendor/input/ble_remote_whitelist.json"
+#define CTRLM_VENDOR_BLE_NETWORK_OPTIONS_FILE  "/etc/vendor/input/ble_network_options.json"
 #define CTRLM_VENDOR_BLE_NETWORK_TIMEOUTS_FILE "/etc/vendor/input/ble_network_timeouts.json"
 
 typedef struct {
@@ -172,6 +173,46 @@ static int ctrlm_ble_network_factory(vendor_network_opts_t *opts, json_t *json_c
       }
    }
 
+
+   // If the vendor supplied options are provided, use them.  Otherwise use the default values.
+   const char *vendor_options_file = CTRLM_VENDOR_BLE_NETWORK_OPTIONS_FILE;
+
+   if(ctrlm_file_exists(vendor_options_file)) {
+      XLOGD_INFO("Using vendor options file: %s", vendor_options_file);
+
+      json_t *json_obj_vendor_options = json_load_file(vendor_options_file, JSON_REJECT_DUPLICATES, NULL);
+
+      if(json_obj_vendor_options == NULL || !json_is_object(json_obj_vendor_options)) {
+         XLOGD_ERROR("invalid vendor options file format");
+      } else {
+         // Make sure the json_obj_net_ble object is valid
+         if(json_obj_net_ble == NULL) { // Create a json object
+            json_obj_net_ble = json_object();
+         }
+         if(json_obj_net_ble == NULL) {
+            XLOGD_ERROR("invalid BLE network json object");
+         } else { // Update the "options" section in the json_obj_net_ble object
+            int rc = 0;
+            json_t *obj_options = json_object_get(json_obj_net_ble, JSON_OBJ_NAME_NETWORK_BLE_OPTIONS);
+            if(obj_options == NULL || !json_is_object(obj_options)) {
+               rc = json_object_set_new(json_obj_net_ble, JSON_OBJ_NAME_NETWORK_BLE_OPTIONS, json_obj_vendor_options);
+            } else {
+               rc = json_object_update(obj_options, json_obj_vendor_options);
+            }
+            if(rc != 0) {
+               XLOGD_ERROR("failed to update vendor options in BLE network json object");
+            } else {
+               XLOGD_INFO("successfully updated vendor options in BLE network json object");
+               json_obj_vendor_options = NULL;
+            }
+         }
+      }
+      if(json_obj_vendor_options != NULL) {
+         json_decref(json_obj_vendor_options);
+         json_obj_vendor_options = NULL;
+      }
+   }
+
    // If the vendor supplied timeouts are provided, use them.  Otherwise use the default timeouts.
    const char *vendor_timeouts_file = CTRLM_VENDOR_BLE_NETWORK_TIMEOUTS_FILE;
 
@@ -246,9 +287,24 @@ ctrlm_obj_network_ble_t::ctrlm_obj_network_ble_t(ctrlm_network_type_t type, ctrl
    version_                     = "unknown";
    init_result_                 = CTRLM_HAL_RESULT_ERROR;
    ready_                       = false;
+   voice_disabled_              = false;
 
    g_ctrlm_ble_network.upgrade_controllers_timer_tag = 0;
    g_ctrlm_ble_network.upgrade_pause_timer_tag = 0;
+
+   if(json_obj_net_ble != NULL) {
+      // Process network options
+      json_t *obj_options = json_object_get(json_obj_net_ble, JSON_OBJ_NAME_NETWORK_BLE_OPTIONS);
+      if(obj_options != NULL && json_is_object(obj_options)) {
+         json_t *json_value = json_object_get(obj_options, JSON_BOOL_NAME_NETWORK_BLE_OPTIONS_DISABLE_VOICE);
+         if(json_value != NULL && json_is_boolean(json_value)) {
+            voice_disabled_ = json_boolean_value(json_value);
+            if(voice_disabled_) {
+               XLOGD_INFO("BLE voice support is disabled by config");
+            }
+         }
+      }
+   }
 
    ctrlm_rfc_t *rfc = ctrlm_rfc_t::get_instance();
    if(rfc) {
@@ -451,12 +507,11 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
 
    dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR;
 
-#ifdef DISABLE_BLE_VOICE
-   XLOGD_WARN("BLE Voice is disabled in ControlMgr, so not starting a voice session.");
-   dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-#else
-   if (!ready_) {
+   if(!ready_) {
       XLOGD_FATAL("Network is not ready!");
+   } else if(voice_disabled_) {
+      XLOGD_WARN("BLE Voice is disabled in ControlMgr, so not starting a voice session.");
+      dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
    } else {
       ctrlm_controller_id_t controller_id;
       unsigned long long ieee_address = dqm->params->ieee_address;
@@ -536,7 +591,6 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
          }
       }
    }
-#endif   //DISABLE_BLE_VOICE
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
    }
@@ -577,11 +631,11 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_end(void *data, int size
    g_assert(size == sizeof(ctrlm_main_queue_msg_voice_session_t));
 
    dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR;
-#ifdef DISABLE_BLE_VOICE
-   dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-#else
+
    if (!ready_) {
       XLOGD_FATAL("Network is not ready!");
+   } else if(voice_disabled_) {
+      dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
    } else {
       ctrlm_controller_id_t controller_id;
       unsigned long long ieee_address = dqm->params->ieee_address;
@@ -595,7 +649,6 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_end(void *data, int size
          }
       }
    }
-#endif   //DISABLE_BLE_VOICE
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
    }
@@ -1126,9 +1179,11 @@ void ctrlm_obj_network_ble_t::factory_reset(void) {
 
    XLOGD_INFO("Sending RCU action unpair to all controllers.");
 
-   // Since we are factory resetting anyway, don't waste time unpairing the remote after the
-   // remote notifies us of unpair reason through RemoteControl service
-   this->unpair_on_remote_request_ = false;
+   // Need to unpair the remote on the target side as well even though a factory
+   // reset will clear out the entire pairing table.  This is because a reconnection 
+   // attempt could occur with the remote before factory reset completes which would
+   // prevent the remote from auto-pairing after the reset.
+   this->unpair_on_remote_request_ = true;
 
    for (auto const &controller : controllers_) {
       if (ble_rcu_interface_) {

@@ -518,7 +518,10 @@ int main(int argc, char *argv[]) {
          XLOGD_INFO("name <%-24s> version <%-9s> branch <%-20s> commit <%s>", entry->name ? entry->name : "NULL", entry->version ? entry->version : "NULL", entry->branch ? entry->branch : "NULL", entry->commit_id ? entry->commit_id : "NULL");
       }
    }
-   vsdk_init();
+
+   const char *filename   = NULL;
+   uint32_t file_size_max = 0;
+   vsdk_init(filename, file_size_max);
 
    //struct sched_param param;
    //param.sched_priority = 10;

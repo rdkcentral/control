@@ -23,7 +23,6 @@
 #include "ctrlm_voice_obj.h"
 
 static IARM_Result_t update_settings(void *arg);
-static bool broadcast_event(const char *bus_name, int event, void *data, size_t data_size);
 
 ctrlm_voice_ipc_iarm_legacy_t::ctrlm_voice_ipc_iarm_legacy_t(ctrlm_voice_t *obj_voice) : ctrlm_voice_ipc_t(obj_voice) {
     this->state = EVENT_ALL;
@@ -68,7 +67,7 @@ bool ctrlm_voice_ipc_iarm_legacy_t::session_begin(const ctrlm_voice_ipc_event_se
         safec_rc = strcpy_s((char *)event.language, sizeof(event.language), session_begin.language.c_str());
         ERR_CHK(safec_rc);
         event.is_voice_assistant = session_begin.common.voice_assistant ? 1 : 0;
-        ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_BEGIN, &event, sizeof(event));
+        ret = broadcast_iarm_event_legacy(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_BEGIN, &event, sizeof(event));
     }
     return(ret);
 }
@@ -90,7 +89,7 @@ bool ctrlm_voice_ipc_iarm_legacy_t::stream_end(const ctrlm_voice_ipc_event_strea
         event.session_id         = stream_end.common.session_id_ctrlm;
         event.reason             = (ctrlm_voice_session_end_reason_t)stream_end.reason;
         event.is_voice_assistant = stream_end.common.voice_assistant ? 1 : 0;
-        ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_END, &event, sizeof(event));
+        ret = broadcast_iarm_event_legacy(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_END, &event, sizeof(event));
     }
     return(ret);
 }
@@ -133,7 +132,7 @@ bool ctrlm_voice_ipc_iarm_legacy_t::session_end(const ctrlm_voice_ipc_event_sess
                     event.curl_request_dns_time     = session_end.server_stats->dns_time;
                     event.curl_request_connect_time = session_end.server_stats->connect_time;
                 }
-                ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_RESULT, &event, sizeof(event));
+                ret = broadcast_iarm_event_legacy(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_RESULT, &event, sizeof(event));
                 break;
             }
             case SESSION_END_ABORT: {
@@ -144,7 +143,7 @@ bool ctrlm_voice_ipc_iarm_legacy_t::session_end(const ctrlm_voice_ipc_event_sess
                 event.controller_id        = session_end.common.controller_id;
                 event.session_id           = session_end.common.session_id_ctrlm;
                 event.reason               = (ctrlm_voice_session_abort_reason_t)session_end.reason;
-                ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_ABORT, &event, sizeof(event));
+                ret = broadcast_iarm_event_legacy(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_ABORT, &event, sizeof(event));
                 break;
             }
             case SESSION_END_SHORT_UTTERANCE: {
@@ -156,7 +155,7 @@ bool ctrlm_voice_ipc_iarm_legacy_t::session_end(const ctrlm_voice_ipc_event_sess
                 event.session_id           = session_end.common.session_id_ctrlm;
                 event.reason               = (ctrlm_voice_session_end_reason_t)session_end.reason;
                 event.return_code_internal = session_end.return_code_internal;
-                ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_SHORT, &event, sizeof(event));
+                ret = broadcast_iarm_event_legacy(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_SHORT, &event, sizeof(event));
                 break;
             }
         }
@@ -195,7 +194,7 @@ bool ctrlm_voice_ipc_iarm_legacy_t::session_statistics(const ctrlm_voice_ipc_eve
     event.session_id           = session_stats.common.session_id_ctrlm;
     event.session              = session_stats.session;
     event.reboot               = session_stats.reboot;
-    return(broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_STATS, &event, sizeof(event)));
+    return(broadcast_iarm_event_legacy(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_STATS, &event, sizeof(event)));
 }
 
 void ctrlm_voice_ipc_iarm_legacy_t::deregister_ipc() const {
@@ -229,14 +228,4 @@ IARM_Result_t update_settings(void *arg) {
     }
 
     return(IARM_RESULT_SUCCESS);
-}
-
-bool broadcast_event(const char *bus_name, int event, void *data, size_t data_size) {
-    bool ret = true;
-    IARM_Result_t result = IARM_Bus_BroadcastEvent(bus_name, event, data, data_size);
-    if(IARM_RESULT_SUCCESS != result) {
-        XLOGD_ERROR("IARM Bus Error!");
-        ret = false;
-    }
-    return(ret);
 }

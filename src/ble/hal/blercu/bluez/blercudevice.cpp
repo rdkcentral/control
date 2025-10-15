@@ -97,6 +97,8 @@ BleRcuDeviceBluez::BleRcuDeviceBluez(const BleAddress &bdaddr,
     , m_lastPairedState(false)
     , m_lastServicesResolvedState(false)
     , m_isPairing(false)
+    , m_pairingRetryCnt(0)
+    , m_maxPairingRetries(3)
     , m_timeSinceReady(0)
     , m_recoveryAttempts(0)
     , m_maxRecoveryAttempts(100)
@@ -261,11 +263,17 @@ void BleRcuDeviceBluez::onPairRequestReply(PendingReply<> *reply)
     if (reply->isError()) {
         m_isPairing = false;
 
-        // an error occurred so log it
         XLOGD_ERROR("%s pairing request failed with error: <%s>", 
-                m_address.toString().c_str(), reply->errorMessage().c_str());
+            m_address.toString().c_str(), reply->errorMessage().c_str());
 
-        m_pairingErrorSlots.invoke(reply->errorMessage());
+        if (m_pairingRetryCnt < m_maxPairingRetries) {
+            m_pairingRetryCnt++;
+            XLOGD_INFO("Retrying pairing, attempt %d out of %d ", m_pairingRetryCnt, m_maxPairingRetries);
+            pair(0);
+        } else {
+            m_pairingRetryCnt = 0;
+            m_pairingErrorSlots.invoke(reply->errorMessage());
+        }
     } else {
         XLOGD_DEBUG("%s pairing request successful", m_address.toString().c_str());
     }

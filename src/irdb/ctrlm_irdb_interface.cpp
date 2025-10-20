@@ -397,18 +397,18 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                     if(ir_codes.size() > 0) {
                         if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                             codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
+                            ret = true;
                         } else {
                             XLOGD_ERROR("edid dev type invalid");
                         }
                     } else {
-                        XLOGD_WARN("no codes for edid data");
+                        XLOGD_ERROR("no codes for edid data");
                     }
-                    ret = true;
                 } else {
                     XLOGD_ERROR("Failed getting codes by edid");
                 }
             } else {
-                XLOGD_INFO("No EDID data");
+                XLOGD_ERROR("No EDID data");
             }
         } else {
             XLOGD_ERROR("display_settings is NULL");
@@ -426,19 +426,19 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                         if(ir_codes.size() > 0) {
                             if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                                 codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
+                                ret = true;
                             } else {
                                 XLOGD_ERROR("cec dev type invalid");
                             }
                         } else {
                             XLOGD_WARN("no code for cec device <%s>", itr.osd.c_str());
                         }
-                        ret = true;
                     } else {
                         XLOGD_WARN("Failed to get codes for cec device <%s>", itr.osd.c_str());
                     }
                 }
             } else {
-                XLOGD_INFO("No CEC device data");
+                XLOGD_ERROR("No CEC device data");
             }
         } else {
             XLOGD_ERROR("cec is NULL");
@@ -456,18 +456,18 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                         if(ir_codes.size() > 0) {
                             if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                                 codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
+                                ret = true;
                             } else {
-                                XLOGD_WARN("port %d infoframe dev type invalid", itr.first);
+                                XLOGD_ERROR("port %d infoframe dev type invalid", itr.first);
                             }
                         } else {
                             XLOGD_WARN("no code for port %d infoframe", itr.first);
                         }
-                        ret = true;
                     } else {
                         XLOGD_WARN("Failed to get codes for port %d infoframe", itr.first);
                     }
                 } else {
-                    XLOGD_INFO("no infoframe for port %d", itr.first);
+                    XLOGD_WARN("no infoframe for port %d", itr.first);
                 }
             }
         } else {
@@ -485,19 +485,19 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                         if(ir_codes.size() > 0) {
                             if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                                 codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
+                                ret = true;
                             } else {
-                                XLOGD_WARN("cec dev type invalid");
+                                XLOGD_ERROR("cec dev type invalid");
                             }
                         } else {
                             XLOGD_WARN("no code for cec device <%s>", itr.osd.c_str());
                         }
-                        ret = true;
                     } else {
                         XLOGD_WARN("Failed to get codes for cec device <%s>", itr.osd.c_str());
                     }
                 }
             } else {
-                XLOGD_INFO("No CEC device data");
+                XLOGD_ERROR("No CEC device data");
             }
         } else {
             XLOGD_ERROR("cec_sink is NULL");

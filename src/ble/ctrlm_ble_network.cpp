@@ -530,6 +530,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
          ctrlm_voice_format_t voice_format = { .type = CTRLM_VOICE_FORMAT_INVALID };
 
          bool pressAndHoldSupport = true;
+         int fd = -1;
          if (ble_rcu_interface_) {
             AudioFormat audio_format;
             // Query the ble_rcu_interface to get the voice format for this controller based on the selected codec
@@ -547,6 +548,15 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                   streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION;
                }
                controllers_[controller_id]->setPressAndHoldSupport(pressAndHoldSupport);
+
+            }
+
+            /* Start audio streaming BEFORE making a voice session request because
+             * the session terminate on a previous session can be blocking to
+             * upwards of a few seconds during which the remote will timeout
+             * waiting on the write command */
+            if(!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd)) {
+               XLOGD_ERROR("failed to start audio streaming on remote");
             }
          }
 
@@ -563,23 +573,13 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
             XLOGD_TELEMETRY("Failed opening voice session in ctrlm_voice_t, error = <%d>", voice_status);
          } else {
             bool success = false;
-
-            if (ble_rcu_interface_) {
-               int fd = -1;
-
-               if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd)) {
-                     XLOGD_ERROR("failed to start audio streaming on remote");
-               } else {
-
-                  if (fd < 0) {
-                     XLOGD_ERROR("Voice streaming pipe invalid (fd = <%d>), aborting voice session", fd);
-                     success = false;
-                  } else {
-                     XLOGD_INFO("Acquired voice streaming pipe fd = <%d>, sending to voice engine", fd);
-                     //Send the fd acquired from bluez to the voice engine
-                     success = ctrlm_get_voice_obj()->voice_session_data(network_id_get(), controller_id, fd);
-                  }
-               }
+            if (fd < 0) {
+               XLOGD_ERROR("Voice streaming pipe invalid (fd = <%d>), aborting voice session", fd);
+               success = false;
+            } else {
+               XLOGD_INFO("Acquired voice streaming pipe fd = <%d>, sending to voice engine", fd);
+               //Send the fd acquired from bluez to the voice engine
+               success = ctrlm_get_voice_obj()->voice_session_data(network_id_get(), controller_id, fd);
             }
 
             if (false == success) {

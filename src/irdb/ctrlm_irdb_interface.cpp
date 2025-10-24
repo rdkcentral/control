@@ -68,6 +68,7 @@ typedef struct {
     std::string (*pluginVersion)() = NULL;
     bool (*pluginInitialize)() = NULL;
     bool (*pluginGetVendorInfo)(ctrlm_irdb_vendor_info_t &info) = NULL;
+    bool (*pluginGetSupportedVendors)(std::vector<ctrlm_irdb_vendor_info_t> &info) = NULL;
     bool (*pluginGetManufacturers)(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix) = NULL;
     bool (*pluginGetModels)(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &prefix) = NULL;
     bool (*pluginGetEntryIds)(ctrlm_irdb_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model) = NULL;
@@ -132,6 +133,7 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
         g_irdb.pluginVersion = STUB_irdb_version;
         g_irdb.pluginInitialize = STUB_ctrlm_irdb_initialize;
         g_irdb.pluginGetVendorInfo = STUB_ctrlm_irdb_get_vendor_info;
+        g_irdb.pluginGetSupportedVendors = STUB_ctrlm_irdb_get_supported_vendor_info;
         g_irdb.pluginGetManufacturers = STUB_ctrlm_irdb_get_manufacturers;
         g_irdb.pluginGetModels = STUB_ctrlm_irdb_get_models;
         g_irdb.pluginGetEntryIds = STUB_ctrlm_irdb_get_entry_ids;
@@ -179,6 +181,17 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
         if ((error = dlerror()) != NULL)  {
             XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_get_vendor_info), error <%s>, Using STUB implementation", error);
             g_irdb.pluginGetVendorInfo = STUB_ctrlm_irdb_get_vendor_info;
+        }
+        dlerror();  // Clear any existing error
+
+        *(void **) (&g_irdb.pluginGetSupportedVendors) = dlsym(m_irdbPluginHandle, "ctrlm_irdb_get_supported_vendor_info");
+        if ((error = dlerror()) != NULL)  {
+            XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_get_supported_vendor_info), error <%s>, Using STUB implementation", error);
+            g_irdb.pluginGetSupportedVendors = STUB_ctrlm_irdb_get_supported_vendor_info;
+        } else {
+
+            XLOGD_WARN("EGPRINT: successfully loaded ctrlm_irdb_get_supported_vendor_info!!!!!!!!!!!!!!!!!");
+
         }
         dlerror();  // Clear any existing error
 

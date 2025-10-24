@@ -88,6 +88,12 @@ bool ctrlm_irdb_close();
 
 bool ctrlm_irdb_initialize();
 
+// Will return info on all the IRDB vendors currently installed, could be multiple vendors returned
+bool ctrlm_irdb_get_supported_vendor_info(std::vector<ctrlm_irdb_vendor_info_t> &info);
+
+// This will basically pass through the bitmask coming from the RCU, so it will be Ruwido ONLY, Quickset ONLY, or BOTH
+bool ctrlm_irdb_set_preferred_vendor(ctrlm_irdb_vendor_info_t vendor);
+
 bool ctrlm_irdb_get_vendor_info(ctrlm_irdb_vendor_info_t &info);
 
 bool ctrlm_irdb_get_manufacturers(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix);

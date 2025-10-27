@@ -17,9 +17,11 @@
  * limitations under the License.
 */
 #include "ctrlm_powermanager.h"
+#ifdef USE_IARM_POWER_MANAGER
 #include "ctrlm_ipc_iarm_powermanager.h"
+#else
 #include "ctrlm_thunder_powermanager.h"
-
+#endif
 
 static ctrlm_powermanager_t *instance = NULL;
 

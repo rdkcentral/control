@@ -42,7 +42,7 @@ bool ctrlm_thunder_powermanager_t::get_networked_standby_mode() {
       XLOGD_ERROR("plugin not yet available");
       return false;
    } else {
-      return this->plugin->get_networked_standby_mode(networked_standby_mode);
+      return this->plugin->get_networked_standby_mode();
    }
 }
 
@@ -52,6 +52,6 @@ bool ctrlm_thunder_powermanager_t::get_wakeup_reason_voice() {
       XLOGD_WARN("plugin not yet available");
       return false;
    } else {
-      return this->plugin->get_wakeup_reason_voice(wakeup_reason_voice);
+      return this->plugin->get_wakeup_reason_voice();
    }
 }

@@ -26,7 +26,6 @@
 #include "irMgr.h"
 #endif
 #include "sysMgr.h"
-#include "deepSleepMgr.h"
 #include "comcastIrKeyCodes.h"
 #include "ctrlm.h"
 #include "ctrlm_log.h"

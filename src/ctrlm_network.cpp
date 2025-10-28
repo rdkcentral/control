@@ -1027,7 +1027,7 @@ void ctrlm_obj_network_t::iarm_event_rcu_status(void) {
    msg.populate_status(*this);
 
    XLOGD_INFO("Broadcasting IARM message %s RCU Status....", name_get());
-   XLOGD_DEBUG("%s", msg.to_string());
+   XLOGD_DEBUG("%s", msg.to_string().c_str());
 
    ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
    if (!rcp_ipc->on_status(msg)) {
@@ -1073,4 +1073,16 @@ void ctrlm_obj_network_t::iarm_event_rcu_firmware_status(const ctrlm_obj_control
        XLOGD_ERROR("Error broadcasting IARM message");
    }
    #endif
+}
+
+void ctrlm_obj_network_t::controller_start_audio_streaming(void *data, int size) {
+   XLOGD_WARN("request is not valid for %s network", name_get());
+   ctrlm_main_queue_msg_start_audio_streaming_t *dqm = (ctrlm_main_queue_msg_start_audio_streaming_t *)data;
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_start_audio_streaming_t));
+
+   // post the semaphore just to ensure nothing blocks
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
 }

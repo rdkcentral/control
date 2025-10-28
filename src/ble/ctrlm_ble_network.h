@@ -192,6 +192,8 @@ public:
 
    std::shared_ptr<ConfigSettings> getConfigSettings();
 
+   virtual void                  req_process_start_audio_streaming(void *data, int size);
+
 private:
    ctrlm_obj_network_ble_t();
 
@@ -202,6 +204,7 @@ private:
    ctrlm_controller_id_t                     get_last_used_controller(void);
    bool                                      end_voice_session_for_controller(uint64_t ieee_address, ctrlm_voice_session_end_reason_t reason, int32_t audioDuration = -1, int32_t startLag = -1, rdkx_timestamp_t *keyDownTime = NULL, rdkx_timestamp_t *keyUpTime = NULL);
    ctrlm_controller_id_t                     find_controller_from_upgrade_session_uuid(const std::string &uuid);
+   bool                                      controller_start_audio_streaming(ctrlm_controller_id_t controller_id) const;
 
    json_t *                                  json_config_               = NULL;
    bool                                      voice_disabled_            = false;

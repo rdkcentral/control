@@ -158,6 +158,12 @@ typedef struct {
 } ctrlm_main_queue_msg_network_fw_upgrade_t;
 
 typedef struct {
+    ctrlm_main_queue_msg_header_t header;
+    ctrlm_controller_id_t         id;
+    sem_t *                       semaphore;
+} ctrlm_main_queue_msg_start_audio_streaming_t;
+
+typedef struct {
    sem_t                *semaphore;
    ctrlm_hal_req_term_t  term;
    GThread              *hal_thread;
@@ -288,6 +294,8 @@ public:
    virtual void         iarm_event_rcu_status(void);
    virtual void         iarm_event_rcu_validation_status(void);
    virtual void         iarm_event_rcu_firmware_status(const ctrlm_obj_controller_t &rcu);
+
+   virtual void         controller_start_audio_streaming(void *data, int size);
 
    // Internal methods
 

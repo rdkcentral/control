@@ -2616,3 +2616,38 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::find_controller_from_upgrade_sess
     }
     return id;
 }
+
+void ctrlm_obj_network_ble_t::controller_start_audio_streaming(ctrlm_controller_id_t controller_id) const {
+    int fd = -1;
+
+    if (!ble_rcu_interface_) {
+       XLOGD_WARN("ble rcu interface not ready");
+       return;
+    }
+
+    ctrlm_hal_ble_VoiceEncoding_t  encoding  = CTRLM_HAL_BLE_ENCODING_ADPCM;
+    ctrlm_hal_ble_VoiceStreamEnd_t streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_KEY_UP;
+
+    if (controllers_[controller_id]->getPressAndHoldSupport()) {
+       ctrlm_hal_ble_VoiceStreamEnd_t streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION;
+    }
+
+    uint64_t ieee_address = controllers_[controller_id]->ieee_address_get().get_value();
+    if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd)) {
+       XLOGD_ERROR("failed to start audio streaming on remote");
+    }
+}
+
+void ctrlm_obj_network_ble_t::req_process_start_audio_streaming(void *data, int size) {
+   THREAD_ID_VALIDATE();
+   ctrlm_main_queue_msg_start_audio_streaming_t *dqm = (ctrlm_main_queue_msg_start_audio_streaming_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_start_audio_streaming_t));
+
+   controller_start_audio_streaming(dqm->controller_id);
+
+   if(dqm->semaphore) {
+      sem_post(dqm->semaphore);
+   }
+}

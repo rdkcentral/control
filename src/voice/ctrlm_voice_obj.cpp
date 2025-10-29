@@ -1344,7 +1344,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                                                                        ctrlm_voice_device_t device_type, ctrlm_voice_format_t format,
                                                                        voice_session_req_stream_params *stream_params,
                                                                        const char *controller_name, const char *sw_version, const char *hw_version, double voltage, bool command_status,
-                                                                       ctrlm_timestamp_t *timestamp, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param, bool use_external_data_pipe, bool press_and_hold, const char *l_transcription_in, const char *audio_file_in, const uuid_t *uuid, bool low_latency, bool low_cpu_util, int audio_fd) {
+                                                                       ctrlm_timestamp_t *timestamp, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param, bool use_external_data_pipe, bool press_and_hold, std::function<int(ctrlm_controller_id_t)> cb_start_audio, int *audio_started, const char *l_transcription_in, const char *audio_file_in, const uuid_t *uuid, bool low_latency, bool low_cpu_util, int audio_fd) {
 
     ctrlm_voice_session_t *session = &this->voice_session[voice_device_to_session_group(device_type)];
 
@@ -1376,6 +1376,11 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
 
         // Cancel current speech router session
         XLOGD_INFO("Waiting on the results from previous session, aborting this and continuing..");
+        if (cb_start_audio != nullptr && audio_started != nullptr) {
+            XLOGD_WARN("KLU339 starting audio before we launch session terminate");
+            *audio_started = cb_start_audio(controller_id);
+            XLOGD_WARN("KLU339 fd returned = <%d>", *audio_started);
+        }
         xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.
     }
     bool request_new_session = true;
@@ -1387,6 +1392,11 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                 request_new_session = false;
             } else { // Cancel current speech router session
                 XLOGD_WARN("Session in progress with same controller - src <%s> dst <%s>, aborting this and continuing..", ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
+                if (cb_start_audio != nullptr && audio_started != nullptr) {
+                    XLOGD_WARN("KLU339 starting audio before we launch session terminate");
+                    *audio_started = cb_start_audio(controller_id);
+                    XLOGD_WARN("KLU339 fd returned = <%d>", *audio_started);
+                }
                 xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.
             }
         } else { // session in progress with different controller

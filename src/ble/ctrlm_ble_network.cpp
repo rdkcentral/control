@@ -525,7 +525,6 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
 
          // only support ADPCM from ble-rcu component
          ctrlm_hal_ble_VoiceEncoding_t  encoding  = CTRLM_HAL_BLE_ENCODING_ADPCM;
-         ctrlm_hal_ble_VoiceStreamEnd_t streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_KEY_UP;
 
          ctrlm_voice_format_t voice_format = { .type = CTRLM_VOICE_FORMAT_INVALID };
 
@@ -543,18 +542,18 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                audio_format.getHeaderInfoAdpcm(adpcm_frame->offset_step_size_index, adpcm_frame->offset_predicted_sample_lsb, adpcm_frame->offset_predicted_sample_msb, adpcm_frame->offset_sequence_value, adpcm_frame->shift_sequence_value, adpcm_frame->sequence_value_min, adpcm_frame->sequence_value_max);
 
                pressAndHoldSupport = audio_format.getPressAndHoldSupport();
-               if(!pressAndHoldSupport) {
-                  streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION;
-               }
                controllers_[controller_id]->setPressAndHoldSupport(pressAndHoldSupport);
             }
          }
+
+         int audio_started_fd = -1;
+         auto audio_start_cb = std::bind(&ctrlm_obj_network_ble_t::start_controller_audio_streaming, this, std::placeholders::_1);
 
          voice_status = ctrlm_get_voice_obj()->voice_session_req(network_id_get(), controller_id, device, voice_format, NULL,
                                                                 controllers_[controller_id]->get_model().c_str(),
                                                                 controllers_[controller_id]->get_sw_revision().to_string().c_str(),
                                                                 controllers_[controller_id]->get_hw_revision().to_string().c_str(), 0.0,
-                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport);
+                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport, audio_start_cb, &audio_started_fd);
          if (!controllers_[controller_id]->get_capabilities().has_capability(ctrlm_controller_capabilities_t::capability::PAR) && (VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE == voice_status)) {
             XLOGD_WARN("PAR voice is enabled but not supported by BLE controller treating as normal voice session");
             voice_status = VOICE_SESSION_RESPONSE_AVAILABLE;
@@ -562,24 +561,22 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
          if (VOICE_SESSION_RESPONSE_AVAILABLE != voice_status) {
             XLOGD_TELEMETRY("Failed opening voice session in ctrlm_voice_t, error = <%d>", voice_status);
          } else {
+            int  fd = audio_started_fd;
             bool success = false;
 
-            if (ble_rcu_interface_) {
-               int fd = -1;
+            if (fd < 0) { // voice session req did not need to start audio
+                XLOGD_WARN("KLU339 the voice session req did not start audio start here");
+                fd = start_controller_audio_streaming(controller_id);
+            }
 
-               if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd)) {
-                     XLOGD_ERROR("failed to start audio streaming on remote");
-               } else {
-
-                  if (fd < 0) {
-                     XLOGD_ERROR("Voice streaming pipe invalid (fd = <%d>), aborting voice session", fd);
-                     success = false;
-                  } else {
-                     XLOGD_INFO("Acquired voice streaming pipe fd = <%d>, sending to voice engine", fd);
-                     //Send the fd acquired from bluez to the voice engine
-                     success = ctrlm_get_voice_obj()->voice_session_data(network_id_get(), controller_id, fd);
-                  }
-               }
+            XLOGD_WARN("KLU339 before sending to xrsr fd = <%d> vs <%d>", fd, audio_started_fd);
+            if (fd < 0) {
+               XLOGD_ERROR("Voice streaming pipe invalid (fd = <%d>), aborting voice session", fd);
+               success = false;
+            } else {
+               XLOGD_INFO("Acquired voice streaming pipe fd = <%d>, sending to voice engine", fd);
+               //Send the fd acquired from bluez to the voice engine
+               success = ctrlm_get_voice_obj()->voice_session_data(network_id_get(), controller_id, fd);
             }
 
             if (false == success) {
@@ -2617,37 +2614,35 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::find_controller_from_upgrade_sess
     return id;
 }
 
-void ctrlm_obj_network_ble_t::controller_start_audio_streaming(ctrlm_controller_id_t controller_id) const {
+int ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_controller_id_t controller_id) const {
+    THREAD_ID_VALIDATE();
     int fd = -1;
+
+    XLOGD_WARN("KLU339 starting audio on BLE remote");
+    if (!ready_) {
+       XLOGD_FATAL("Network is not ready!");
+       return fd;
+    }
 
     if (!ble_rcu_interface_) {
        XLOGD_WARN("ble rcu interface not ready");
-       return;
+       return fd;
     }
 
     ctrlm_hal_ble_VoiceEncoding_t  encoding  = CTRLM_HAL_BLE_ENCODING_ADPCM;
     ctrlm_hal_ble_VoiceStreamEnd_t streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_KEY_UP;
+    auto rcu = controllers_.at(controller_id);
 
-    if (controllers_[controller_id]->getPressAndHoldSupport()) {
-       ctrlm_hal_ble_VoiceStreamEnd_t streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION;
+    if (rcu->getPressAndHoldSupport()) {
+       streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION;
     }
 
-    uint64_t ieee_address = controllers_[controller_id]->ieee_address_get().get_value();
+    uint64_t ieee_address = rcu->ieee_address_get().get_value();
     if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd)) {
        XLOGD_ERROR("failed to start audio streaming on remote");
     }
-}
 
-void ctrlm_obj_network_ble_t::req_process_start_audio_streaming(void *data, int size) {
-   THREAD_ID_VALIDATE();
-   ctrlm_main_queue_msg_start_audio_streaming_t *dqm = (ctrlm_main_queue_msg_start_audio_streaming_t *)data;
+    XLOGD_WARN("KLU339 fd = <%d>", fd);
 
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_start_audio_streaming_t));
-
-   controller_start_audio_streaming(dqm->controller_id);
-
-   if(dqm->semaphore) {
-      sem_post(dqm->semaphore);
-   }
+    return fd;
 }

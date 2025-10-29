@@ -1075,14 +1075,7 @@ void ctrlm_obj_network_t::iarm_event_rcu_firmware_status(const ctrlm_obj_control
    #endif
 }
 
-void ctrlm_obj_network_t::controller_start_audio_streaming(void *data, int size) {
-   XLOGD_WARN("request is not valid for %s network", name_get());
-   ctrlm_main_queue_msg_start_audio_streaming_t *dqm = (ctrlm_main_queue_msg_start_audio_streaming_t *)data;
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_start_audio_streaming_t));
-
-   // post the semaphore just to ensure nothing blocks
-   if(dqm->semaphore) {
-      sem_post(dqm->semaphore);
-   }
+int ctrlm_obj_network_t::start_controller_audio_streaming(ctrlm_controller_id_t controller_id) const {
+   XLOGD_WARN("not implemented for %s network", name_get());
+   return -1;
 }

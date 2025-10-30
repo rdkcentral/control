@@ -326,7 +326,7 @@ bool ctrlm_irdb_interface_t::get_vendor_info(ctrlm_irdb_vendor_info_t &info) {
     return false;
 }
 
-bool ctrlm_irdb_interface_t::set_vendor(ctrlm_irdb_vendor_info_t info) {
+bool ctrlm_irdb_interface_t::set_vendor(const ctrlm_irdb_vendor_info_t &info) {
     std::unique_lock<std::mutex> guard(m_mutex);
     if (g_irdb.pluginSetPreferredVendor) {
         return (*g_irdb.pluginSetPreferredVendor)(info);

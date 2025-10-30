@@ -1377,9 +1377,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
         // Cancel current speech router session
         XLOGD_INFO("Waiting on the results from previous session, aborting this and continuing..");
         if (cb_start_audio != nullptr && audio_started != nullptr) {
-            XLOGD_WARN("KLU339 starting audio before we launch session terminate");
             *audio_started = cb_start_audio(controller_id);
-            XLOGD_WARN("KLU339 fd returned = <%d>", *audio_started);
         }
         xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.
     }
@@ -1393,9 +1391,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
             } else { // Cancel current speech router session
                 XLOGD_WARN("Session in progress with same controller - src <%s> dst <%s>, aborting this and continuing..", ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
                 if (cb_start_audio != nullptr && audio_started != nullptr) {
-                    XLOGD_WARN("KLU339 starting audio before we launch session terminate");
                     *audio_started = cb_start_audio(controller_id);
-                    XLOGD_WARN("KLU339 fd returned = <%d>", *audio_started);
                 }
                 xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.
             }

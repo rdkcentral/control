@@ -565,11 +565,9 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
             bool success = false;
 
             if (fd < 0) { // voice session req did not need to start audio
-                XLOGD_WARN("KLU339 the voice session req did not start audio start here");
                 fd = start_controller_audio_streaming(controller_id);
             }
 
-            XLOGD_WARN("KLU339 before sending to xrsr fd = <%d> vs <%d>", fd, audio_started_fd);
             if (fd < 0) {
                XLOGD_ERROR("Voice streaming pipe invalid (fd = <%d>), aborting voice session", fd);
                success = false;
@@ -2618,7 +2616,6 @@ int ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_controller_i
     THREAD_ID_VALIDATE();
     int fd = -1;
 
-    XLOGD_WARN("KLU339 starting audio on BLE remote");
     if (!ready_) {
        XLOGD_FATAL("Network is not ready!");
        return fd;
@@ -2641,8 +2638,6 @@ int ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_controller_i
     if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd)) {
        XLOGD_ERROR("failed to start audio streaming on remote");
     }
-
-    XLOGD_WARN("KLU339 fd = <%d>", fd);
 
     return fd;
 }

@@ -1220,6 +1220,15 @@ static bool ctrlm_ble_parse_upgrade_image_info(const std::string &filename, ctrl
       return false;
    }
 
+   // Exclude RF4CE product names: XR11, XR15, XR16, XRA
+   if (image_info.product_name.rfind("XR11", 0) == 0 ||
+       image_info.product_name.rfind("XR15", 0) == 0 ||
+       image_info.product_name.rfind("XR16", 0) == 0 ||
+       image_info.product_name.rfind("XRA", 0) == 0) {
+      XLOGD_ERROR("Product Name starts with XR11, XR15, XR16, or XRA, which is RF4CE. Skipping upgrade image.");
+      return false;
+   }
+
    string version_string = ctrlm_xml_tag_text_get(xml, "image:softwareVersion");
    if(version_string.length() == 0) {
       XLOGD_ERROR("Missing Software Version");
@@ -1428,8 +1437,7 @@ void ctrlm_obj_network_ble_t::req_process_network_managed_upgrade(void *data, in
    g_assert(size == sizeof(ctrlm_main_queue_msg_network_fw_upgrade_t));
    g_assert(dqm->network_managing_upgrade != NULL);
 
-   XLOGD_INFO("%s network will manage the RCU firmware upgrade", name_get());
-   *dqm->network_managing_upgrade = true;
+   XLOGD_INFO("%s check if network will manage the RCU firmware upgrade", name_get());
 
    if (!ready_) {
       XLOGD_FATAL("Network is not ready!");
@@ -1451,17 +1459,18 @@ void ctrlm_obj_network_ble_t::req_process_network_managed_upgrade(void *data, in
          string image_xml_filename = dest_path + "/image.xml";
          if (ctrlm_ble_parse_upgrade_image_info(image_xml_filename, image_info)) {
             addUpgradeImage(image_info);
+
+            // Allocate a message and send it to Control Manager's queue
+            ctrlm_main_queue_msg_continue_upgrade_t msg;
+            errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
+            ERR_CHK(safec_rc);
+            msg.retry_all = true;
+
+            ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_upgrade_controllers, &msg, sizeof(msg), NULL, id_);
+
+            *dqm->network_managing_upgrade = true;
          }
       }
-
-      // Allocate a message and send it to Control Manager's queue
-      ctrlm_main_queue_msg_continue_upgrade_t msg;
-      errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
-      ERR_CHK(safec_rc);
-      msg.retry_all = true;
-
-      ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_upgrade_controllers, &msg, sizeof(msg), NULL, id_);
-   }
 
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);

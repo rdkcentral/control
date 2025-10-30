@@ -299,10 +299,12 @@ bool ctrlm_irdb_interface_t::open_plugin() {
 
     if (g_irdb.pluginGetSupportedVendors) {
         std::vector<ctrlm_irdb_vendor_info_t> supported_vendors;
-        if ((ret = (*g_irdb.pluginGetSupportedVendors)(supported_vendors)) == true) {
+        if ((*g_irdb.pluginGetSupportedVendors)(supported_vendors) == true) {
             for (const auto &it : supported_vendors) {
                 XLOGD_INFO("Found supported IRDB Vendor <%s, 0x%X>", it.name.c_str(), it.rcu_support_bitmask);
             }
+        } else {
+            XLOGD_WARN("Unable to query IRDB plugin for list of supported vendors, check version of the plugin...");
         }
     }
     return ret;

@@ -51,7 +51,7 @@ bool STUB_ctrlm_irdb_get_supported_vendor_info(std::vector<ctrlm_irdb_vendor_inf
     XLOGD_ERROR("not implemented");
     return(false);
 }
-bool STUB_ctrlm_irdb_set_preferred_vendor(ctrlm_irdb_vendor_info_t info)
+bool STUB_ctrlm_irdb_set_preferred_vendor(const ctrlm_irdb_vendor_info_t &info)
 {
     XLOGD_ERROR("not implemented");
     return(false);

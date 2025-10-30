@@ -70,6 +70,7 @@ public:
    virtual ~ctrlm_irdb_interface_t();
 
    bool get_vendor_info(ctrlm_irdb_vendor_info_t &info);
+   bool set_vendor(ctrlm_irdb_vendor_info_t info);
    bool get_manufacturers(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix = "");
    bool get_models(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &prefix = "");
    bool get_irdb_entry_ids(ctrlm_irdb_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model = "");

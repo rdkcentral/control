@@ -69,6 +69,7 @@ typedef struct {
     bool (*pluginInitialize)() = NULL;
     bool (*pluginGetVendorInfo)(ctrlm_irdb_vendor_info_t &info) = NULL;
     bool (*pluginGetSupportedVendors)(std::vector<ctrlm_irdb_vendor_info_t> &info) = NULL;
+    bool (*pluginSetPreferredVendor)(ctrlm_irdb_vendor_info_t vendor) = NULL;
     bool (*pluginGetManufacturers)(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix) = NULL;
     bool (*pluginGetModels)(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &prefix) = NULL;
     bool (*pluginGetEntryIds)(ctrlm_irdb_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model) = NULL;
@@ -133,6 +134,7 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
         g_irdb.pluginVersion = STUB_irdb_version;
         g_irdb.pluginInitialize = STUB_ctrlm_irdb_initialize;
         g_irdb.pluginGetVendorInfo = STUB_ctrlm_irdb_get_vendor_info;
+        g_irdb.pluginSetPreferredVendor = STUB_ctrlm_irdb_set_preferred_vendor;
         g_irdb.pluginGetSupportedVendors = STUB_ctrlm_irdb_get_supported_vendor_info;
         g_irdb.pluginGetManufacturers = STUB_ctrlm_irdb_get_manufacturers;
         g_irdb.pluginGetModels = STUB_ctrlm_irdb_get_models;
@@ -188,10 +190,13 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
         if ((error = dlerror()) != NULL)  {
             XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_get_supported_vendor_info), error <%s>, Using STUB implementation", error);
             g_irdb.pluginGetSupportedVendors = STUB_ctrlm_irdb_get_supported_vendor_info;
-        } else {
+        }
+        dlerror();  // Clear any existing error
 
-            XLOGD_WARN("EGPRINT: successfully loaded ctrlm_irdb_get_supported_vendor_info!!!!!!!!!!!!!!!!!");
-
+        *(void **) (&g_irdb.pluginSetPreferredVendor) = dlsym(m_irdbPluginHandle, "ctrlm_irdb_set_preferred_vendor");
+        if ((error = dlerror()) != NULL)  {
+            XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_set_preferred_vendor), error <%s>, Using STUB implementation", error);
+            g_irdb.pluginSetPreferredVendor = STUB_ctrlm_irdb_set_preferred_vendor;
         }
         dlerror();  // Clear any existing error
 
@@ -291,6 +296,15 @@ bool ctrlm_irdb_interface_t::open_plugin() {
         }
     }
     XLOGD_INFO("IRDB plugin opened, ret = <%s>", ret ? "SUCCESS" : "ERROR");
+
+    if (g_irdb.pluginGetSupportedVendors) {
+        std::vector<ctrlm_irdb_vendor_info_t> supported_vendors;
+        if ((ret = (*g_irdb.pluginGetSupportedVendors)(supported_vendors)) == true) {
+            for (const auto &it : supported_vendors) {
+                XLOGD_INFO("Found supported IRDB Vendor <%s, 0x%X>", it.name.c_str(), it.rcu_support_bitmask);
+            }
+        }
+    }
     return ret;
 }
 
@@ -308,6 +322,14 @@ bool ctrlm_irdb_interface_t::get_vendor_info(ctrlm_irdb_vendor_info_t &info) {
     std::unique_lock<std::mutex> guard(m_mutex);
     if (g_irdb.pluginGetVendorInfo) {
         return (*g_irdb.pluginGetVendorInfo)(info);
+    }
+    return false;
+}
+
+bool ctrlm_irdb_interface_t::set_vendor(ctrlm_irdb_vendor_info_t info) {
+    std::unique_lock<std::mutex> guard(m_mutex);
+    if (g_irdb.pluginSetPreferredVendor) {
+        return (*g_irdb.pluginSetPreferredVendor)(info);
     }
     return false;
 }

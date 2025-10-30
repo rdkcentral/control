@@ -69,7 +69,7 @@ typedef struct {
     bool (*pluginInitialize)() = NULL;
     bool (*pluginGetVendorInfo)(ctrlm_irdb_vendor_info_t &info) = NULL;
     bool (*pluginGetSupportedVendors)(std::vector<ctrlm_irdb_vendor_info_t> &info) = NULL;
-    bool (*pluginSetPreferredVendor)(ctrlm_irdb_vendor_info_t vendor) = NULL;
+    bool (*pluginSetPreferredVendor)(const ctrlm_irdb_vendor_info_t &vendor) = NULL;
     bool (*pluginGetManufacturers)(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix) = NULL;
     bool (*pluginGetModels)(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &prefix) = NULL;
     bool (*pluginGetEntryIds)(ctrlm_irdb_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model) = NULL;

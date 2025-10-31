@@ -426,6 +426,21 @@ int main(int argc, char *argv[]) {
 
    XLOGD_INFO("name <%-24s> version <%-9s> branch <%-20s> commit <%s>", "ctrlm-main", CTRLM_MAIN_VERSION, CTRLM_MAIN_BRANCH, CTRLM_MAIN_COMMIT_ID);
 
+#ifdef MEMORY_LOCK
+   clnl_init();
+   for(unsigned int i = 0; i < (sizeof(memory_lock_progs) / sizeof(memory_lock_progs[0])); i++) {
+      if(ctrlm_file_exists(memory_lock_progs[i])) {
+         if(clnl_lock(memory_lock_progs[i], SECTION_TEXT)) {
+            XLOGD_ERROR("failed to lock instructions to memory <%s>", memory_lock_progs[i]);
+         } else {
+            XLOGD_INFO("successfully locked to memory <%s>", memory_lock_progs[i]);
+         }
+      } else {
+         XLOGD_DEBUG("file doesn't exist, cannot lock to memory <%s>", memory_lock_progs[i]);
+      }
+   }
+#endif
+
    ctrlm_signals_register();
 
 #ifdef BREAKPAD_SUPPORT

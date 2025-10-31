@@ -2374,7 +2374,11 @@ gpointer ctrlm_main_thread(gpointer param) {
 
    XLOGD_INFO("Enter main loop");
    do {
-      gpointer msg = g_async_queue_pop(g_ctrlm.queue);
+      gpointer msg;
+
+      XLOGD_INFO("main loop wait for message...");
+
+      msg = g_async_queue_pop(g_ctrlm.queue);
 
       if(msg == NULL) {
          XLOGD_ERROR("NULL message received");

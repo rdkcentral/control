@@ -600,12 +600,8 @@ public:
 
    bool init_uinput_writer(void);
 
-   // These functions are HACKS for XR15-704
-#ifdef XR15_704
    void set_reset();
    bool needs_reset();
-#endif
-   // These functions are HACKS for XR15-704
 
    ctrlm_sw_version_t     version_software_get();
    ctrlm_sw_version_t     version_audio_data_get();
@@ -769,12 +765,9 @@ private:
 
    guint                                   metrics_tag_;
 
-   // HACK for XR15-704
-#ifdef XR15_704
    gboolean                                needs_reset_;
    gboolean                                did_reset_;
-#endif
-   // HACK for XR15-704
+   
    guint8                                  mfg_test_result_;
 
    ctrlm_timestamp_t                       checkin_time_;    ///< OUT - Timestamp indicating the most recent poll indication of the controller

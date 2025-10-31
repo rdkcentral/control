@@ -29,7 +29,6 @@
 #include "ctrlm_hal.h"
 #include "ctrlm_hal_rf4ce.h"
 #include "ctrlm_hal_ble.h"
-#include "ctrlm_hal_certificate.h"
 #include "ctrlm_hal_ip.h"
 #include "ctrlm_ipc.h"
 #include "ctrlm_ipc_rcu.h"

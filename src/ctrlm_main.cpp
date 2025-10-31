@@ -62,7 +62,7 @@
 #endif
 #ifdef AUTH_ENABLED
 #include "ctrlm_auth.h"
-#include "ctrlm_hal_certificate.h"
+#include "ctrlm_auth_certificate.h"
 #endif
 #include "ctrlm_rfc.h"
 #include "ctrlm_telemetry.h"
@@ -75,9 +75,7 @@
 #include "dsMgr.h"
 #include "dsRpc.h"
 #include "dsDisplay.h"
-#ifdef SYSTEMD_NOTIFY
 #include <systemd/sd-daemon.h>
-#endif
 #include <systemd/sd-bus.h>
 #include "xr_voice_sdk.h"
 #include "ctrlm_voice_obj.h"
@@ -278,7 +276,7 @@ typedef struct {
    ctrlm_cs_values_t                  cs_values;
 #ifdef AUTH_ENABLED
    ctrlm_auth_t                      *authservice;
-   ctrlm_hal_certificate_t           *hal_certificate;
+   ctrlm_auth_certificate_t          *auth_certificate;
 #endif
 #ifdef CTRLM_THUNDER
    Thunder::DeviceInfo::ctrlm_thunder_plugin_device_info_t *thunder_device_info;
@@ -448,7 +446,7 @@ int main(int argc, char *argv[]) {
    // Set stdout to be line buffered
    setvbuf(stdout, NULL, _IOLBF, 0);
 
-   XLOGD_INFO("name <%-24s> version <%-7s> branch <%-20s> commit <%s>", "ctrlm-main", CTRLM_MAIN_VERSION, CTRLM_MAIN_BRANCH, CTRLM_MAIN_COMMIT_ID);
+   XLOGD_INFO("name <%-24s> version <%-9s> branch <%-20s> commit <%s>", "ctrlm-main", CTRLM_MAIN_VERSION, CTRLM_MAIN_BRANCH, CTRLM_MAIN_COMMIT_ID);
 
 #ifdef MEMORY_LOCK
    clnl_init();
@@ -517,7 +515,7 @@ int main(int argc, char *argv[]) {
    for(uint32_t index = 0; index < qty_vsdk; index++) {
       vsdk_version_info_t *entry = &version_info[index];
       if(entry->name != NULL) {
-         XLOGD_INFO("name <%-24s> version <%-7s> branch <%-20s> commit <%s>", entry->name ? entry->name : "NULL", entry->version ? entry->version : "NULL", entry->branch ? entry->branch : "NULL", entry->commit_id ? entry->commit_id : "NULL");
+         XLOGD_INFO("name <%-24s> version <%-9s> branch <%-20s> commit <%s>", entry->name ? entry->name : "NULL", entry->version ? entry->version : "NULL", entry->branch ? entry->branch : "NULL", entry->commit_id ? entry->commit_id : "NULL");
       }
    }
    vsdk_init();
@@ -694,14 +692,14 @@ int main(int argc, char *argv[]) {
 
 #ifdef AUTH_ENABLED
    XLOGD_INFO("ctrlm_auth init");
-   g_ctrlm.authservice     = ctrlm_auth_service_create(g_ctrlm.server_url_authservice);
-   g_ctrlm.hal_certificate = ctrlm_hal_certificate_get();
+   g_ctrlm.authservice      = ctrlm_auth_service_create(g_ctrlm.server_url_authservice);
+   g_ctrlm.auth_certificate = ctrlm_auth_certificate_get();
 
    ctrlm_voice_cert_t device_cert;
    bool ocsp_verify_stapling = false;
    bool ocsp_verify_ca       = false;
 
-   if(!g_ctrlm.hal_certificate->device_cert_get(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
+   if(!g_ctrlm.auth_certificate->device_cert_get(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
       XLOGD_ERROR("unable to get device certificate");
    } else {
       if(!g_ctrlm.voice_session->voice_stb_data_device_certificate_set(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
@@ -809,10 +807,12 @@ int main(int argc, char *argv[]) {
    g_ctrlm.ir_controller->db_load();
    g_ctrlm.ir_controller->print_status();
 
+   #ifdef CTRLM_THUNDER
    ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
    if (rcp_ipc) {
        rcp_ipc->register_ipc();
    }
+   #endif
 
    XLOGD_INFO("init voice");
    g_ctrlm.voice_session->voice_configure_config_file_json(json_obj_voice, json_obj_vsdk, g_ctrlm.local_conf );
@@ -6058,10 +6058,9 @@ gboolean ctrlm_start_iarm(gpointer user_data) {
 
    ctrlm_main_iarm_init();
 
-#ifdef SYSTEMD_NOTIFY
    XLOGD_INFO("Notifying systemd of successful initialization");
    sd_notifyf(0, "READY=1\nSTATUS=ctrlm-main has successfully initialized\nMAINPID=%lu", (unsigned long)getpid());
-#endif
+
    return false;
 }
 

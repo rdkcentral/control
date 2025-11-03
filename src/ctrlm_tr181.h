@@ -64,6 +64,7 @@
 #define CTRLM_TR181_TELEMETRY_REPORT_IP                      "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.telemetry_report.ip"
 #define CTRLM_TR181_TELEMETRY_REPORT_VOICE                   "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.telemetry_report.voice"
 #define CTRLM_RT181_POWER_RFC_PWRMGR2                        "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Power.PwrMgr2.Enable"
+#define CTRLM_TR181_TELEMETRY_ENABLE                         "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Telemetry.Enable"
 
 
 typedef enum {

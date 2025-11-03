@@ -48,7 +48,8 @@ ctrlm_telemetry_t::ctrlm_telemetry_t() {
     char component[] = "ctrlm";
     XLOGD_INFO("Telemetry 2.0 init");
 
-    this->enabled = true;
+    this->enabled = false;
+    ctrlm_tr181_bool_get(CTRLM_TR181_TELEMETRY_ENABLE, &this->enabled);
 
     XLOGD_INFO("Telemetry is %s", this->enabled ? "enabled" : "disabled");
     if(this->enabled) {

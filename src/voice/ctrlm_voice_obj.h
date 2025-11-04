@@ -389,6 +389,28 @@ typedef struct {
 
 typedef void (*ctrlm_voice_session_rsp_confirm_t)(bool result, signed long long rsp_time, unsigned int rsp_window, const std::string &err_str, ctrlm_timestamp_t *timestamp, void *user_data);
 
+class ctrlm_voice_start_audio_params_t
+{
+public:
+   // Generic
+   ctrlm_voice_start_audio_params_t();
+   virtual ~ctrlm_voice_start_audio_params_t();
+
+   ctrlm_controller_id_t m_controller_id = -1;
+   bool                  m_started = false;
+   
+   // BLE
+   int                   m_fd = -1;
+
+    // RF4CE
+   bool                                  m_use_stream_params = false;
+   int16_t                               m_offset = 0;
+   ctrlm_timestamp_t                     m_timestamp;
+   ctrlm_voice_session_rsp_confirm_t     m_cb_confirm_voice_obj;
+   void *                                m_cb_confirm_param;
+   ctrlm_voice_session_response_status_t m_status;
+};
+
 typedef struct {
    ctrlm_network_id_t               network_id;
    ctrlm_network_type_t             network_type;
@@ -471,7 +493,7 @@ class ctrlm_voice_t {
     ctrlm_voice_t();
     virtual ~ctrlm_voice_t();
 
-    ctrlm_voice_session_response_status_t voice_session_req(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_voice_device_t device_type, ctrlm_voice_format_t format, voice_session_req_stream_params *stream_params, const char *controller_name, const char *sw_version, const char *hw_version, double voltage, bool command_status=false, ctrlm_timestamp_t *timestamp=NULL, ctrlm_voice_session_rsp_confirm_t *cb_confirm=NULL, void **cb_confirm_param=NULL, bool use_external_data_pipe=false, bool press_and_hold=true, std::function<int(ctrlm_controller_id_t)> cb_start_audio=NULL, int *audio_started=NULL, const char *transcription_in=NULL, const char *audio_file_in=NULL, const uuid_t *uuid = NULL, bool low_latency=false, bool low_cpu_util=false, int audio_fd = -1);
+    ctrlm_voice_session_response_status_t voice_session_req(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_voice_device_t device_type, ctrlm_voice_format_t format, voice_session_req_stream_params *stream_params, const char *controller_name, const char *sw_version, const char *hw_version, double voltage, bool command_status=false, ctrlm_timestamp_t *timestamp=NULL, ctrlm_voice_session_rsp_confirm_t *cb_confirm=NULL, void **cb_confirm_param=NULL, bool use_external_data_pipe=false, bool press_and_hold=true, std::function<void(ctrlm_voice_start_audio_params_t *)> cb_start_audio=NULL, ctrlm_voice_start_audio_params_t *cb_audio_start_params=NULL, const char *transcription_in=NULL, const char *audio_file_in=NULL, const uuid_t *uuid = NULL, bool low_latency=false, bool low_cpu_util=false, int audio_fd = -1);
     void                                  voice_session_rsp_confirm(bool result, signed long long rsp_time, unsigned int rsp_window, const std::string &err_str, ctrlm_timestamp_t *timestamp);
     bool                                  voice_session_data(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, const char *buffer, long unsigned int length, ctrlm_timestamp_t *timestamp=NULL, uint8_t *lqi=NULL);
     bool                                  voice_session_data(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, int fd, const uuid_t *uuid=NULL);

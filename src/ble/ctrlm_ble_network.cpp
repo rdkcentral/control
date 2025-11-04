@@ -546,14 +546,16 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
             }
          }
 
-         int audio_started_fd = -1;
+         ctrlm_voice_start_audio_params_t audio_start_params;
+         audio_start_params.m_fd      = -1;
+         audio_start_params.m_started = false;
          auto audio_start_cb = std::bind(&ctrlm_obj_network_ble_t::start_controller_audio_streaming, this, std::placeholders::_1);
 
          voice_status = ctrlm_get_voice_obj()->voice_session_req(network_id_get(), controller_id, device, voice_format, NULL,
                                                                 controllers_[controller_id]->get_model().c_str(),
                                                                 controllers_[controller_id]->get_sw_revision().to_string().c_str(),
                                                                 controllers_[controller_id]->get_hw_revision().to_string().c_str(), 0.0,
-                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport, audio_start_cb, &audio_started_fd);
+                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport, audio_start_cb, &audio_start_params);
          if (!controllers_[controller_id]->get_capabilities().has_capability(ctrlm_controller_capabilities_t::capability::PAR) && (VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE == voice_status)) {
             XLOGD_WARN("PAR voice is enabled but not supported by BLE controller treating as normal voice session");
             voice_status = VOICE_SESSION_RESPONSE_AVAILABLE;
@@ -561,12 +563,13 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
          if (VOICE_SESSION_RESPONSE_AVAILABLE != voice_status) {
             XLOGD_TELEMETRY("Failed opening voice session in ctrlm_voice_t, error = <%d>", voice_status);
          } else {
-            int  fd = audio_started_fd;
+            int  fd = -1;
             bool success = false;
 
-            if (fd < 0) { // voice session req did not need to start audio
-                fd = start_controller_audio_streaming(controller_id);
+            if (!audio_start_params.m_started) { // voice session req did need to start audio
+                start_controller_audio_streaming(&audio_start_params);
             }
+            fd = audio_start_params.m_fd;
 
             if (fd < 0) {
                XLOGD_ERROR("Voice streaming pipe invalid (fd = <%d>), aborting voice session", fd);
@@ -2612,23 +2615,29 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::find_controller_from_upgrade_sess
     return id;
 }
 
-int ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_controller_id_t controller_id) const {
+void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start_audio_params_t *params) {
+    /*
     THREAD_ID_VALIDATE();
     int fd = -1;
 
     if (!ready_) {
        XLOGD_FATAL("Network is not ready!");
-       return fd;
+       return false;
+    }
+
+    if(!controller_exists(params.controller_id)) {
+       XLOGD_WARN("Controller %u doesn't exist.", controller_id);
+       return false;
     }
 
     if (!ble_rcu_interface_) {
        XLOGD_WARN("ble rcu interface not ready");
-       return fd;
+       return false;
     }
 
     ctrlm_hal_ble_VoiceEncoding_t  encoding  = CTRLM_HAL_BLE_ENCODING_ADPCM;
     ctrlm_hal_ble_VoiceStreamEnd_t streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_KEY_UP;
-    auto rcu = controllers_.at(controller_id);
+    auto rcu = controllers_.at(params.controller_id);
 
     if (rcu->getPressAndHoldSupport()) {
        streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION;
@@ -2637,7 +2646,9 @@ int ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_controller_i
     uint64_t ieee_address = rcu->ieee_address_get().get_value();
     if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd)) {
        XLOGD_ERROR("failed to start audio streaming on remote");
+       return false;
     }
 
-    return fd;
+    return true;
+    */
 }

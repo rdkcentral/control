@@ -547,8 +547,9 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
          }
 
          ctrlm_voice_start_audio_params_t audio_start_params;
-         audio_start_params.m_fd      = -1;
-         audio_start_params.m_started = false;
+         audio_start_params.m_controller_id = controller_id;
+         audio_start_params.m_fd            = -1;
+         audio_start_params.m_started       = false;
          auto audio_start_cb = std::bind(&ctrlm_obj_network_ble_t::start_controller_audio_streaming, this, std::placeholders::_1);
 
          voice_status = ctrlm_get_voice_obj()->voice_session_req(network_id_get(), controller_id, device, voice_format, NULL,
@@ -2616,28 +2617,30 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::find_controller_from_upgrade_sess
 }
 
 void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start_audio_params_t *params) {
-    /*
     THREAD_ID_VALIDATE();
     int fd = -1;
+    ctrlm_controller_id_t id = params->m_controller_id;
+    params->m_fd = fd;
+    params->m_started = false;
 
     if (!ready_) {
        XLOGD_FATAL("Network is not ready!");
-       return false;
+       return;
     }
 
-    if(!controller_exists(params.controller_id)) {
-       XLOGD_WARN("Controller %u doesn't exist.", controller_id);
-       return false;
+    if(!controller_exists(id)) {
+       XLOGD_WARN("Controller %u doesn't exist.", id);
+       return;
     }
 
     if (!ble_rcu_interface_) {
        XLOGD_WARN("ble rcu interface not ready");
-       return false;
+       return;
     }
 
     ctrlm_hal_ble_VoiceEncoding_t  encoding  = CTRLM_HAL_BLE_ENCODING_ADPCM;
     ctrlm_hal_ble_VoiceStreamEnd_t streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_KEY_UP;
-    auto rcu = controllers_.at(params.controller_id);
+    auto rcu = controllers_.at(id);
 
     if (rcu->getPressAndHoldSupport()) {
        streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION;
@@ -2646,9 +2649,9 @@ void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start
     uint64_t ieee_address = rcu->ieee_address_get().get_value();
     if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd)) {
        XLOGD_ERROR("failed to start audio streaming on remote");
-       return false;
+       return;
     }
 
-    return true;
-    */
+    params->m_fd = fd;
+    params->m_started = true;
 }

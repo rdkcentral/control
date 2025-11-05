@@ -3756,9 +3756,10 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
    ctrlm_voice_session_rsp_confirm_t cb_confirm_voice_obj = NULL;
 
    ctrlm_voice_start_audio_params_t start_audio_params;
+   start_audio_params.m_controller_id     = dqm->controller_id;
    start_audio_params.m_use_stream_params = use_stream_params;
-   start_audio_params.m_offset  = offset;
-   start_audio_params.m_started = false;
+   start_audio_params.m_offset            = offset;
+   start_audio_params.m_started           = false;
    auto audio_start_cb = std::bind(&ctrlm_obj_network_rf4ce_t::start_controller_audio_streaming, this, std::placeholders::_1);
 
    session = ctrlm_get_voice_obj()->voice_session_req(network_id_get(),         dqm->controller_id,

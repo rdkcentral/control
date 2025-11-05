@@ -393,8 +393,8 @@ class ctrlm_voice_start_audio_params_t
 {
 public:
    // Generic
-   ctrlm_voice_start_audio_params_t();
-   virtual ~ctrlm_voice_start_audio_params_t();
+   ctrlm_voice_start_audio_params_t() = default;
+   virtual ~ctrlm_voice_start_audio_params_t() = default;
 
    ctrlm_controller_id_t m_controller_id = -1;
    bool                  m_started = false;
@@ -745,6 +745,10 @@ public:
     void                 audio_state_set(bool session);
     bool                 vsdk_is_privacy_enabled(void);
     double               vsdk_keyword_sensitivity_limit_check(double sensitivity);
+    void                 pre_session_terminate(std::function<void(ctrlm_voice_start_audio_params_t *)> cb_start_audio,
+                                               ctrlm_voice_start_audio_params_t *cb_audio_start_params,
+                                               ctrlm_voice_session_rsp_confirm_t *cb_confirm,
+                                               void **cb_confirm_param);
 };
 
 // Helper Functions

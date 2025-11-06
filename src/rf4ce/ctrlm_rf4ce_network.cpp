@@ -3779,6 +3779,16 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
        start_controller_audio_streaming(&start_audio_params);
    }
 
+   if(session != VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK           && session != VOICE_SESSION_RESPONSE_AVAILABLE &&
+      session != VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE && session != VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
+      voice_session_active_count_--;
+      if(voice_session_active_count_ == 0) { // Re-enable frequency agility if the no other active RF4CE voice sessions
+         ctrlm_hal_network_property_frequency_agility_t property;
+         property.state = CTRLM_HAL_FREQUENCY_AGILITY_ENABLE;
+         ctrlm_network_property_set(network_id_get(), CTRLM_HAL_NETWORK_PROPERTY_FREQUENCY_AGILITY, (void *)&property, sizeof(property));
+      }
+   }
+
    if(dqm->status != VOICE_SESSION_RESPONSE_AVAILABLE && dqm->status != VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK) { // Session was aborted
       XLOGD_INFO("voice session abort");
    }

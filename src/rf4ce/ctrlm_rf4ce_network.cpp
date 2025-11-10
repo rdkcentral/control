@@ -3760,6 +3760,7 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
    start_audio_params.m_use_stream_params = use_stream_params;
    start_audio_params.m_offset            = offset;
    start_audio_params.m_started           = false;
+   start_audio_params.m_timestamp         = dqm->timestamp;
    auto audio_start_cb = std::bind(&ctrlm_obj_network_rf4ce_t::start_controller_audio_streaming, this, std::placeholders::_1);
 
    session = ctrlm_get_voice_obj()->voice_session_req(network_id_get(),         dqm->controller_id,
@@ -3772,7 +3773,6 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
                                                           false, false, audio_start_cb, &start_audio_params);
 
    if(!start_audio_params.m_started) {
-       start_audio_params.m_timestamp            = dqm->timestamp;
        start_audio_params.m_cb_confirm_voice_obj = cb_confirm_voice_obj;
        start_audio_params.m_cb_confirm_param     = cb_confirm_param;
        start_audio_params.m_status               = session;
@@ -3825,7 +3825,6 @@ void ctrlm_obj_network_rf4ce_t::cfm_voice_session_rsp(void *data, int size) {
        }
        ctrlm_timestamp_t now;
        ctrlm_timestamp_get(&now);
-
        double loadavg[3] = { -1, -1, -1 };
        getloadavg(loadavg, 3);
        struct sysinfo s_info;
@@ -5086,7 +5085,7 @@ void ctrlm_obj_network_rf4ce_t::start_controller_audio_streaming(ctrlm_voice_sta
    ctrlm_hal_rf4ce_cfm_data_t cb_confirm_rf4ce = NULL;
 
    if(params->m_cb_confirm_voice_obj != NULL && (session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK ||
-                                       session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE)) { // Only confirm response for accepted session so there is only ever one response stored
+                                                session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE)) { // Only confirm response for accepted session so there is only ever one response stored
       voice_session_rsp_confirm_       = params->m_cb_confirm_voice_obj;
       voice_session_rsp_confirm_param_ = params->m_cb_confirm_param;
 

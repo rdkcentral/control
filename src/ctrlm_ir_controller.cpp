@@ -348,6 +348,7 @@ static int ctrlm_ir_open_key_input_device(vector<string> names) {
                         }
                      }
                   }
+                  XLOGD_INFO("closing fd <%d>", input_fd);
                   close(input_fd);
                   if (NULL != evdev) {
                      libevdev_free(evdev);
@@ -468,6 +469,7 @@ void* ctrlm_ir_key_monitor_thread(void *data) {
                 XLOGD_ERROR("error = <%d>, <%s>, closing and reopening device...", errsv, strerror(errsv));
                 input_device_retry_cnt = 0;
                 if (input_device_fd >= 0) {
+                    XLOGD_INFO("closing fd <%d>", input_device_fd);
                     close(input_device_fd);
                     input_device_fd = -1;
                 }
@@ -521,6 +523,7 @@ void* ctrlm_ir_key_monitor_thread(void *data) {
    ctrlm_timeout_destroy(&g_retry_input_open_timer_tag);
 
    if (input_device_fd >= 0) {
+      XLOGD_INFO("closing fd <%d>", input_device_fd);
       close(input_device_fd);
    }
    return NULL;

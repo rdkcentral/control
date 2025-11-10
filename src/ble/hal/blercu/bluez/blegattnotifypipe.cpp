@@ -221,9 +221,11 @@ void BleGattNotifyPipe::shutdown()
         ThreadJoin(&m_notifyThread, 2);
     }
     if (FD_SIGNAL(m_exitEventFds) > -1) {
+        XLOGD_INFO("closing fd <%d>", FD_SIGNAL(m_exitEventFds));
         close(FD_SIGNAL(m_exitEventFds));
     }
     if (FD_RECV(m_exitEventFds) > -1) {
+        XLOGD_INFO("closing fd <%d>", FD_RECV(m_exitEventFds));
         close(FD_RECV(m_exitEventFds));
     }
 

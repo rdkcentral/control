@@ -284,10 +284,12 @@ ctrlm_voice_t::~ctrlm_voice_t() {
     for(uint32_t group = VOICE_SESSION_GROUP_DEFAULT; group < VOICE_SESSION_GROUP_QTY; group++) {
         ctrlm_voice_session_t *session = &this->voice_session[group];
         if(session->audio_pipe[PIPE_READ] >= 0) {
+            XLOGD_INFO("closing fd <%d>", session->audio_pipe[PIPE_READ]);
             close(session->audio_pipe[PIPE_READ]);
             session->audio_pipe[PIPE_READ] = -1;
         }
         if(session->audio_pipe[PIPE_WRITE] >= 0) {
+            XLOGD_INFO("closing fd <%d>", session->audio_pipe[PIPE_WRITE]);
             close(session->audio_pipe[PIPE_WRITE]);
             session->audio_pipe[PIPE_WRITE] = -1;
         }
@@ -1489,7 +1491,9 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                 XLOGD_TELEMETRY("Failed to acquire voice session");
                 this->voice_session_notify_abort(network_id, controller_id, 0, CTRLM_VOICE_SESSION_ABORT_REASON_BUSY);
                 if(create_pipe) {
+                    XLOGD_INFO("closing fd <%d>", fds[PIPE_WRITE]);
                     close(fds[PIPE_WRITE]);
+                    XLOGD_INFO("closing fd <%d>", fds[PIPE_READ]);
                     close(fds[PIPE_READ]);
                 }
                 return(VOICE_SESSION_RESPONSE_BUSY);
@@ -1803,11 +1807,13 @@ bool ctrlm_voice_t::voice_session_data(ctrlm_network_id_t network_id, ctrlm_cont
         } else {
             if(session->audio_pipe[PIPE_READ] >= 0) {
                 XLOGD_INFO("Closing previous pipe - READ fd <%d>", session->audio_pipe[PIPE_READ]);
+                XLOGD_INFO("closing fd <%d>", session->audio_pipe[PIPE_READ]);
                 close(session->audio_pipe[PIPE_READ]);
                 session->audio_pipe[PIPE_READ] = -1;
             }
             if(session->audio_pipe[PIPE_WRITE] >= 0) {
                 XLOGD_INFO("Closing previous pipe - WRITE fd <%d>", session->audio_pipe[PIPE_WRITE]);
+                XLOGD_INFO("closing fd <%d>", session->audio_pipe[PIPE_WRITE]);
                 close(session->audio_pipe[PIPE_WRITE]);
                 session->audio_pipe[PIPE_WRITE] = -1;
             }
@@ -1925,6 +1931,7 @@ void ctrlm_voice_t::voice_session_end(ctrlm_voice_session_t *session, ctrlm_voic
 
     if(session->audio_pipe[PIPE_WRITE] >= 0) {
         XLOGD_INFO("Close write pipe - fd <%d>", session->audio_pipe[PIPE_WRITE]);
+        XLOGD_INFO("closing fd <%d>", session->audio_pipe[PIPE_WRITE]);
         close(session->audio_pipe[PIPE_WRITE]);
         session->audio_pipe[PIPE_WRITE] = -1;
     }

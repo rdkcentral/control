@@ -434,6 +434,7 @@ HciSocketImpl::HciSocketImpl(uint hciDeviceId, int netNsFd)
 
     // setup the hci socket
     if (!setSocketFilter(sockFd) || !bindSocket(sockFd, hciDeviceId)) {
+        XLOGD_INFO("closing <%d>", sockFd);
         close(sockFd);
         return;
     }
@@ -462,9 +463,11 @@ HciSocketImpl::~HciSocketImpl()
         ctrlm_utils_thread_join(&m_socketThread, 2);
     }
     if (FD_SIGNAL(m_exitEventFds) > -1) {
+        XLOGD_INFO("closing <%d>", FD_SIGNAL(m_exitEventFds));
         close(FD_SIGNAL(m_exitEventFds));
     }
     if (FD_RECV(m_exitEventFds) > -1) {
+        XLOGD_INFO("closing <%d>", FD_RECV(m_exitEventFds));
         close(FD_RECV(m_exitEventFds));
     }
 

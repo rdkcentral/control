@@ -223,9 +223,9 @@ if(ENABLE_NETWORKED_STANDBY_MODE)
    add_compile_definitions(NETWORKED_STANDBY_MODE_ENABLED)
 endif()
 
-if(FDC_ENABLED)
-   add_compile_definitions(FDC_ENABLED)
-endif()
+#if(FDC_ENABLED)
+add_compile_definitions(FDC_ENABLED)
+#endif()
 
 if(IP_ENABLED)
    add_compile_definitions(CTRLM_NETWORK_IP CTRLM_IP_HAL_LOG_ENABLED)

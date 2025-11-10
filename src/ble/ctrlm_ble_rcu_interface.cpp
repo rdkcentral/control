@@ -1516,6 +1516,7 @@ static int OpenKeyInputDevice(uint64_t ieee_address)
                             return input_fd;
                         }
                     }
+                    XLOGD_INFO("closing fd <%d>", input_fd);
                     close(input_fd);
                     if (NULL != evdev) {
                         libevdev_free(evdev);
@@ -1644,6 +1645,7 @@ void *KeyMonitorThread(void *data)
 
                         if (rcuKeypressFds.end() != rcuKeypressFds.find(device_changed_msg->address)) {
                             if (rcuKeypressFds[device_changed_msg->address] >= 0) {
+                                XLOGD_INFO("closing fd <%d>", rcuKeypressFds[device_changed_msg->address]);
                                 close(rcuKeypressFds[device_changed_msg->address]);
                             }
                             rcuKeypressFds.erase(device_changed_msg->address);
@@ -1657,6 +1659,7 @@ void *KeyMonitorThread(void *data)
                             if (rcu.second >= 0) {
                                 XLOGD_INFO("Closing key input device for RCU <%s> so key monitor thread can reopen...", 
                                         rcu.first.toString().c_str());
+                                XLOGD_INFO("closing fd <%d>", rcu.second);
                                 close(rcu.second);
                                 rcu.second = -1;
                             }
@@ -1675,6 +1678,7 @@ void *KeyMonitorThread(void *data)
 
                         for (auto &rcu : rcuKeypressFds) {
                             if (rcu.second >= 0) {
+                                XLOGD_INFO("closing fd <%d>", rcu.second);
                                 close(rcu.second);
                                 rcu.second = -1;
                             }

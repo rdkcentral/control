@@ -94,6 +94,7 @@ FwImageFile::FwImageFile(const string &filePath)
     // check the file header / contents
     m_valid = checkFile();
     if (!m_valid) {
+        XLOGD_INFO("closing fd <%d>", m_fd);
         close(m_fd);
         m_fd = -1;
     }

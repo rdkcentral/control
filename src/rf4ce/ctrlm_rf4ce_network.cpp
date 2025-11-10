@@ -3947,6 +3947,11 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_stop(void *data, int s
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_voice_session_stop_t));
 
+   if(!controller_exists(dqm->controller_id)) {
+      XLOGD_INFO("invalid controller id (%u)", dqm->controller_id);
+      return;
+   }
+   
    ctrlm_rf4ce_controller_type_t controller_type = controllers_[dqm->controller_id]->controller_type_get();
    if(!ctrlm_is_voice_assistant((ctrlm_rcu_controller_type_t) controller_type)) {
       // Send voice key up event since the session stop was received

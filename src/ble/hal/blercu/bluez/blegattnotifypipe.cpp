@@ -312,6 +312,7 @@ void *NotifyThread(void *data)
 
     XLOGD_INFO("Enter main loop for bluez notification pipe (%d) for %s", 
             notifyPipe->m_pipeFd, notifyPipe->m_uuid.toString().c_str());
+    XLOGD_INFO("TID <%d>", (int)gettid());
     do {
         // Needs to be reinitialized before each call to select() because select() will modify these variables
         FD_ZERO(&rfds);

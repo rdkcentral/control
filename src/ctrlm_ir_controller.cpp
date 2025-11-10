@@ -28,6 +28,7 @@
 #include "ctrlm_config_types.h"
 #include "ctrlm_config_default.h"
 #include "ctrlm_network.h"
+#include "unistd.h"
 
 #include <fcntl.h>
 
@@ -377,6 +378,7 @@ static gboolean ctrlm_ir_retry_input_open(gpointer user_data) {
 
 void* ctrlm_ir_key_monitor_thread(void *data) {
    XLOGD_INFO("Enter...");
+   XLOGD_INFO("TID <%d>", (int)gettid());
 
    ctrlm_ir_controller_t *ir_controller = (ctrlm_ir_controller_t *)data;
 

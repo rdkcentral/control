@@ -31,7 +31,7 @@
 // #include "linux/containerhelpers.h"
 
 #include "ctrlm_log_ble.h"
-
+#include <unistd.h>
 
 
 using namespace std;
@@ -1061,6 +1061,7 @@ void *SocketThread(void *data)
     sem_post(&socketImpl->m_socketThreadSem);
 
     XLOGD_INFO("Enter main loop for HCI socket thread");
+    XLOGD_INFO("TID <%d>", (int)gettid());
     do {
         if (FD_RECV(socketImpl->m_exitEventFds) < 0 || socketImpl->m_hciSocket < 0) {
             XLOGD_ERROR("one of the fds is invalid, exiting thread");

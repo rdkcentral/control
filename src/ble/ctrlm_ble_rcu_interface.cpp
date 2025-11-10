@@ -21,7 +21,7 @@
 #include "ctrlm_ble_rcu_interface.h"
 #include "ctrlm_ble_utils.h"
 #include "ctrlm_voice_obj.h"
-
+#include <unistd.h>
 
 #define CTRLM_BLE_KEY_MSG_QUEUE_MSG_MAX         (10)
 #define CTRLM_BLE_KEY_MSG_QUEUE_MSG_SIZE_MAX    (sizeof(ctrlm_ble_key_queue_device_changed_msg_t))
@@ -1600,6 +1600,7 @@ void *KeyMonitorThread(void *data)
     sem_post(&metadata->m_keyThreadSem);
 
     XLOGD_INFO("Enter main loop for new key monitor thread");
+    XLOGD_INFO("TID <%d>", (int)gettid());
     do {
         // Needs to be reinitialized before each call to select() because select() will modify these variables
         FD_ZERO(&rfds);

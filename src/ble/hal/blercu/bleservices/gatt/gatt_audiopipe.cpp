@@ -138,11 +138,13 @@ GattAudioPipe::~GattAudioPipe()
     *m_isAlive = false;
 
     // close any fds that we may still have open
+    XLOGD_INFO("closing fd <%d>", m_outputPipeRdFd);
     if ((m_outputPipeRdFd >= 0) && (::close(m_outputPipeRdFd) != 0)) {
         int errsv = errno;
         XLOGD_ERROR("failed to close output read pipe fd: error = <%d>, <%s>", errsv, strerror(errsv));
     }
 
+    XLOGD_INFO("closing fd <%d>", m_outputPipeWrFd);
     if ((m_outputPipeWrFd >= 0) && (::close(m_outputPipeWrFd) != 0)) {
         int errsv = errno;
         XLOGD_ERROR("failed to close output write pipe fd: error = <%d>, <%s>", errsv, strerror(errsv));
@@ -294,6 +296,7 @@ int GattAudioPipe::takeOutputReadFd()
     }
 
     // now close our internal copy
+    XLOGD_INFO("closing fd <%d>", m_outputPipeRdFd);
     if (::close(m_outputPipeRdFd) != 0) {
         int errsv = errno;
         XLOGD_ERROR("failed to close internal copy of read end of output pipe: error = <%d>, <%s>", 
@@ -435,6 +438,7 @@ void GattAudioPipe::onOutputPipeException(int pipeFd)
     XLOGD_DEBUG("detected close on the client output pipe");
 
     // close the output pipe
+    XLOGD_INFO("closing fd <%d>", m_outputPipeWrFd);
     if ((m_outputPipeWrFd >= 0) && (::close(m_outputPipeWrFd) != 0)) {
         int errsv = errno;
         XLOGD_ERROR("failed to close output pipe: error = <%d>, <%s>", errsv, strerror(errsv));

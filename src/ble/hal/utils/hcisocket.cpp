@@ -473,6 +473,7 @@ HciSocketImpl::~HciSocketImpl()
 
     *m_isAlive = false;
 
+    XLOGD_INFO("closing fd <%d>", m_hciSocket);
     if ((m_hciSocket >= 0) && (::close(m_hciSocket) != 0)) {
         int errsv = errno;
         XLOGD_WARN("failed to close hci socket %d (%s)", errsv, strerror(errsv));

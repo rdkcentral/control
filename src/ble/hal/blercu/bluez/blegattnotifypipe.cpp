@@ -229,6 +229,7 @@ void BleGattNotifyPipe::shutdown()
         close(FD_RECV(m_exitEventFds));
     }
 
+    XLOGD_INFO("closing fd <%d>", m_pipeFd);
     if ((m_pipeFd >= 0) && (::close(m_pipeFd) != 0)) {
         int errsv = errno;
         XLOGD_ERROR("failed to close notification pipe fd: error = <%d>, <%s>", errsv, strerror(errsv));
@@ -278,7 +279,8 @@ bool BleGattNotifyPipe::onActivated()
             // this will stop the recording,
             XLOGD_INFO("remote end of notification pipe closed for %s", m_uuid.toString().c_str());
 
-            if (::close(m_pipeFd) != 0) {
+            XLOGD_INFO("closing fd <%d>", m_pipeFd);
+	    if (::close(m_pipeFd) != 0) {
                 int errsv = errno;
                 XLOGD_ERROR("failed to close pipe fd: error = <%d>, <%s>", errsv, strerror(errsv));
             }

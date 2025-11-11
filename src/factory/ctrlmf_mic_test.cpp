@@ -22,19 +22,17 @@
 #define FILENAME_WAV_NOISE  "/opt/logs/mic_test_noise.wav"
 #define FILENAME_WAV_SIGNAL "/opt/logs/mic_test_signal.wav"
 
-#ifndef CTRLMF_CUSTOM_AUDIO_ANALYSIS
-static bool ctrlmf_mic_test_audio_analyze(const char *output_filename, uint32_t level, ctrlmf_audio_frame_t audio_frames_noise, ctrlmf_audio_frame_t audio_frames_signal, uint32_t frame_qty, uint32_t mic_qty, double snr_min, double snr_max, double snr_var, ctrlmf_test_result_t *test_result);
-#endif
+static bool ctrlmf_mic_test_audio_analyze_default(const char *output_filename, uint32_t level, ctrlmf_audio_frame_t audio_frames_noise, ctrlmf_audio_frame_t audio_frames_signal, uint32_t frame_qty, uint32_t mic_qty, double snr_min, double snr_max, double snr_var, ctrlmf_test_result_t *test_result);
 
 #if defined(CTRLMF_THUNDER) && defined(CTRLMF_AUDIO_PLAYBACK)
 static bool ctrlmf_mic_test_via_audio_file(uint32_t duration, const char *output_filename, uint32_t level, const char *audio_filename, double snr_min, double snr_max, double snr_var, ctrlmf_test_result_t *test_result);
 #endif
 
-static bool ctrlmf_mic_test_via_ambient(uint32_t duration, const char *output_filename, uint32_t level, double snr_min, double snr_max, double snr_var, ctrlmf_test_result_t *test_result);
+static bool ctrlmf_mic_test_via_ambient(uint32_t duration, const char *output_filename, uint32_t level, double snr_min, double snr_max, double snr_var, ctrlmf_test_result_t *test_result, ctrlmf_mic_test_audio_analyze_t audio_analyze_func);
 static void ctrlmf_mic_test_audio_export(const char *filename, ctrlmf_audio_frame_t audio_frames, uint32_t frame_qty, uint32_t channel_qty);
 static void ctrlmf_wave_header_gen(uint8_t *header, uint16_t audio_format, uint16_t num_channels, uint32_t sample_rate, uint16_t bits_per_sample, uint32_t pcm_data_size);
 
-bool ctrlmf_mic_test_factory(uint32_t duration, const char *output_filename, uint32_t level, const char *audio_filename, double *snr_min, double *snr_max, double *snr_var, ctrlmf_test_result_t *test_result) {
+bool ctrlmf_mic_test_factory(uint32_t duration, const char *output_filename, uint32_t level, const char *audio_filename, double *snr_min, double *snr_max, double *snr_var, ctrlmf_test_result_t *test_result, ctrlmf_mic_test_audio_analyze_t audio_analyze_func) {
    if(!ctrlmf_is_initialized()) {
       XLOGD_ERROR("not initialized");
       return(false);
@@ -45,17 +43,17 @@ bool ctrlmf_mic_test_factory(uint32_t duration, const char *output_filename, uin
    
    if(audio_filename != NULL) {
       #if defined(CTRLMF_THUNDER) && defined(CTRLMF_AUDIO_PLAYBACK)
-      return(ctrlmf_mic_test_via_audio_file(duration, output_filename, level, audio_filename, snr_min_val, snr_max_val, snr_var_val, test_result));
+      return(ctrlmf_mic_test_via_audio_file(duration, output_filename, level, audio_filename, snr_min_val, snr_max_val, snr_var_val, test_result, audio_analyze_func));
       #else
       XLOGD_ERROR("audio playback is disabled");
       return(false);
       #endif
    }
-   return(ctrlmf_mic_test_via_ambient(duration, output_filename, level, snr_min_val, snr_max_val, snr_var_val, test_result));
+   return(ctrlmf_mic_test_via_ambient(duration, output_filename, level, snr_min_val, snr_max_val, snr_var_val, test_result, audio_analyze_func));
 }
 
 #if defined(CTRLMF_THUNDER) && defined(CTRLMF_AUDIO_PLAYBACK)
-bool ctrlmf_mic_test_via_audio_file(uint32_t duration, const char *output_filename, uint32_t level, const char *audio_filename, double snr_min, double snr_max, double snr_var, ctrlmf_test_result_t *test_result) {
+bool ctrlmf_mic_test_via_audio_file(uint32_t duration, const char *output_filename, uint32_t level, const char *audio_filename, double snr_min, double snr_max, double snr_var, ctrlmf_test_result_t *test_result, ctrlmf_mic_test_audio_analyze_t audio_analyze_func) {
    ctrlmf_audio_frame_t audio_frames_noise  = NULL;
    ctrlmf_audio_frame_t audio_frames_signal = NULL;
    bool result = false;
@@ -120,13 +118,16 @@ bool ctrlmf_mic_test_via_audio_file(uint32_t duration, const char *output_filena
       }
 
       XLOGD_INFO("analyze audio capture");
-      #ifndef CTRLMF_CUSTOM_AUDIO_ANALYSIS
-      if(!ctrlmf_mic_test_audio_analyze(output_filename, level, audio_frames_noise, audio_frames_signal, audio_frame_qty, MIC_CHANNEL_QTY, snr_min, snr_max, snr_var, test_result)) {
-      #else
-      if(!ctrlmf_mic_test_audio_analyze(CTRLMF_TEST_FACTORY, output_filename, level, audio_frames_noise, audio_frames_signal, audio_frame_qty, MIC_CHANNEL_QTY, test_result)) {
-      #endif
-         XLOGD_ERROR("unable to analyze audio");
-         break;
+      if(audio_analyze_func != NULL) {
+         if(!(*audio_analyze_func)(CTRLMF_TEST_FACTORY, output_filename, level, audio_frames_noise, audio_frames_signal, audio_frame_qty, MIC_CHANNEL_QTY, test_result)) {
+            XLOGD_ERROR("unable to analyze audio");
+            break;
+         }
+      } else {
+         if(!ctrlmf_mic_test_audio_analyze_default(output_filename, level, audio_frames_noise, audio_frames_signal, audio_frame_qty, MIC_CHANNEL_QTY, snr_min, snr_max, snr_var, test_result)) {
+            XLOGD_ERROR("unable to analyze audio");
+            break;
+         }
       }
       if(!ctrlmf_is_production()) {
          ctrlmf_mic_test_audio_export(FILENAME_WAV_NOISE,  audio_frames_noise,  audio_frame_qty, MIC_CHANNEL_QTY);
@@ -149,7 +150,7 @@ bool ctrlmf_mic_test_via_audio_file(uint32_t duration, const char *output_filena
 }
 #endif
 
-bool ctrlmf_mic_test_via_ambient(uint32_t duration, const char *output_filename, uint32_t level, double snr_min, double snr_max, double snr_var, ctrlmf_test_result_t *test_result) {
+bool ctrlmf_mic_test_via_ambient(uint32_t duration, const char *output_filename, uint32_t level, double snr_min, double snr_max, double snr_var, ctrlmf_test_result_t *test_result, ctrlmf_mic_test_audio_analyze_t audio_analyze_func) {
    ctrlmf_audio_frame_t audio_frames_signal = NULL;
    bool result = false;
    bool audio_capture_initialized = false;
@@ -193,13 +194,16 @@ bool ctrlmf_mic_test_via_ambient(uint32_t duration, const char *output_filename,
       }
 
       XLOGD_INFO("analyze audio capture");
-      #ifndef CTRLMF_CUSTOM_AUDIO_ANALYSIS
-      if(!ctrlmf_mic_test_audio_analyze(output_filename, level, NULL, audio_frames_signal, audio_frame_qty, MIC_CHANNEL_QTY, snr_min, snr_max, snr_var, test_result)) {
-      #else
-      if(!ctrlmf_mic_test_audio_analyze(CTRLMF_TEST_FACTORY, output_filename, level, NULL, audio_frames_signal, audio_frame_qty, MIC_CHANNEL_QTY, test_result)) {
-      #endif
-         XLOGD_ERROR("unable to analyze audio");
-         break;
+      if(audio_analyze_func != NULL) {
+         if(!(*audio_analyze_func)(CTRLMF_TEST_FACTORY, output_filename, level, NULL, audio_frames_signal, audio_frame_qty, MIC_CHANNEL_QTY, test_result)) {
+            XLOGD_ERROR("unable to analyze audio");
+            break;
+         }
+      } else {
+         if(!ctrlmf_mic_test_audio_analyze_default(output_filename, level, NULL, audio_frames_signal, audio_frame_qty, MIC_CHANNEL_QTY, snr_min, snr_max, snr_var, test_result)) {
+            XLOGD_ERROR("unable to analyze audio");
+            break;
+         }
       }
       if(!ctrlmf_is_production()) {
          ctrlmf_mic_test_audio_export(FILENAME_WAV_SIGNAL, audio_frames_signal, audio_frame_qty, MIC_CHANNEL_QTY);
@@ -217,8 +221,7 @@ bool ctrlmf_mic_test_via_ambient(uint32_t duration, const char *output_filename,
    return(result);
 }
 
-#ifndef CTRLMF_CUSTOM_AUDIO_ANALYSIS
-bool ctrlmf_mic_test_audio_analyze(const char *output_filename, uint32_t level, ctrlmf_audio_frame_t audio_frames_noise, ctrlmf_audio_frame_t audio_frames_signal, uint32_t frame_qty, uint32_t mic_qty, double snr_min, double snr_max, double snr_var, ctrlmf_test_result_t *test_result) {
+bool ctrlmf_mic_test_audio_analyze_default(const char *output_filename, uint32_t level, ctrlmf_audio_frame_t audio_frames_noise, ctrlmf_audio_frame_t audio_frames_signal, uint32_t frame_qty, uint32_t mic_qty, double snr_min, double snr_max, double snr_var, ctrlmf_test_result_t *test_result) {
    double pcm_sq_sum_noise[mic_qty];
    double pcm_sq_sum_signal[mic_qty];
 
@@ -295,7 +298,6 @@ bool ctrlmf_mic_test_audio_analyze(const char *output_filename, uint32_t level, 
    }
    return(true);
 }
-#endif
 
 void ctrlmf_mic_test_audio_export(const char *filename, ctrlmf_audio_frame_t audio_frames, uint32_t frame_qty, uint32_t channel_qty) {
    uint8_t header[WAVE_HEADER_SIZE_MIN];

@@ -99,8 +99,9 @@ int main(int argc, char* argv[]) {
    }
 
    bool requires_audio_playback = (g_ctrlmf_opts.audio_file_path != NULL) ? true : false;
+   ctrlmf_mic_test_audio_analyze_t audio_analyze_func = NULL;
 
-   if(!ctrlmf_init(level, requires_audio_playback)) {
+   if(!ctrlmf_init(level, requires_audio_playback, &audio_analyze_func)) {
       XLOGD_ERROR("ctrlmf_main: init failed");
    } else {
       XLOGD_INFO("ctrlmf_main: Run main loop");
@@ -118,7 +119,7 @@ int main(int argc, char* argv[]) {
       if(g_ctrlmf_opts.mic_test_factory) {
          #ifdef CTRLMF_LOCAL_MIC
          ctrlmf_test_result_t test_result;
-         if(!ctrlmf_mic_test_factory(g_ctrlmf_opts.mic_test_duration, g_ctrlmf_opts.output_file_path, g_ctrlmf_opts.mic_test_level, g_ctrlmf_opts.audio_file_path, g_ctrlmf_opts.mic_test_snr_min, g_ctrlmf_opts.mic_test_snr_max, g_ctrlmf_opts.mic_test_snr_var, &test_result)) {
+         if(!ctrlmf_mic_test_factory(g_ctrlmf_opts.mic_test_duration, g_ctrlmf_opts.output_file_path, g_ctrlmf_opts.mic_test_level, g_ctrlmf_opts.audio_file_path, g_ctrlmf_opts.mic_test_snr_min, g_ctrlmf_opts.mic_test_snr_max, g_ctrlmf_opts.mic_test_snr_var, &test_result, audio_analyze_func)) {
             XLOGD_ERROR("ctrlmf_main: mic test failed");
          } else {
             XLOGD_INFO("ctrlmf_main: test result <%s>", test_result.pass ? "PASS" : "FAIL");

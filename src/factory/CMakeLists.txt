@@ -17,8 +17,6 @@
 # limitations under the License.
 ##########################################################################
 
-option(FACTORY_AUDIO_PLAYBACK "AUDIO PLAYBACK" OFF)
-
 add_executable(controlFactory ctrlmf_main.c)
 add_library(ctrlm-fta SHARED)
 set_target_properties( ctrlm-fta PROPERTIES
@@ -43,11 +41,6 @@ target_sources(ctrlm-fta PRIVATE
 
 target_link_libraries(ctrlm-fta c rdkversion dbus-1 glib-2.0 IARMBus xr-voice-sdk pthread nopoll secure_wrapper)
 target_link_libraries(controlFactory c ctrlm-fta secure_wrapper)
-
-if(CUSTOM_AUDIO_ANALYSIS_LIB)
-   add_compile_definitions(PRIVATE CTRLMF_CUSTOM_AUDIO_ANALYSIS)
-   target_link_libraries(controlFactory ${CUSTOM_AUDIO_ANALYSIS_LIB})
-endif()
 
 if(CUSTOM_AUTH_LIB)
    add_compile_definitions(PRIVATE CTRLMF_WSS_ENABLED)

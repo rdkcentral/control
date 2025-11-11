@@ -24,19 +24,6 @@
 #include <map>
 #include <vector>
 
-
-typedef enum {
-    CTRLM_IRDB_MODE_OFFLINE,
-    CTRLM_IRDB_MODE_ONLINE,
-    CTRLM_IRDB_MODE_HYBRID
-} ctrlm_irdb_mode_t;
-
-typedef enum {
-    CTRLM_IRDB_DEV_TYPE_TV,
-    CTRLM_IRDB_DEV_TYPE_AVR,
-    CTRLM_IRDB_DEV_TYPE_INVALID
-} ctrlm_irdb_dev_type_t;
-
 typedef enum {
     CTRLM_IRDB_KEY_POWER_OFF = 0,
     CTRLM_IRDB_KEY_POWER_ON,
@@ -60,18 +47,6 @@ typedef std::vector<std::string> ctrlm_irdb_entry_id_list_t;
 
 typedef std::map<ctrlm_irdb_key_code_t, std::vector<unsigned char>> ctrlm_irdb_ir_waveforms_t;
 
-typedef struct {
-    ctrlm_irdb_dev_type_t       type;
-    std::string                 id;
-    ctrlm_irdb_ir_waveforms_t   waveforms;
-} ctrlm_irdb_ir_code_set_t;
-
-typedef struct {
-    std::string manufacturer;
-    std::string model;
-    std::string id;
-    int         rank;
-} ctrlm_irdb_autolookup_entry_ranked_t;
 
 typedef std::vector<ctrlm_irdb_autolookup_entry_ranked_t> ctrlm_irdb_autolookup_ranked_list_t;
 

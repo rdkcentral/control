@@ -24,6 +24,8 @@
 #include <map>
 #include <vector>
 
+#include "ctrlm_irdb.h"
+
 typedef enum {
     CTRLM_IRDB_KEY_POWER_OFF = 0,
     CTRLM_IRDB_KEY_POWER_ON,
@@ -41,14 +43,14 @@ typedef struct {
     unsigned char rcu_support_bitmask;
 } ctrlm_irdb_vendor_info_t;
 
-typedef std::vector<std::string> ctrlm_irdb_manufacturer_list_t;
-typedef std::vector<std::string> ctrlm_irdb_model_list_t;
-typedef std::vector<std::string> ctrlm_irdb_entry_id_list_t;
+//typedef std::vector<std::string> ctrlm_irdb_manufacturer_list_t;
+//typedef std::vector<std::string> ctrlm_irdb_model_list_t;
+//typedef std::vector<std::string> ctrlm_irdb_entry_id_list_t;
 
 typedef std::map<ctrlm_irdb_key_code_t, std::vector<unsigned char>> ctrlm_irdb_ir_waveforms_t;
 
 
-typedef std::vector<ctrlm_irdb_autolookup_entry_ranked_t> ctrlm_irdb_autolookup_ranked_list_t;
+//typedef std::vector<ctrlm_irdb_autolookup_entry_ranked_t> ctrlm_irdb_autolookup_ranked_list_t;
 
 
 #ifdef __cplusplus

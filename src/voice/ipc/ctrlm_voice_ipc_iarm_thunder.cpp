@@ -768,6 +768,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                                                            XLOGD_ERROR("zero length audio data <%s>", str_audio_file.c_str());
                                                            result = false;
                                                        }
+                                                       XLOGD_INFO("closing fd <%d>", audio_fd);
                                                        close(audio_fd);
                                                    }
                                                }
@@ -789,6 +790,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                         voice_status != VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
                         XLOGD_ERROR("Failed opening voice session <%s>", ctrlm_voice_session_response_status_str(voice_status));
                         if(fd >= 0) {
+                            XLOGD_INFO("closing fd <%d>", fd);
                             close(fd);
                         }
                         result = false;

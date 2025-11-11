@@ -131,6 +131,8 @@ void *ctrlmf_ws_main(void *param) {
       return(NULL);
    }
    ctrlmf_ws_thread_state_t state;
+
+   XLOGD_INFO("TID <%d>", (int)gettid());
    
    state.audio_frames     = params.audio_frames;
    state.audio_frame_qty  = params.audio_frame_qty;

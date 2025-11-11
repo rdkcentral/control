@@ -573,6 +573,7 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
             }
 
             if (mtu < 23) {
+                XLOGD_INFO("closing fd <%d>", pipeFd);
                 close(pipeFd);
 
                 XLOGD_ERROR("invalid MTU size on the notify pipe (%hd bytes)", mtu);
@@ -589,6 +590,7 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
             m_notifyPipe = make_shared<BleGattNotifyPipe>(pipeFd, mtu, m_uuid);
 
             //BleGattNotifyPipe dups the pipe, so close the original here.
+            XLOGD_INFO("closing fd <%d>", pipeFd);
             close(pipeFd);
 
             if (!m_notifyPipe || !m_notifyPipe->isValid()) {

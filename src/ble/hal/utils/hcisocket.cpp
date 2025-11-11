@@ -31,7 +31,7 @@
 // #include "linux/containerhelpers.h"
 
 #include "ctrlm_log_ble.h"
-
+#include <unistd.h>
 
 
 using namespace std;
@@ -434,6 +434,7 @@ HciSocketImpl::HciSocketImpl(uint hciDeviceId, int netNsFd)
 
     // setup the hci socket
     if (!setSocketFilter(sockFd) || !bindSocket(sockFd, hciDeviceId)) {
+        XLOGD_INFO("closing <%d>", sockFd);
         close(sockFd);
         return;
     }
@@ -462,9 +463,11 @@ HciSocketImpl::~HciSocketImpl()
         ctrlm_utils_thread_join(&m_socketThread, 2);
     }
     if (FD_SIGNAL(m_exitEventFds) > -1) {
+        XLOGD_INFO("closing <%d>", FD_SIGNAL(m_exitEventFds));
         close(FD_SIGNAL(m_exitEventFds));
     }
     if (FD_RECV(m_exitEventFds) > -1) {
+        XLOGD_INFO("closing <%d>", FD_RECV(m_exitEventFds));
         close(FD_RECV(m_exitEventFds));
     }
 
@@ -1058,6 +1061,7 @@ void *SocketThread(void *data)
     sem_post(&socketImpl->m_socketThreadSem);
 
     XLOGD_INFO("Enter main loop for HCI socket thread");
+    XLOGD_INFO("TID <%d>", (int)gettid());
     do {
         if (FD_RECV(socketImpl->m_exitEventFds) < 0 || socketImpl->m_hciSocket < 0) {
             XLOGD_ERROR("one of the fds is invalid, exiting thread");

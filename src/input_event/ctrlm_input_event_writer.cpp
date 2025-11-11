@@ -73,6 +73,7 @@ void ctrlm_input_event_writer::shutdown(void) {
         return;
     }
     ioctl(fd_, UI_DEV_DESTROY);
+    XLOGD_INFO("closing fd <%d>", fd_);
     close(fd_);
     fd_ = -1;
     initialized_ = false;

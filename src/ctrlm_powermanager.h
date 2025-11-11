@@ -16,10 +16,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
+#ifndef __CTRLM_POWERMANAGER_H__
+#define __CTRLM_POWERMANAGER_H__
 
-#include "ctrlm_irdb_factory.h"
-#include "ctrlm_irdb_stub.h"
+#include "ctrlm_ipc.h"
 
-ctrlm_irdb_t *ctrlm_irdb_create(bool platform_tv) {
-    return(new ctrlm_irdb_stub_t(CTRLM_IRDB_MODE_OFFLINE, platform_tv));
-}
+class ctrlm_powermanager_t {
+public:
+   virtual ~ctrlm_powermanager_t();
+   
+   static ctrlm_powermanager_t *get_instance();
+   static void destroy_instance();
+   virtual ctrlm_power_state_t get_power_state() = 0;
+   #ifdef NETWORKED_STANDBY_MODE_ENABLED
+   virtual bool get_networked_standby_mode() = 0;
+   virtual bool get_wakeup_reason_voice() = 0;
+   #endif
+};
+
+#endif

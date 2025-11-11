@@ -28,6 +28,7 @@
 #include "ctrlm_ipc_voice.h"
 #include "ctrlm.h"
 #include "ctrlm_auth.h"
+#include "ctrlm_auth_certificate.h"
 #include "jansson.h"
 #include "json_config.h"
 #include "xr_timestamp.h"
@@ -312,7 +313,7 @@ typedef struct {
    uint8_t                     opus_encoder_params[CTRLM_RCU_RIB_ATTR_LEN_OPUS_ENCODING_PARAMS];
    bool                        force_toggle_fallback;
    bool                        telemetry_session_stats;
-   #ifdef DEEP_SLEEP_ENABLED
+   #ifdef NETWORKED_STANDBY_MODE_ENABLED
    xrsr_dst_params_t           dst_params_standby;
    #endif
    xrsr_dst_params_t           dst_params_low_latency;
@@ -509,8 +510,6 @@ class ctrlm_voice_t {
     std::string                           voice_stb_data_stb_name_get() const;
     virtual void                          voice_stb_data_account_number_set(std::string &account_number);
     std::string                           voice_stb_data_account_number_get() const;
-    virtual void                          voice_stb_data_receiver_id_set(std::string &receiver_id);
-    std::string                           voice_stb_data_receiver_id_get() const;
     virtual void                          voice_stb_data_device_id_set(std::string &device_id);
     std::string                           voice_stb_data_device_id_get() const;
     virtual void                          voice_stb_data_device_type_set(ctrlm_device_type_t device_type);
@@ -610,7 +609,7 @@ public:
     virtual void                  voice_server_return_code_callback(const uuid_t uuid, const char *reason, long ret_code);
     virtual void                  voice_session_transcription_callback(const uuid_t uuid, const char *transcription);
     virtual void                  voice_power_state_change(ctrlm_power_state_t power_state);
-    #ifdef DEEP_SLEEP_ENABLED
+    #ifdef NETWORKED_STANDBY_MODE_ENABLED
     virtual void                  voice_nsm_session_request(void);
     #endif
     virtual void                  voice_keyword_verified_action(void);
@@ -657,7 +656,6 @@ public:
     std::string              account_number;
     std::string              device_id;
     ctrlm_device_type_t      device_type;
-    std::string              receiver_id;
     std::string              partner_id;
     std::string              experience;
     char                     sat_token[XRSR_SAT_TOKEN_LEN_MAX];

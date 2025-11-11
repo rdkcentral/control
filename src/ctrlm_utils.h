@@ -31,17 +31,18 @@
 #include "ctrlm_rcu.h"
 #include "ctrlm_hal.h"
 #include "ctrlm_hal_rf4ce.h"
-#include "ctrlm_irdb.h"
+#include "ctrlm_irdb_plugin.h"
 #include "ctrlm_log.h"
 #include "libIBus.h"
 #include "libIBusDaemon.h"
 #include <jansson.h>
-#ifdef DEEP_SLEEP_ENABLED
+#ifdef NETWORKED_STANDBY_MODE_ENABLED
 #include "deepSleepMgr.h"
 #endif
 #ifdef TELEMETRY_SUPPORT
 #include <telemetry2_0.h>
 #endif
+#include <memory>
 
 #define TIMEOUT_TAG_INVALID (0)
 
@@ -115,6 +116,24 @@ bool ctrlm_json_to_iarm_call_data_result(json_t *obj, T iarm)
     return true;
 }
 
+template<typename T>
+class gmain_loop_obj_user_data
+{
+public:
+    std::shared_ptr<bool> m_isAlive;
+    T                    *m_ptr;
+
+    gmain_loop_obj_user_data(std::shared_ptr<bool> isAlive, T *obj)
+        : m_isAlive(isAlive)
+        , m_ptr(obj)
+    {}
+
+    bool is_alive(void) const
+    {
+        return ((m_isAlive != nullptr) && (*m_isAlive == true));
+    }
+};
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -122,11 +141,7 @@ extern "C"
 
 #ifdef BREAKPAD_SUPPORT
 void ctrlm_crash_ctrlm_device_update(void);
-#ifdef CTRLM_RF4CE_HAL_QORVO
-void ctrlm_crash_rf4ce_qorvo(void);
-#else
-void ctrlm_crash_rf4ce_ti(void);
-#endif
+void ctrlm_crash_rf4ce(void);
 void ctrlm_crash_ble(void);
 void ctrlm_crash_vsdk(void);
 void ctrlm_crash_ctrlm_main(void);
@@ -147,7 +162,7 @@ void ctrlm_print_controller_status(const char *prefix, ctrlm_controller_status_t
 const char *ctrlm_main_queue_msg_type_str(ctrlm_main_queue_msg_type_t type);
 const char *ctrlm_controller_status_cmd_result_str(ctrlm_controller_status_cmd_result_t result);
 
-
+uint16_t ctrlm_key_code_to_linux_key(ctrlm_key_code_t code);
 const char *ctrlm_key_status_str(ctrlm_key_status_t key_status);
 const char *ctrlm_key_code_str(ctrlm_key_code_t key_code);
 const char *ctrlm_linux_key_code_str(uint16_t code, bool mask);
@@ -190,7 +205,7 @@ const char *ctrlm_ir_state_str(ctrlm_ir_state_t state);
 const char *ctrlm_power_state_str(ctrlm_power_state_t state);
 const char *ctrlm_device_type_str(ctrlm_device_type_t device_type);
 
-#ifdef DEEP_SLEEP_ENABLED
+#ifdef NETWORKED_STANDBY_MODE_ENABLED
 const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason);
 #endif
 const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config);
@@ -199,7 +214,6 @@ const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config);
 const char *ctrlm_t2_error_str(T2ERROR error);
 #endif
 
-const char *ctrlm_irdb_vendor_str(ctrlm_irdb_vendor_t vendor);
 const char *ctrlm_rf_pair_state_str(ctrlm_rf_pair_state_t state);
 const char *ctrlm_rcu_upgrade_state_str(ctrlm_rcu_upgrade_state_t state);
 
@@ -236,8 +250,6 @@ void        ctrlm_archive_extract_tmp_dir_make(const std::string &tmp_dir_path);
 void        ctrlm_archive_extract_ble_tmp_dir_make(const std::string &tmp_dir_path);
 bool        ctrlm_archive_extract_ble_check_dir_exists(const std::string &path);
 std::string ctrlm_xml_tag_text_get(const std::string &xml, const std::string &tag);
-
-ctrlm_power_state_t ctrlm_iarm_power_state_map(IARM_Bus_PowerState_t iarm_power_state);
 
 bool ctrlm_utils_calc_crc32( const char *filename, uLong *crc_ret );
 bool ctrlm_utils_move_file_to_secure_nvm(const char *path);

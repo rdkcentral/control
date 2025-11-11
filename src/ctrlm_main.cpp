@@ -25,6 +25,7 @@
 #include <glib.h>
 #include <string.h>
 #include <semaphore.h>
+#include <dlfcn.h>
 #include <memory>
 #include <algorithm>
 #include <fstream>
@@ -53,12 +54,15 @@
 #include "ctrlm_validation.h"
 #include "ctrlm_recovery.h"
 #include "ctrlm_ir_controller.h"
+#include "ctrlm_powermanager.h"
 #ifdef CTRLM_THUNDER
 #include "ctrlm_thunder_plugin_device_info.h"
+#include "ctrlm_thunder_plugin_system.h"
+#include "ctrlm_rcp_ipc_iarm_thunder.h"
 #endif
 #ifdef AUTH_ENABLED
 #include "ctrlm_auth.h"
-#include "ctrlm_hal_certificate.h"
+#include "ctrlm_auth_certificate.h"
 #endif
 #include "ctrlm_rfc.h"
 #include "ctrlm_telemetry.h"
@@ -71,15 +75,13 @@
 #include "dsMgr.h"
 #include "dsRpc.h"
 #include "dsDisplay.h"
-#ifdef SYSTEMD_NOTIFY
 #include <systemd/sd-daemon.h>
-#endif
 #include <systemd/sd-bus.h>
 #include "xr_voice_sdk.h"
 #include "ctrlm_voice_obj.h"
 #include "ctrlm_voice_obj_generic.h"
 #include "ctrlm_voice_endpoint.h"
-#include "ctrlm_irdb_factory.h"
+#include "ctrlm_irdb_interface.h"
 #ifdef FDC_ENABLED
 #include "xr_fdc.h"
 #endif
@@ -87,7 +89,6 @@
 #ifdef MEMORY_LOCK
 #include "clnl.h"
 #endif
-#include "ctrlm_rcp_ipc_iarm_thunder.h"
 
 using namespace std;
 
@@ -187,7 +188,6 @@ typedef struct {
    sem_t                              ctrlm_utils_sem;
    GAsyncQueue *                      queue;
    string                             stb_name;
-   string                             receiver_id;
    string                             device_id;
    ctrlm_device_type_t                device_type;
    string                             service_account_id;
@@ -204,7 +204,6 @@ typedef struct {
    string                             image_build_time;
    string                             db_path;
    string                             minidump_path;
-   gboolean                           has_receiver_id;
    gboolean                           has_device_id;
    gboolean                           has_device_type;
    gboolean                           has_service_account_id;
@@ -213,6 +212,17 @@ typedef struct {
    gboolean                           has_service_access_token;
    gboolean                           sat_enabled;
    gboolean                           production_build;
+   bool                               rf4ce_enabled;
+   void *                             rf4ce_hal_handle;
+   ctrlm_hal_rf4ce_main_t             rf4ce_hal_main;
+   bool                               rf4ce_asb_supported;
+   void *                             rf4ce_asb_handle;
+
+   ctrlm_hal_rf4ce_asb_init_t         rf4ce_hal_asb_init;
+   ctrlm_hal_rf4ce_asb_methods_get_t  rf4ce_hal_asb_methods_get;
+   ctrlm_hal_rf4ce_asb_key_derive_t   rf4ce_hal_asb_key_derive;
+   ctrlm_hal_rf4ce_asb_destroy_t      rf4ce_hal_asb_destroy;
+
    guint                              thread_monitor_timeout_val;
    guint                              thread_monitor_timeout_tag;
    guint                              thread_monitor_index;
@@ -261,22 +271,24 @@ typedef struct {
    vector<ctrlm_thread_monitor_t>     monitor_threads;
    int                                return_code;
    ctrlm_voice_t                     *voice_session;
-   ctrlm_irdb_t                      *irdb;
+   ctrlm_irdb_interface_t            *irdb;
    ctrlm_telemetry_t                 *telemetry;
    ctrlm_cs_values_t                  cs_values;
 #ifdef AUTH_ENABLED
    ctrlm_auth_t                      *authservice;
-   ctrlm_hal_certificate_t           *hal_certificate;
+   ctrlm_auth_certificate_t          *auth_certificate;
 #endif
 #ifdef CTRLM_THUNDER
    Thunder::DeviceInfo::ctrlm_thunder_plugin_device_info_t *thunder_device_info;
+   Thunder::System::ctrlm_thunder_plugin_system_t *thunder_system;
 #endif
+   ctrlm_powermanager_t              *power_manager;
    ctrlm_power_state_t                power_state;
    gboolean                           auto_ack;
    gboolean                           local_conf;
    guint                              telemetry_report_interval;
    ctrlm_ir_controller_t             *ir_controller;
-#ifdef DEEP_SLEEP_ENABLED
+#ifdef NETWORKED_STANDBY_MODE_ENABLED
    gboolean                           wake_with_voice_allowed;
 #endif
 } ctrlm_global_t;
@@ -287,10 +299,6 @@ static ctrlm_global_t g_ctrlm;
 #ifdef AUTH_ENABLED
 static gboolean ctrlm_has_authservice_data(void);
 static gboolean ctrlm_load_authservice_data(void);
-#ifdef AUTH_RECEIVER_ID
-static gboolean ctrlm_load_receiver_id(void);
-static void     ctrlm_main_has_receiver_id_set(gboolean has_id);
-#endif
 #ifdef AUTH_DEVICE_ID
 static gboolean ctrlm_load_device_id(void);
 static void     ctrlm_main_has_device_id_set(gboolean has_id);
@@ -319,7 +327,11 @@ static void     ctrlm_device_type_loaded(ctrlm_device_type_t device_type);
 static void     ctrlm_main_has_device_type_set(gboolean has_type);
 #ifdef CTRLM_THUNDER
 static void ctrlm_device_info_activated(void *user_data);
+static void ctrlm_system_activated(Thunder::plugin_state_t state, void *user_data);
 #endif
+
+static void *   ctrlm_load_plugin_rf4ce_hal(void);
+static void *   ctrlm_load_plugin_rf4ce_asb(void);
 
 static gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, json_t **json_obj_voice, json_t **json_obj_device_update, json_t **json_obj_validation, json_t **json_obj_vsdk);
 static gboolean ctrlm_iarm_init(void);
@@ -360,7 +372,6 @@ static void     ctrlm_main_update_export_controller_list(void);
 static void     ctrlm_main_iarm_call_ir_remote_usage_get_(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage);
 static void     ctrlm_main_iarm_call_pairing_metrics_get_(ctrlm_main_iarm_call_pairing_metrics_t *pairing_metrics);
 static void     ctrlm_main_iarm_call_last_key_info_get_(ctrlm_main_iarm_call_last_key_info_t *last_key_info);
-static void     ctrlm_main_iarm_call_control_service_end_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 static void     ctrlm_stop_one_touch_autobind_(ctrlm_network_id_t network_id);
 static void     ctrlm_close_pairing_window_(ctrlm_network_id_t network_id, ctrlm_close_pairing_window_reason reason);
 static void     ctrlm_pairing_window_bind_status_set_(ctrlm_bind_status_t bind_status);
@@ -435,7 +446,7 @@ int main(int argc, char *argv[]) {
    // Set stdout to be line buffered
    setvbuf(stdout, NULL, _IOLBF, 0);
 
-   XLOGD_INFO("name <%-24s> version <%-7s> branch <%-20s> commit <%s>", "ctrlm-main", CTRLM_MAIN_VERSION, CTRLM_MAIN_BRANCH, CTRLM_MAIN_COMMIT_ID);
+   XLOGD_INFO("name <%-24s> version <%-9s> branch <%-20s> commit <%s>", "ctrlm-main", CTRLM_MAIN_VERSION, CTRLM_MAIN_BRANCH, CTRLM_MAIN_COMMIT_ID);
 
 #ifdef MEMORY_LOCK
    clnl_init();
@@ -504,7 +515,7 @@ int main(int argc, char *argv[]) {
    for(uint32_t index = 0; index < qty_vsdk; index++) {
       vsdk_version_info_t *entry = &version_info[index];
       if(entry->name != NULL) {
-         XLOGD_INFO("name <%-24s> version <%-7s> branch <%-20s> commit <%s>", entry->name ? entry->name : "NULL", entry->version ? entry->version : "NULL", entry->branch ? entry->branch : "NULL", entry->commit_id ? entry->commit_id : "NULL");
+         XLOGD_INFO("name <%-24s> version <%-9s> branch <%-20s> commit <%s>", entry->name ? entry->name : "NULL", entry->version ? entry->version : "NULL", entry->branch ? entry->branch : "NULL", entry->commit_id ? entry->commit_id : "NULL");
       }
    }
    vsdk_init();
@@ -520,6 +531,19 @@ int main(int argc, char *argv[]) {
    g_ctrlm.main_thread                    = NULL;
    g_ctrlm.queue                          = NULL;
    g_ctrlm.production_build               = true;
+   g_ctrlm.rf4ce_hal_handle               = ctrlm_load_plugin_rf4ce_hal();
+   g_ctrlm.rf4ce_enabled                  = (NULL == g_ctrlm.rf4ce_hal_handle) ? false : true;
+   if(g_ctrlm.rf4ce_enabled) { // Check for ASB support
+      g_ctrlm.rf4ce_asb_handle            = ctrlm_load_plugin_rf4ce_asb();
+      g_ctrlm.rf4ce_asb_supported         = (NULL == g_ctrlm.rf4ce_asb_handle) ? false : true;
+   } else {
+      g_ctrlm.rf4ce_asb_handle            = NULL;
+      g_ctrlm.rf4ce_asb_supported         = false;
+      g_ctrlm.rf4ce_hal_asb_init          = NULL;
+      g_ctrlm.rf4ce_hal_asb_methods_get   = NULL;
+      g_ctrlm.rf4ce_hal_asb_key_derive    = NULL;
+      g_ctrlm.rf4ce_hal_asb_destroy       = NULL;
+   }
    g_ctrlm.has_service_access_token       = false;
    g_ctrlm.sat_enabled                    = true;
    g_ctrlm.service_access_token_expiration_tag = 0;
@@ -562,13 +586,13 @@ int main(int argc, char *argv[]) {
    //g_ctrlm.precomission_table             = g_hash_table_new(g_str_hash, g_str_equal);
    g_ctrlm.loading_db                     = false;
    g_ctrlm.return_code                    = 0;
-   g_ctrlm.power_state                    = ctrlm_main_iarm_call_get_power_state();
+   g_ctrlm.power_manager                  = ctrlm_powermanager_t::get_instance();
+   g_ctrlm.power_state                    = ctrlm_main_get_system_power_state();
    g_ctrlm.auto_ack                       = true;
    g_ctrlm.local_conf                     = false;
    g_ctrlm.telemetry                      = NULL;
    g_ctrlm.telemetry_report_interval      = JSON_INT_VALUE_CTRLM_GLOBAL_TELEMETRY_REPORT_INTERVAL;
    g_ctrlm.service_access_token.clear();
-   g_ctrlm.has_receiver_id                = false;
    g_ctrlm.has_device_id                  = false;
    g_ctrlm.has_device_type                = false;
    g_ctrlm.has_service_account_id         = false;
@@ -580,9 +604,9 @@ int main(int argc, char *argv[]) {
    g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_UNKNOWN;
    g_ctrlm.last_key_info.is_screen_bind_mode  = false;
    g_ctrlm.last_key_info.remote_keypad_config = CTRLM_REMOTE_KEYPAD_CONFIG_INVALID;
-#ifdef DEEP_SLEEP_ENABLED
+   #ifdef NETWORKED_STANDBY_MODE_ENABLED
    g_ctrlm.wake_with_voice_allowed            = false;
-#endif
+   #endif
    errno_t safec_rc = strcpy_s(g_ctrlm.last_key_info.source_name, sizeof(g_ctrlm.last_key_info.source_name), ctrlm_rcu_ir_remote_types_str(g_ctrlm.last_key_info.last_ir_remote_type));
    ERR_CHK(safec_rc);
 
@@ -668,14 +692,14 @@ int main(int argc, char *argv[]) {
 
 #ifdef AUTH_ENABLED
    XLOGD_INFO("ctrlm_auth init");
-   g_ctrlm.authservice     = ctrlm_auth_service_create(g_ctrlm.server_url_authservice);
-   g_ctrlm.hal_certificate = ctrlm_hal_certificate_get();
+   g_ctrlm.authservice      = ctrlm_auth_service_create(g_ctrlm.server_url_authservice);
+   g_ctrlm.auth_certificate = ctrlm_auth_certificate_get();
 
    ctrlm_voice_cert_t device_cert;
    bool ocsp_verify_stapling = false;
    bool ocsp_verify_ca       = false;
 
-   if(!g_ctrlm.hal_certificate->device_cert_get(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
+   if(!g_ctrlm.auth_certificate->device_cert_get(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
       XLOGD_ERROR("unable to get device certificate");
    } else {
       if(!g_ctrlm.voice_session->voice_stb_data_device_certificate_set(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
@@ -783,10 +807,12 @@ int main(int argc, char *argv[]) {
    g_ctrlm.ir_controller->db_load();
    g_ctrlm.ir_controller->print_status();
 
+   #ifdef CTRLM_THUNDER
    ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
    if (rcp_ipc) {
        rcp_ipc->register_ipc();
    }
+   #endif
 
    XLOGD_INFO("init voice");
    g_ctrlm.voice_session->voice_configure_config_file_json(json_obj_voice, json_obj_vsdk, g_ctrlm.local_conf );
@@ -838,11 +864,6 @@ int main(int argc, char *argv[]) {
 
    vsdk_term();
 
-   if(g_ctrlm.irdb != NULL) {
-      delete g_ctrlm.irdb;
-      g_ctrlm.irdb = NULL;
-   }
-
    sem_destroy(&g_ctrlm.service_access_token_semaphore);
 
 #if AUTH_ENABLED
@@ -869,6 +890,20 @@ int main(int argc, char *argv[]) {
    ctrlm_telemetry_t::destroy_instance();
    #endif
    ctrlm_ir_controller_t::destroy_instance();
+   ctrlm_powermanager_t::destroy_instance();
+   ctrlm_irdb_interface_t::destroy_instance();
+
+   if(g_ctrlm.rf4ce_asb_handle != NULL) {
+      XLOGD_INFO("unload rf4ce asb hal");
+      dlclose(g_ctrlm.rf4ce_asb_handle);
+      g_ctrlm.rf4ce_asb_handle = NULL;
+   }
+
+   if(g_ctrlm.rf4ce_hal_handle != NULL) {
+      XLOGD_INFO("unload rf4ce hal");
+      dlclose(g_ctrlm.rf4ce_hal_handle);
+      g_ctrlm.rf4ce_hal_handle = NULL;
+   }
 
    XLOGD_INFO("exit program");
    return (g_ctrlm.return_code);
@@ -1006,11 +1041,7 @@ gboolean ctrlm_thread_monitor(gpointer user_data) {
                } else if(0 == strncmp(it->name, CTRLM_THREAD_NAME_VOICE_SDK,     sizeof(CTRLM_THREAD_NAME_VOICE_SDK))) {
                   ctrlm_crash_vsdk();
                } else if(0 == strncmp(it->name, CTRLM_THREAD_NAME_RF4CE,         sizeof(CTRLM_THREAD_NAME_RF4CE))) {
-                  #ifdef CTRLM_RF4CE_HAL_QORVO
-                  ctrlm_crash_rf4ce_qorvo();
-                  #else
-                  ctrlm_crash_rf4ce_ti();
-                  #endif
+                  ctrlm_crash_rf4ce();
                } else if(0 == strncmp(it->name, CTRLM_THREAD_NAME_BLE,           sizeof(CTRLM_THREAD_NAME_BLE))) {
                   ctrlm_crash_ble();
                } else if(0 == strncmp(it->name, CTRLM_THREAD_NAME_DATABASE,      sizeof(CTRLM_THREAD_NAME_DATABASE))) {
@@ -1285,31 +1316,25 @@ gboolean ctrlm_load_version(void) {
    return(ret_val == 0);
 }
 
-gboolean ctrlm_load_device_mac(void) {
-   gboolean ret = false;
+#ifdef CTRLM_THUNDER
+void ctrlm_system_activated(Thunder::plugin_state_t state, void *user_data) {
    std::string mac;
-   std::string file;
-   std::ifstream ifs;
-   const char *interface = NULL;
-
-   // First check environment variable to find ESTB interface, or fall back to default
-   interface = getenv("ESTB_INTERFACE");
-   file = "/sys/class/net/" + std::string((interface != NULL ? interface : CTRLM_DEFAULT_DEVICE_MAC_INTERFACE)) + "/address";
-
-   // Open file and read mac address
-   ifs.open(file.c_str(), std::ifstream::in);
-   if(ifs.is_open()) {
-      ifs >> mac;
-      std::transform(mac.begin(), mac.end(), mac.begin(), ::toupper);
-      g_ctrlm.device_mac = mac;
-      ret = true;
-      XLOGD_INFO("Device Mac set to <%s>", ctrlm_is_pii_mask_enabled() ? "***" : mac.c_str());
+   if (!g_ctrlm.thunder_system->get_device_info_mac(mac)) {
+       g_ctrlm.device_mac = "";
+       XLOGD_ERROR("Failed to get MAC address for device mac");
    } else {
-      XLOGD_ERROR("Failed to get MAC address for device mac");
-      g_ctrlm.device_mac = "UNKNOWN";
+       g_ctrlm.device_mac = mac;
+       XLOGD_INFO("Device Mac set to <%s>", ctrlm_is_pii_mask_enabled() ? "***" : mac.c_str());
    }
+}
+#endif
 
-   return(ret);
+gboolean ctrlm_load_device_mac(void) {
+#ifdef CTRLM_THUNDER
+   g_ctrlm.thunder_system = Thunder::System::ctrlm_thunder_plugin_system_t::getInstance();
+   g_ctrlm.thunder_system->add_activation_handler((Thunder::Plugin::plugin_activation_handler_t)ctrlm_system_activated);
+#endif
+   return(true);
 }
 
 #ifdef CTRLM_THUNDER
@@ -1333,7 +1358,7 @@ void ctrlm_device_type_loaded(ctrlm_device_type_t device_type) {
       g_ctrlm.voice_session->voice_stb_data_device_type_set(g_ctrlm.device_type);
 
       XLOGD_INFO("create IRDB object");
-      g_ctrlm.irdb = ctrlm_irdb_create((g_ctrlm.device_type == CTRLM_DEVICE_TYPE_TV) ? true : false);
+      g_ctrlm.irdb = ctrlm_irdb_interface_t::get_instance((g_ctrlm.device_type == CTRLM_DEVICE_TYPE_TV) ? true : false);
 
       ctrlm_main_has_device_type_set(true);
    }
@@ -1367,31 +1392,6 @@ void ctrlm_main_auth_start_poll() {
                                                          ctrlm_authservice_poll,
                                                          NULL);
 }
-
-#ifdef AUTH_RECEIVER_ID
-gboolean ctrlm_main_has_receiver_id_get(void) {
-   return(g_ctrlm.has_receiver_id);
-}
-
-void ctrlm_main_has_receiver_id_set(gboolean has_id) {
-   g_ctrlm.has_receiver_id = has_id;
-}
-
-gboolean ctrlm_load_receiver_id(void) {
-   if(!g_ctrlm.authservice->get_receiver_id(g_ctrlm.receiver_id)) {
-      ctrlm_main_has_receiver_id_set(false);
-      return(false);
-   }
-
-   g_ctrlm.voice_session->voice_stb_data_receiver_id_set(g_ctrlm.receiver_id);
-
-   for(auto const &itr : g_ctrlm.networks) {
-      itr.second->receiver_id_set(g_ctrlm.receiver_id);
-   }
-   ctrlm_main_has_receiver_id_set(true);
-   return(true);
-}
-#endif
 
 #ifdef AUTH_DEVICE_ID
 void ctrlm_main_has_device_id_set(gboolean has_id) {
@@ -1540,12 +1540,6 @@ gboolean ctrlm_load_service_access_token(void) {
 gboolean ctrlm_has_authservice_data(void) {
    gboolean ret = TRUE;
 #ifdef AUTH_ENABLED
-#ifdef AUTH_RECEIVER_ID
-   if(!ctrlm_main_has_receiver_id_get()) {
-      ret = FALSE;
-   }
-#endif
-
 #ifdef AUTH_DEVICE_ID
    if(!ctrlm_main_has_device_id_get()) {
       ret = FALSE;
@@ -1584,18 +1578,6 @@ gboolean ctrlm_load_authservice_data(void) {
    gboolean ret = TRUE;
 #ifdef AUTH_ENABLED
    if(g_ctrlm.authservice->is_ready()) {
-#ifdef AUTH_RECEIVER_ID
-   if(!ctrlm_main_has_receiver_id_get()) {
-      XLOGD_INFO("load receiver id");
-      if(!ctrlm_load_receiver_id()) {
-         XLOGD_TELEMETRY("failed to load receiver id");
-         ret = FALSE;
-      } else {
-         XLOGD_INFO("load receiver id successfully <%s>", ctrlm_is_pii_mask_enabled() ? "***" : g_ctrlm.receiver_id.c_str());
-      }
-   }
-#endif
-
 #ifdef AUTH_DEVICE_ID
    if(!ctrlm_main_has_device_id_get()) {
       XLOGD_INFO("load device id");
@@ -1704,12 +1686,12 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
    }
 
    // Extract the RF4CE network configuration object
-   #ifdef CTRLM_NETWORK_RF4CE
-   *json_obj_net_rf4ce = json_object_get(*json_obj_root, JSON_OBJ_NAME_NETWORK_RF4CE);
-   if(*json_obj_net_rf4ce == NULL || !json_is_object(*json_obj_net_rf4ce)) {
-      XLOGD_WARN("RF4CE network object not found");
+   if(g_ctrlm.rf4ce_enabled) {
+      *json_obj_net_rf4ce = json_object_get(*json_obj_root, JSON_OBJ_NAME_NETWORK_RF4CE);
+      if(*json_obj_net_rf4ce == NULL || !json_is_object(*json_obj_net_rf4ce)) {
+         XLOGD_WARN("RF4CE network object not found");
+      }
    }
-   #endif
 
    // Extract the voice configuration object
    *json_obj_voice = json_object_get(*json_obj_root, JSON_OBJ_NAME_VOICE);
@@ -2113,17 +2095,22 @@ ctrlm_network_id_t network_id_get_next(ctrlm_network_type_t network_type) {
 extern ctrlm_obj_network_t* create_ctrlm_obj_network_t(ctrlm_network_type_t type, ctrlm_network_id_t id, const char *name, gboolean mask_key_codes, json_t *json_obj_net_ip, GThread *original_thread);
 
 gboolean ctrlm_networks_pre_init(json_t *json_obj_net_rf4ce, json_t *json_config_root) {
-   #ifdef CTRLM_NETWORK_RF4CE
-   ctrlm_network_id_t network_id;
-   network_id = network_id_get_next(CTRLM_NETWORK_TYPE_RF4CE);
+   if(g_ctrlm.rf4ce_enabled) {
+      ctrlm_network_id_t network_id;
+      network_id = network_id_get_next(CTRLM_NETWORK_TYPE_RF4CE);
 
-   ctrlm_obj_network_rf4ce_t *obj_net_rf4ce = new ctrlm_obj_network_rf4ce_t(CTRLM_NETWORK_TYPE_RF4CE, network_id, "RF4CE", g_ctrlm.mask_pii, json_obj_net_rf4ce, g_thread_self());
-   // Set main function for the RF4CE Network object
-   obj_net_rf4ce->hal_api_main_set(ctrlm_hal_rf4ce_main);
-   g_ctrlm.networks[network_id]      = obj_net_rf4ce;
-   //g_ctrlm.networks[network_id].net.rf4ce = obj_net_rf4ce;
-   g_ctrlm.network_type[network_id]       = g_ctrlm.networks[network_id]->type_get();
-   #endif
+      ctrlm_obj_network_rf4ce_t *obj_net_rf4ce = new ctrlm_obj_network_rf4ce_t(CTRLM_NETWORK_TYPE_RF4CE, network_id, "RF4CE", g_ctrlm.mask_pii, json_obj_net_rf4ce, g_thread_self());
+      // Set main function for the RF4CE Network object
+      obj_net_rf4ce->hal_api_main_set(g_ctrlm.rf4ce_hal_main);
+
+      if(ctrlm_is_rf4ce_asb_supported()) {
+         // Set ASB function for the RF4CE Network object
+         obj_net_rf4ce->hal_api_asb_set(g_ctrlm.rf4ce_hal_asb_init, g_ctrlm.rf4ce_hal_asb_methods_get, g_ctrlm.rf4ce_hal_asb_key_derive, g_ctrlm.rf4ce_hal_asb_destroy);
+      }
+      g_ctrlm.networks[network_id]      = obj_net_rf4ce;
+      //g_ctrlm.networks[network_id].net.rf4ce = obj_net_rf4ce;
+      g_ctrlm.network_type[network_id]       = g_ctrlm.networks[network_id]->type_get();
+   }
 
    vendor_network_opts_t vendor_network_opts;
    vendor_network_opts.ignore_mask    = 0;
@@ -2360,21 +2347,21 @@ void ctrlm_main_update_export_controller_list() {
 void ctrlm_main_update_check_update_complete_all(ctrlm_main_queue_msg_update_file_check_t *msg) {
 
    XLOGD_DEBUG("entering");
-#ifdef CTRLM_NETWORK_RF4CE
-   try {
-      for(auto const &itr : g_ctrlm.networks) {
-         ctrlm_obj_network_t *obj_net = itr.second;
-         ctrlm_network_type_t network_type = obj_net->type_get();
-         XLOGD_INFO("network %s", obj_net->name_get());
-         if(network_type == CTRLM_NETWORK_TYPE_RF4CE) {
-            ((ctrlm_obj_network_rf4ce_t *)obj_net)->check_if_update_file_still_needed(msg);
+   if(g_ctrlm.rf4ce_enabled) {
+      try {
+         for(auto const &itr : g_ctrlm.networks) {
+            ctrlm_obj_network_t *obj_net = itr.second;
+            ctrlm_network_type_t network_type = obj_net->type_get();
+            XLOGD_INFO("network %s", obj_net->name_get());
+            if(network_type == CTRLM_NETWORK_TYPE_RF4CE) {
+               ((ctrlm_obj_network_rf4ce_t *)obj_net)->check_if_update_file_still_needed(msg);
+            }
          }
-      }
 
-   } catch (exception& e) {
-      XLOGD_ERROR("exception %s", e.what());
+      } catch (exception& e) {
+         XLOGD_ERROR("exception %s", e.what());
+      }
    }
-#endif
    XLOGD_DEBUG("exiting");
 
 }
@@ -2444,7 +2431,16 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             ctrlm_validation_begin(hdr->network_id, dqm->controller_id, obj_net->ctrlm_controller_type_get(dqm->controller_id));
             obj_net->bind_validation_begin(dqm);
-            obj_net->iarm_event_rcu_status();
+            obj_net->iarm_event_rcu_validation_status();
+            break;
+         }
+         case CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_KEY: {
+            ctrlm_main_queue_msg_bind_validation_key_t *dqm = (ctrlm_main_queue_msg_bind_validation_key_t *)msg;
+            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_KEY");
+
+            ctrlm_validation_key(hdr->network_id, dqm->controller_id, obj_net->ctrlm_controller_type_get(dqm->controller_id), dqm->key_code);
+            obj_net->bind_validation_key(dqm);
+            obj_net->iarm_event_rcu_validation_status();
             break;
          }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_END: {
@@ -2453,7 +2449,7 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             ctrlm_validation_end(hdr->network_id, dqm->controller_id, obj_net->ctrlm_controller_type_get(dqm->controller_id), dqm->binding_type, dqm->validation_type, dqm->result, dqm->semaphore, dqm->cmd_result);
             obj_net->bind_validation_end(dqm);
-            obj_net->iarm_event_rcu_status();
+            obj_net->iarm_event_rcu_validation_status();
             break;
          }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_FAILED_TIMEOUT: {
@@ -2577,6 +2573,34 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
+         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_IR_LINE_OF_SIGHT: {
+            // Cancel active line of sight timer (if active)
+            ctrlm_timeout_destroy(&g_ctrlm.line_of_sight_timeout_tag);
+
+            if(!g_ctrlm.line_of_sight) {
+               ctrlm_main_iarm_event_binding_line_of_sight(TRUE);
+            }
+            // Set line of sight as active
+            g_ctrlm.line_of_sight = TRUE;
+
+            // Set a timer to clear the line of sight after a period of time
+            g_ctrlm.line_of_sight_timeout_tag = ctrlm_timeout_create(g_ctrlm.line_of_sight_timeout_val, ctrlm_timeout_line_of_sight, NULL);
+            break;
+         }
+         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_IR_AUTOBIND: {
+            // Cancel active autobind timer (if active)
+            ctrlm_timeout_destroy(&g_ctrlm.autobind_timeout_tag);
+
+            if(!g_ctrlm.autobind) {
+               ctrlm_main_iarm_event_autobind_line_of_sight(TRUE);
+            }
+            // Set autobind as active
+            g_ctrlm.autobind = TRUE;
+
+            // Set a timer to clear the autobind after a period of time
+            g_ctrlm.autobind_timeout_tag = ctrlm_timeout_create(g_ctrlm.autobind_timeout_val, ctrlm_timeout_autobind, NULL);
+            break;
+         }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_TIMEOUT_LINE_OF_SIGHT: {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_TIMEOUT_LINE_OF_SIGHT");
             g_ctrlm.line_of_sight             = FALSE;
@@ -2660,7 +2684,7 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             if( (old_state == CTRLM_POWER_STATE_DEEP_SLEEP) && (dqm->new_state != CTRLM_POWER_STATE_DEEP_SLEEP) ) {
                XLOGD_INFO("power_state_change: wake DB and networks");
-               #ifdef DEEP_SLEEP_ENABLED
+               #ifdef NETWORKED_STANDBY_MODE_ENABLED
                g_ctrlm.wake_with_voice_allowed = true;
                #endif
                ctrlm_db_power_state_change(true);
@@ -2675,12 +2699,14 @@ gpointer ctrlm_main_thread(gpointer param) {
                }
             }
 
-            #ifdef DEEP_SLEEP_ENABLED
+            #ifdef NETWORKED_STANDBY_MODE_ENABLED
             //Wake with voice? Handle NSM voice, do not change power state
             if(dqm->new_state == CTRLM_POWER_STATE_ON) {
                bool wake_with_voice_allowed = g_ctrlm.wake_with_voice_allowed;
+
                g_ctrlm.wake_with_voice_allowed = false;
-               if( (wake_with_voice_allowed == true) && (ctrlm_main_iarm_wakeup_reason_voice() == true) ) {
+
+               if((wake_with_voice_allowed == true) && (g_ctrlm.power_manager->get_wakeup_reason_voice())) {
                   if( g_ctrlm.voice_session->nsm_voice_session == true ) {
                      XLOGD_INFO("Handling NSM voice session, ignore ON");
                   } else {
@@ -2695,9 +2721,9 @@ gpointer ctrlm_main_thread(gpointer param) {
             g_ctrlm.power_state = dqm->new_state;
 
             XLOGD_INFO("Enter power state <%s>", ctrlm_power_state_str(g_ctrlm.power_state));
-            #ifdef DEEP_SLEEP_ENABLED
+            #ifdef NETWORKED_STANDBY_MODE_ENABLED
             if(g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP) {
-               XLOGD_INFO("NSM is <%s>",  ctrlm_main_iarm_networked_standby()?"ENABLED":"DISABLED");
+               XLOGD_INFO("NSM is <%s>", (ctrlm_main_get_networked_standby_mode())?"ENABLED":"DISABLED");
             }
             #endif
 
@@ -2707,7 +2733,7 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-#ifdef AUTH_ENABLED
+         #ifdef AUTH_ENABLED
          case CTRLM_MAIN_QUEUE_MSG_TYPE_AUTHSERVICE_POLL: {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_AUTHSERVICE_POLL");
 
@@ -2727,26 +2753,26 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-#endif
-#ifdef CTRLM_NETWORK_RF4CE
+         #endif
          case CTRLM_MAIN_QUEUE_MSG_TYPE_NOTIFY_FIRMWARE: {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_NOTIFY_FIRMWARE");
-            if(ctrlm_main_successful_init_get()) {
-               ctrlm_main_queue_msg_notify_firmware_t *dqm = (ctrlm_main_queue_msg_notify_firmware_t *)msg;
-               for(auto const &itr : g_ctrlm.networks) {
-                  if(ctrlm_network_type_get(itr.first) == CTRLM_NETWORK_TYPE_RF4CE) {
-                     ctrlm_obj_network_rf4ce_t *net_rf4ce = (ctrlm_obj_network_rf4ce_t *)itr.second;
-                     net_rf4ce->notify_firmware(dqm->controller_type, dqm->image_type, dqm->force_update, dqm->version_software, dqm->version_hardware_min, dqm->version_bootloader_min);
+            if(g_ctrlm.rf4ce_enabled) {
+               if(ctrlm_main_successful_init_get()) {
+                  ctrlm_main_queue_msg_notify_firmware_t *dqm = (ctrlm_main_queue_msg_notify_firmware_t *)msg;
+                  for(auto const &itr : g_ctrlm.networks) {
+                     if(ctrlm_network_type_get(itr.first) == CTRLM_NETWORK_TYPE_RF4CE) {
+                        ctrlm_obj_network_rf4ce_t *net_rf4ce = (ctrlm_obj_network_rf4ce_t *)itr.second;
+                        net_rf4ce->notify_firmware(dqm->controller_type, dqm->image_type, dqm->force_update, dqm->version_software, dqm->version_hardware_min, dqm->version_bootloader_min);
+                     }
                   }
+               } else {
+                  // Networks are not ready, push back to the queue, then continue so it's not freed
+                  ctrlm_timeout_create(CTRLM_MAIN_QUEUE_REPEAT_DELAY, ctrlm_message_queue_delay, msg);
+                  continue;
                }
-            } else {
-               // Networks are not ready, push back to the queue, then continue so it's not freed
-               ctrlm_timeout_create(CTRLM_MAIN_QUEUE_REPEAT_DELAY, ctrlm_message_queue_delay, msg);
-               continue;
             }
             break;
          }
-#endif
          case CTRLM_MAIN_QUEUE_MSG_TYPE_IR_REMOTE_USAGE: {
             gboolean day_changed = false;
             ctrlm_main_queue_msg_ir_remote_usage_t *dqm = (ctrlm_main_queue_msg_ir_remote_usage_t *) msg;
@@ -2807,14 +2833,14 @@ gpointer ctrlm_main_thread(gpointer param) {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_SET_VALUES");
 
             if(settings->available & CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_ASB_ENABLED) {
-#ifdef ASB
-               // Write new asb_enabled flag to NVM
-               ctrlm_db_asb_enabled_write(&settings->asb_enabled, CTRLM_ASB_ENABLED_LEN); 
-               g_ctrlm.cs_values.asb_enable = settings->asb_enabled;
-               XLOGD_INFO("ASB Enabled Set Values <%s>", g_ctrlm.cs_values.asb_enable ? "true" : "false");
-#else
-               XLOGD_INFO("ASB Enabled Set Values <false>, ASB Not Supported");
-#endif
+               if(ctrlm_is_rf4ce_asb_supported()) {
+                  // Write new asb_enabled flag to NVM
+                  ctrlm_db_asb_enabled_write(&settings->asb_enabled, CTRLM_ASB_ENABLED_LEN); 
+                  g_ctrlm.cs_values.asb_enable = settings->asb_enabled;
+                  XLOGD_INFO("ASB Enabled Set Values <%s>", g_ctrlm.cs_values.asb_enable ? "true" : "false");
+               } else {
+                  XLOGD_INFO("ASB Enabled Set Values <false>, ASB Not Supported");
+               }
             }
             if(settings->available & CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_OPEN_CHIME_ENABLED) {
                // Write new open_chime_enabled flag to NVM
@@ -2881,12 +2907,13 @@ gpointer ctrlm_main_thread(gpointer param) {
             ctrlm_main_queue_msg_main_control_service_settings_t *dqm = (ctrlm_main_queue_msg_main_control_service_settings_t *) msg;
             ctrlm_main_iarm_call_control_service_settings_t *settings = dqm->settings;
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES");
-#ifdef ASB
-            settings->asb_supported = true;
-#else
-            settings->asb_supported = false;
-#endif
-            settings->asb_enabled   = g_ctrlm.cs_values.asb_enable;
+            if(ctrlm_is_rf4ce_asb_supported()) {
+               settings->asb_supported = true;
+            } else {
+               settings->asb_supported = false;
+            }
+
+            settings->asb_enabled                 = g_ctrlm.cs_values.asb_enable;
             settings->open_chime_enabled          = g_ctrlm.cs_values.chime_open_enable;
             settings->close_chime_enabled         = g_ctrlm.cs_values.chime_close_enable;
             settings->privacy_chime_enabled       = g_ctrlm.cs_values.chime_privacy_enable;
@@ -3249,10 +3276,6 @@ void ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *status) {
    safec_rc = strncpy_s(status->stb_device_id, sizeof(status->stb_device_id), g_ctrlm.device_id.c_str(), CTRLM_MAIN_DEVICE_ID_MAX_LENGTH - 1);
    ERR_CHK(safec_rc);
    status->stb_device_id[CTRLM_MAIN_DEVICE_ID_MAX_LENGTH - 1] = '\0';
-
-   safec_rc = strncpy_s(status->stb_receiver_id, sizeof(status->stb_receiver_id), g_ctrlm.receiver_id.c_str(), CTRLM_MAIN_RECEIVER_ID_MAX_LENGTH - 1);
-   ERR_CHK(safec_rc);
-   status->stb_receiver_id[CTRLM_MAIN_RECEIVER_ID_MAX_LENGTH - 1] = '\0';
 }
 
 gboolean ctrlm_main_iarm_call_ir_remote_usage_get(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage) {
@@ -3685,15 +3708,15 @@ void ctrlm_main_iarm_call_property_set_(ctrlm_main_iarm_call_property_t *propert
          } else {
             g_ctrlm.auto_ack = property->value ? true : false;
 
-            #ifdef CTRLM_NETWORK_RF4CE
-            #if CTRLM_HAL_RF4CE_API_VERSION >= 16
-            for(auto const &itr : g_ctrlm.networks) {
-               if(itr.second->type_get() == CTRLM_NETWORK_TYPE_RF4CE) {
-                  itr.second->property_set(CTRLM_HAL_NETWORK_PROPERTY_AUTO_ACK, &g_ctrlm.auto_ack);
+            if(g_ctrlm.rf4ce_enabled) {
+               #if CTRLM_HAL_RF4CE_API_VERSION >= 16
+               for(auto const &itr : g_ctrlm.networks) {
+                  if(itr.second->type_get() == CTRLM_NETWORK_TYPE_RF4CE) {
+                     itr.second->property_set(CTRLM_HAL_NETWORK_PROPERTY_AUTO_ACK, &g_ctrlm.auto_ack);
+                  }
                }
+               #endif
             }
-            #endif
-            #endif
 
             property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
             XLOGD_INFO("AUTO ACK <%s>", property->value ? "enabled" : "disabled");
@@ -4765,7 +4788,7 @@ gboolean ctrlm_main_successful_init_get(void) {
    return(g_ctrlm.successful_init);
 }
 
-ctrlm_irdb_t* ctrlm_main_irdb_get() {
+ctrlm_irdb_interface_t* ctrlm_main_irdb_get() {
    return(g_ctrlm.irdb);
 }
 
@@ -4775,10 +4798,6 @@ ctrlm_auth_t* ctrlm_main_auth_get() {
 #else
    return(NULL);
 #endif
-}
-
-string ctrlm_receiver_id_get(){
-   return g_ctrlm.receiver_id;
 }
 
 string ctrlm_device_id_get(){
@@ -5353,8 +5372,9 @@ void ctrlm_main_iarm_call_control_service_start_pairing_mode_(ctrlm_main_iarm_ca
       case CTRLM_PAIRING_MODE_SCREEN_BIND: {
          pairing->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
          g_ctrlm.binding_screen_active = true;
-         // Set a timer to limit the binding mode window
-         g_ctrlm.screen_bind_timeout_tag = ctrlm_timeout_create(g_ctrlm.screen_bind_timeout_val, ctrlm_timeout_screen_bind, NULL);
+         if(pairing->use_timeout != 0) { // Set a timer to limit the binding mode window
+            g_ctrlm.screen_bind_timeout_tag = ctrlm_timeout_create(g_ctrlm.screen_bind_timeout_val, ctrlm_timeout_screen_bind, NULL);
+         }
          XLOGD_INFO("SCREEN BIND STATE <ACTIVE>");
          break;
       }
@@ -5825,6 +5845,30 @@ gboolean ctrlm_power_state_change(ctrlm_power_state_t power_state) {
    return(true);
 }
 
+ctrlm_power_state_t ctrlm_main_get_system_power_state(void) {
+   ctrlm_power_state_t power_state = CTRLM_POWER_STATE_ON;
+
+   if(g_ctrlm.power_manager == NULL) {
+      XLOGD_ERROR("power_manager is invalid, defaulting to ON");
+   } else {
+      power_state = g_ctrlm.power_manager->get_power_state();
+   }
+   return power_state;
+}
+
+gboolean ctrlm_main_get_networked_standby_mode(void) {
+   bool networked_standby_mode = false;
+
+   #ifdef NETWORKED_STANDBY_MODE_ENABLED
+   if(g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP) {
+      networked_standby_mode = g_ctrlm.power_manager->get_networked_standby_mode();
+   }
+   #endif
+
+   return networked_standby_mode ? true : false;
+}
+
+
 ctrlm_controller_id_t ctrlm_last_used_controller_get(ctrlm_network_type_t network_type) {
    if (network_type == CTRLM_NETWORK_TYPE_RF4CE) {
       return g_ctrlm.last_key_info.controller_id;
@@ -5866,22 +5910,23 @@ void control_service_values_read_from_db() {
    guchar *data = NULL;
    guint32 length;
 
-#ifdef ASB
-   //ASB enabled
-   gboolean asb_enabled = CTRLM_ASB_ENABLED_DEFAULT;
-   ctrlm_db_asb_enabled_read(&data, &length);
-   if(data == NULL) {
-      XLOGD_WARN("Not read from DB - ASB Enabled.  Using default of <%s>.", asb_enabled ? "true" : "false");
-      // Write new asb_enabled flag to NVM
-      ctrlm_db_asb_enabled_write((guchar *)&asb_enabled, CTRLM_ASB_ENABLED_LEN); 
-   } else {
-      asb_enabled = data[0];
-      ctrlm_db_free(data);
-      data = NULL;
-      XLOGD_INFO("ASB Enabled read from DB <%s>", asb_enabled ? "YES" : "NO");
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      //ASB enabled
+      gboolean asb_enabled = CTRLM_ASB_ENABLED_DEFAULT;
+      ctrlm_db_asb_enabled_read(&data, &length);
+      if(data == NULL) {
+         XLOGD_WARN("Not read from DB - ASB Enabled.  Using default of <%s>.", asb_enabled ? "true" : "false");
+         // Write new asb_enabled flag to NVM
+         ctrlm_db_asb_enabled_write((guchar *)&asb_enabled, CTRLM_ASB_ENABLED_LEN); 
+      } else {
+         asb_enabled = data[0];
+         ctrlm_db_free(data);
+         data = NULL;
+         XLOGD_INFO("ASB Enabled read from DB <%s>", asb_enabled ? "YES" : "NO");
+      }
+      g_ctrlm.cs_values.asb_enable = asb_enabled;
    }
-   g_ctrlm.cs_values.asb_enable = asb_enabled;
-#endif
+
    // Open Chime Enabled
    gboolean open_chime_enabled = CTRLM_OPEN_CHIME_ENABLED_DEFAULT;
    ctrlm_db_open_chime_enabled_read(&data, &length);
@@ -6013,14 +6058,13 @@ gboolean ctrlm_start_iarm(gpointer user_data) {
 
    ctrlm_main_iarm_init();
 
-#ifdef SYSTEMD_NOTIFY
    XLOGD_INFO("Notifying systemd of successful initialization");
    sd_notifyf(0, "READY=1\nSTATUS=ctrlm-main has successfully initialized\nMAINPID=%lu", (unsigned long)getpid());
-#endif
+
    return false;
 }
 
-ctrlm_power_state_t ctrlm_main_get_power_state(void) {
+ctrlm_power_state_t ctrlm_main_get_internal_power_state(void) {
    return(g_ctrlm.power_state);
 }
 
@@ -6033,4 +6077,112 @@ void ctrlm_trigger_startup_actions(void) {
       msg->network_id = CTRLM_MAIN_NETWORK_ID_ALL;
       ctrlm_main_queue_msg_push((gpointer)msg);
    }
+}
+
+void *ctrlm_load_plugin_rf4ce_hal(void) {
+   void *handle = NULL;
+   const char *so_path_vd = "/vendor/lib/libctrlm_hal_rf4ce.so";
+   const char *so_path_mw = "/usr/lib/libctrlm_hal_rf4ce.so";
+   if(ctrlm_file_exists(so_path_vd)) {
+      handle = dlopen(so_path_vd, RTLD_NOW);
+   } else if(ctrlm_file_exists(so_path_mw)) {
+      handle = dlopen(so_path_mw, RTLD_NOW);
+   } else {
+      XLOGD_INFO("RF4CE HAL plugin is not present.");
+      return(NULL);
+   }
+
+   if(NULL == handle) {
+      XLOGD_ERROR("Failed to load RF4CE HAL plugin <%s>", dlerror());
+      return(NULL);
+   }
+
+   dlerror();  // Clear any existing error
+
+   g_ctrlm.rf4ce_hal_main = (ctrlm_hal_rf4ce_main_t)dlsym(handle, "ctrlm_hal_rf4ce_main");
+   char *error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (ctrlm_hal_rf4ce_main), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   XLOGD_INFO("RF4CE HAL plugin is loaded.");
+   
+   return(handle);
+}
+
+gboolean ctrlm_is_rf4ce_enabled(void) {
+   return(g_ctrlm.rf4ce_enabled);
+}
+
+void *ctrlm_load_plugin_rf4ce_asb(void) {
+   void *handle = NULL;
+   const char *so_path_vd = "/vendor/lib/libctrlm-rf4ce-asb-plugin.so";
+   const char *so_path_mw = "/usr/lib/libctrlm-rf4ce-asb-plugin.so";
+   if(ctrlm_file_exists(so_path_vd)) {
+      handle = dlopen(so_path_vd, RTLD_NOW);
+   } else if(ctrlm_file_exists(so_path_mw)) {
+      handle = dlopen(so_path_mw, RTLD_NOW);
+   } else {
+      XLOGD_INFO("RF4CE ASB plugin is not present.");
+      return(NULL);
+   }
+
+   if(NULL == handle) {
+      XLOGD_ERROR("Failed to load RF4CE ASB plugin <%s>", dlerror());
+      return(NULL);
+   }
+
+   dlerror();  // Clear any existing error
+
+   ctrlm_hal_rf4ce_asb_init_t asb_init = (ctrlm_hal_rf4ce_asb_init_t)dlsym(handle, "asb_init");
+   char *error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (asb_init), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   ctrlm_hal_rf4ce_asb_methods_get_t asb_methods_get = (ctrlm_hal_rf4ce_asb_methods_get_t)dlsym(handle, "asb_key_derivation_methods_get");
+   error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (asb_key_derivation_methods_get), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   ctrlm_hal_rf4ce_asb_key_derive_t asb_key_derive = (ctrlm_hal_rf4ce_asb_key_derive_t)dlsym(handle, "asb_key_derivation");
+   error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (asb_key_derivation), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   ctrlm_hal_rf4ce_asb_destroy_t asb_destroy = (ctrlm_hal_rf4ce_asb_destroy_t)dlsym(handle, "asb_destroy");
+   error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (asb_destroy), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   g_ctrlm.rf4ce_hal_asb_init        = asb_init;
+   g_ctrlm.rf4ce_hal_asb_methods_get = asb_methods_get;
+   g_ctrlm.rf4ce_hal_asb_key_derive  = asb_key_derive;
+   g_ctrlm.rf4ce_hal_asb_destroy     = asb_destroy;
+
+   XLOGD_INFO("RF4CE ASB plugin is loaded.");
+
+   return(handle);
+}
+
+gboolean ctrlm_is_rf4ce_asb_supported(void) {
+   return(g_ctrlm.rf4ce_asb_supported);
 }

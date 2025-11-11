@@ -33,7 +33,9 @@ namespace rcp_net_status_json_keys
     constexpr char const* NET_TYPES_SUPPORTED  = "netTypesSupported";
     constexpr char const* PAIRING_STATE        = "pairingState";
     constexpr char const* IR_PROG_STATE        = "irProgState";
-    constexpr char const* MANUAL_PAIR_CODE     = "manualPairCode";
+    constexpr char const* VALIDATION_STATUS    = "status";
+    constexpr char const* VALIDATION_CODE      = "code";
+    constexpr char const* VALIDATION_KEY       = "key";
     constexpr char const* REMOTE_DATA          = "remoteData";
 
     constexpr char const* MAC_ADDRESS          = "macAddress";
@@ -61,17 +63,18 @@ namespace rcp_net_status_json_keys
     constexpr char const* ERROR_STRING         = "errorString";
 }
 
-class ctrlm_virtual_json_t
+class ctrlm_base_event_json_t
 {
 public:
-    virtual ~ctrlm_virtual_json_t() {};
+    virtual ~ctrlm_base_event_json_t() {};
     virtual json_t *to_json() const = 0;
+    virtual std::string to_string() const;
 };
 
 class ctrlm_obj_controller_t;
 class ctrlm_obj_network_t;
 
-class ctrlm_rcp_ipc_controller_status_t : public ctrlm_virtual_json_t
+class ctrlm_rcp_ipc_controller_status_t : public ctrlm_base_event_json_t
 {
 public:
     ctrlm_rcp_ipc_controller_status_t() = default;
@@ -101,7 +104,7 @@ private:
     std::string               upgrade_session_id_ = "";
 };
 
-class ctrlm_rcp_ipc_net_status_t : public ctrlm_virtual_json_t
+class ctrlm_rcp_ipc_net_status_t : public ctrlm_base_event_json_t
 {
 public:
     ctrlm_rcp_ipc_net_status_t() = default;
@@ -109,7 +112,6 @@ public:
 
     virtual json_t *to_json() const;
 
-    char              *to_string() const;
     uint8_t            get_api_revision() const                             { return api_revision_; }
     bool               get_result() const                                   { return (result_ == CTRLM_IARM_CALL_RESULT_SUCCESS) ? true : false; }
     void               set_result(ctrlm_iarm_call_result_t result)          { result_ = result; }
@@ -129,14 +131,13 @@ private:
     std::vector<ctrlm_rcp_ipc_controller_status_t> controller_status_list_;
 };
 
-class ctrlm_rcp_ipc_upgrade_status_t : public ctrlm_virtual_json_t
+class ctrlm_rcp_ipc_upgrade_status_t : public ctrlm_base_event_json_t
 {
 public:
     ctrlm_rcp_ipc_upgrade_status_t() = default;
     ~ctrlm_rcp_ipc_upgrade_status_t();
 
     virtual json_t    *to_json() const;
-    char              *to_string() const;
     bool               get_result() const                                   { return (result_ == CTRLM_IARM_CALL_RESULT_SUCCESS) ? true : false; }
     void               set_result(ctrlm_iarm_call_result_t result)          { result_ = result; }
     ctrlm_network_id_t get_net_id() const                                   { return net_id_; }
@@ -152,6 +153,27 @@ private:
     ctrlm_rcu_upgrade_state_t state_            = CTRLM_RCU_UPGRADE_STATE_INVALID;
     std::string               error_msg_        = "";
     ctrlm_iarm_call_result_t  result_           = CTRLM_IARM_CALL_RESULT_INVALID;
+};
+
+class ctrlm_rcp_ipc_validation_status_t : public ctrlm_base_event_json_t
+{
+public:
+    ctrlm_rcp_ipc_validation_status_t() = default;
+    ~ctrlm_rcp_ipc_validation_status_t();
+
+    virtual json_t    *to_json() const;
+    uint8_t            get_api_revision() const                             { return api_revision_; }
+    bool               get_result() const                                   { return (result_ == CTRLM_IARM_CALL_RESULT_SUCCESS) ? true : false; }
+    void               set_result(ctrlm_iarm_call_result_t result)          { result_ = result; }
+    void               set_status(ctrlm_rcu_validation_result_t status)     { validation_status_ = status; }
+    void               set_key(ctrlm_key_code_t key)                        { (key >= CTRLM_KEY_CODE_DIGIT_0 && key <= CTRLM_KEY_CODE_DIGIT_9) ? validation_key_ = key : validation_key_ = CTRLM_KEY_CODE_INVALID; }
+    void               populate_status(const ctrlm_obj_network_t &network);
+
+private:
+    uint8_t                       api_revision_      = CTRLM_MAIN_IARM_BUS_API_REVISION;
+    ctrlm_rcu_validation_result_t validation_status_ = CTRLM_RCU_VALIDATION_RESULT_MAX;
+    ctrlm_key_code_t              validation_key_    = CTRLM_KEY_CODE_INVALID;
+    ctrlm_iarm_call_result_t      result_            = CTRLM_IARM_CALL_RESULT_INVALID;
 };
 
 class ctrlm_network_all_ipc_result_wrapper_t {

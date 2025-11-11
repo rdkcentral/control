@@ -29,7 +29,6 @@
 #include "ctrlm_controller.h"
 #include "ctrlm_recovery.h"
 #include "ctrlm_validation.h"
-#include "ctrlm_irdb.h"
 #include "ctrlm_ipc_device_update.h"
 #include "ctrlm_voice_types.h"
 #include "ctrlm_voice_obj.h"
@@ -40,8 +39,16 @@
 typedef struct : public ctrlm_network_all_ipc_result_wrapper_t {
    unsigned char            api_revision;
    unsigned int             timeout;
+   bool                     screen_bind_enable;
+   bool                     scan_enable;
    std::vector<uint64_t>    ieee_address_list;
 } ctrlm_iarm_call_StartPairing_params_t;
+
+typedef struct : public ctrlm_network_all_ipc_result_wrapper_t {
+   unsigned char            api_revision;
+   bool                     screen_bind_disable;
+   bool                     scan_disable;
+} ctrlm_iarm_call_StopPairing_params_t;
 
 typedef struct : public ctrlm_network_all_ipc_result_wrapper_t {
    ctrlm_fmr_alarm_level_t  level;
@@ -93,6 +100,12 @@ typedef struct {
    std::shared_ptr<ctrlm_iarm_call_StartPairing_params_t> params;
    sem_t *                                   semaphore;
 } ctrlm_main_queue_msg_start_pairing_t;
+
+typedef struct {
+   ctrlm_main_queue_msg_header_t             header;
+   std::shared_ptr<ctrlm_iarm_call_StopPairing_params_t> params;
+   sem_t *                                   semaphore;
+} ctrlm_main_queue_msg_stop_pairing_t;
 
 typedef struct {
    ctrlm_main_queue_msg_header_t                header;
@@ -168,8 +181,6 @@ public:
    const char *         name_get() const;
    const char *         version_get() const;
    virtual std::string  db_name_get() const;
-   void                 receiver_id_set(const std::string& receiver_id);
-   std::string          receiver_id_get()  const;
    virtual void         device_id_set(const std::string& device_id);
    std::string          device_id_get()  const;
    void                 service_account_id_set(const std::string& service_account_id);
@@ -182,6 +193,9 @@ public:
    gboolean             mask_key_codes_get()  const;
    void                 stb_name_set(const std::string& stb_name);
    std::string          stb_name_get() const;
+   void                 validation_result_set(ctrlm_rcu_validation_result_t result);
+   void                 validation_key_set(ctrlm_key_code_t key);
+   void                 validation_status_get(ctrlm_rcu_validation_result_t *result, ctrlm_key_code_t *key) const;
    virtual ctrlm_hal_result_t network_init(GThread *ctrlm_main_thread);
    virtual void         network_destroy();
    void                 hal_api_main_set(ctrlm_hal_network_main_t main);
@@ -227,6 +241,7 @@ public:
    virtual void         recovery_set(ctrlm_recovery_type_t recovery);
    virtual bool         backup_hal_nvm();
    virtual void         bind_validation_begin(ctrlm_main_queue_msg_bind_validation_begin_t *dqm);
+   virtual void         bind_validation_key(ctrlm_main_queue_msg_bind_validation_key_t *dqm);
    virtual void         bind_validation_end(ctrlm_main_queue_msg_bind_validation_end_t *dqm);
    virtual bool         bind_validation_timeout(ctrlm_controller_id_t controller_id);
    virtual std::vector<ctrlm_obj_controller_t *> get_controller_obj_list() const;
@@ -243,13 +258,14 @@ public:
    virtual void         req_process_voice_session_end(void *data, int size);
 
    virtual void         req_process_start_pairing(void *data, int size);
+   virtual void         req_process_stop_pairing(void *data, int size);
    virtual void         req_process_pair_with_code(void *data, int size);
    virtual void         req_process_get_rcu_status(void *data, int size);
    virtual void         req_process_get_last_keypress(void *data, int size);
    virtual void         req_process_write_rcu_wakeup_config(void *data, int size);
    virtual void         req_process_unpair(void *data, int size);
 
-   virtual void         req_process_ir_set_code(void *data, int size);
+   virtual void         req_process_program_ir_codes(void *data, int size);
    virtual void         req_process_ir_clear_codes(void *data, int size);
    virtual void         req_process_find_my_remote(void *data, int size);
 
@@ -270,6 +286,7 @@ public:
    time_t               stale_remote_time_threshold_get();
 
    virtual void         iarm_event_rcu_status(void);
+   virtual void         iarm_event_rcu_validation_status(void);
    virtual void         iarm_event_rcu_firmware_status(const ctrlm_obj_controller_t &rcu);
 
    // Internal methods
@@ -296,17 +313,19 @@ protected:
    virtual gboolean     key_event_hook(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_key_status_t key_status, ctrlm_key_code_t key_code);
 
 private:
-   gboolean                     mask_key_codes_ = true;
-   std::string                  receiver_id_;
-   std::string                  device_id_;
-   std::string                  service_account_id_;
-   std::string                  partner_id_;
-   std::string                  experience_;
-   std::string                  stb_name_;
-   ctrlm_hal_network_main_t     hal_api_main_         = NULL;
-   ctrlm_hal_req_property_get_t hal_api_property_get_ = NULL;
-   ctrlm_hal_req_property_set_t hal_api_property_set_ = NULL;
-   ctrlm_hal_req_term_t         hal_api_term_         = NULL;
+   gboolean                      mask_key_codes_ = true;
+   std::string                   device_id_;
+   std::string                   service_account_id_;
+   std::string                   partner_id_;
+   std::string                   experience_;
+   std::string                   stb_name_;
+   ctrlm_rcu_validation_result_t validation_result_ = CTRLM_RCU_VALIDATION_RESULT_MAX;
+   ctrlm_key_code_t              validation_key_    = CTRLM_KEY_CODE_INVALID;
+
+   ctrlm_hal_network_main_t      hal_api_main_         = NULL;
+   ctrlm_hal_req_property_get_t  hal_api_property_get_ = NULL;
+   ctrlm_hal_req_property_set_t  hal_api_property_set_ = NULL;
+   ctrlm_hal_req_term_t          hal_api_term_         = NULL;
 
    static gpointer      terminate_hal(gpointer data);
 };

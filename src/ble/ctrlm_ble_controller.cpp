@@ -56,7 +56,7 @@ ctrlm_obj_controller_ble_t::ctrlm_obj_controller_ble_t(ctrlm_controller_id_t con
    battery_percent_(std::make_shared<ctrlm_uint64_db_attr_t>("Battery Percentage", 0xFF, &network, controller_id, "battery_percent")),
    validation_result_(validation_result),
    wakeup_custom_list_(),
-   irdbs_supported_()
+   irdbs_supported_(0)
 {
    XLOGD_INFO("constructor - controller id <%u>", controller_id);
 
@@ -527,40 +527,39 @@ ctrlm_timestamp_t ctrlm_obj_controller_ble_t::getVoiceStartTimeLocal() const {
    return(voice_start_time_local_);
 }
 
-void ctrlm_obj_controller_ble_t::setSupportedIrdbs(ctrlm_irdb_vendor_t* vendors, int num_supported) {
-   if (vendors == NULL) {
-      XLOGD_ERROR("vendors is NULL");
-      return;
-   }
-   if (num_supported == 0)
-      return;
+void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmask) {
+   this->irdbs_supported_ = vendor_support_bitmask;
 
-   this->irdbs_supported_.clear();
-   for (int i = 0; i < num_supported; i++) {
-      this->irdbs_supported_.push_back(vendors[i]);
+   ctrlm_irdb_interface_t *irdb = ctrlm_main_irdb_get();
+   ctrlm_irdb_vendor_info_t vendor_info;
+   if (irdb && irdb->get_vendor_info(vendor_info)) {
+      XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>, which %s support the loaded IRDB plugin vendor <%s>", 
+            ieee_address_get().to_string().c_str(), vendor_support_bitmask, 
+            isSupportedIrdb(vendor_info) ? "DOES" : "does NOT", vendor_info.name.c_str());
+   } else {
+      XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>, couldn't retrieve IRDB plugin vendor info.", 
+            ieee_address_get().to_string().c_str(), vendor_support_bitmask);
    }
-   XLOGD_INFO("Controller <%s> IRDBs supported = <%s>",
-         ieee_address_get().to_string().c_str(), ctrlm_ble_irdbs_supported_str(getSupportedIrdbs()).c_str());
 }
 
-std::vector<ctrlm_irdb_vendor_t> ctrlm_obj_controller_ble_t::getSupportedIrdbs() const {
+uint8_t ctrlm_obj_controller_ble_t::getSupportedIrdbs() const {
    return this->irdbs_supported_;
 }
 
-bool ctrlm_obj_controller_ble_t::isSupportedIrdb(ctrlm_irdb_vendor_t vendor) {
-   if (vendor == CTRLM_IRDB_VENDOR_INVALID) {
-      XLOGD_ERROR("%s (%u) is not allowed", ctrlm_irdb_vendor_str(vendor), vendor);
+bool ctrlm_obj_controller_ble_t::isSupportedIrdb(const ctrlm_irdb_vendor_info_t &vendor_info) {
+   
+   if (irdbs_supported_ == 0) {
+      XLOGD_WARN("Controller <%s> likely does not support this feature yet - continuing...", 
+               ieee_address_get().to_string().c_str());
+      return true;
+
+   } else if (vendor_info.rcu_support_bitmask == 0) {
+      XLOGD_ERROR("IRDB vendor support bitmask is invalid.");
       return false;
-   }
-   if (irdbs_supported_.empty()) {
-      XLOGD_WARN("Controller %u likely does not support this feature yet - continuing...", controller_id_get());
+   
+   } else if (this->irdbs_supported_ & vendor_info.rcu_support_bitmask) {
       return true;
    }
-   if (std::find(irdbs_supported_.begin(), irdbs_supported_.end(), vendor) != irdbs_supported_.end()) {
-      XLOGD_INFO("Controller %u supports IRDB %s (%u)", controller_id_get(), ctrlm_irdb_vendor_str(vendor), vendor);
-      return true;
-   }
-   XLOGD_WARN("Controller %u does not support IRDB %s (%u)", controller_id_get(), ctrlm_irdb_vendor_str(vendor), vendor);
    return false;
 }
 
@@ -635,7 +634,19 @@ void ctrlm_obj_controller_ble_t::print_status() {
    XLOGD_INFO("Wakeup Config Custom List    : %s", wakeupCustomListToString().c_str());
    }
    XLOGD_INFO("");
-   XLOGD_INFO("IR Database Supported        : %s", ctrlm_ble_irdbs_supported_str(irdbs_supported_).c_str());
+
+   ctrlm_irdb_interface_t *irdb = ctrlm_main_irdb_get();
+   ctrlm_irdb_vendor_info_t vendor_info;
+   if (irdbs_supported_) {
+      bool supported = false;
+      if (irdb && irdb->get_vendor_info(vendor_info)) {
+         supported = isSupportedIrdb(vendor_info);
+      }
+      XLOGD_INFO("IR Database Support          : 0x%X, which %s support loaded plugin <%s>", 
+               irdbs_supported_, supported ? "DOES" : "does NOT", vendor_info.name.c_str());
+   } else {
+      XLOGD_INFO("IR Database Support          : N/A");
+   }
    XLOGD_INFO("Programmed TV IRDB Code      : %s", irdb_entry_id_name_tv_->to_string().c_str());
    XLOGD_INFO("Programmed AVR IRDB Code     : %s", irdb_entry_id_name_avr_->to_string().c_str());
    XLOGD_INFO("");

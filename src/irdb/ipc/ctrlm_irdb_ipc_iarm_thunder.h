@@ -21,7 +21,7 @@
 #define __CTRLM_IRDB_IPC_IARM_THUNDER_H__
 #include "ctrlm_ipc.h"
 #include "ctrlm_ipc_iarm.h"
-#include "ctrlm_irdb.h"
+#include "ctrlm_irdb_plugin.h"
 #include "libIBus.h"
 
 class ctrlm_irdb_ipc_iarm_thunder_t : public ctrlm_ipc_iarm_t {
@@ -39,9 +39,9 @@ protected:
 
     static IARM_Result_t get_manufacturers(void *arg);
     static IARM_Result_t get_models(void *arg);
-    static IARM_Result_t get_ir_codes_by_names(void *arg);
+    static IARM_Result_t get_irdb_entry_ids(void *arg);
     static IARM_Result_t get_ir_codes_by_auto_lookup(void *arg);
-    static IARM_Result_t set_ir_codes_by_name(void *arg);
+    static IARM_Result_t program_ir_codes(void *arg);
     static IARM_Result_t clear_ir_codes(void *arg);
     static IARM_Result_t initialize_irdb(void *arg);
 };

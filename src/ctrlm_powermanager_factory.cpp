@@ -2,7 +2,7 @@
  * If not stated otherwise in this file or this component's license file the
  * following copyright and licenses apply:
  *
- * Copyright 2014 RDK Management
+ * Copyright 2015 RDK Management
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
+#include "ctrlm_powermanager.h"
+#include "ctrlm_ipc_iarm_powermanager.h"
+#include "ctrlm_thunder_powermanager.h"
 
-#ifndef __CTRLM_IRDB_FACTORY_H__
-#define __CTRLM_IRDB_FACTORY_H__
-#include "ctrlm_irdb.h"
 
-ctrlm_irdb_t *ctrlm_irdb_create(bool platform_tv);
+static ctrlm_powermanager_t *instance = NULL;
 
-#endif
+ctrlm_powermanager_t* ctrlm_powermanager_t::get_instance() {
+   if(instance == NULL) {
+      #ifdef USE_IARM_POWER_MANAGER
+      instance = new ctrlm_ipc_iarm_powermanager_t();
+      #else
+      instance = new ctrlm_thunder_powermanager_t();
+      #endif
+   }
+
+   return(instance);
+}
+
+void ctrlm_powermanager_t::destroy_instance() {
+
+   if(instance != NULL) {
+      delete instance;
+      instance = NULL;
+   }
+}
+
+ctrlm_powermanager_t::~ctrlm_powermanager_t() {
+}
+

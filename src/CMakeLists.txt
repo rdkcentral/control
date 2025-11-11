@@ -26,6 +26,7 @@ target_sources(controlMgr PRIVATE
    ctrlm_network.cpp
    ctrlm_controller.cpp
    ctrlm_ir_controller.cpp
+   ctrlm_powermanager_factory.cpp
    ctrlm_rcu.cpp
    ctrlm_rcu_iarm.cpp
    attributes/ctrlm_attr.cpp
@@ -64,7 +65,8 @@ target_sources(controlMgr PRIVATE
    input_event/ctrlm_input_event_writer.cpp
    ipc/ctrlm_ipc_iarm.cpp
    ipc/ctrlm_rcp_ipc_event.cpp
-   irdb/ctrlm_irdb.cpp
+   irdb/ctrlm_irdb_stub.cpp
+   irdb/ctrlm_irdb_interface.cpp
    irdb/ipc/ctrlm_irdb_ipc_iarm_thunder.cpp
    json_config.cpp
    network/ctrlm_ir_rf_db.cpp
@@ -79,7 +81,6 @@ target_sources(controlMgr PRIVATE
    voice/endpoints/ctrlm_voice_endpoint_ws_nsp.cpp
    voice/ipc/ctrlm_voice_ipc_iarm_all.cpp
    voice/ipc/ctrlm_voice_ipc_iarm_legacy.cpp
-   voice/ipc/ctrlm_voice_ipc_request_type.c
    )
 
 if(BLE_ENABLED)
@@ -139,11 +140,14 @@ if(BUILD_FACTORY_TEST)
    add_subdirectory(factory)
 endif()
 
-
-if(IRDB_STUB)
+if(USE_IARM_POWER_MANAGER)
    target_sources(controlMgr PRIVATE
-      irdb/ctrlm_irdb_stub.cpp
-      irdb/ctrlm_irdb_factory.cpp
+      ipc/ctrlm_ipc_iarm_powermanager.cpp
+   )
+else()
+   target_sources(controlMgr PRIVATE
+      thunder/ctrlm_thunder_powermanager.cpp
+      thunder/ctrlm_thunder_plugin_powermanager.cpp
    )
 endif()
 
@@ -169,16 +173,6 @@ if(RF4CE_ENABLED)
       rf4ce/rib/ctrlm_rf4ce_rib.cpp
       rf4ce/rib/ctrlm_rf4ce_rib_attr.cpp
    )
-
-   if(RF4CE_PACKET_ANALYSIS)
-      target_sources(controlMgr PRIVATE
-      ctrlm_rf4ce_voice_packet_analysis.cpp
-   )
-   else()
-      target_sources(controlMgr PRIVATE
-      stubs/stubs_voice_packet_analysis.cpp
-   )
-   endif()
 endif()
 
 if(TELEMETRY_SUPPORT)
@@ -195,16 +189,23 @@ if(THUNDER)
       thunder/ctrlm_thunder_plugin.cpp
       thunder/ctrlm_thunder_plugin_system_audio_player.cpp
       thunder/helpers/ctrlm_thunder_helpers.cpp
+      thunder/plugins/ctrlm_thunder_plugin_cec_sink.cpp
+      thunder/plugins/ctrlm_thunder_plugin_cec_source.cpp
+      thunder/plugins/ctrlm_thunder_plugin_display_settings.cpp
       thunder/plugins/ctrlm_thunder_plugin_device_info.cpp
+      thunder/plugins/ctrlm_thunder_plugin_av_input.cpp
+      thunder/plugins/ctrlm_thunder_plugin_hdmi_input.cpp
       thunder/plugins/ctrlm_thunder_plugin_system.cpp
       ipc/ctrlm_rcp_ipc_iarm_thunder.cpp
       voice/ipc/ctrlm_voice_ipc_iarm_thunder.cpp
+      voice/ipc/ctrlm_voice_ipc_request_type.c
    )
 
    if(AUTH_ENABLED)
       target_sources(controlMgr PRIVATE
          auth/ctrlm_auth.cpp
          auth/ctrlm_auth_thunder.cpp
+         auth/ctrlm_auth_certificate.cpp
          auth/ctrlm_thunder_plugin_authservice.cpp
       )
   endif()

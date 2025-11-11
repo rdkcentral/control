@@ -35,9 +35,7 @@
 #include "ctrlm_device_update.h"
 #include "ctrlm_database.h"
 #include "ctrlm_validation.h"
-#ifdef ASB
 #include "ctrlm_asb.h"
-#endif
 
 using namespace std;
 
@@ -135,14 +133,10 @@ ctrlm_obj_controller_rf4ce_t::ctrlm_obj_controller_rf4ce_t(ctrlm_controller_id_t
    polling_methods_(0),
    time_last_heartbeat_(0),
    rib_configuration_complete_status_(RF4CE_RIB_CONFIGURATION_COMPLETE_PAIRING_INCOMPLETE),
-#ifdef ASB
    asb_key_derivation_method_used_(ASB_KEY_DERIVATION_NONE),
-#endif
    metrics_tag_ (0),
-#ifdef XR15_704
    needs_reset_(false),
    did_reset_(false),
-#endif
    mfg_test_result_(1)
 {
    XLOGD_INFO("constructor - %u", controller_id);
@@ -712,9 +706,9 @@ void ctrlm_obj_controller_rf4ce_t::db_load() {
    ctrlm_db_rf4ce_read_binding_type(network_id, controller_id, &binding_type_);
    ctrlm_db_rf4ce_read_validation_type(network_id, controller_id, &validation_type_);
    ctrlm_db_rf4ce_read_binding_security_type(network_id, controller_id, &binding_security_type_);
-#ifdef ASB
-   ctrlm_db_rf4ce_read_asb_key_derivation_method(network_id, controller_id, &asb_key_derivation_method_used_);
-#endif
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      ctrlm_db_rf4ce_read_asb_key_derivation_method(network_id, controller_id, &asb_key_derivation_method_used_);
+   }
 
    ctrlm_db_rf4ce_read_peripheral_id(network_id, controller_id, &data, &length);
    if(data == NULL) {
@@ -894,9 +888,9 @@ void ctrlm_obj_controller_rf4ce_t::db_store() {
    ctrlm_db_rf4ce_write_binding_type(network_id, controller_id, binding_type_);
    ctrlm_db_rf4ce_write_validation_type(network_id, controller_id, validation_type_);
    ctrlm_db_rf4ce_write_binding_security_type(network_id, controller_id, binding_security_type_);
-#ifdef ASB
-   ctrlm_db_rf4ce_write_asb_key_derivation_method(network_id, controller_id, asb_key_derivation_method_used_);
-#endif
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      ctrlm_db_rf4ce_write_asb_key_derivation_method(network_id, controller_id, asb_key_derivation_method_used_);
+   }
 
    if(CTRLM_RF4CE_RIB_ATTR_LEN_PERIPHERAL_ID              == property_read_peripheral_id(data, CTRLM_RF4CE_RIB_ATTR_LEN_PERIPHERAL_ID)) {
       ctrlm_db_rf4ce_write_peripheral_id(network_id, controller_id, data, CTRLM_RF4CE_RIB_ATTR_LEN_PERIPHERAL_ID);
@@ -1041,12 +1035,9 @@ void ctrlm_obj_controller_rf4ce_t::validation_result_set(ctrlm_rcu_binding_type_
       validation_type_  = validation_type;
       db_create();
       db_store();
-      // HACK for XR15-704, possible duplicate pairing
-#ifdef XR15_704
+      // possible duplicate pairing
       needs_reset_ = false;
       did_reset_   = false;
-#endif
-      // HACK for XR15-704
 
       // Telemetry needs to keep track of binding.  
       log_binding_for_telemetry();
@@ -2053,8 +2044,7 @@ guchar ctrlm_obj_controller_rf4ce_t::property_read_ir_rf_database(guchar index, 
       }
    }
    len = obj_network_rf4ce_->property_read_ir_rf_database(index, data, length);
-   // HACK for XR15-704
-#ifdef XR15_704
+   
    if(needs_reset_) {
       if(!ctrlm_device_update_is_controller_updating(network_id_get(), controller_id_get(), true)) {
          if(len < 2) {
@@ -2075,8 +2065,7 @@ guchar ctrlm_obj_controller_rf4ce_t::property_read_ir_rf_database(guchar index, 
       needs_reset_ = false;
       XLOGD_INFO("EXITING XR15 CRASH CODE: XR15 was reset <%s>", (did_reset_ ? "TRUE" : "FALSE"));
    }
-#endif
-   // HACK for XR15-704
+   
    return(len);
 }
 
@@ -2141,7 +2130,7 @@ guchar ctrlm_obj_controller_rf4ce_t::property_read_validation_configuration(guch
    return(CTRLM_RF4CE_RIB_ATTR_LEN_VALIDATION_CONFIGURATION);
 }
 
-void ctrlm_obj_controller_rf4ce_t::irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, ctrlm_irdb_ir_entry_id_t irdb_entry_id_name) {
+void ctrlm_obj_controller_rf4ce_t::irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, const std::string &irdb_entry_id_name) {
    switch(type) {
       case CTRLM_IRDB_DEV_TYPE_TV:
          if (irdb_entry_id_name_tv_->to_string() != irdb_entry_id_name) {
@@ -2167,44 +2156,13 @@ void ctrlm_obj_controller_rf4ce_t::irdb_entry_id_name_set(ctrlm_irdb_dev_type_t 
    }
 }
 
-guchar ctrlm_obj_controller_rf4ce_t::property_write_receiver_id(guchar *data, guchar length) {
-   if(length != CTRLM_RF4CE_RIB_ATTR_LEN_TARGET_ID_DATA) {
-      XLOGD_ERROR("INVALID PARAMETERS");
-      return(0);
-   }
-
-   // We do not want to support overwriting the receiver id
-   XLOGD_WARN("Wrting the receiver id is NOT allowed");
-   return(0);
-}
-
-guchar ctrlm_obj_controller_rf4ce_t::property_read_receiver_id(guchar *data, guchar length) {
-   std::string receiver_id;
-   guchar      len;
-
-   if(length != CTRLM_RF4CE_RIB_ATTR_LEN_TARGET_ID_DATA) {
-      XLOGD_ERROR("INVALID PARAMETERS");
-      return(0);
-   }
-
-   receiver_id = receiver_id_get();
-   len = (receiver_id.length() > length ? length : receiver_id.length());
-
-   // Copy receiver id to data buf
-   errno_t safec_rc = strncpy_s((gchar *)data, CTRLM_HAL_RF4CE_CONST_MAX_RIB_ATTRIBUTE_SIZE, receiver_id.c_str(),len);
-   ERR_CHK(safec_rc);
-
-   return(len);
-
-}
-
 guchar ctrlm_obj_controller_rf4ce_t::property_write_device_id(guchar *data, guchar length) {
    if(length != CTRLM_RF4CE_RIB_ATTR_LEN_TARGET_ID_DATA) {
       XLOGD_ERROR("INVALID PARAMETERS");
       return(0);
    }
 
-   // We do not want to support overwriting the receiver id
+   // We do not want to support overwriting the device id
    XLOGD_WARN("Wrting the device id is NOT allowed");
    return(0);
 }
@@ -2221,7 +2179,7 @@ guchar ctrlm_obj_controller_rf4ce_t::property_read_device_id(guchar *data, gucha
    device_id = device_id_get();
    len = (device_id.length() > length ? length : device_id.length());
 
-   // Copy receiver id to data buf
+   // Copy device id to data buf
    errno_t safec_rc = strncpy_s((gchar *)data, CTRLM_HAL_RF4CE_CONST_MAX_RIB_ATTRIBUTE_SIZE, device_id.c_str(),len);
    ERR_CHK(safec_rc);
 
@@ -2877,8 +2835,6 @@ void ctrlm_obj_controller_rf4ce_t::print_remote_firmware_debug_info(ctrlm_rf4ce_
 }
 
 
-// These functions are HACKS for XR15-704
-#ifdef XR15_704
 void ctrlm_obj_controller_rf4ce_t::set_reset() {
    ctrlm_sw_version_t version_bug(XR15_DEVICE_UPDATE_BUG_FIRMWARE_MAJOR, XR15_DEVICE_UPDATE_BUG_FIRMWARE_MINOR, XR15_DEVICE_UPDATE_BUG_FIRMWARE_REVISION, XR15_DEVICE_UPDATE_BUG_FIRMWARE_PATCH);
 
@@ -2892,8 +2848,6 @@ void ctrlm_obj_controller_rf4ce_t::set_reset() {
 bool ctrlm_obj_controller_rf4ce_t::needs_reset() {
    return(needs_reset_);
 }
-#endif
-// These functions are HACKS for XR15-704
 
 // Polling Functions
 void ctrlm_obj_controller_rf4ce_t::polling_action_push(ctrlm_rf4ce_polling_action_msg_t *action) {
@@ -2949,9 +2903,7 @@ void ctrlm_obj_controller_rf4ce_t::rf4ce_heartbeat(ctrlm_timestamp_t timestamp, 
    guint8 response_len = sizeof(response);
    errno_t safec_rc = -1;
 
-#ifdef ASB
    bool link_key_validation = false;
-#endif
 
    if(CTRLM_RF4CE_RESULT_VALIDATION_SUCCESS == validation_result_) {
       // Set last heartbeat time
@@ -2981,18 +2933,14 @@ void ctrlm_obj_controller_rf4ce_t::rf4ce_heartbeat(ctrlm_timestamp_t timestamp, 
       } else {
          XLOGD_INFO("Controller %u Heartbeat Response: Action <%s> Poll Again <%s>", controller_id_get(), ctrlm_rf4ce_polling_action_str(action), (flags & HEARTBEAT_RESPONSE_FLAG_POLL_AGAIN ? "YES" : "NO"));
       }
-   } 
-#ifdef ASB
-   else if(POLLING_TRIGGER_FLAG_STATUS == trigger && CTRLM_RF4CE_RESULT_VALIDATION_PENDING == validation_result_) {
+   } else if(ctrlm_is_rf4ce_asb_supported() && POLLING_TRIGGER_FLAG_STATUS == trigger && CTRLM_RF4CE_RESULT_VALIDATION_PENDING == validation_result_) {
       XLOGD_INFO("Controller %u Heartbeat for Link Key Validation, respond with NO ACTION", controller_id_get());
       // Cancel timeout
       ctrlm_timeout_destroy(&asb_tag_);
       asb_tag_ = 0;
       link_key_validation = true;
       response_len = 3; // Backwards compatiability for XR15v2
-   }
-#endif
-   else {
+   } else {
       XLOGD_INFO("Heartbeat from controller that is not bound.. Ignore...");
       return;
    }
@@ -3020,16 +2968,17 @@ void ctrlm_obj_controller_rf4ce_t::rf4ce_heartbeat(ctrlm_timestamp_t timestamp, 
 
    // Send the response back to the controller
    req_data(CTRLM_RF4CE_PROFILE_ID_COMCAST_RCU, timestamp, response_len, response, NULL, NULL);
-#ifdef ASB
+
    if(link_key_validation) {
       obj_network_rf4ce_->process_pair_result(controller_id_get(), ieee_address_->get_value(), CTRLM_HAL_RESULT_PAIR_SUCCESS);
    }
-#endif
+
    if(NULL != action_msg) {
       free(action_msg);
       action_msg = NULL;
    }
 }
+
 void ctrlm_obj_controller_rf4ce_t::rib_configuration_complete(ctrlm_timestamp_t timestamp, ctrlm_rf4ce_rib_configuration_complete_status_t status) {
    XLOGD_INFO("Controller %u Configuration Complete: Status <%u>", controller_id_get(), status);
    switch(status) {
@@ -3092,7 +3041,6 @@ ctrlm_rcu_binding_security_type_t ctrlm_obj_controller_rf4ce_t::binding_security
    return(binding_security_type_);
 }
 
-#ifdef ASB
 typedef struct {
    ctrlm_network_id_t    network_id;
    ctrlm_controller_id_t controller_id;
@@ -3156,9 +3104,9 @@ void ctrlm_obj_controller_rf4ce_t::asb_key_derivation_perform() {
    }
    // Perform link key derivation
 
-   if(asb_key_derivation(property.aes128_key, new_aes128_key, asb_key_derivation_method_used_)) {
+   if(obj_network_rf4ce_->hal_asb_key_derive(property.aes128_key, new_aes128_key, asb_key_derivation_method_used_)) {
       XLOGD_ERROR("Failed to perform key derivation");
-      asb_destroy();
+      obj_network_rf4ce_->hal_asb_destroy();
       return;
    }
    // Set New Link key
@@ -3179,7 +3127,6 @@ void ctrlm_obj_controller_rf4ce_t::asb_key_derivation_perform() {
    // Destroy ASB
    ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_rf4ce_t::rf4ce_asb_destroy, (void *)NULL, 0, obj_network_rf4ce_);
 }
-#endif
 
 void ctrlm_obj_controller_rf4ce_t::metrics_tag_reset() {
    metrics_tag_ = 0;

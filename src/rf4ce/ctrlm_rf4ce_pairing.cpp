@@ -173,17 +173,17 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_stb(ctrlm_main_queue_msg_rf4ce_
    ctrlm_hal_rf4ce_rsp_pair_params_t params;
    ctrlm_controller_id_t controller_id;
    errno_t safec_rc = -1;
-#ifdef ASB
    bool asb = false;
    asb_key_derivation_method_t key_derivation_method = ASB_KEY_DERIVATION_NONE;
-   // Check to make sure IF this is a ASB session that there is a common Key Derivation method
-   if(is_asb_enabled() && is_asb_active(dqm->params.src_ieee_addr)) {
-      asb = true;
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      // Check to make sure IF this is a ASB session that there is a common Key Derivation method
+      if(is_asb_enabled() && is_asb_active(dqm->params.src_ieee_addr)) {
+         asb = true;
+      }
+      XLOGD_INFO("Normal Pair Request, status <%s>, MAC Address <0x%016llx>, ASB Enabled <%s>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr, (asb ? "YES" : "NO"));
+   } else {
+      XLOGD_INFO("Normal Pair Request, status <%s>, MAC Address <0x%016llx>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr);
    }
-   XLOGD_INFO("Normal Pair Request, status <%s>, MAC Address <0x%016llx>, ASB Enabled <%s>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr, (asb ? "YES" : "NO"));
-#else
-   XLOGD_INFO("Normal Pair Request, status <%s>, MAC Address <0x%016llx>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr);
-#endif
 
    controller_id = controller_id_get_by_ieee(dqm->params.src_ieee_addr);
    if(0 != controller_id) {
@@ -204,7 +204,7 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_stb(ctrlm_main_queue_msg_rf4ce_
 #if (CTRLM_HAL_RF4CE_API_VERSION >= 12)
    safec_rc = strncpy_s((char *)params.rec_user_string, sizeof(params.rec_user_string), user_string_.c_str(), 9);
    ERR_CHK(safec_rc);
-#ifdef ASB
+
    if(asb) {
       params.rec_user_string[10] = key_derivation_method_get(dqm->params.org_user_string[10]);
       if(ASB_KEY_DERIVATION_NONE == params.rec_user_string[10]) {
@@ -217,7 +217,6 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_stb(ctrlm_main_queue_msg_rf4ce_
       }
       key_derivation_method = params.rec_user_string[10];
    }
-#endif
 #endif
    params.rec_dev_type_list[0]   = CTRLM_RF4CE_DEVICE_TYPE_STB;
    params.rec_dev_type_list[1]   = CTRLM_RF4CE_DEVICE_TYPE_AUTOBIND;
@@ -252,36 +251,36 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_stb(ctrlm_main_queue_msg_rf4ce_
    controller_screen_bind_in_progress_set(params.controller_id, false);
 
    // Set security type
-#ifdef ASB
-   controller_set_binding_security_type(params.controller_id, (asb ? CTRLM_RCU_BINDING_SECURITY_TYPE_ADVANCED : CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL));
-   controller_set_key_derivation_method(params.controller_id, (asb ? key_derivation_method : ASB_KEY_DERIVATION_NONE));
-#else
-   controller_set_binding_security_type(params.controller_id, CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL);
-#endif
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      controller_set_binding_security_type(params.controller_id, (asb ? CTRLM_RCU_BINDING_SECURITY_TYPE_ADVANCED : CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL));
+      controller_set_key_derivation_method(params.controller_id, (asb ? key_derivation_method : ASB_KEY_DERIVATION_NONE));
+   } else {
+      controller_set_binding_security_type(params.controller_id, CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL);
+   }
    // Send the parameters for the pair response
    ctrlm_network_queue_deliver_result_pair(dqm, params);
-#ifdef ASB
+
    if(CTRLM_HAL_RF4CE_RESULT_SUCCESS == status && asb) {
       ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_rf4ce_t::rf4ce_asb_init, (void *)NULL, 0, this);
    }
-#endif
 }
 
 void ctrlm_obj_network_rf4ce_t::ind_process_pair_autobind(ctrlm_main_queue_msg_rf4ce_ind_pair_t *dqm, ctrlm_hal_rf4ce_result_t status) {
    THREAD_ID_VALIDATE();
    ctrlm_hal_rf4ce_rsp_pair_params_t params;
    ctrlm_controller_id_t controller_id;
-#ifdef ASB
+
    bool asb = false;
    asb_key_derivation_method_t key_derivation_method = ASB_KEY_DERIVATION_NONE;
-   // Check to make sure IF this is a ASB session that there is a common Key Derivation method
-   if(is_asb_enabled() && is_asb_active(dqm->params.src_ieee_addr)) {
-      asb = true;
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      // Check to make sure IF this is a ASB session that there is a common Key Derivation method
+      if(is_asb_enabled() && is_asb_active(dqm->params.src_ieee_addr)) {
+         asb = true;
+      }
+      XLOGD_INFO("Autobind Pair Request, status <%s>, MAC Address <0x%016llx>, ASB Enabled <%s>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr, (asb ? "YES" : "NO"));
+   } else {
+      XLOGD_INFO("Autobind Pair Request, status <%s>, MAC Address <0x%016llx>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr);
    }
-   XLOGD_INFO("Autobind Pair Request, status <%s>, MAC Address <0x%016llx>, ASB Enabled <%s>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr, (asb ? "YES" : "NO"));
-#else
-   XLOGD_INFO("Autobind Pair Request, status <%s>, MAC Address <0x%016llx>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr);
-#endif
    controller_id = controller_id_get_by_ieee(dqm->params.src_ieee_addr);
    if(0 != controller_id) {
       controller_bind_update(dqm, controller_id, status);
@@ -301,7 +300,7 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_autobind(ctrlm_main_queue_msg_r
 #if (CTRLM_HAL_RF4CE_API_VERSION >= 12)
    errno_t safec_rc = strncpy_s((char *)params.rec_user_string, sizeof(params.rec_user_string), user_string_.c_str(), 9);
    ERR_CHK(safec_rc);
-#ifdef ASB
+
    if(asb) {
       params.rec_user_string[10] = key_derivation_method_get(dqm->params.org_user_string[10]);
       if(ASB_KEY_DERIVATION_NONE == params.rec_user_string[10]) {
@@ -315,7 +314,6 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_autobind(ctrlm_main_queue_msg_r
       }
       key_derivation_method = params.rec_user_string[10];
    }
-#endif
 #endif
    params.rec_dev_type_list[0]   = CTRLM_RF4CE_DEVICE_TYPE_STB;
    params.rec_dev_type_list[1]   = CTRLM_RF4CE_DEVICE_TYPE_AUTOBIND;
@@ -335,20 +333,19 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_autobind(ctrlm_main_queue_msg_r
    controller_screen_bind_in_progress_set(params.controller_id, false);
 
    // Set security type
-#ifdef ASB
-   controller_set_binding_security_type(params.controller_id, (asb ? CTRLM_RCU_BINDING_SECURITY_TYPE_ADVANCED : CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL));
-   controller_set_key_derivation_method(params.controller_id, (asb ? key_derivation_method : ASB_KEY_DERIVATION_NONE));
-#else
-   controller_set_binding_security_type(params.controller_id, CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL);
-#endif
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      controller_set_binding_security_type(params.controller_id, (asb ? CTRLM_RCU_BINDING_SECURITY_TYPE_ADVANCED : CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL));
+      controller_set_key_derivation_method(params.controller_id, (asb ? key_derivation_method : ASB_KEY_DERIVATION_NONE));
+   } else {
+      controller_set_binding_security_type(params.controller_id, CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL);
+   }
 
    // Send the parameters for the pair response
    ctrlm_network_queue_deliver_result_pair(dqm, params);
-#ifdef ASB
+
    if(CTRLM_HAL_RF4CE_RESULT_SUCCESS == status && asb) {
       ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_rf4ce_t::rf4ce_asb_init, (void *)NULL, 0, this);
    }
-#endif
 }
 
 void ctrlm_obj_network_rf4ce_t::ind_process_pair_binding_button(ctrlm_main_queue_msg_rf4ce_ind_pair_t *dqm, ctrlm_hal_rf4ce_result_t status) {
@@ -356,17 +353,18 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_binding_button(ctrlm_main_queue
    ctrlm_hal_rf4ce_rsp_pair_params_t params;
    ctrlm_controller_id_t controller_id;
    errno_t safec_rc = -1;
-#ifdef ASB
+
    bool asb = false;
    asb_key_derivation_method_t key_derivation_method = ASB_KEY_DERIVATION_NONE;
-   // Check to make sure IF this is a ASB session that there is a common Key Derivation method
-   if(is_asb_enabled() && is_asb_active(dqm->params.src_ieee_addr)) {
-      asb = true;
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      // Check to make sure IF this is a ASB session that there is a common Key Derivation method
+      if(is_asb_enabled() && is_asb_active(dqm->params.src_ieee_addr)) {
+         asb = true;
+      }
+      XLOGD_INFO("Button Binding Pair Request, status <%s>, MAC Address <0x%016llx>, ASB Enabled <%s>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr, (asb ? "YES" : "NO"));
+   } else {
+      XLOGD_INFO("Button Binding Pair Request, status <%s>, MAC Address <0x%016llx>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr);
    }
-   XLOGD_INFO("Button Binding Pair Request, status <%s>, MAC Address <0x%016llx>, ASB Enabled <%s>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr, (asb ? "YES" : "NO"));
-#else
-   XLOGD_INFO("Button Binding Pair Request, status <%s>, MAC Address <0x%016llx>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr);
-#endif
    controller_id = controller_id_get_by_ieee(dqm->params.src_ieee_addr);
    if(0 != controller_id) {
       controller_bind_update(dqm, controller_id, status);
@@ -386,7 +384,6 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_binding_button(ctrlm_main_queue
 #if (CTRLM_HAL_RF4CE_API_VERSION >= 12)
    safec_rc = strncpy_s((char *)params.rec_user_string, sizeof(params.rec_user_string), user_string_.c_str(), 9);
    ERR_CHK(safec_rc);
-#ifdef ASB
    if(asb) {
       params.rec_user_string[10] = key_derivation_method_get(dqm->params.org_user_string[10]);
       if(ASB_KEY_DERIVATION_NONE == params.rec_user_string[10]) {
@@ -400,7 +397,6 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_binding_button(ctrlm_main_queue
       }
       key_derivation_method = params.rec_user_string[10];
    }
-#endif
 #endif
    params.rec_dev_type_list[0]   = CTRLM_RF4CE_DEVICE_TYPE_STB;
    params.rec_dev_type_list[1]   = CTRLM_RF4CE_DEVICE_TYPE_AUTOBIND;
@@ -434,37 +430,37 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_binding_button(ctrlm_main_queue
    controller_screen_bind_in_progress_set(params.controller_id, false);
 
    // Set security type
-#ifdef ASB
-   controller_set_binding_security_type(params.controller_id, (asb ? CTRLM_RCU_BINDING_SECURITY_TYPE_ADVANCED : CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL));
-   controller_set_key_derivation_method(params.controller_id, (asb ? key_derivation_method : ASB_KEY_DERIVATION_NONE));
-#else
-   controller_set_binding_security_type(params.controller_id, CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL);
-#endif
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      controller_set_binding_security_type(params.controller_id, (asb ? CTRLM_RCU_BINDING_SECURITY_TYPE_ADVANCED : CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL));
+      controller_set_key_derivation_method(params.controller_id, (asb ? key_derivation_method : ASB_KEY_DERIVATION_NONE));
+   } else {
+      controller_set_binding_security_type(params.controller_id, CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL);
+   }
 
    // Send the parameters for the pair response
    ctrlm_network_queue_deliver_result_pair(dqm, params);
-#ifdef ASB
+
    if(CTRLM_HAL_RF4CE_RESULT_SUCCESS == status && asb) {
       ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_rf4ce_t::rf4ce_asb_init, (void *)NULL, 0, this);
    }
-#endif
 }
 
 void ctrlm_obj_network_rf4ce_t::ind_process_pair_screen_bind(ctrlm_main_queue_msg_rf4ce_ind_pair_t *dqm, ctrlm_hal_rf4ce_result_t status) {
    THREAD_ID_VALIDATE();
    ctrlm_hal_rf4ce_rsp_pair_params_t params;
    ctrlm_controller_id_t controller_id;
-#ifdef ASB
+
    bool asb = false;
    asb_key_derivation_method_t key_derivation_method = ASB_KEY_DERIVATION_NONE;
-   // Check to make sure IF this is a ASB session that there is a common Key Derivation method
-   if(is_asb_enabled() && is_asb_active(dqm->params.src_ieee_addr)) {
-      asb = true;
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      // Check to make sure IF this is a ASB session that there is a common Key Derivation method
+      if(is_asb_enabled() && is_asb_active(dqm->params.src_ieee_addr)) {
+         asb = true;
+      }
+      XLOGD_INFO("Screen Bind Pair Request, status <%s>, MAC Address <0x%016llx>, ASB Enabled <%s>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr, (asb ? "YES" : "NO"));
+   } else {
+      XLOGD_INFO("Screen Bind Pair Request, status <%s>, MAC Address <0x%016llx>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr);
    }
-   XLOGD_INFO("Screen Bind Pair Request, status <%s>, MAC Address <0x%016llx>, ASB Enabled <%s>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr, (asb ? "YES" : "NO"));
-#else
-   XLOGD_INFO("Screen Bind Pair Request, status <%s>, MAC Address <0x%016llx>", ctrlm_hal_rf4ce_result_str(status), dqm->params.src_ieee_addr);
-#endif
    controller_id = controller_id_get_by_ieee(dqm->params.src_ieee_addr);
    if(0 != controller_id) {
       controller_bind_update(dqm, controller_id, status);
@@ -484,7 +480,7 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_screen_bind(ctrlm_main_queue_ms
 #if (CTRLM_HAL_RF4CE_API_VERSION >= 12)
    errno_t safec_rc = strncpy_s((char *)params.rec_user_string, sizeof(params.rec_user_string), user_string_.c_str(), 9);
    ERR_CHK(safec_rc);
-#ifdef ASB
+
    if(asb) {
       params.rec_user_string[10] = key_derivation_method_get(dqm->params.org_user_string[10]);
       if(ASB_KEY_DERIVATION_NONE == params.rec_user_string[10]) {
@@ -498,7 +494,6 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_screen_bind(ctrlm_main_queue_ms
       }
       key_derivation_method = params.rec_user_string[10];
    }
-#endif
 #endif
    params.rec_dev_type_list[0]   = CTRLM_RF4CE_DEVICE_TYPE_STB;
    params.rec_dev_type_list[1]   = CTRLM_RF4CE_DEVICE_TYPE_AUTOBIND;
@@ -518,20 +513,19 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_screen_bind(ctrlm_main_queue_ms
    controller_screen_bind_in_progress_set(params.controller_id, true);
 
    // Set security type
-#ifdef ASB
-   controller_set_binding_security_type(params.controller_id, (asb ? CTRLM_RCU_BINDING_SECURITY_TYPE_ADVANCED : CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL));
-   controller_set_key_derivation_method(params.controller_id, (asb ? key_derivation_method : ASB_KEY_DERIVATION_NONE));
-#else
-   controller_set_binding_security_type(params.controller_id, CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL);
-#endif
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      controller_set_binding_security_type(params.controller_id, (asb ? CTRLM_RCU_BINDING_SECURITY_TYPE_ADVANCED : CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL));
+      controller_set_key_derivation_method(params.controller_id, (asb ? key_derivation_method : ASB_KEY_DERIVATION_NONE));
+   } else {
+      controller_set_binding_security_type(params.controller_id, CTRLM_RCU_BINDING_SECURITY_TYPE_NORMAL);
+   }
 
    // Send the parameters for the pair response
    ctrlm_network_queue_deliver_result_pair(dqm, params);
-#ifdef ASB
+
    if(CTRLM_HAL_RF4CE_RESULT_SUCCESS == status && asb) {
       ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_rf4ce_t::rf4ce_asb_init, (void *)NULL, 0, this);
    }
-#endif
 }
 
 void ctrlm_obj_network_rf4ce_t::process_pair_result(ctrlm_controller_id_t controller_id, unsigned long long ieee_address, ctrlm_hal_result_pair_t result) {
@@ -636,15 +630,15 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_result(void *data, int size) { 
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_rf4ce_ind_pair_result_t));
 
-#ifdef ASB
-   if(CTRLM_HAL_RESULT_PAIR_SUCCESS == dqm->result && controller_exists(dqm->controller_id)) {
-      if(CTRLM_RCU_BINDING_SECURITY_TYPE_ADVANCED == controllers_[dqm->controller_id]->binding_security_type_get()) {
-         controller_stats_update(dqm->controller_id);
-         controllers_[dqm->controller_id]->asb_key_derivation_start(network_id_get());
-         return;
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      if(CTRLM_HAL_RESULT_PAIR_SUCCESS == dqm->result && controller_exists(dqm->controller_id)) {
+         if(CTRLM_RCU_BINDING_SECURITY_TYPE_ADVANCED == controllers_[dqm->controller_id]->binding_security_type_get()) {
+            controller_stats_update(dqm->controller_id);
+            controllers_[dqm->controller_id]->asb_key_derivation_start(network_id_get());
+            return;
+         }
       }
    }
-#endif
    process_pair_result(dqm->controller_id, dqm->ieee_address, dqm->result);
 }
 

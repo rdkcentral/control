@@ -62,9 +62,7 @@ using namespace std;
 #define CTRLM_DB_PAIRING_METRICS                  "pairing_metrics"
 #define CTRLM_DB_LAST_KEY_INFO                    "last_key_info"
 #define CTRLM_DB_SHUTDOWN_TIME                    "shutdown_time"
-#ifdef ASB
 #define CTRLM_DB_ASB_ENABLED                      "asb_enabled"
-#endif
 #define CTRLM_DB_OPEN_CHIME_ENABLED               "open_chime_enabled"
 #define CTRLM_DB_CLOSE_CHIME_ENABLED              "close_chime_enabled"
 #define CTRLM_DB_PRIVACY_CHIME_ENABLED            "privacy_chime_enabled"
@@ -663,7 +661,6 @@ void ctrlm_db_shutdown_time_read(guchar **data, guint32 *length) {
    ctrlm_db_read_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_SHUTDOWN_TIME, data, length);
 }
 
-#ifdef ASB
 void ctrlm_db_asb_enabled_write(guchar *data, guint32 length) {
    ctrlm_db_write_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_ASB_ENABLED, data, length);
 }
@@ -671,7 +668,6 @@ void ctrlm_db_asb_enabled_write(guchar *data, guint32 length) {
 void ctrlm_db_asb_enabled_read(guchar **data, guint32 *length) {
    ctrlm_db_read_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_ASB_ENABLED, data, length);
 }
-#endif
 
 void ctrlm_db_open_chime_enabled_write(guchar *data, guint32 length) {
    ctrlm_db_write_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_OPEN_CHIME_ENABLED, data, length);
@@ -1930,7 +1926,6 @@ void ctrlm_db_rf4ce_write_binding_security_type(ctrlm_network_id_t network_id, c
    ctrlm_db_write_uint64(table, "binding_security_type", type);
 }
 
-#ifdef ASB
 void ctrlm_db_rf4ce_read_asb_key_derivation_method(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, unsigned char *method) {
    char table[CONTROLLER_TABLE_NAME_MAX_LEN];
    ctrlm_db_rf4ce_controller_entry_table_name(network_id, controller_id, table);
@@ -1945,7 +1940,6 @@ void ctrlm_db_rf4ce_write_asb_key_derivation_method(ctrlm_network_id_t network_i
 
    ctrlm_db_write_uint64(table, "asb_key_derivation_method", method);
 }
-#endif
 
 void ctrlm_db_rf4ce_read_privacy(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, guchar **data, guint32 *length) {
    char table[CONTROLLER_TABLE_NAME_MAX_LEN];

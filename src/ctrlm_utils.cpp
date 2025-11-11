@@ -64,11 +64,7 @@ void ctrlm_crash_ctrlm_device_update(void) {
    ctrlm_crash();
 }
 
-#ifdef CTRLM_RF4CE_HAL_QORVO
-void ctrlm_crash_rf4ce_qorvo(void) {
-#else
-void ctrlm_crash_rf4ce_ti(void) {
-#endif
+void ctrlm_crash_rf4ce(void) {
    XLOGD_TELEMETRY("crash");
    ctrlm_crash();
 }
@@ -694,7 +690,7 @@ const char *ctrlm_voice_session_abort_reason_str(ctrlm_voice_session_abort_reaso
       case CTRLM_VOICE_SESSION_ABORT_REASON_DEVICE_UPDATE:         return("DEVICE_UPDATE");
       case CTRLM_VOICE_SESSION_ABORT_REASON_FAILURE:               return("FAILURE");
       case CTRLM_VOICE_SESSION_ABORT_REASON_VOICE_DISABLED:        return("VOICE_DISABLED");
-      case CTRLM_VOICE_SESSION_ABORT_REASON_NO_RECEIVER_ID:        return("NO RECEIVER_ID");
+      case CTRLM_VOICE_SESSION_ABORT_REASON_NO_AUTH_DATA:          return("NO_AUTH_DATA");
       case CTRLM_VOICE_SESSION_ABORT_REASON_NEW_SESSION:           return("NEW_SESSION");
       case CTRLM_VOICE_SESSION_ABORT_REASON_INVALID_CONTROLLER_ID: return("INVALID_CONTROLLER_ID");
       case CTRLM_VOICE_SESSION_ABORT_REASON_APPLICATION_RESTART:   return("APPLICATION_RESTART");
@@ -1269,6 +1265,27 @@ const char *ctrlm_key_code_str(ctrlm_key_code_t key_code) {
    return(ctrlm_invalid_return(key_code));
 }
 
+static const map<ctrlm_key_code_t, uint16_t> ctrlm_key_code_to_linux_key_map {
+   {CTRLM_KEY_CODE_DIGIT_0, KEY_0},
+   {CTRLM_KEY_CODE_DIGIT_1, KEY_1},
+   {CTRLM_KEY_CODE_DIGIT_2, KEY_2},
+   {CTRLM_KEY_CODE_DIGIT_3, KEY_3},
+   {CTRLM_KEY_CODE_DIGIT_4, KEY_4},
+   {CTRLM_KEY_CODE_DIGIT_5, KEY_5},
+   {CTRLM_KEY_CODE_DIGIT_6, KEY_6},
+   {CTRLM_KEY_CODE_DIGIT_7, KEY_7},
+   {CTRLM_KEY_CODE_DIGIT_8, KEY_8},
+   {CTRLM_KEY_CODE_DIGIT_9, KEY_9}
+};
+
+uint16_t ctrlm_key_code_to_linux_key(ctrlm_key_code_t code) {
+   if (ctrlm_key_code_to_linux_key_map.end() != ctrlm_key_code_to_linux_key_map.find(code)) {
+      return ctrlm_key_code_to_linux_key_map.at(code);
+   } else {
+      return KEY_RESERVED;
+   }
+}
+
 // map to convert a key code to its identifiable name on the remote.
 // map<key code, tuple<name, masked_name>>
 static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_names {
@@ -1298,7 +1315,9 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_F19,           {"YouTube App",          "YouTube App"}},
    {KEY_F20,           {"Info",                 "Info"}},
    {KEY_F21,           {"Guide",                "Guide"}},
+   {KEY_EPG,           {"Guide",                "Guide"}},
    {KEY_F22,           {"Accessibility",        "Accessibility"}},
+   {KEY_F23,           {"AMC App",              "AMC App"}},
    {KEY_F8,            {"Voice",                "Voice"}},
    {KEY_ESC,           {"Dismiss",              "Dismiss"}},
    {KEY_F9,            {"Quick Access Menu",    "Quick Access Menu"}},
@@ -1311,6 +1330,8 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_DELETE,        {"Prime Video App",      "Prime Video App"}},  // APP key for PLATCO
    {KEY_PAGEUP,        {"Channel+",             "Channel+"}},
    {KEY_PAGEDOWN,      {"Channel-",             "Channel-"}},
+   {KEY_SCROLLUP,      {"Page+",                "Page+"}},
+   {KEY_SCROLLDOWN,    {"Page-",                "Page-"}},
    {KEY_F2,            {"Help/Cog",             "Help/Cog"}},
    {KEY_F5,            {"Apps",                 "Apps"}},
    {KEY_F10,           {"Rewind",               "Rewind"}},
@@ -1319,7 +1340,8 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_F7,            {"Record",               "Record"}},
    {KEY_F3,            {"Search",               "Search"}},
    {KEY_F6,            {"Provider",             "Provider"}},
-   {KEY_F14,           {"Quick Access",         "Quick Access"}},
+   {KEY_KPDOT,         {"App A",                "App A"}},        // A key for RF4CE remotes (also asterisk key)
+   {KEY_F14,           {"Quick Access",         "Quick Access"}}, // B key for RF4CE remotes (C and D are not defined yet)
    {KEY_KPRIGHTPAREN,  {"App 1",                "App 1"}}, // APP key for LLAMA
    {KEY_KPLEFTPAREN,   {"App 2",                "App 2"}}, // APP key for LLAMA
    {KEY_KPCOMMA,       {"App 3",                "App 3"}}, // APP key for LLAMA
@@ -1351,7 +1373,7 @@ const char *ctrlm_linux_key_code_str(uint16_t code, bool mask) {
    }
 }
 
-#ifdef DEEP_SLEEP_ENABLED
+#ifdef NETWORKED_STANDBY_MODE_ENABLED
 const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason) {
     switch(wakeup_reason) {
         case DEEPSLEEP_WAKEUPREASON_IR:               return("IR");
@@ -1990,20 +2012,6 @@ std::string ctrlm_xml_tag_text_get(const std::string &xml, const std::string &ta
    return xml.substr(idx, idx2 - idx);
 }
 
-ctrlm_power_state_t ctrlm_iarm_power_state_map(IARM_Bus_PowerState_t iarm_power_state) {
-    ctrlm_power_state_t ctrlm_power_state = CTRLM_POWER_STATE_ON;
-
-    switch(iarm_power_state) {
-       case IARM_BUS_PWRMGR_POWERSTATE_ON:                  ctrlm_power_state = CTRLM_POWER_STATE_ON;          break;
-       case IARM_BUS_PWRMGR_POWERSTATE_STANDBY:
-       case IARM_BUS_PWRMGR_POWERSTATE_STANDBY_LIGHT_SLEEP: ctrlm_power_state = CTRLM_POWER_STATE_STANDBY;     break;
-       case IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP:
-       case IARM_BUS_PWRMGR_POWERSTATE_OFF:                 ctrlm_power_state = CTRLM_POWER_STATE_DEEP_SLEEP;  break;
-    }
-
-    return ctrlm_power_state;
-}
-
 const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config) {
     switch(config) {
         case CTRLM_RCU_WAKEUP_CONFIG_ALL:       return("ALL");
@@ -2315,15 +2323,6 @@ bool ctrlm_utils_queue_msg_push(int msgq, const char *msg, size_t msg_len) {
       return(false);
    }
    return(true);
-}
-
-const char *ctrlm_irdb_vendor_str(ctrlm_irdb_vendor_t vendor) {
-   switch (vendor) {
-      case CTRLM_IRDB_VENDOR_UEI:      return("UEI");
-      case CTRLM_IRDB_VENDOR_RUWIDO:   return("RUWIDO");
-      case CTRLM_IRDB_VENDOR_INVALID:  return("INVALID");
-      default:                         return("UNKNOWN");
-   }
 }
 
 std::string ctrlm_utils_time_as_string(time_t time) {

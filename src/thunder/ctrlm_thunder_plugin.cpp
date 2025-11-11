@@ -29,6 +29,15 @@ using namespace Thunder;
 using namespace Plugin;
 using namespace WPEFramework;
 
+struct on_plugin_activated_params_t {
+    ctrlm_thunder_plugin_t *plugin_;
+    Thunder::plugin_state_t state_;
+
+    on_plugin_activated_params_t(ctrlm_thunder_plugin_t *plugin, Thunder::plugin_state_t state)
+        : plugin_(plugin)
+        , state_(state) {}
+};
+
 #define REGISTER_EVENTS_RETRY_MAX (5)
 
 static void _on_activation_change(Thunder::plugin_state_t state, void *data) {
@@ -138,7 +147,8 @@ void ctrlm_thunder_plugin_t::remove_activation_handler(plugin_activation_handler
 
 int ctrlm_thunder_plugin_t::on_plugin_activated(void *data) {
     bool ret = 0;
-    ctrlm_thunder_plugin_t *plugin = (ctrlm_thunder_plugin_t *)data;
+    on_plugin_activated_params_t *params = (on_plugin_activated_params_t *)data;
+    ctrlm_thunder_plugin_t *plugin = params->plugin_;
     if(plugin) {
         XLOGD_INFO("%s activated, registering events", plugin->name.c_str());
         ret = (plugin->register_events() ? 0 : 1); // If this fails, try to register again.
@@ -150,6 +160,20 @@ int ctrlm_thunder_plugin_t::on_plugin_activated(void *data) {
             }
         } else {
             plugin->on_initial_activation();
+            if (params->state_ == PLUGIN_BOOT_ACTIVATED) {
+                /* If this is first time the thunder plugin has been
+                 * activated AND it was from boot/ctrlm start up then we
+                 * need to run the activation callbacks here because the
+                 * vector of callbacks will always be empty at the time
+                 * of the first call to on_activation_change from
+                 * on_thunder_ready(boot = true) in the constructor.
+                 *
+                 * There is no time between plugin construction and
+                 * controller ready for users to register an activation
+                 * callback.
+                 */
+                plugin->iterate_activation_callbacks(params->state_);
+            }
         }
     } else {
         XLOGD_ERROR("Plugin is NULL");
@@ -159,15 +183,15 @@ int ctrlm_thunder_plugin_t::on_plugin_activated(void *data) {
 
 void ctrlm_thunder_plugin_t::on_activation_change(plugin_state_t state) {
     if(state == PLUGIN_ACTIVATED || state == PLUGIN_BOOT_ACTIVATED) {
-        g_timeout_add(100, &ctrlm_thunder_plugin_t::on_plugin_activated, (void *)this);
+        on_plugin_activated_params_t *params = new on_plugin_activated_params_t(this, state);
+        g_timeout_add(100, &ctrlm_thunder_plugin_t::on_plugin_activated, (void *)params);
     }
-    for(auto &itr : this->activation_callbacks) {
-        itr.first(state, itr.second);
-    }
+    this->iterate_activation_callbacks(state);
 }
 
 void ctrlm_thunder_plugin_t::on_thunder_ready(bool boot) {
     std::string callsign_api = this->callsign_with_api();
+
     XLOGD_INFO("Thunder is now ready, create plugin client for %s", callsign_api.c_str());
     auto pluginClient = new JSONRPC::LinkType<Core::JSON::IElement>(_T(callsign_api), _T(""), false, Thunder::Controller::ctrlm_thunder_controller_t::get_security_token());
     if(pluginClient == NULL) {
@@ -253,5 +277,11 @@ bool ctrlm_thunder_plugin_t::register_events() {
 }
 
 void ctrlm_thunder_plugin_t::on_initial_activation() {
-    // Nothing needed here for now
+    // Nothing needed for now
+}
+
+void ctrlm_thunder_plugin_t::iterate_activation_callbacks(plugin_state_t state) {
+    for (auto &itr : this->activation_callbacks) {
+        itr.first(state, itr.second);
+    }
 }

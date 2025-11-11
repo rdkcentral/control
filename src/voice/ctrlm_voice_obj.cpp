@@ -203,7 +203,7 @@ ctrlm_voice_t::ctrlm_voice_t() {
     }
     #endif
 
-    #ifdef DEEP_SLEEP_ENABLED
+    #ifdef NETWORKED_STANDBY_MODE_ENABLED
     this->prefs.dst_params_standby.connect_check_interval = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL;
     this->prefs.dst_params_standby.timeout_connect        = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT;
     this->prefs.dst_params_standby.timeout_inactivity     = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY;
@@ -378,7 +378,7 @@ void ctrlm_voice_t::voice_sdk_open(json_t *json_obj_vsdk) {
 
    //HAL is not available to query mute state because xrsr is not open, so use stored status.
    bool privacy = this->voice_is_privacy_enabled();
-   ctrlm_power_state_t ctrlm_power_state = ctrlm_main_get_power_state();
+   ctrlm_power_state_t ctrlm_power_state = ctrlm_main_get_internal_power_state();
    xrsr_power_mode_t   xrsr_power_mode   = voice_xrsr_power_map(ctrlm_power_state);
 
    if(!xrsr_open(host_name, routes, &kw_config, &capture_config, xrsr_power_mode, privacy, this->mask_pii, json_obj_vsdk)) {
@@ -485,7 +485,7 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
         conf.config_value_get(JSON_FLOAT_NAME_VOICE_AUDIO_DUCKING_LEVEL,        audio_settings.ducking_level, 0.0, 1.0);
         conf.config_value_get(JSON_BOOL_NAME_VOICE_AUDIO_DUCKING_BEEP,          audio_settings.ducking_beep);
 
-        #ifdef DEEP_SLEEP_ENABLED
+        #ifdef NETWORKED_STANDBY_MODE_ENABLED
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL, this->prefs.dst_params_standby.connect_check_interval);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,        this->prefs.dst_params_standby.timeout_connect);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,     this->prefs.dst_params_standby.timeout_inactivity);
@@ -978,17 +978,17 @@ void ctrlm_voice_t::process_xconf(json_t **json_obj_vsdk, bool local_conf) {
 
    char vsdk_config_str[CTRLM_RFC_MAX_PARAM_LEN] = {0}; //MAX_PARAM_LEN from rfcapi.h is 2048
 
-#ifdef CTRLM_NETWORK_RF4CE
-   char encoder_params_str[CTRLM_RCU_RIB_ATTR_LEN_OPUS_ENCODING_PARAMS * 2 + 1] = {0};
+   if(ctrlm_is_rf4ce_enabled()) {
+      char encoder_params_str[CTRLM_RCU_RIB_ATTR_LEN_OPUS_ENCODING_PARAMS * 2 + 1] = {0};
 
-   result  = ctrlm_tr181_string_get(CTRLM_RF4CE_TR181_RF4CE_OPUS_ENCODER_PARAMS, encoder_params_str, sizeof(encoder_params_str));
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-      std::string opus_encoder_params_str = encoder_params_str;
-      this->voice_params_opus_encoder_validate(opus_encoder_params_str);
+      result  = ctrlm_tr181_string_get(CTRLM_RF4CE_TR181_RF4CE_OPUS_ENCODER_PARAMS, encoder_params_str, sizeof(encoder_params_str));
+      if(result == CTRLM_TR181_RESULT_SUCCESS) {
+         std::string opus_encoder_params_str = encoder_params_str;
+         this->voice_params_opus_encoder_validate(opus_encoder_params_str);
 
-      XLOGD_INFO("opus encoder params <%s>", this->prefs.opus_encoder_params_str.c_str());
+         XLOGD_INFO("opus encoder params <%s>", this->prefs.opus_encoder_params_str.c_str());
+      }
    }
-#endif
 
    ctrlm_voice_audio_settings_t audio_settings = {this->audio_mode, this->audio_timing, this->audio_confidence_threshold, this->audio_ducking_type, this->audio_ducking_level, this->audio_ducking_beep_enabled};
    bool changed = false;
@@ -1361,7 +1361,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
 #ifdef AUTH_ENABLED
     else if(this->voice_session_requires_stb_data(device_type) && !this->voice_session_has_stb_data()) {
         XLOGD_ERROR("Authentication Data missing");
-        this->voice_session_notify_abort(network_id, controller_id, 0, CTRLM_VOICE_SESSION_ABORT_REASON_NO_RECEIVER_ID);
+        this->voice_session_notify_abort(network_id, controller_id, 0, CTRLM_VOICE_SESSION_ABORT_REASON_NO_AUTH_DATA);
         return(VOICE_SESSION_RESPONSE_SERVER_NOT_READY);
     }
 #endif
@@ -1651,8 +1651,8 @@ bool ctrlm_voice_t::voice_session_audio_stream_start(std::string &session_id) {
 void ctrlm_voice_t::voice_session_rsp_confirm(bool result, signed long long rsp_time, unsigned int rsp_window, const std::string &err_str, ctrlm_timestamp_t *timestamp) {
    ctrlm_voice_session_t *session = &this->voice_session[VOICE_SESSION_GROUP_DEFAULT]; // this is for PTT only
    if(session->state_src != CTRLM_VOICE_STATE_SRC_STREAMING) {
-       if(ctrlm_main_get_power_state() == CTRLM_POWER_STATE_DEEP_SLEEP) {
-           XLOGD_WARN("missed voice session response window after waking from <%s>", ctrlm_power_state_str(ctrlm_main_get_power_state()));
+       if(ctrlm_main_get_internal_power_state() == CTRLM_POWER_STATE_DEEP_SLEEP) {
+           XLOGD_WARN("missed voice session response window after waking from <%s>", ctrlm_power_state_str(ctrlm_main_get_internal_power_state()));
        } else {
            XLOGD_ERROR("No voice session in progress");
        }
@@ -2260,18 +2260,6 @@ std::string ctrlm_voice_t::voice_stb_data_account_number_get() const {
     return(this->account_number);
 }
 
-void ctrlm_voice_t::voice_stb_data_receiver_id_set(std::string &receiver_id) {
-    XLOGD_DEBUG("Receiver ID set to %s", receiver_id.c_str());
-    this->receiver_id = receiver_id;
-    for(const auto &itr : this->endpoints) {
-        itr->voice_stb_data_receiver_id_set(receiver_id);
-    }
-}
-
-std::string ctrlm_voice_t::voice_stb_data_receiver_id_get() const {
-    return(this->receiver_id);
-}
-
 void ctrlm_voice_t::voice_stb_data_device_id_set(std::string &device_id) {
     XLOGD_DEBUG("Device ID set to %s", device_id.c_str());
     this->device_id = device_id;
@@ -2463,9 +2451,9 @@ bool ctrlm_voice_t::voice_session_requires_stb_data(ctrlm_voice_device_t device_
 }
 
 bool ctrlm_voice_t::voice_session_has_stb_data() {
-#if defined(AUTH_RECEIVER_ID) || defined(AUTH_DEVICE_ID)
-    if(this->receiver_id == "" && this->device_id == "") {
-        XLOGD_TELEMETRY("No receiver/device id");
+#ifdef AUTH_DEVICE_ID
+    if(this->device_id == "") {
+        XLOGD_TELEMETRY("No device id");
         return(false);
     }
 #endif
@@ -3215,7 +3203,7 @@ void ctrlm_voice_t::voice_server_return_code_callback(const uuid_t uuid, const c
         (ret_code == 0) ? "success" : "error", \
         ret_code, \
         ((reason == NULL) ? "NULL" : reason), \
-        ((ctrlm_main_get_power_state() == CTRLM_POWER_STATE_ON) ? "FPM" : "NSM"));
+        ((ctrlm_main_get_internal_power_state() == CTRLM_POWER_STATE_ON) ? "FPM" : "NSM"));
 
 }
 // Callback Interface Implementation End
@@ -4001,7 +3989,7 @@ void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t e
 }
 #endif
 
-#ifdef DEEP_SLEEP_ENABLED
+#ifdef NETWORKED_STANDBY_MODE_ENABLED
 void ctrlm_voice_t::voice_nsm_session_request(void) {
     ctrlm_network_id_t network_id = CTRLM_MAIN_NETWORK_ID_DSP;
     ctrlm_controller_id_t controller_id = CTRLM_MAIN_CONTROLLER_ID_DSP;
@@ -4044,13 +4032,14 @@ xrsr_power_mode_t voice_xrsr_power_map(ctrlm_power_state_t ctrlm_power_state) {
 
    switch(ctrlm_power_state) {
       case CTRLM_POWER_STATE_DEEP_SLEEP:
-         #ifdef DEEP_SLEEP_ENABLED
-         xrsr_power_mode = ctrlm_main_iarm_networked_standby() ? XRSR_POWER_MODE_LOW : XRSR_POWER_MODE_SLEEP;
+         #ifdef NETWORKED_STANDBY_MODE_ENABLED
+         xrsr_power_mode = ctrlm_main_get_networked_standby_mode() ? XRSR_POWER_MODE_LOW : XRSR_POWER_MODE_SLEEP;
          #else
          xrsr_power_mode = XRSR_POWER_MODE_SLEEP;
          #endif
          break;
       case CTRLM_POWER_STATE_ON:
+      case CTRLM_POWER_STATE_STANDBY:
          xrsr_power_mode = XRSR_POWER_MODE_FULL;
          break;
       default:
@@ -4167,7 +4156,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
 
     // All attributes that need a re-route to apply
     if(attr.get_rfc_value(JSON_INT_NAME_VOICE_MINIMUM_DURATION,                              this->prefs.utterance_duration_min) |
-    #ifdef DEEP_SLEEP_ENABLED
+    #ifdef NETWORKED_STANDBY_MODE_ENABLED
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL,     this->prefs.dst_params_standby.connect_check_interval) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,            this->prefs.dst_params_standby.timeout_connect) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,         this->prefs.dst_params_standby.timeout_inactivity) |

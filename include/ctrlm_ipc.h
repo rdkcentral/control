@@ -133,6 +133,7 @@
 #define CTRLM_MAIN_IARM_CALL_GET_RCU_STATUS                      "Main_GetRcuStatus"            ///< IARM Call get the RCU status info (same as what's provided by CTRLM_RCU_IARM_EVENT_RCU_STATUS)
 #define CTRLM_MAIN_IARM_CALL_START_PAIRING                       "Main_StartPairing"            ///< IARM Call to initiate searching for a remote to pair with
 #define CTRLM_MAIN_IARM_CALL_START_PAIR_WITH_CODE                "Main_StartPairWithCode"       ///< IARM Call to initiate searching for a remote to pair with
+#define CTRLM_MAIN_IARM_CALL_STOP_PAIRING                        "Main_StopPairing"             ///< IARM Call to cancel an active search for a remote to pair with
 #define CTRLM_MAIN_IARM_CALL_FIND_MY_REMOTE                      "Main_FindMyRemote"            ///< IARM Call to trigger the Find My Remote alarm on a specified remote
 #define CTRLM_MAIN_IARM_CALL_WRITE_RCU_WAKEUP_CONFIG             "Main_WriteAdvertisingConfig"  ///< IARM Call to write the advertising configuration on all connected remotes
 #define CTRLM_MAIN_IARM_CALL_START_FIRMWARE_UPDATE               "Main_StartFirmwareUpdate"     ///< IARM Call to start a firmware update session
@@ -156,7 +157,6 @@
 #define CTRLM_MAIN_MAX_BOUND_CONTROLLERS                          (9) ///< Maximum number of bound controllers
 #define CTRLM_MAIN_MAX_CHIPSET_LENGTH                            (16) ///< Maximum length of chipset name string (including null termination)
 #define CTRLM_MAIN_COMMIT_ID_MAX_LENGTH                          (48) ///< Maximum length of commit ID string (including null termination)
-#define CTRLM_MAIN_RECEIVER_ID_MAX_LENGTH                        (40) ///< Maximum length of receiver ID string (including null termination)
 #define CTRLM_MAIN_DEVICE_ID_MAX_LENGTH                          (24) ///< Maximum length of device ID string (including null termination)
 
 #define CTRLM_PROPERTY_ACTIVE_PERIOD_BUTTON_VALUE_MIN               (5000) ///< Minimum active period (in ms) for button binding.
@@ -194,9 +194,7 @@
 #define CTRLM_MIN_IR_COMMAND_REPEATS  (1)
 #define CTRLM_MAX_IR_COMMAND_REPEATS  (10)
 
-#ifdef ASB
 #define CTRLM_ASB_ENABLED_DEFAULT                 (false)
-#endif
 #define CTRLM_OPEN_CHIME_ENABLED_DEFAULT          (false)
 #define CTRLM_CLOSE_CHIME_ENABLED_DEFAULT         (true)
 #define CTRLM_PRIVACY_CHIME_ENABLED_DEFAULT       (true)
@@ -204,9 +202,7 @@
 #define CTRLM_CHIME_VOLUME_DEFAULT                (CTRLM_CHIME_VOLUME_MEDIUM)
 #define CTRLM_IR_COMMAND_REPEATS_DEFAULT          (3)
 
-#ifdef ASB
 #define CTRLM_ASB_ENABLED_LEN                     (1)
-#endif
 #define CTRLM_OPEN_CHIME_ENABLED_LEN              (1)
 #define CTRLM_CLOSE_CHIME_ENABLED_LEN             (1)
 #define CTRLM_PRIVACY_CHIME_ENABLED_LEN           (1)
@@ -305,7 +301,8 @@ typedef enum {
    CTRLM_RCU_IARM_EVENT_RCU_STATUS                  = 34, ///< Generated when something changes in the BLE remote
    CTRLM_RCU_IARM_EVENT_RF4CE_PAIRING_WINDOW_TIMEOUT = 35, ///< Indicates that a battery milestone event occured
    CTRLM_RCU_IARM_EVENT_FIRMWARE_UPDATE_PROGRESS    = 36, ///< Generated when an milestone is reached for remote firmware upgrade 
-   CTRLM_MAIN_IARM_EVENT_MAX                        = 37  ///< Placeholder for the last event (used in registration)
+   CTRLM_RCU_IARM_EVENT_VALIDATION_STATUS           = 37, ///< Generated when the validation status changes
+   CTRLM_MAIN_IARM_EVENT_MAX                        = 38  ///< Placeholder for the last event (used in registration)
 } ctrlm_main_iarm_event_t;
 
 /// @brief Remote Control Key Status
@@ -500,7 +497,6 @@ typedef struct {
    char                     ctrlm_version[CTRLM_MAIN_VERSION_LENGTH];           ///< OUT - Software version of Control Manager
    char                     ctrlm_commit_id[CTRLM_MAIN_COMMIT_ID_MAX_LENGTH];   ///< OUT - Last commit ID of Control Manager
    char                     stb_device_id[CTRLM_MAIN_DEVICE_ID_MAX_LENGTH];     ///< OUT - Device ID obtained from the Set-Top Box
-   char                     stb_receiver_id[CTRLM_MAIN_RECEIVER_ID_MAX_LENGTH]; ///< OUT - Receiver ID obtained from the Set-Top Box
 } ctrlm_main_iarm_call_status_t;
 
 /// @brief RF Channel Structure
@@ -701,6 +697,7 @@ typedef struct {
    ctrlm_network_id_t           network_id;                                     ///< Identifier of network or CTRLM_MAIN_NETWORK_ID_ALL for all networks
    unsigned char                pairing_mode;                                   ///< Indicates the pairing mode
    unsigned char                restrict_by_remote;                             ///< Indicates the remote bucket (no restrictions, only voice remotes, only voice assistants)
+   unsigned char                use_timeout;                                    ///< Indicates whether to use a timeout for the pairing mode (0 - do not use timeout, otherwise use timeout)
    unsigned int                 bind_status;                                    ///< OUT - The bind status of the pairing session
 } ctrlm_main_iarm_call_control_service_pairing_mode_t;
 

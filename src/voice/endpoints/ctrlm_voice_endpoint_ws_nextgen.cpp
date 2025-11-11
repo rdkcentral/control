@@ -89,11 +89,7 @@ bool ctrlm_voice_endpoint_ws_nextgen_t::open() {
     std::string experience     = this->voice_obj->voice_stb_data_experience_get();
     std::string language       = this->voice_obj->voice_stb_data_guide_language_get().c_str();
     std::string account_number = this->voice_obj->voice_stb_data_account_number_get();
-#ifdef VOICE_NEXTGEN_MAC
     std::string device_mac     = ctrlm_device_mac_get();
-#else
-    std::string device_mac     = "";
-#endif
     std::string rf_protocol    = "";
 
     xrsv_ws_nextgen_params_t      params_ws = {

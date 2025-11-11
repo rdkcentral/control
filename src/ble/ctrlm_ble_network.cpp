@@ -567,7 +567,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
             int  fd = -1;
             bool success = false;
 
-            if (!audio_start_params.m_started) { // voice session req did need to start audio
+            if (!audio_start_params.m_started) { // voice session req did not need to start audio
                 start_controller_audio_streaming(&audio_start_params);
             }
             fd = audio_start_params.m_fd;

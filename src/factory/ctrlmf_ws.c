@@ -96,6 +96,7 @@ bool ctrlmf_ws_init(uint32_t audio_frame_size, uint16_t port, bool log_enable, c
       XLOGD_ERROR("unable to launch thread");
       return(false);
    }
+   XLOGD_INFO("created TID <%d>", (int)g_ctrlmf_ws.thread_id);
 
    // Block until initialization is complete or a timeout occurs
    XLOGD_INFO("Waiting for thread initialization...");

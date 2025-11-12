@@ -737,6 +737,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                                                         XLOGD_INFO("open named pipe <%s>", str_audio_file.c_str());
                                                         errno = 0;
                                                         fd = open(str_audio_file.c_str(), O_RDONLY | O_NONBLOCK);
+                                                        XLOGD_INFO("opening fd <%d>", fd);
                                                         if(fd < 0) {
                                                             int errsv = errno;
                                                             XLOGD_ERROR("Unable to open named pipe <%s> <%s>", str_audio_file.c_str(), strerror(errsv));
@@ -749,6 +750,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                                                     // open the audio input file
                                                     errno = 0;
                                                     int audio_fd = open(str_audio_file.c_str(), O_RDONLY);
+                                                    XLOGD_INFO("opening fd <%d>", audio_fd);
                                                     if(audio_fd < 0) {
                                                         int errsv = errno;
                                                         XLOGD_ERROR("Unable to open file <%s> <%s>", str_audio_file.c_str(), strerror(errsv));

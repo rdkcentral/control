@@ -1496,6 +1496,7 @@ static int OpenKeyInputDevice(uint64_t ieee_address)
                 //this is one of the event devices, open it and see if it belongs to this MAC
                 string keyInputFilename = keyInputBaseDir + file_p->d_name;
                 int input_fd = open(keyInputFilename.c_str(), O_RDONLY|O_NONBLOCK);
+                XLOGD_INFO("opening fd <%d>", input_fd);
                 if (input_fd >= 0) {
                     struct libevdev *evdev = NULL;
                     int rc = libevdev_new_from_fd(input_fd, &evdev);

@@ -36,6 +36,7 @@ bool ctrlm_input_event_writer::init(std::string uinput_name, uint32_t vendor, ui
 
     XLOGD_INFO("Initializing a user input device for %s...", uinput_name.c_str());
     int fd = open("/dev/uinput", O_WRONLY|O_SYNC);
+    XLOGD_INFO("opening fd <%d>", fd);
     if (fd == -1) {
         int errsv = errno;
         XLOGD_ERROR("Open failed with errno %d (%s)", errsv, std::strerror(errsv));

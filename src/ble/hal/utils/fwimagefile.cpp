@@ -82,6 +82,7 @@ FwImageFile::FwImageFile(const string &filePath)
     m_path = filePath;
 
     int fd = open(filePath.c_str(), O_CLOEXEC|O_RDONLY);
+    XLOGD_INFO("opening fd <%d>", fd);
     if (fd < 0) {
         int errsv = errno;
         XLOGD_ERROR("failed to open fw file @ '%s', error <%s>", 

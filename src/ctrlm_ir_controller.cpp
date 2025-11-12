@@ -271,6 +271,7 @@ static int ctrlm_ir_open_key_input_device(vector<string> names) {
    int input_fd = open(KEY_INPUT_DEVICE_DEFAULT, O_RDONLY|O_NONBLOCK);
    if (input_fd >= 0) {
       XLOGD_INFO("Successfully opened default IR input device <%s>", KEY_INPUT_DEVICE_DEFAULT);
+      XLOGD_INFO("opening fd <%d>", input_fd);
       return input_fd;
 
    } else {
@@ -295,6 +296,7 @@ static int ctrlm_ir_open_key_input_device(vector<string> names) {
                //this is one of the event devices, open it and see if it belongs to this MAC
                string keyInputFilename = keyInputBaseDir + file_p->d_name;
                input_fd = open(keyInputFilename.c_str(), O_RDONLY|O_NONBLOCK);
+               XLOGD_INFO("opening fd <%d>", input_fd);
                if (input_fd < 0) {
                   int errsv = errno;
                   XLOGD_WARN("Failed to open key input device at path <%s>: error = <%d>, <%s>", 

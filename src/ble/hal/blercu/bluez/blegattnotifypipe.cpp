@@ -54,6 +54,7 @@ static bool ThreadCreate(ctrlm_thread_t *thread, void *(*start_routine)(void *),
         XLOGD_ERROR("unable to launch thread <%s>", thread->name == NULL ? "" : thread->name);
         return (false);
     }
+    XLOGD_INFO("created TID <%d>", (int)thread->id);
 
     if (thread->name != NULL) {
         char name_max[16];

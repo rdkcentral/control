@@ -86,6 +86,8 @@ FileDescriptor::FileDescriptor(const FileDescriptor &other)
 
 FileDescriptor &FileDescriptor::operator=(FileDescriptor &&other)
 {
+
+    XLOGD_INFO("closing fd <%d>", m_fd);
     if ((m_fd >= 0) && (::close(m_fd) != 0)) {
         int errsv = errno;
         XLOGD_ERROR("failed to close file descriptor: error = <%d>, <%s>", errsv, strerror(errsv));
@@ -99,6 +101,7 @@ FileDescriptor &FileDescriptor::operator=(FileDescriptor &&other)
 
 FileDescriptor &FileDescriptor::operator=(const FileDescriptor &other)
 {
+    XLOGD_INFO("closing fd <%d>", m_fd);
     if ((m_fd >= 0) && (::close(m_fd) != 0)) {
         int errsv = errno;
         XLOGD_ERROR("failed to close file descriptor: error = <%d>, <%s>", errsv, strerror(errsv));
@@ -134,6 +137,7 @@ int FileDescriptor::fd() const
 
 void FileDescriptor::reset()
 {
+    XLOGD_INFO("closing fd <%d>", m_fd);
     if ((m_fd >= 0) && (::close(m_fd) != 0)) {
         int errsv = errno;
         XLOGD_ERROR("failed to close file descriptor: error = <%d>, <%s>", errsv, strerror(errsv));

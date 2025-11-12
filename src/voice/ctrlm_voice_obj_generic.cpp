@@ -123,6 +123,7 @@ void ctrlm_voice_generic_t::voice_sdk_close() {
 
             if(session->audio_pipe[PIPE_WRITE] >= 0) { // close the audio input source
                 XLOGD_WARN("Closing audio write pipe <%d>", session->audio_pipe[PIPE_WRITE]);
+                XLOGD_INFO("closing fd <%d>", session->audio_pipe[PIPE_WRITE]);
                 close(session->audio_pipe[PIPE_WRITE]);
                 session->audio_pipe[PIPE_WRITE] = -1;
             }

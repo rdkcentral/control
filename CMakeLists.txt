@@ -269,9 +269,9 @@ if(ENABLE_DEEP_SLEEP)
    add_compile_definitions(DEEP_SLEEP_ENABLED)
 endif()
 
-if(FDC_ENABLED)
-   add_compile_definitions(PUBLIC FDC_ENABLED)
-endif()
+#if(FDC_ENABLED)
+add_compile_definitions(PUBLIC FDC_ENABLED)
+#endif()
 
 if(IP_ENABLED)
    add_compile_definitions(CTRLM_NETWORK_IP CTRLM_IP_HAL_LOG_ENABLED)

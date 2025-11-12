@@ -21,7 +21,7 @@
 #include "ctrlm_ble_rcu_interface.h"
 #include "ctrlm_ble_utils.h"
 #include "ctrlm_voice_obj.h"
-
+#include <unistd.h>
 
 #define CTRLM_BLE_KEY_MSG_QUEUE_MSG_MAX         (10)
 #define CTRLM_BLE_KEY_MSG_QUEUE_MSG_SIZE_MAX    (sizeof(ctrlm_ble_key_queue_device_changed_msg_t))
@@ -1518,6 +1518,7 @@ static int OpenKeyInputDevice(uint64_t ieee_address)
                             return input_fd;
                         }
                     }
+                    XLOGD_INFO("closing fd <%d>", input_fd);
                     close(input_fd);
                     if (NULL != evdev) {
                         libevdev_free(evdev);
@@ -1601,6 +1602,7 @@ void *KeyMonitorThread(void *data)
     sem_post(&metadata->m_keyThreadSem);
 
     XLOGD_INFO("Enter main loop for new key monitor thread");
+    XLOGD_INFO("TID <%d>", (int)gettid());
     do {
         // Needs to be reinitialized before each call to select() because select() will modify these variables
         FD_ZERO(&rfds);
@@ -1646,6 +1648,7 @@ void *KeyMonitorThread(void *data)
 
                         if (rcuKeypressFds.end() != rcuKeypressFds.find(device_changed_msg->address)) {
                             if (rcuKeypressFds[device_changed_msg->address] >= 0) {
+                                XLOGD_INFO("closing fd <%d>", rcuKeypressFds[device_changed_msg->address]);
                                 close(rcuKeypressFds[device_changed_msg->address]);
                             }
                             rcuKeypressFds.erase(device_changed_msg->address);
@@ -1659,6 +1662,7 @@ void *KeyMonitorThread(void *data)
                             if (rcu.second >= 0) {
                                 XLOGD_INFO("Closing key input device for RCU <%s> so key monitor thread can reopen...", 
                                         rcu.first.toString().c_str());
+                                XLOGD_INFO("closing fd <%d>", rcu.second);
                                 close(rcu.second);
                                 rcu.second = -1;
                             }
@@ -1677,6 +1681,7 @@ void *KeyMonitorThread(void *data)
 
                         for (auto &rcu : rcuKeypressFds) {
                             if (rcu.second >= 0) {
+                                XLOGD_INFO("closing fd <%d>", rcu.second);
                                 close(rcu.second);
                                 rcu.second = -1;
                             }

@@ -221,12 +221,15 @@ void BleGattNotifyPipe::shutdown()
         ThreadJoin(&m_notifyThread, 2);
     }
     if (FD_SIGNAL(m_exitEventFds) > -1) {
+        XLOGD_INFO("closing fd <%d>", FD_SIGNAL(m_exitEventFds));
         close(FD_SIGNAL(m_exitEventFds));
     }
     if (FD_RECV(m_exitEventFds) > -1) {
+        XLOGD_INFO("closing fd <%d>", FD_RECV(m_exitEventFds));
         close(FD_RECV(m_exitEventFds));
     }
 
+    XLOGD_INFO("closing fd <%d>", m_pipeFd);
     if ((m_pipeFd >= 0) && (::close(m_pipeFd) != 0)) {
         int errsv = errno;
         XLOGD_ERROR("failed to close notification pipe fd: error = <%d>, <%s>", errsv, strerror(errsv));
@@ -276,6 +279,7 @@ bool BleGattNotifyPipe::onActivated()
             // this will stop the recording,
             XLOGD_INFO("remote end of notification pipe closed for %s", m_uuid.toString().c_str());
 
+            XLOGD_INFO("closing fd <%d>", m_pipeFd);
             if (::close(m_pipeFd) != 0) {
                 int errsv = errno;
                 XLOGD_ERROR("failed to close pipe fd: error = <%d>, <%s>", errsv, strerror(errsv));
@@ -310,6 +314,7 @@ void *NotifyThread(void *data)
 
     XLOGD_INFO("Enter main loop for bluez notification pipe (%d) for %s", 
             notifyPipe->m_pipeFd, notifyPipe->m_uuid.toString().c_str());
+    XLOGD_INFO("TID <%d>", (int)gettid());
     do {
         // Needs to be reinitialized before each call to select() because select() will modify these variables
         FD_ZERO(&rfds);

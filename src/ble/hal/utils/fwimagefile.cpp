@@ -94,6 +94,7 @@ FwImageFile::FwImageFile(const string &filePath)
     // check the file header / contents
     m_valid = checkFile();
     if (!m_valid) {
+        XLOGD_INFO("closing fd <%d>", m_fd);
         close(m_fd);
         m_fd = -1;
     }
@@ -101,6 +102,7 @@ FwImageFile::FwImageFile(const string &filePath)
 
 FwImageFile::~FwImageFile()
 {
+    XLOGD_INFO("closing fd <%d>", m_fd));
     if ((m_fd >= 0) && (::close(m_fd) != 0)) {
         int errsv = errno;
         XLOGD_ERROR("failed to close file descriptor: error = <%d>, <%s>", errsv, strerror(errsv));

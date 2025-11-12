@@ -102,7 +102,7 @@ FwImageFile::FwImageFile(const string &filePath)
 
 FwImageFile::~FwImageFile()
 {
-    XLOGD_INFO("closing fd <%d>", m_fd));
+    XLOGD_INFO("closing fd <%d>", m_fd);
     if ((m_fd >= 0) && (::close(m_fd) != 0)) {
         int errsv = errno;
         XLOGD_ERROR("failed to close file descriptor: error = <%d>, <%s>", errsv, strerror(errsv));

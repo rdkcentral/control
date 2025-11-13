@@ -35,6 +35,9 @@ target_sources(ctrlm-fta PRIVATE
    ctrlmf_reset.cpp
    ctrlmf_systemd.c
    ctrlmf_utils.c
+   ctrlmf_audio_capture.cpp
+   ctrlmf_mic_test.cpp
+   ctrlmf_ws.c
    iarm/ctrlmf_iarm_client.cpp
    iarm/ctrlmf_iarm_control_manager.cpp
 )
@@ -95,14 +98,6 @@ if(FACTORY_AUDIO_CONTROL)
    add_compile_definitions(PRIVATE CTRLMF_AUDIO_CONTROL)
    target_sources(ctrlm-fta PRIVATE
       ctrlmf_audio_control.cpp
-   )
-endif()
-
-if(LOCAL_MIC)
-   target_sources(ctrlm-fta PRIVATE
-      ctrlmf_audio_capture.cpp
-      ctrlmf_mic_test.cpp
-      ctrlmf_ws.c
    )
 endif()
 

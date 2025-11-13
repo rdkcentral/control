@@ -357,7 +357,7 @@ bool ctrlm_voice_ipc_iarm_thunder_t::session_end(const ctrlm_voice_ipc_event_ses
         char *json_str = json_dumps(event_data, JSON_ENCODE_FLAGS);
         if(json_str) {
             //TODO: surface the event through IARM
-            XLOGD_INFO("<%s>", this->obj_voice->voice_stb_data_pii_mask_get() ? "***" : json_str);
+            XLOGD_AUTOMATION_INFO("<%s>", this->obj_voice->voice_stb_data_pii_mask_get() ? "***" : json_str);
             ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_SESSION_END, json_str);
             free(json_str);
         } else {
@@ -373,7 +373,7 @@ bool ctrlm_voice_ipc_iarm_thunder_t::session_end(const ctrlm_voice_ipc_event_ses
 bool ctrlm_voice_ipc_iarm_thunder_t::server_message(const char *message, unsigned long size) {
     bool    ret   = false;
     if(message) {
-        XLOGD_INFO("%ul : <%s>", size, this->obj_voice->voice_stb_data_pii_mask_get() ? "***" : message);  //CID -160950 - Printargs
+        XLOGD_AUTOMATION_INFO("%ul : <%s>", size, this->obj_voice->voice_stb_data_pii_mask_get() ? "***" : message);  //CID -160950 - Printargs
         ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_SERVER_MESSAGE, message);
     }
     return(ret);

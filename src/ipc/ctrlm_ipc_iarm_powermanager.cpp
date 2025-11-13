@@ -80,7 +80,7 @@ bool ctrlm_ipc_iarm_powermanager_t::get_wakeup_reason_voice() {
       return false;
    }
 
-   XLOGD_INFO("wakeup_reason <%s>", ctrlm_wakeup_reason_str(wakeup_reason));
+   XLOGD_AUTOMATION_INFO("wakeup_reason <%s>", ctrlm_wakeup_reason_str(wakeup_reason));
    
    wakeup_reason_voice = (wakeup_reason == DEEPSLEEP_WAKEUPREASON_VOICE) ? true: false;
 

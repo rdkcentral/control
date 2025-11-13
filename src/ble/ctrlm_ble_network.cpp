@@ -576,7 +576,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                XLOGD_ERROR("Voice streaming pipe invalid (fd = <%d>), aborting voice session", fd);
                success = false;
             } else {
-               XLOGD_INFO("Acquired voice streaming pipe fd = <%d>, sending to voice engine", fd);
+               XLOGD_AUTOMATION_INFO("Acquired voice streaming pipe fd = <%d>, sending to voice engine", fd);
                //Send the fd acquired from bluez to the voice engine
                success = ctrlm_get_voice_obj()->voice_session_data(network_id_get(), controller_id, fd);
             }
@@ -1825,7 +1825,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   print_status = false;
                   break;
                case CTRLM_HAL_BLE_PROPERTY_IS_UPGRADING:
-                  XLOGD_INFO("Controller <%s> firmware upgrading = %s", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.is_upgrading ? "TRUE" : "FALSE");
+                  XLOGD_AUTOMATION_INFO("Controller <%s> firmware upgrading = %s", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.is_upgrading ? "TRUE" : "FALSE");
                   upgrade_in_progress_ = dqm->rcu_data.is_upgrading;
                   if (!dqm->rcu_data.is_upgrading) {
                      // If we get FALSE here, make sure the controller upgrade progress flag is cleared.  But we don't want to set the controller progress
@@ -1836,7 +1836,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   print_status = false;
                   break;
                case CTRLM_HAL_BLE_PROPERTY_UPGRADE_PROGRESS:
-                  XLOGD_INFO("Controller <%s> firmware upgrade %d%% complete...", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.upgrade_progress);
+                  XLOGD_AUTOMATION_INFO("Controller <%s> firmware upgrade %d%% complete...", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.upgrade_progress);
                   // From a controller perspective, we cannot use the CTRLM_HAL_BLE_PROPERTY_IS_UPGRADING flag above to determine if its actively upgrading.
                   // Instead, its more accurate to use the progress percentage to determine if the remote is actively receiving firmware packets.
                   controller->setUpgradeInProgress(dqm->rcu_data.upgrade_progress > 0 && dqm->rcu_data.upgrade_progress < 100);
@@ -1849,7 +1849,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   print_status = false;
                   break;
                case CTRLM_HAL_BLE_PROPERTY_UPGRADE_ERROR:
-                  XLOGD_ERROR("Controller <%s> firmware upgrade FAILED with error <%s>.", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.upgrade_error);
+                  XLOGD_AUTOMATION_ERROR("Controller <%s> firmware upgrade FAILED with error <%s>.", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.upgrade_error);
                   report_status = false;
                   print_status = false;
                   controller->set_upgrade_error(dqm->rcu_data.upgrade_error);
@@ -1882,7 +1882,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   controller->ota_failure_cnt_incr();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_UNPAIR_REASON:
-                  XLOGD_INFO("Controller <%s> notified reason for unpairing = <%s>", controller->ieee_address_get().to_string().c_str(), ctrlm_ble_unpair_reason_str(dqm->rcu_data.unpair_reason));
+                  XLOGD_AUTOMATION_INFO("Controller <%s> notified reason for unpairing = <%s>", controller->ieee_address_get().to_string().c_str(), ctrlm_ble_unpair_reason_str(dqm->rcu_data.unpair_reason));
                   last_rcu_unpair_metrics_.write_rcu_unpair_event(controller->ieee_address_get().get_value(), string(ctrlm_ble_unpair_reason_str(dqm->rcu_data.unpair_reason)));
                   report_status = false;
                   print_status = false;
@@ -1897,7 +1897,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   }
                   break;
                case CTRLM_HAL_BLE_PROPERTY_REBOOT_REASON:
-                  XLOGD_TELEMETRY("Controller <%s> notified reason for rebooting = <%s%s%s%s>", 
+                  XLOGD_AUTOMATION_TELEMETRY("Controller <%s> notified reason for rebooting = <%s%s%s%s>",
                         controller->ieee_address_get().to_string().c_str(), 
                         ctrlm_ble_reboot_reason_str(dqm->rcu_data.reboot_reason),
                         dqm->rcu_data.reboot_reason == CTRLM_BLE_RCU_REBOOT_REASON_ASSERT ? " - \"" : "",
@@ -2205,7 +2205,7 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
             controller->setVoiceStartTime(keyDownTime);
 
             XLOGD_INFO("------------------------------------------------------------------------");
-            XLOGD_INFO("CODE_VOICE_KEY button PRESSED event for device: %s", controller->ieee_address_get().to_string().c_str());
+            XLOGD_AUTOMATION_INFO("CODE_VOICE_KEY button PRESSED event for device: %s", controller->ieee_address_get().to_string().c_str());
             XLOGD_INFO("------------------------------------------------------------------------");
 
             ctrlm_voice_iarm_call_voice_session_t v_params;
@@ -2255,7 +2255,7 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
          if (controller->isVoiceKey(dqm->event.code)) {
             if(!controller->getPressAndHoldSupport()) { // if the voice session is "Press and Release" then don't end session on voice key up event
                XLOGD_INFO("------------------------------------------------------------------------");
-               XLOGD_INFO("CODE_VOICE_KEY button RELEASED event for device: %s (ignored for PAR session)", controller->ieee_address_get().to_string().c_str());
+               XLOGD_AUTOMATION_INFO("CODE_VOICE_KEY button RELEASED event for device: %s (ignored for PAR session)", controller->ieee_address_get().to_string().c_str());
                XLOGD_INFO("------------------------------------------------------------------------");
             } else {
                rdkx_timestamp_t keyUpTime, keyUpTimeLocal, voiceStartTimeLocal, firstAudioDataTime;
@@ -2290,11 +2290,11 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
                   }
 
                   XLOGD_INFO("------------------------------------------------------------------------");
-                  XLOGD_INFO("CODE_VOICE_KEY button RELEASED event for device: %s duration <%lld ms> start lag <%lld ms>", controller->ieee_address_get().to_string().c_str(), audioDurationKeys, startAudioLag);
+                  XLOGD_AUTOMATION_INFO("CODE_VOICE_KEY button RELEASED event for device: %s duration <%lld ms> start lag <%lld ms>", controller->ieee_address_get().to_string().c_str(), audioDurationKeys, startAudioLag);
                   XLOGD_INFO("------------------------------------------------------------------------");
                } else {
                   XLOGD_INFO("------------------------------------------------------------------------");
-                  XLOGD_INFO("CODE_VOICE_KEY button RELEASED event for device: %s duration <%lld ms>", controller->ieee_address_get().to_string().c_str(), audioDurationKeys);
+                  XLOGD_AUTOMATION_INFO("CODE_VOICE_KEY button RELEASED event for device: %s duration <%lld ms>", controller->ieee_address_get().to_string().c_str(), audioDurationKeys);
                   XLOGD_INFO("------------------------------------------------------------------------");
                }
 
@@ -2497,7 +2497,7 @@ void ctrlm_obj_network_ble_t::printStatus() {
       it->second->print_status();
    }
    XLOGD_INFO("BLE Network Status:    <%s>", ctrlm_rf_pair_state_str(state_));
-   XLOGD_TELEMETRY("IR Programming Status: <%s>", ctrlm_ir_state_str(ir_state_));
+   XLOGD_AUTOMATION_TELEMETRY("IR Programming Status: <%s>", ctrlm_ir_state_str(ir_state_));
    XLOGD_WARN("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }
 

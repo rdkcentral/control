@@ -56,13 +56,6 @@ else()
    endif()
 endif()
 
-if(LOCAL_MIC)
-   add_compile_definitions(PRIVATE CTRLMF_LOCAL_MIC)
-   if(MIC_TAP)
-      add_compile_definitions(PRIVATE CTRLMF_LOCAL_MIC_TAP)
-   endif()
-endif()
-
 if(THUNDER)
    add_compile_definitions(PRIVATE CTRLMF_THUNDER)
    target_sources(ctrlm-fta PRIVATE

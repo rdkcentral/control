@@ -44,7 +44,6 @@ static struct argp_option options[] = {
    {"factory-reset",     'F', 0,            0,  "Perform control manager factory reset and restart the application." },
    {"soft-factory-reset",'f', 0,            0,  "Perform control manager factory reset" },
    {"ctrlm-restart",     'r', 0,            0,  "Restart the control manager application" },
-   #ifdef CTRLMF_LOCAL_MIC
    #ifdef CTRLMF_AUDIO_PLAYBACK
    {"mic-test-audio",    'a', "<filename>", 0,  "Microphone test audio file" },
    #endif
@@ -55,7 +54,6 @@ static struct argp_option options[] = {
    {"mic-test-snr-var",  'z', "<F>",        0,  "Microphone test SNR maximum variance" },
    {"mic-test-output",   'g', "<filename>", 0,  "Microphone test output filename" },
    {"mic-test-level",    'l', "<N>",        0,  "Microphone test level" },
-   #endif
    #ifdef CTRLMF_AUDIO_CONTROL
    {"mute-main-audio",   'm', 0,            0,  "Mute the main audio output" },
    #endif
@@ -117,14 +115,12 @@ int main(int argc, char* argv[]) {
       }
       #endif
       if(g_ctrlmf_opts.mic_test_factory) {
-         #ifdef CTRLMF_LOCAL_MIC
          ctrlmf_test_result_t test_result;
          if(!ctrlmf_mic_test_factory(g_ctrlmf_opts.mic_test_duration, g_ctrlmf_opts.output_file_path, g_ctrlmf_opts.mic_test_level, g_ctrlmf_opts.audio_file_path, g_ctrlmf_opts.mic_test_snr_min, g_ctrlmf_opts.mic_test_snr_max, g_ctrlmf_opts.mic_test_snr_var, &test_result, audio_analyze_func)) {
             XLOGD_ERROR("ctrlmf_main: mic test failed");
          } else {
             XLOGD_INFO("ctrlmf_main: test result <%s>", test_result.pass ? "PASS" : "FAIL");
          }
-         #endif
       } else if(g_ctrlmf_opts.audio_file_path != NULL) {
          #ifdef CTRLMF_AUDIO_PLAYBACK
          ctrlmf_audio_playback_start(g_ctrlmf_opts.audio_file_path);
@@ -170,7 +166,6 @@ error_t ctrlmf_parse_opt(int key, char *arg, struct argp_state *state) {
          arguments->ctrlm_restart = true;
          break;
       }
-      #ifdef CTRLMF_LOCAL_MIC
       #ifdef CTRLMF_AUDIO_PLAYBACK
       case 'a': {
          XLOGD_INFO("mic test audio file <%s>", arg);
@@ -222,7 +217,6 @@ error_t ctrlmf_parse_opt(int key, char *arg, struct argp_state *state) {
          arguments->mic_test_snr_var = &arguments->snr_var;
          break;
       }
-      #endif
       #ifdef CTRLMF_AUDIO_CONTROL
       case 'm': {
          arguments->mute_main_audio = true;
@@ -258,11 +252,9 @@ bool ctrlmf_cmdline_args(int argc, char *argv[]) {
    XLOGD_INFO("ctrlm restart    <%s>", g_ctrlmf_opts.ctrlm_restart    ? "YES" : "NO");
    XLOGD_INFO("audio file       <%s>", g_ctrlmf_opts.audio_file_path  ? g_ctrlmf_opts.audio_file_path  : "NULL");
    XLOGD_INFO("output file path <%s>", g_ctrlmf_opts.output_file_path ? g_ctrlmf_opts.output_file_path : "NULL");
-   #ifdef CTRLMF_LOCAL_MIC
    if(g_ctrlmf_opts.mic_test_factory) {
       XLOGD_INFO("mic test duration <%d ms> snr min <%f> max <%f> var <%f>", g_ctrlmf_opts.mic_test_duration, *g_ctrlmf_opts.mic_test_snr_min, *g_ctrlmf_opts.mic_test_snr_max, *g_ctrlmf_opts.mic_test_snr_var);
    }
-   #endif
    #ifdef CTRLMF_AUDIO_CONTROL
    XLOGD_INFO("mute main audio <%s>", g_ctrlmf_opts.mute_main_audio   ? "YES" : "NO");
    #endif

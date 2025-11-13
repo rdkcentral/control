@@ -82,21 +82,19 @@ bool ctrlmf_mic_test_via_audio_file(uint32_t duration, const char *output_filena
       memset(audio_frames_noise,  0, audio_buffer_size);
       memset(audio_frames_signal, 0, audio_buffer_size);
 
-      #ifdef CTRLMF_LOCAL_MIC_TAP
-      if(!ctrlmf_audio_capture_init(audio_frame_size, true)) {
-      #else
-      if(!ctrlmf_audio_capture_init(audio_frame_size, false)) {
-      #endif
+      bool use_local_mic_tap = false;
+      if(!ctrlmf_audio_capture_init(audio_frame_size, &use_local_mic_tap)) {
          XLOGD_ERROR("unable to init audio capture");
          break;
       }
       audio_capture_initialized = true;
 
-      #ifdef CTRLMF_LOCAL_MIC_TAP
-      const char *request_type = (MIC_RAW_AUDIO) ? "mic_factory_test" : (MIC_CHANNEL_QTY == 1) ? "mic_tap_stream_single" : "mic_tap_stream_multi";
-      #else
-      const char *request_type = (MIC_RAW_AUDIO) ? "mic_factory_test" : (MIC_CHANNEL_QTY == 1) ? "mic_stream_single" : "mic_stream_multi";
-      #endif
+      const char *request_type = NULL;
+      if(use_local_mic_tap) {
+         request_type = (MIC_RAW_AUDIO) ? "mic_factory_test" : (MIC_CHANNEL_QTY == 1) ? "mic_tap_stream_single" : "mic_tap_stream_multi";
+      } else {
+         request_type = (MIC_RAW_AUDIO) ? "mic_factory_test" : (MIC_CHANNEL_QTY == 1) ? "mic_stream_single"     : "mic_stream_multi";
+      }
 
       // Capture noise
       if(!ctrlmf_audio_capture_start(request_type, audio_frames_noise, audio_frame_qty, duration)) {
@@ -171,21 +169,19 @@ bool ctrlmf_mic_test_via_ambient(uint32_t duration, const char *output_filename,
 
       memset(audio_frames_signal, 0, audio_buffer_size);
 
-      #ifdef CTRLMF_LOCAL_MIC_TAP
-      if(!ctrlmf_audio_capture_init(audio_frame_size, true)) {
-      #else
-      if(!ctrlmf_audio_capture_init(audio_frame_size, false)) {
-      #endif
+      bool use_local_mic_tap = false;
+      if(!ctrlmf_audio_capture_init(audio_frame_size, &use_local_mic_tap)) {
          XLOGD_ERROR("unable to init audio capture");
          break;
       }
       audio_capture_initialized = true;
 
-      #ifdef CTRLMF_LOCAL_MIC_TAP
-      const char *request_type = (MIC_RAW_AUDIO) ? "mic_factory_test" : (MIC_CHANNEL_QTY == 1) ? "mic_tap_stream_single" : "mic_tap_stream_multi";
-      #else
-      const char *request_type = (MIC_RAW_AUDIO) ? "mic_factory_test" : (MIC_CHANNEL_QTY == 1) ? "mic_stream_single" : "mic_stream_multi";
-      #endif
+      const char *request_type = NULL;
+      if(use_local_mic_tap) {
+         request_type = (MIC_RAW_AUDIO) ? "mic_factory_test" : (MIC_CHANNEL_QTY == 1) ? "mic_tap_stream_single" : "mic_tap_stream_multi";
+      } else {
+         request_type = (MIC_RAW_AUDIO) ? "mic_factory_test" : (MIC_CHANNEL_QTY == 1) ? "mic_stream_single"     : "mic_stream_multi";
+      }
 
       // Capture signal
       if(!ctrlmf_audio_capture_start(request_type, audio_frames_signal, audio_frame_qty, duration)) {

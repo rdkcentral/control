@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sstream>
 #include <vector>
+#include <algorithm>
 #include <semaphore.h>
 #include <ctrlm_log.h>
 #include <rdkx_logger.h>
@@ -50,7 +51,7 @@ static ctrlmf_audio_cap_global_t g_audio_cap;
 
 // Capture an audio clip using websocket
 
-bool ctrlmf_audio_capture_init(uint32_t audio_frame_size, bool use_mic_tap) {
+bool ctrlmf_audio_capture_init(uint32_t audio_frame_size, bool *has_local_mic_tap) {
 
    g_audio_cap.obj_ctrlm = new Iarm::ControlManager::ctrlm_iarm_client_control_manager_t;
 
@@ -60,20 +61,8 @@ bool ctrlmf_audio_capture_init(uint32_t audio_frame_size, bool use_mic_tap) {
    }
 
    g_audio_cap.obj_ctrlm->add_event_handler(ctrlmf_audio_capture_event_handler, NULL);
-   g_audio_cap.use_mic_tap = use_mic_tap;
+   g_audio_cap.use_mic_tap = false;
 
-   // Get the current url
-   if(g_audio_cap.use_mic_tap) {
-      if(!g_audio_cap.obj_ctrlm->status_voice_mic_tap(g_audio_cap.url, &g_audio_cap.url_enabled)) {
-         XLOGD_ERROR("unable to get mic tap status");
-         return(false);
-      }
-   } else {
-      if(!g_audio_cap.obj_ctrlm->status_voice_hf(g_audio_cap.url, &g_audio_cap.url_enabled)) {
-         XLOGD_ERROR("unable to get hf status");
-         return(false);
-      }
-   }
    if(!g_audio_cap.obj_ctrlm->voice_session_types(g_audio_cap.request_types)) {
       XLOGD_ERROR("unable to get voice session request types");
       return(false);
@@ -88,6 +77,32 @@ bool ctrlmf_audio_capture_init(uint32_t audio_frame_size, bool use_mic_tap) {
       }
       request_types << *it;
       first = false;
+   }
+
+   bool has_local_mic = false;
+   if(std::find(g_audio_cap.request_types.begin(), g_audio_cap.request_types.end(), "mic_stream_single") != g_audio_cap.request_types.end()) {
+      has_local_mic = true;
+   }
+   if(std::find(g_audio_cap.request_types.begin(), g_audio_cap.request_types.end(), "mic_tap_stream_single") != g_audio_cap.request_types.end()) {
+      g_audio_cap.use_mic_tap = true;
+   }
+
+   if(!has_local_mic) {
+      XLOGD_ERROR("platform does not support local mic stream");
+      return(false);
+   }
+
+   // Get the current url
+   if(g_audio_cap.use_mic_tap) {
+      if(!g_audio_cap.obj_ctrlm->status_voice_mic_tap(g_audio_cap.url, &g_audio_cap.url_enabled)) {
+         XLOGD_ERROR("unable to get mic tap status");
+         return(false);
+      }
+   } else {
+      if(!g_audio_cap.obj_ctrlm->status_voice_hf(g_audio_cap.url, &g_audio_cap.url_enabled)) {
+         XLOGD_ERROR("unable to get hf status");
+         return(false);
+      }
    }
 
    XLOGD_INFO("get url <%s> enabled <%s> request types <%s>", g_audio_cap.url.c_str(), g_audio_cap.url_enabled ? "YES" : "NO", request_types.str().c_str());
@@ -116,6 +131,10 @@ bool ctrlmf_audio_capture_init(uint32_t audio_frame_size, bool use_mic_tap) {
    g_audio_cap.callbacks.data         = &g_audio_cap.callback_data;
    g_audio_cap.session_id             = "";
    ctrlmf_ws_init(audio_frame_size, CTRLMF_WS_PORT_INT, true, &g_audio_cap.callbacks);
+
+   if(has_local_mic_tap != NULL) {
+      *has_local_mic_tap = g_audio_cap.use_mic_tap;
+   }
    return(true);
 }
 

@@ -24,7 +24,7 @@
 
 static bool ctrlmf_mic_test_audio_analyze_default(const char *output_filename, uint32_t level, ctrlmf_audio_frame_t audio_frames_noise, ctrlmf_audio_frame_t audio_frames_signal, uint32_t frame_qty, uint32_t mic_qty, double snr_min, double snr_max, double snr_var, ctrlmf_test_result_t *test_result);
 
-#if defined(CTRLMF_THUNDER) && defined(CTRLMF_AUDIO_PLAYBACK)
+#ifdef CTRLMF_THUNDER
 static bool ctrlmf_mic_test_via_audio_file(uint32_t duration, const char *output_filename, uint32_t level, const char *audio_filename, double snr_min, double snr_max, double snr_var, ctrlmf_test_result_t *test_result, ctrlmf_mic_test_audio_analyze_t audio_analyze_func);
 #endif
 
@@ -42,7 +42,7 @@ bool ctrlmf_mic_test_factory(uint32_t duration, const char *output_filename, uin
    double snr_var_val = (snr_var != NULL) ? *snr_var : SNR_VAR;
    
    if(audio_filename != NULL) {
-      #if defined(CTRLMF_THUNDER) && defined(CTRLMF_AUDIO_PLAYBACK)
+      #ifdef CTRLMF_THUNDER
       return(ctrlmf_mic_test_via_audio_file(duration, output_filename, level, audio_filename, snr_min_val, snr_max_val, snr_var_val, test_result, audio_analyze_func));
       #else
       XLOGD_ERROR("audio playback is disabled");
@@ -52,7 +52,7 @@ bool ctrlmf_mic_test_factory(uint32_t duration, const char *output_filename, uin
    return(ctrlmf_mic_test_via_ambient(duration, output_filename, level, snr_min_val, snr_max_val, snr_var_val, test_result, audio_analyze_func));
 }
 
-#if defined(CTRLMF_THUNDER) && defined(CTRLMF_AUDIO_PLAYBACK)
+#ifdef CTRLMF_THUNDER
 bool ctrlmf_mic_test_via_audio_file(uint32_t duration, const char *output_filename, uint32_t level, const char *audio_filename, double snr_min, double snr_max, double snr_var, ctrlmf_test_result_t *test_result, ctrlmf_mic_test_audio_analyze_t audio_analyze_func) {
    ctrlmf_audio_frame_t audio_frames_noise  = NULL;
    ctrlmf_audio_frame_t audio_frames_signal = NULL;

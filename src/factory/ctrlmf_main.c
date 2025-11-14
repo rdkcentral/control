@@ -44,9 +44,7 @@ static struct argp_option options[] = {
    {"factory-reset",     'F', 0,            0,  "Perform control manager factory reset and restart the application." },
    {"soft-factory-reset",'f', 0,            0,  "Perform control manager factory reset" },
    {"ctrlm-restart",     'r', 0,            0,  "Restart the control manager application" },
-   #ifdef CTRLMF_AUDIO_PLAYBACK
    {"mic-test-audio",    'a', "<filename>", 0,  "Microphone test audio file" },
-   #endif
    {"mic-test-factory",  'd', 0,            0,  "Factory microphone test" },
    {"mic-test-duration", 'u', "<N>",        0,  "Microphone test duration in milliseconds" },
    {"mic-test-snr-min",  'x', "<F>",        0,  "Microphone test SNR minimum value" },
@@ -122,9 +120,7 @@ int main(int argc, char* argv[]) {
             XLOGD_INFO("ctrlmf_main: test result <%s>", test_result.pass ? "PASS" : "FAIL");
          }
       } else if(g_ctrlmf_opts.audio_file_path != NULL) {
-         #ifdef CTRLMF_AUDIO_PLAYBACK
          ctrlmf_audio_playback_start(g_ctrlmf_opts.audio_file_path);
-         #endif
       }
       #ifdef CTRLMF_AUDIO_CONTROL
       if(g_ctrlmf_opts.mute_main_audio) {
@@ -166,13 +162,11 @@ error_t ctrlmf_parse_opt(int key, char *arg, struct argp_state *state) {
          arguments->ctrlm_restart = true;
          break;
       }
-      #ifdef CTRLMF_AUDIO_PLAYBACK
       case 'a': {
          XLOGD_INFO("mic test audio file <%s>", arg);
          arguments->audio_file_path = arg;
          break;
       }
-      #endif
       case 'g': {
          XLOGD_INFO("output file path <%s>", arg);
          arguments->output_file_path = arg;

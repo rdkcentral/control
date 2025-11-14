@@ -28,6 +28,9 @@ include_directories(
    .
    iarm
    thunder
+   ${CMAKE_SYSROOT}/usr/include/rdk/ds
+   ${CMAKE_SYSROOT}/usr/include/rdk/ds-rpc
+   ${CMAKE_SYSROOT}/usr/include/rdk/ds-hal
 )
 
 target_sources(ctrlm-fta PRIVATE
@@ -36,6 +39,7 @@ target_sources(ctrlm-fta PRIVATE
    ctrlmf_systemd.c
    ctrlmf_utils.c
    ctrlmf_audio_capture.cpp
+   ctrlmf_audio_playback.cpp
    ctrlmf_mic_test.cpp
    ctrlmf_ws.c
    iarm/ctrlmf_iarm_client.cpp
@@ -64,6 +68,7 @@ if(THUNDER)
    target_sources(ctrlm-fta PRIVATE
       thunder/ctrlmf_thunder_controller.cpp
       thunder/ctrlmf_thunder_plugin.cpp
+      thunder/ctrlmf_thunder_plugin_system_audio_player.cpp
    )
 
    target_link_libraries(controlFactory WPEFrameworkCore WPEFrameworkPlugins)
@@ -80,19 +85,7 @@ if(THUNDER_SECURITY)
    target_link_libraries(controlFactory WPEFrameworkSecurityUtil secure_wrapper)
 endif()
 
-if(FACTORY_AUDIO_PLAYBACK)
-   add_compile_definitions(PRIVATE CTRLMF_AUDIO_PLAYBACK)
-   include_directories( ${CMAKE_SYSROOT}/usr/include/rdk/ds
-                   ${CMAKE_SYSROOT}/usr/include/rdk/ds-rpc
-                   ${CMAKE_SYSROOT}/usr/include/rdk/ds-hal
-                  )
-   target_sources(ctrlm-fta PRIVATE ctrlmf_audio_playback.cpp)
-   if(THUNDER)
-      target_sources(ctrlm-fta PRIVATE thunder/ctrlmf_thunder_plugin_system_audio_player.cpp)
-   endif()
-
-   install(FILES ${CMAKE_SOURCE_DIR}/../tone_1khz.wav DESTINATION share )
-endif()
+#   install(FILES ${CMAKE_SOURCE_DIR}/../tone_1khz.wav DESTINATION share )
 
 if(FACTORY_AUDIO_CONTROL)
    add_compile_definitions(PRIVATE CTRLMF_AUDIO_CONTROL)

@@ -58,7 +58,6 @@ bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback, ctrlmf_mic_te
    }
    #endif
 
-   #ifdef CTRLMF_AUDIO_PLAYBACK
    if(requires_audio_playback && !ctrlmf_audio_playback_init()) {
       XLOGD_ERROR("failed to init audio playback");
       #ifdef CTRLMF_AUDIO_CONTROL
@@ -66,7 +65,6 @@ bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback, ctrlmf_mic_te
       #endif
       return(false);
    }
-   #endif
 
    g_ctrlmf.handle_audio_analysis = ctrlmf_load_plugin_audio_analysis(&audio_analyze_func);
    g_ctrlmf.audio_control_init    = true;
@@ -77,11 +75,9 @@ bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback, ctrlmf_mic_te
 
 void ctrlmf_term(void) {
 
-   #ifdef CTRLMF_AUDIO_PLAYBACK
    if(g_ctrlmf.audio_playback_init) {
       ctrlmf_audio_playback_term();
    }
-   #endif
 
    #ifdef CTRLMF_AUDIO_CONTROL
    if(g_ctrlmf.audio_control_init) {

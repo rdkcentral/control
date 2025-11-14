@@ -39,6 +39,7 @@ target_sources(ctrlm-fta PRIVATE
    ctrlmf_systemd.c
    ctrlmf_utils.c
    ctrlmf_audio_capture.cpp
+   ctrlmf_audio_control.cpp
    ctrlmf_audio_playback.cpp
    ctrlmf_mic_test.cpp
    ctrlmf_ws.c
@@ -46,7 +47,7 @@ target_sources(ctrlm-fta PRIVATE
    iarm/ctrlmf_iarm_control_manager.cpp
 )
 
-target_link_libraries(ctrlm-fta c rdkversion dbus-1 glib-2.0 IARMBus xr-voice-sdk pthread nopoll secure_wrapper)
+target_link_libraries(ctrlm-fta c rdkversion dbus-1 glib-2.0 IARMBus xr-voice-sdk pthread nopoll secure_wrapper ds)
 target_link_libraries(controlFactory c ctrlm-fta secure_wrapper)
 
 if(CUSTOM_AUTH_LIB)
@@ -86,13 +87,6 @@ if(THUNDER_SECURITY)
 endif()
 
 #   install(FILES ${CMAKE_SOURCE_DIR}/../tone_1khz.wav DESTINATION share )
-
-if(FACTORY_AUDIO_CONTROL)
-   add_compile_definitions(PRIVATE CTRLMF_AUDIO_CONTROL)
-   target_sources(ctrlm-fta PRIVATE
-      ctrlmf_audio_control.cpp
-   )
-endif()
 
 install(TARGETS controlFactory DESTINATION bin)
 install(TARGETS ctrlm-fta LIBRARY DESTINATION lib)

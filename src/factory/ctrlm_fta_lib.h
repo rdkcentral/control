@@ -38,7 +38,7 @@
 extern "C" {
 #endif
 
-bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback, ctrlmf_mic_test_audio_analyze_t *audio_analyze_func);
+bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback, bool requires_audio_control, ctrlmf_mic_test_audio_analyze_t *audio_analyze_func);
 void ctrlmf_term(void);
 
 bool ctrlmf_factory_reset(void);

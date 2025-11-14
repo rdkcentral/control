@@ -52,9 +52,7 @@ static struct argp_option options[] = {
    {"mic-test-snr-var",  'z', "<F>",        0,  "Microphone test SNR maximum variance" },
    {"mic-test-output",   'g', "<filename>", 0,  "Microphone test output filename" },
    {"mic-test-level",    'l', "<N>",        0,  "Microphone test level" },
-   #ifdef CTRLMF_AUDIO_CONTROL
    {"mute-main-audio",   'm', 0,            0,  "Mute the main audio output" },
-   #endif
    { 0 }
 };
 
@@ -97,7 +95,7 @@ int main(int argc, char* argv[]) {
    bool requires_audio_playback = (g_ctrlmf_opts.audio_file_path != NULL) ? true : false;
    ctrlmf_mic_test_audio_analyze_t audio_analyze_func = NULL;
 
-   if(!ctrlmf_init(level, requires_audio_playback, &audio_analyze_func)) {
+   if(!ctrlmf_init(level, requires_audio_playback, g_ctrlmf_opts.mute_main_audio, &audio_analyze_func)) {
       XLOGD_ERROR("ctrlmf_main: init failed");
    } else {
       XLOGD_INFO("ctrlmf_main: Run main loop");
@@ -107,11 +105,9 @@ int main(int argc, char* argv[]) {
       if(g_ctrlmf_opts.ctrlm_restart) {
          ctrlmf_systemd_service_exec("ctrlm-main.service", CTRLMF_SYSTEMD_METHOD_RESTART);
       }
-      #ifdef CTRLMF_AUDIO_CONTROL
       if(g_ctrlmf_opts.mute_main_audio) {
          ctrlmf_audio_control_mute(true);
       }
-      #endif
       if(g_ctrlmf_opts.mic_test_factory) {
          ctrlmf_test_result_t test_result;
          if(!ctrlmf_mic_test_factory(g_ctrlmf_opts.mic_test_duration, g_ctrlmf_opts.output_file_path, g_ctrlmf_opts.mic_test_level, g_ctrlmf_opts.audio_file_path, g_ctrlmf_opts.mic_test_snr_min, g_ctrlmf_opts.mic_test_snr_max, g_ctrlmf_opts.mic_test_snr_var, &test_result, audio_analyze_func)) {
@@ -122,11 +118,9 @@ int main(int argc, char* argv[]) {
       } else if(g_ctrlmf_opts.audio_file_path != NULL) {
          ctrlmf_audio_playback_start(g_ctrlmf_opts.audio_file_path);
       }
-      #ifdef CTRLMF_AUDIO_CONTROL
       if(g_ctrlmf_opts.mute_main_audio) {
          ctrlmf_audio_control_mute(false);
       }
-      #endif
 
       XLOGD_INFO("ctrlmf_main: main loop ended");
    }
@@ -211,12 +205,10 @@ error_t ctrlmf_parse_opt(int key, char *arg, struct argp_state *state) {
          arguments->mic_test_snr_var = &arguments->snr_var;
          break;
       }
-      #ifdef CTRLMF_AUDIO_CONTROL
       case 'm': {
          arguments->mute_main_audio = true;
          break;
       }
-      #endif
       case ARGP_KEY_ARG: {
          argp_usage(state);
          return(ARGP_ERR_UNKNOWN);
@@ -249,9 +241,7 @@ bool ctrlmf_cmdline_args(int argc, char *argv[]) {
    if(g_ctrlmf_opts.mic_test_factory) {
       XLOGD_INFO("mic test duration <%d ms> snr min <%f> max <%f> var <%f>", g_ctrlmf_opts.mic_test_duration, *g_ctrlmf_opts.mic_test_snr_min, *g_ctrlmf_opts.mic_test_snr_max, *g_ctrlmf_opts.mic_test_snr_var);
    }
-   #ifdef CTRLMF_AUDIO_CONTROL
    XLOGD_INFO("mute main audio <%s>", g_ctrlmf_opts.mute_main_audio   ? "YES" : "NO");
-   #endif
 
    return(true);
 }

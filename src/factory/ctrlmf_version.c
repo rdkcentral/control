@@ -30,7 +30,7 @@ ctrlmf_global_t g_ctrlmf = {
 static bool  ctrlmf_file_exists(const char *filename);
 static void *ctrlmf_load_plugin_audio_analysis(ctrlmf_mic_test_audio_analyze_t *audio_analyze_func);
 
-bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback, ctrlmf_mic_test_audio_analyze_t *audio_analyze_func) {
+bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback, bool requires_audio_control, ctrlmf_mic_test_audio_analyze_t *audio_analyze_func) {
    rdk_version_info_t info;
    int ret_val = rdk_version_parse_version(&info);
 
@@ -51,23 +51,21 @@ bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback, ctrlmf_mic_te
       return(false);
    }
 
-   #ifdef CTRLMF_AUDIO_CONTROL
-   if(!ctrlmf_audio_control_init()) {
+   if(requires_audio_control && !ctrlmf_audio_control_init()) {
       XLOGD_ERROR("failed to init audio control");
       return(false);
    }
-   #endif
 
    if(requires_audio_playback && !ctrlmf_audio_playback_init()) {
       XLOGD_ERROR("failed to init audio playback");
-      #ifdef CTRLMF_AUDIO_CONTROL
-      ctrlmf_audio_control_term();
-      #endif
+      if(requires_audio_control) {
+         ctrlmf_audio_control_term();
+      }
       return(false);
    }
 
    g_ctrlmf.handle_audio_analysis = ctrlmf_load_plugin_audio_analysis(&audio_analyze_func);
-   g_ctrlmf.audio_control_init    = true;
+   g_ctrlmf.audio_control_init    = requires_audio_control;
    g_ctrlmf.audio_playback_init   = requires_audio_playback;
    g_ctrlmf.initialized           = true;
    return(true);
@@ -79,11 +77,9 @@ void ctrlmf_term(void) {
       ctrlmf_audio_playback_term();
    }
 
-   #ifdef CTRLMF_AUDIO_CONTROL
    if(g_ctrlmf.audio_control_init) {
       ctrlmf_audio_control_term();
    }
-   #endif
 
    if(g_ctrlmf.handle_audio_analysis != NULL) {
       dlclose(g_ctrlmf.handle_audio_analysis);

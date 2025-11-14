@@ -83,6 +83,7 @@
 #define JSON_SESSION_END_SERVER_STATS_DNS_TIME        "dnsTime"
 #define JSON_SESSION_END_SERVER_STATS_CONNECT_TIME    "connectTime"
 
+static bool broadcast_event(const char *bus_name, int event, const char *str);
 static const char *voice_device_str(ctrlm_voice_device_t device);
 static const char *voice_device_status_str(uint8_t status);
 
@@ -92,31 +93,63 @@ ctrlm_voice_ipc_iarm_thunder_t::ctrlm_voice_ipc_iarm_thunder_t(ctrlm_voice_t *ob
 
 bool ctrlm_voice_ipc_iarm_thunder_t::register_ipc() const {
     bool ret = true;
+    IARM_Result_t rc;
     XLOGD_INFO("Thunder");
     // NOTE: The IARM events are registered in ctrlm_main.cpp
 
-    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_STATUS, &ctrlm_voice_ipc_iarm_thunder_t::status)) {
+    XLOGD_INFO("Registering for %s IARM call", CTRLM_VOICE_IARM_CALL_STATUS);
+    rc = IARM_Bus_RegisterCall(CTRLM_VOICE_IARM_CALL_STATUS, &ctrlm_voice_ipc_iarm_thunder_t::status);
+    if(rc != IARM_RESULT_SUCCESS) {
+        XLOGD_ERROR("Failed to register %d", rc);
         ret = false;
     }
-    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_CONFIGURE_VOICE, &ctrlm_voice_ipc_iarm_thunder_t::configure_voice)) {
+
+    XLOGD_INFO("Registering for %s IARM call", CTRLM_VOICE_IARM_CALL_CONFIGURE_VOICE);
+    rc = IARM_Bus_RegisterCall(CTRLM_VOICE_IARM_CALL_CONFIGURE_VOICE, &ctrlm_voice_ipc_iarm_thunder_t::configure_voice);
+    if(rc != IARM_RESULT_SUCCESS) {
+        XLOGD_ERROR("Failed to register %d", rc);
         ret = false;
     }
-    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_SET_VOICE_INIT, &ctrlm_voice_ipc_iarm_thunder_t::set_voice_init)) {
+
+    XLOGD_INFO("Registering for %s IARM call", CTRLM_VOICE_IARM_CALL_SET_VOICE_INIT);
+    rc = IARM_Bus_RegisterCall(CTRLM_VOICE_IARM_CALL_SET_VOICE_INIT, &ctrlm_voice_ipc_iarm_thunder_t::set_voice_init);
+    if(rc != IARM_RESULT_SUCCESS) {
+        XLOGD_ERROR("Failed to register %d", rc);
         ret = false;
     }
-    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_SEND_VOICE_MESSAGE, &ctrlm_voice_ipc_iarm_thunder_t::send_voice_message)) {
+
+    XLOGD_INFO("Registering for %s IARM call", CTRLM_VOICE_IARM_CALL_SEND_VOICE_MESSAGE);
+    rc = IARM_Bus_RegisterCall(CTRLM_VOICE_IARM_CALL_SEND_VOICE_MESSAGE, &ctrlm_voice_ipc_iarm_thunder_t::send_voice_message);
+    if(rc != IARM_RESULT_SUCCESS) {
+        XLOGD_ERROR("Failed to register %d", rc);
         ret = false;
     }
-    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_SESSION_TYPES, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_types)) {
+
+    XLOGD_INFO("Registering for %s IARM call", CTRLM_VOICE_IARM_CALL_SESSION_TYPES);
+    rc = IARM_Bus_RegisterCall(CTRLM_VOICE_IARM_CALL_SESSION_TYPES, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_types);
+    if(rc != IARM_RESULT_SUCCESS) {
+        XLOGD_ERROR("Failed to register %d", rc);
         ret = false;
     }
-    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_SESSION_REQUEST, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_request)) {
+
+    XLOGD_INFO("Registering for %s IARM call", CTRLM_VOICE_IARM_CALL_SESSION_REQUEST);
+    rc = IARM_Bus_RegisterCall(CTRLM_VOICE_IARM_CALL_SESSION_REQUEST, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_request);
+    if(rc != IARM_RESULT_SUCCESS) {
+        XLOGD_ERROR("Failed to register %d", rc);
         ret = false;
     }
-    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_SESSION_TERMINATE, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_terminate)) {
+
+    XLOGD_INFO("Registering for %s IARM call", CTRLM_VOICE_IARM_CALL_SESSION_TERMINATE);
+    rc = IARM_Bus_RegisterCall(CTRLM_VOICE_IARM_CALL_SESSION_TERMINATE, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_terminate);
+    if(rc != IARM_RESULT_SUCCESS) {
+        XLOGD_ERROR("Failed to register %d", rc);
         ret = false;
     }
-    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_SESSION_AUDIO_STREAM_START, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_audio_stream_start)) {
+
+    XLOGD_INFO("Registering for %s IARM call", CTRLM_VOICE_IARM_CALL_SESSION_AUDIO_STREAM_START);
+    rc = IARM_Bus_RegisterCall(CTRLM_VOICE_IARM_CALL_SESSION_AUDIO_STREAM_START, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_audio_stream_start);
+    if(rc != IARM_RESULT_SUCCESS) {
+        XLOGD_ERROR("Failed to register %d", rc);
         ret = false;
     }
 
@@ -142,7 +175,7 @@ bool ctrlm_voice_ipc_iarm_thunder_t::session_begin(const ctrlm_voice_ipc_event_s
         if(json_str) {
             //TODO: surface the event through IARM
             XLOGD_INFO("%s", json_str);
-            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_BUS_API_REVISION, CTRLM_VOICE_IARM_EVENT_JSON_SESSION_BEGIN, json_str);
+            ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_SESSION_BEGIN, json_str);
             free(json_str);
         } else {
             XLOGD_ERROR("Failed to encode JSON string");
@@ -171,7 +204,7 @@ bool ctrlm_voice_ipc_iarm_thunder_t::stream_begin(const ctrlm_voice_ipc_event_st
         if(json_str) {
             //TODO: surface the event through IARM
             XLOGD_INFO("%s", json_str);
-            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_BUS_API_REVISION,  CTRLM_VOICE_IARM_EVENT_JSON_STREAM_BEGIN, json_str);
+            ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_STREAM_BEGIN, json_str);
             free(json_str);
         } else {
             XLOGD_ERROR("Failed to encode JSON string");
@@ -201,7 +234,7 @@ bool ctrlm_voice_ipc_iarm_thunder_t::stream_end(const ctrlm_voice_ipc_event_stre
         if(json_str) {
             //TODO: surface the event through IARM
             XLOGD_INFO("%s", json_str);
-            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_BUS_API_REVISION, CTRLM_VOICE_IARM_EVENT_JSON_STREAM_END, json_str);
+            ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_STREAM_END, json_str);
             free(json_str);
         } else {
             XLOGD_ERROR("Failed to encode JSON string");
@@ -325,7 +358,7 @@ bool ctrlm_voice_ipc_iarm_thunder_t::session_end(const ctrlm_voice_ipc_event_ses
         if(json_str) {
             //TODO: surface the event through IARM
             XLOGD_INFO("<%s>", this->obj_voice->voice_stb_data_pii_mask_get() ? "***" : json_str);
-            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_BUS_API_REVISION, CTRLM_VOICE_IARM_EVENT_JSON_SESSION_END, json_str);
+            ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_SESSION_END, json_str);
             free(json_str);
         } else {
             XLOGD_ERROR("Failed to encode JSON string");
@@ -341,7 +374,7 @@ bool ctrlm_voice_ipc_iarm_thunder_t::server_message(const char *message, unsigne
     bool    ret   = false;
     if(message) {
         XLOGD_INFO("%ul : <%s>", size, this->obj_voice->voice_stb_data_pii_mask_get() ? "***" : message);  //CID -160950 - Printargs
-        ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_BUS_API_REVISION, CTRLM_VOICE_IARM_EVENT_JSON_SERVER_MESSAGE, message);
+        ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_SERVER_MESSAGE, message);
     }
     return(ret);
 }
@@ -364,7 +397,7 @@ bool ctrlm_voice_ipc_iarm_thunder_t::keyword_verification(const ctrlm_voice_ipc_
         if(json_str) {
             //TODO: surface the event through IARM
             XLOGD_INFO("%s", json_str);
-            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_BUS_API_REVISION, CTRLM_VOICE_IARM_EVENT_JSON_KEYWORD_VERIFICATION, json_str);
+            ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_KEYWORD_VERIFICATION, json_str);
             free(json_str);
         } else {
             XLOGD_ERROR("Failed to encode JSON string");
@@ -949,6 +982,35 @@ const char *voice_device_status_str(uint8_t status) {
     if(status & CTRLM_VOICE_DEVICE_STATUS_PRIVACY)        { return("privacy");       }
     if(status & CTRLM_VOICE_DEVICE_STATUS_NOT_SUPPORTED)  { return("not supported"); }
     return("invalid");
+}
+
+bool broadcast_event(const char *bus_name, int event, const char *str) {
+    bool ret = false;
+    size_t str_size = strlen(str) + 1;
+    size_t size = sizeof(ctrlm_voice_iarm_event_json_t) + str_size;
+    ctrlm_voice_iarm_event_json_t *data = (ctrlm_voice_iarm_event_json_t *)malloc(size);
+    if(data) {
+        IARM_Result_t result;
+
+        //Can't be replaced with safeC version of this
+        memset(data, 0, size);
+
+        data->api_revision = CTRLM_VOICE_IARM_BUS_API_REVISION;
+        //Can't be replaced with safeC version of this, as safeC string functions doesn't allow string size more than 4K
+        snprintf(data->payload, str_size, "%s", str);
+        result = IARM_Bus_BroadcastEvent(bus_name, event, data, size);
+        if(IARM_RESULT_SUCCESS != result) {
+            XLOGD_ERROR("IARM Bus Error!");
+        } else {
+            ret = true;
+        }
+        if(data) {
+            free(data);
+        }
+    } else {
+        XLOGD_ERROR("Failed to allocate data for IARM event");
+    }
+    return(ret);
 }
 
 bool ctrlm_voice_ipc_request_supported_ptt_transcription(ctrlm_voice_ipc_request_config_t *config) {

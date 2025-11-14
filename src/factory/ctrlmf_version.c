@@ -64,7 +64,7 @@ bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback, bool requires
       return(false);
    }
 
-   g_ctrlmf.handle_audio_analysis = ctrlmf_load_plugin_audio_analysis(&audio_analyze_func);
+   g_ctrlmf.handle_audio_analysis = ctrlmf_load_plugin_audio_analysis(audio_analyze_func);
    g_ctrlmf.audio_control_init    = requires_audio_control;
    g_ctrlmf.audio_playback_init   = requires_audio_playback;
    g_ctrlmf.initialized           = true;
@@ -113,6 +113,7 @@ bool ctrlmf_file_exists(const char *filename) {
 
 void *ctrlmf_load_plugin_audio_analysis(ctrlmf_mic_test_audio_analyze_t *audio_analyze_func) {
    if(audio_analyze_func == NULL) {
+      XLOGD_INFO("Audio Analysis plugin not requested.");
       return(NULL);
    }
    void *handle = NULL;

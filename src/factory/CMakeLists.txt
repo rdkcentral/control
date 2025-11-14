@@ -86,7 +86,5 @@ if(THUNDER_SECURITY)
    target_link_libraries(controlFactory WPEFrameworkSecurityUtil secure_wrapper)
 endif()
 
-#   install(FILES ${CMAKE_SOURCE_DIR}/../tone_1khz.wav DESTINATION share )
-
 install(TARGETS controlFactory DESTINATION bin)
 install(TARGETS ctrlm-fta LIBRARY DESTINATION lib)

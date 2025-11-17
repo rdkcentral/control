@@ -37,21 +37,14 @@
 #include "ctrlm_rfc.h"
 #include "xrsr.h"
 #include "ctrlm_voice_telemetry_events.h"
-
-#ifdef BEEP_ON_KWD_ENABLED
 #include "ctrlm_thunder_plugin_system_audio_player.h"
-#endif
 
 #define VOICE_SESSION_REQ_DATA_LEN_MAX (33)
 
 typedef enum {
    VOICE_SESSION_GROUP_DEFAULT = 0, // Session index for regular voice sessions (PTT, FFV)
-   #ifdef CTRLM_LOCAL_MIC_TAP
    VOICE_SESSION_GROUP_MIC_TAP = 1, // Session index for microphone tap voice sessions
    VOICE_SESSION_GROUP_QTY     = 2
-   #else
-   VOICE_SESSION_GROUP_QTY     = 1
-   #endif
 } ctrlm_voice_session_group_t;
 
 #ifdef VOICE_BUFFER_STATS
@@ -282,9 +275,7 @@ typedef struct {
 typedef struct {
    std::string                 server_url_src_ptt;
    std::string                 server_url_src_ff;
-   #ifdef CTRLM_LOCAL_MIC_TAP
    std::string                 server_url_src_mic_tap;
-   #endif
    std::vector<std::string>    server_hosts;
    std::string                 aspect_ratio;
    std::string                 guide_language;
@@ -313,9 +304,7 @@ typedef struct {
    uint8_t                     opus_encoder_params[CTRLM_RCU_RIB_ATTR_LEN_OPUS_ENCODING_PARAMS];
    bool                        force_toggle_fallback;
    bool                        telemetry_session_stats;
-   #ifdef NETWORKED_STANDBY_MODE_ENABLED
    xrsr_dst_params_t           dst_params_standby;
-   #endif
    xrsr_dst_params_t           dst_params_low_latency;
    bool                        par_voice_enabled;
    uint8_t                     par_voice_eos_method;
@@ -391,9 +380,7 @@ typedef struct {
 typedef struct {
    std::string                       urlPtt;
    std::string                       urlHf;
-   #ifdef CTRLM_LOCAL_MIC_TAP
    std::string                       urlMicTap;
-   #endif
    uint8_t                           status[CTRLM_VOICE_DEVICE_INVALID];
    bool                              prv_enabled;
    bool                              wwFeedback;
@@ -529,6 +516,8 @@ class ctrlm_voice_t {
     bool                                  voice_stb_data_bypass_wuw_verify_failure_get() const;
     virtual void                          voice_stb_data_pii_mask_set(bool mask_pii);
     bool                                  voice_stb_data_pii_mask_get() const;
+    bool                                  voice_stb_data_local_mic_get() const;
+    bool                                  voice_stb_data_local_mic_tap_get() const;
     virtual bool                          voice_stb_data_device_certificate_set(ctrlm_voice_cert_t &device_cert, bool &ocsp_verify_stapling, bool &ocsp_verify_ca);
     virtual bool                          voice_stb_data_device_certificate_set(const char *p12_cert, const char *p12_pass);
     virtual bool                          voice_stb_data_device_certificate_set(const char *pem_cert, const char *pem_pkey, const char *pem_chain, const char *pem_passphrase);
@@ -586,9 +575,7 @@ protected:
     static int ctrlm_voice_packet_timeout(void *data);
     static int ctrlm_voice_controller_session_stats_rxd_timeout(void *data);
     static int ctrlm_voice_controller_command_status_read_timeout(void *data);
-    #ifdef BEEP_ON_KWD_ENABLED
     static int ctrlm_voice_keyword_beep_end_timeout(void *data);
-    #endif
     // End Static Callbacks
 
     // Event Interface
@@ -609,15 +596,11 @@ public:
     virtual void                  voice_server_return_code_callback(const uuid_t uuid, const char *reason, long ret_code);
     virtual void                  voice_session_transcription_callback(const uuid_t uuid, const char *transcription);
     virtual void                  voice_power_state_change(ctrlm_power_state_t power_state);
-    #ifdef NETWORKED_STANDBY_MODE_ENABLED
     virtual void                  voice_nsm_session_request(void);
-    #endif
     virtual void                  voice_keyword_verified_action(void);
-    #ifdef BEEP_ON_KWD_ENABLED
     virtual void                  voice_keyword_beep_completed_normal(void *data, int size);
     virtual void                  voice_keyword_beep_completed_error(void *data, int size);
     virtual void                  voice_keyword_beep_completed_callback(bool timeout, bool playback_error);
-    #endif
     // End Event Interface
 
     protected:
@@ -663,6 +646,11 @@ public:
     bool                     mtls_required;
     bool                     secure_url_required;
     bool                     mask_pii;
+    bool                     local_mic;
+    bool                     local_mic_tap;
+    bool                     local_mic_disable_via_privacy;
+    const char *             beep_on_kwd_file;
+    bool                     beep_on_kwd_supported;
     bool                     ocsp_verify_stapling;
     bool                     ocsp_verify_ca;
     bool                     capture_active;
@@ -685,11 +673,9 @@ public:
     bool                     xrsr_opened;
     ctrlm_voice_ipc_t       *voice_ipc;
 
-    #ifdef BEEP_ON_KWD_ENABLED
     Thunder::SystemAudioPlayer::ctrlm_thunder_plugin_system_audio_player_t *obj_sap;
     bool                                                                   sap_opened;
     ctrlm_timestamp_t                                                      sap_play_timestamp;
-    #endif
 
     // Current Session Data
     unsigned long            opus_samples_per_packet;
@@ -759,27 +745,11 @@ xrsr_src_t voice_device_to_xrsr(ctrlm_voice_device_t device);
 
 
 __inline bool ctrlm_voice_device_is_mic(ctrlm_voice_device_t device) {
-    #ifdef CTRLM_LOCAL_MIC
-    #ifdef CTRLM_LOCAL_MIC_TAP
     return(device == CTRLM_VOICE_DEVICE_MICROPHONE || device == CTRLM_VOICE_DEVICE_MICROPHONE_TAP);
-    #else
-    return(device == CTRLM_VOICE_DEVICE_MICROPHONE);
-    #endif
-    #else
-    return(false);
-    #endif
 }
 
 __inline bool ctrlm_voice_xrsr_src_is_mic(xrsr_src_t src) {
-    #ifdef CTRLM_LOCAL_MIC
-    #ifdef CTRLM_LOCAL_MIC_TAP
     return(src == XRSR_SRC_MICROPHONE || src == XRSR_SRC_MICROPHONE_TAP);
-    #else
-    return(src == XRSR_SRC_MICROPHONE);
-    #endif
-    #else
-    return(false);
-    #endif
 }
 
 #endif

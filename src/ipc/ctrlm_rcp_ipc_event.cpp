@@ -135,12 +135,9 @@ void ctrlm_rcp_ipc_net_status_t::populate_status(const ctrlm_obj_network_t &netw
     }
 }
 
-std::string ctrlm_base_event_json_t::to_string() const
+char *ctrlm_rcp_ipc_net_status_t::to_string() const
 {
-    char *json_str = json_dumps(to_json(), JSON_ENCODE_ANY);
-    std::string copy = json_str;
-    free(json_str);
-    return copy;
+    return json_dumps(to_json(), JSON_ENCODE_ANY);
 }
 
 ctrlm_rcp_ipc_upgrade_status_t::~ctrlm_rcp_ipc_upgrade_status_t()
@@ -171,6 +168,11 @@ json_t *ctrlm_rcp_ipc_upgrade_status_t::to_json() const
     }
 
     return (err) ? NULL : status;
+}
+
+char *ctrlm_rcp_ipc_upgrade_status_t::to_string() const
+{
+    return json_dumps(to_json(), JSON_ENCODE_ANY);
 }
 
 ctrlm_rcp_ipc_validation_status_t::~ctrlm_rcp_ipc_validation_status_t()
@@ -213,4 +215,9 @@ json_t *ctrlm_rcp_ipc_validation_status_t::to_json() const
     }
 
     return (err) ? NULL : status;
+}
+
+char *ctrlm_rcp_ipc_validation_status_t::to_string() const
+{
+    return json_dumps(to_json(), JSON_ENCODE_ANY);
 }

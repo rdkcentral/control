@@ -3660,6 +3660,11 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
       device_type = CTRLM_VOICE_DEVICE_FF;
    }
 
+   if(device_type == CTRLM_VOICE_DEVICE_PTT) {
+      // Send voice key down event since the session was requested
+      process_event_key(dqm->controller_id, CTRLM_KEY_STATUS_DOWN, CTRLM_KEY_CODE_PUSH_TO_TALK);
+   }
+
    bool command_status = (controller_type == RF4CE_CONTROLLER_TYPE_XR11 ||
                           controller_type == RF4CE_CONTROLLER_TYPE_XR19) ? true : false;
 
@@ -3842,6 +3847,11 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
          property.state = CTRLM_HAL_FREQUENCY_AGILITY_ENABLE;
          ctrlm_network_property_set(network_id_get(), CTRLM_HAL_NETWORK_PROPERTY_FREQUENCY_AGILITY, (void *)&property, sizeof(property));
       }
+
+      if(device_type == CTRLM_VOICE_DEVICE_PTT) {
+         // Send voice key up event since the session was not accepted
+         process_event_key(dqm->controller_id, CTRLM_KEY_STATUS_UP, CTRLM_KEY_CODE_PUSH_TO_TALK);
+      }
    }
 
    if(dqm->status != VOICE_SESSION_RESPONSE_AVAILABLE && dqm->status != VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK) { // Session was aborted
@@ -3936,6 +3946,17 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_stop(void *data, int s
 
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_voice_session_stop_t));
+
+   if(!controller_exists(dqm->controller_id)) {
+      XLOGD_INFO("invalid controller id (%u)", dqm->controller_id);
+      return;
+   }
+   
+   ctrlm_rf4ce_controller_type_t controller_type = controllers_[dqm->controller_id]->controller_type_get();
+   if(!ctrlm_is_voice_assistant((ctrlm_rcu_controller_type_t) controller_type)) {
+      // Send voice key up event since the session stop was received
+      process_event_key(dqm->controller_id, CTRLM_KEY_STATUS_UP, CTRLM_KEY_CODE_PUSH_TO_TALK);
+   }
 
    // Check adjacent key press
    if(CTRLM_VOICE_SESSION_END_REASON_OTHER_KEY_PRESSED == dqm->session_end_reason && true == is_key_adjacent(dqm->controller_id, dqm->key_code)) {

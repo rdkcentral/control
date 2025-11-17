@@ -1027,7 +1027,7 @@ void ctrlm_obj_network_t::iarm_event_rcu_status(void) {
    msg.populate_status(*this);
 
    XLOGD_INFO("Broadcasting IARM message %s RCU Status....", name_get());
-   XLOGD_DEBUG("%s", msg.to_string().c_str());
+   XLOGD_DEBUG("%s", msg.to_string());
 
    ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
    if (!rcp_ipc->on_status(msg)) {

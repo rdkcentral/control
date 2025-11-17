@@ -3761,6 +3761,7 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
    start_audio_params.m_offset            = offset;
    start_audio_params.m_started           = false;
    start_audio_params.m_timestamp         = dqm->timestamp;
+   start_audio_params.m_device_type       = device_type;
    auto audio_start_cb = std::bind(&ctrlm_obj_network_rf4ce_t::start_controller_audio_streaming, this, std::placeholders::_1);
 
    session = ctrlm_get_voice_obj()->voice_session_req(network_id_get(),         dqm->controller_id,
@@ -5021,6 +5022,7 @@ void ctrlm_obj_network_rf4ce_t::start_controller_audio_streaming(ctrlm_voice_sta
    THREAD_ID_VALIDATE();
    params->m_started = false;
    ctrlm_controller_id_t controller_id = params->m_controller_id;
+   ctrlm_voice_device_t  device_type   = params->m_device_type;
 
    if(!ready_) {
       XLOGD_FATAL("Network is not ready!");
@@ -5123,7 +5125,7 @@ void ctrlm_obj_network_rf4ce_t::start_controller_audio_streaming(ctrlm_voice_sta
 
       if(device_type == CTRLM_VOICE_DEVICE_PTT) {
          // Send voice key up event since the session was not accepted
-         process_event_key(dqm->controller_id, CTRLM_KEY_STATUS_UP, CTRLM_KEY_CODE_PUSH_TO_TALK);
+         process_event_key(controller_id, CTRLM_KEY_STATUS_UP, CTRLM_KEY_CODE_PUSH_TO_TALK);
       }
    }
 

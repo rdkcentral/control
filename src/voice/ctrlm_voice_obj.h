@@ -409,6 +409,7 @@ public:
    ctrlm_voice_session_rsp_confirm_t     m_cb_confirm_voice_obj;
    void *                                m_cb_confirm_param;
    ctrlm_voice_session_response_status_t m_status;
+   ctrlm_voice_device_t                  m_device_type;
 };
 
 typedef struct {

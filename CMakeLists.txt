@@ -35,7 +35,6 @@ project(ctrlm-main VERSION ${CMAKE_PROJECT_VERSION})
 
 # OPTIONS
 option(A5000_ENABLE "ES1 A5000 use libse051" OFF)
-option(ANSI_CODES_DISABLED "Disable ANSI code logging" OFF)
 option(ASSERT_ON_WRONG_THREAD "Assert on wrong thread" OFF)
 option(AUTH_ENABLED "Enable AUTH" OFF)
 option(BLE_ENABLED "Enable BLE" ON)

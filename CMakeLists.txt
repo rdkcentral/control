@@ -34,7 +34,6 @@ set(CMAKE_NO_SYSTEM_FROM_IMPORTED ON)
 project(ctrlm-main VERSION ${CMAKE_PROJECT_VERSION})
 
 # OPTIONS
-option(ASSERT_ON_WRONG_THREAD "Assert on wrong thread" OFF)
 option(AUTH_ENABLED "Enable AUTH" OFF)
 option(BLE_ENABLED "Enable BLE" ON)
 option(BLE_SERVICES "Enable BLE Services" OFF)
@@ -44,7 +43,6 @@ option(FACTORY_AUDIO_PLAYBACK "Factory test audio playback" OFF)
 option(FACTORY_CUSTOM_AUDIO_ANALYSIS "Factory custom audio analysis" OFF)
 option(FDC_ENABLED "Enable FDC" OFF)
 option(IP_ENABLED "Enable IP" OFF)
-option(MEM_DEBUG "Enable memory debugging" OFF)
 option(RF4CE_ENABLED "Enable RF4CE" ON)
 option(TELEMETRY_SUPPORT "Enable TELEMETRY_SUPPORT" OFF)
 option(THUNDER "Enable THUNDER" ON)
@@ -176,10 +174,6 @@ if(ANSI_CODES_DISABLED)
    add_compile_definitions(ANSI_CODES_DISABLED)
 endif()
 
-if(ASSERT_ON_WRONG_THREAD)
-   add_compile_definitions(ASSERT_ON_WRONG_THREAD)
-endif()
-
 if(BLE_ENABLED)
    target_link_libraries(controlMgr BTMgr)
    if(BLE_SERVICES)
@@ -207,10 +201,6 @@ endif()
 
 if(IP_ENABLED)
    add_compile_definitions(CTRLM_NETWORK_IP CTRLM_IP_HAL_LOG_ENABLED)
-endif()
-
-if(MEM_DEBUG)
-   add_compile_definitions(MEM_DEBUG)
 endif()
 
 # RF4CE options

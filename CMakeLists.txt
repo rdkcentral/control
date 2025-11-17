@@ -35,7 +35,6 @@ project(ctrlm-main VERSION ${CMAKE_PROJECT_VERSION})
 
 # OPTIONS
 option(A5000_ENABLE "ES1 A5000 use libse051" OFF)
-option(ANSI_CODES_DISABLED "Disable ANSI code logging" OFF)
 option(ASSERT_ON_WRONG_THREAD "Assert on wrong thread" OFF)
 option(AUTH_ENABLED "Enable AUTH" OFF)
 option(BLE_ENABLED "Enable BLE" ON)
@@ -50,7 +49,6 @@ option(IP_ENABLED "Enable IP" OFF)
 option(LOCAL_MIC "Local Microphone" OFF)
 option(LOCAL_MIC_DISABLE_VIA_PRIVACY "Use Privacy to disable microphone" OFF)
 option(MEM_DEBUG "Enable memory debugging" OFF)
-option(MEMORY_LOCK "Memory Lock" OFF)
 option(MIC_TAP "Enable MIC_TAP" OFF)
 option(RF4CE_ENABLED "Enable RF4CE" ON)
 option(TELEMETRY_SUPPORT "Enable TELEMETRY_SUPPORT" OFF)
@@ -238,11 +236,6 @@ endif()
 
 if(MEM_DEBUG)
    add_compile_definitions(MEM_DEBUG)
-endif()
-
-if(MEMORY_LOCK)
-   add_compile_definitions(MEMORY_LOCK)
-   target_link_libraries(controLMgr clnl)
 endif()
 
 # RF4CE options

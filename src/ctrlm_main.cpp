@@ -86,9 +86,6 @@
 #include "xr_fdc.h"
 #endif
 #include<features.h>
-#ifdef MEMORY_LOCK
-#include "clnl.h"
-#endif
 
 using namespace std;
 
@@ -402,17 +399,6 @@ static void     control_service_values_read_from_db();
 #ifdef USE_DEPRECATED_IRMGR
 static void     ctrlm_check_for_key_tag(int key_tag) __attribute__((unused)); //USE_DEPRECATED_IRMGR
 #endif
-#ifdef MEMORY_LOCK
-const char *memory_lock_progs[] = {
-"/usr/bin/controlMgr",
-"/usr/lib/libctrlm_hal_rf4ce.so.0.0.0",
-"/usr/lib/libxraudio.so.0.0.0",
-"/usr/lib/libxraudio-hal.so.0.0.0",
-"/usr/lib/libxr_mq.so.0.0.0",
-"/usr/lib/libxr-timer.so.0.0.0",
-"/usr/lib/libxr-timestamp.so.0.0.0"
-};
-#endif
 
 #if CTRLM_HAL_RF4CE_API_VERSION >= 9
 static void ctrlm_crash_recovery_check();
@@ -422,13 +408,6 @@ static void ctrlm_backup_data();
 static void ctrlm_ir_controller_thread_poll(void *data);
 static void ctrlm_vsdk_thread_poll(void *data);
 static void ctrlm_vsdk_thread_response(void *data);
-
-#ifdef MEM_DEBUG
-static gboolean ctrlm_memory_profile(gpointer user_data) {
-   g_mem_profile();
-   return(TRUE);
-}
-#endif
 
 #ifdef BREAKPAD_SUPPORT
 static bool ctrlm_minidump_callback(const google_breakpad::MinidumpDescriptor& descriptor, void* context, bool succeeded) {
@@ -448,24 +427,10 @@ int main(int argc, char *argv[]) {
 
    XLOGD_INFO("name <%-24s> version <%-9s> branch <%-20s> commit <%s>", "ctrlm-main", CTRLM_MAIN_VERSION, CTRLM_MAIN_BRANCH, CTRLM_MAIN_COMMIT_ID);
 
-#ifdef MEMORY_LOCK
-   clnl_init();
-   for(unsigned int i = 0; i < (sizeof(memory_lock_progs) / sizeof(memory_lock_progs[0])); i++) {
-      if(ctrlm_file_exists(memory_lock_progs[i])) {
-         if(clnl_lock(memory_lock_progs[i], SECTION_TEXT)) {
-            XLOGD_ERROR("failed to lock instructions to memory <%s>", memory_lock_progs[i]);
-         } else {
-            XLOGD_INFO("successfully locked to memory <%s>", memory_lock_progs[i]);
-         }
-      } else {
-         XLOGD_DEBUG("file doesn't exist, cannot lock to memory <%s>", memory_lock_progs[i]);
-      }
-   }
-#endif
-
    ctrlm_signals_register();
 
 #ifdef BREAKPAD_SUPPORT
+   XLOGD_INFO("breakpad enabled");
    std::string minidump_path = "/opt/minidumps";
    #ifdef BREAKPAD_MINIDUMP_PATH_OVERRIDE
    minidump_path = BREAKPAD_MINIDUMP_PATH_OVERRIDE;
@@ -481,6 +446,8 @@ int main(int argc, char *argv[]) {
    google_breakpad::ExceptionHandler eh(descriptor, NULL, ctrlm_minidump_callback, NULL, true, -1);
 
    //ctrlm_crash();
+#else
+   XLOGD_INFO("breakpad disabled");
 #endif
 
    XLOGD_INFO("glib     run-time version... %d.%d.%d", glib_major_version, glib_minor_version, glib_micro_version);
@@ -493,11 +460,6 @@ int main(int argc, char *argv[]) {
    } else {
       XLOGD_INFO("Glib run-time library is compatible");
    }
-
-#ifdef MEM_DEBUG
-   XLOGD_WARN("Memory debug is ENABLED.");
-   g_mem_set_vtable(glib_mem_profiler_table);
-#endif
 
    sem_init(&g_ctrlm.ctrlm_utils_sem, 0, 1);
 
@@ -521,7 +483,7 @@ int main(int argc, char *argv[]) {
 
    const char *filename   = NULL;
    uint32_t file_size_max = 0;
-   vsdk_init(filename, file_size_max);
+   vsdk_init(true, filename, file_size_max);
 
    //struct sched_param param;
    //param.sched_priority = 10;
@@ -614,11 +576,6 @@ int main(int argc, char *argv[]) {
    ERR_CHK(safec_rc);
 
    g_ctrlm.discovery_remote_type[0] = '\0';
-
-#ifdef MEM_DEBUG
-   g_mem_profile();
-   g_timeout_add_seconds(10, ctrlm_memory_profile, NULL);
-#endif
 
    XLOGD_INFO("load version");
    if(!ctrlm_load_version()) {
@@ -877,15 +834,6 @@ int main(int argc, char *argv[]) {
 #endif
 
    sem_destroy(&g_ctrlm.ctrlm_utils_sem);
-
-#ifdef MEMORY_LOCK
-   for(unsigned int i = 0; i < (sizeof(memory_lock_progs) / sizeof(memory_lock_progs[0])); i++) {
-      if(ctrlm_file_exists(memory_lock_progs[i])) {
-         clnl_unlock(memory_lock_progs[i], SECTION_TEXT);
-      }
-   }
-   clnl_destroy();
-#endif
 
    ctrlm_config_t::destroy_instance();
    ctrlm_rfc_t::destroy_instance();

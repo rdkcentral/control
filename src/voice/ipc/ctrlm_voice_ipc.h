@@ -22,7 +22,6 @@
 #include "ctrlm.h"
 #include "ctrlm_voice_types.h"
 #include "ctrlm_ipc_voice.h"
-#include "ctrlm_ipc_iarm.h"
 
 // Classes for eventing
 
@@ -172,7 +171,7 @@ public:
 };
 // End classes for eventing
 
-class ctrlm_voice_ipc_t : public ctrlm_ipc_iarm_t {
+class ctrlm_voice_ipc_t {
 public:
     ctrlm_voice_ipc_t(ctrlm_voice_t *obj_voice) {
         this->obj_voice = obj_voice;
@@ -180,6 +179,7 @@ public:
     virtual ~ctrlm_voice_ipc_t() {};
 
     // Interface
+    virtual bool register_ipc() const = 0;
     virtual bool session_begin(const ctrlm_voice_ipc_event_session_begin_t &session_begin) = 0;
     virtual bool stream_begin(const ctrlm_voice_ipc_event_stream_begin_t &stream_begin) = 0;
     virtual bool stream_end(const ctrlm_voice_ipc_event_stream_end_t &stream_end) = 0;
@@ -187,6 +187,7 @@ public:
     virtual bool server_message(const char *message, unsigned long size) = 0; // Pass a pointer to the message to avoid copying possible large chunks of data
     virtual bool keyword_verification(const ctrlm_voice_ipc_event_keyword_verification_t &keyword_verification) = 0;
     virtual bool session_statistics(const ctrlm_voice_ipc_event_session_statistics_t &session_stats) = 0;
+    virtual void deregister_ipc() const = 0;
     // End Interface
 
 protected:

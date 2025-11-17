@@ -34,21 +34,17 @@ set(CMAKE_NO_SYSTEM_FROM_IMPORTED ON)
 project(ctrlm-main VERSION ${CMAKE_PROJECT_VERSION})
 
 # OPTIONS
-option(A5000_ENABLE "ES1 A5000 use libse051" OFF)
-option(ANSI_CODES_DISABLED "Disable ANSI code logging" OFF)
 option(ASSERT_ON_WRONG_THREAD "Assert on wrong thread" OFF)
 option(AUTH_ENABLED "Enable AUTH" OFF)
 option(BLE_ENABLED "Enable BLE" ON)
 option(BLE_SERVICES "Enable BLE Services" OFF)
 option(BREAKPAD "Enable BREAKPAD" OFF)
 option(BUILD_CTRLM_FACTORY "Build Control Factory Test" OFF)
-option(DEEPSLEEP_CLOSE_DB "Deep Sleep Close DB" OFF)
 option(FACTORY_AUDIO_PLAYBACK "Factory test audio playback" OFF)
 option(FACTORY_CUSTOM_AUDIO_ANALYSIS "Factory custom audio analysis" OFF)
 option(FDC_ENABLED "Enable FDC" OFF)
 option(IP_ENABLED "Enable IP" OFF)
 option(MEM_DEBUG "Enable memory debugging" OFF)
-option(MEMORY_LOCK "Memory Lock" OFF)
 option(RF4CE_ENABLED "Enable RF4CE" ON)
 option(TELEMETRY_SUPPORT "Enable TELEMETRY_SUPPORT" OFF)
 option(THUNDER "Enable THUNDER" ON)
@@ -176,11 +172,6 @@ install(TARGETS controlMgr RUNTIME DESTINATION bin)
 install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json.template DESTINATION ${CMAKE_INSTALL_SYSCONFDIR} COMPONENT config )
 
 # DEFINES FROM OPTIONS
-if(A5000_ENABLE)
-   find_library( SE_HAL_PATH SE_HAL ${CMAKE_SYSROOT}/usr/lib/se051)
-   target_link_libraries(controlMgr ${SE_HAL_PATH})
-endif()
-
 if(ANSI_CODES_DISABLED)
    add_compile_definitions(ANSI_CODES_DISABLED)
 endif()
@@ -202,10 +193,6 @@ if(BREAKPAD)
    add_compile_definitions(BREAKPAD_SUPPORT)
 endif()
 
-if(DEEPSLEEP_CLOSE_DB)
-   add_compile_definitions(DEEPSLEEP_CLOSE_DB)
-endif()
-
 if(ENABLE_ASYNC_SRVR_MSG)
    add_compile_definitions(SUPPORT_ASYNC_SRVR_MSG)
 endif()
@@ -224,11 +211,6 @@ endif()
 
 if(MEM_DEBUG)
    add_compile_definitions(MEM_DEBUG)
-endif()
-
-if(MEMORY_LOCK)
-   add_compile_definitions(MEMORY_LOCK)
-   target_link_libraries(controLMgr clnl)
 endif()
 
 # RF4CE options

@@ -36,14 +36,13 @@ ctrlm_power_state_t ctrlm_thunder_powermanager_t::get_power_state() {
    }
 }
 
-#ifdef NETWORKED_STANDBY_MODE_ENABLED
 bool ctrlm_thunder_powermanager_t::get_networked_standby_mode() {
 
    if(this->plugin == NULL) {
       XLOGD_ERROR("plugin not yet available");
       return false;
    } else {
-      return this->plugin->get_networked_standby_mode(networked_standby_mode);
+      return this->plugin->get_networked_standby_mode();
    }
 }
 
@@ -53,7 +52,6 @@ bool ctrlm_thunder_powermanager_t::get_wakeup_reason_voice() {
       XLOGD_WARN("plugin not yet available");
       return false;
    } else {
-      return this->plugin->get_wakeup_reason_voice(wakeup_reason_voice);
+      return this->plugin->get_wakeup_reason_voice();
    }
 }
-#endif

@@ -41,19 +41,16 @@ ctrlm_power_state_t ctrlm_ipc_iarm_powermanager_t::get_power_state() {
       XLOGD_WARN("IARM bus failed to read power state, defaulting to <%s>", ctrlm_power_state_str(power_state));
    } else {
       power_state = ctrlm_iarm_power_state_map(param.curState);
-      #ifdef NETWORKED_STANDBY_MODE_ENABLED
       //If ctrlm restarts with system STANDBY state, set to ON, will receive a DEEP_SLEEP or ON message shortly
-      if(power_state == CTRLM_POWER_STATE_STANDBY) {
+      if(ctrlm_is_networked_standby_supported() && (power_state == CTRLM_POWER_STATE_STANDBY)) {
          power_state = CTRLM_POWER_STATE_ON;
       }
-      #endif
       XLOGD_DEBUG("power state <%s>", ctrlm_power_state_str(power_state));
    }
 
    return power_state;
 }
 
-#ifdef NETWORKED_STANDBY_MODE_ENABLED
 bool ctrlm_ipc_iarm_powermanager_t::get_networked_standby_mode() {
    IARM_Bus_PWRMgr_NetworkStandbyMode_Param_t param = {0};
    IARM_Result_t res = IARM_Bus_Call(IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_API_GetNetworkStandbyMode, (void *)&param, sizeof(param));
@@ -89,7 +86,6 @@ bool ctrlm_ipc_iarm_powermanager_t::get_wakeup_reason_voice() {
 
    return wakeup_reason_voice;
 }
-#endif
 
 #if CTRLM_HAL_RF4CE_API_VERSION >= 10 && !defined(CTRLM_DPI_CONTROL_NOT_SUPPORTED)
 IARM_Result_t ctrlm_iarm_powermanager_event_handler_power_pre_change(void* pArgs)

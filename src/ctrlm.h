@@ -453,6 +453,7 @@ gboolean                           ctrlm_is_one_touch_autobind_active(void);
 gboolean                           ctrlm_is_binding_table_empty(void);
 gboolean                           ctrlm_is_binding_table_full(void);
 bool                               ctrlm_is_pii_mask_enabled(void);
+bool                               ctrlm_is_networked_standby_supported(void);
 gboolean                           ctrlm_main_has_device_id_get(void);
 gboolean                           ctrlm_main_has_device_type_get(void);
 gboolean                           ctrlm_main_has_service_account_id_get(void);

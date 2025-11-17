@@ -1373,7 +1373,7 @@ const char *ctrlm_linux_key_code_str(uint16_t code, bool mask) {
    }
 }
 
-#ifdef NETWORKED_STANDBY_MODE_ENABLED
+#ifdef USE_IARM_POWER_MANAGER
 const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason) {
     switch(wakeup_reason) {
         case DEEPSLEEP_WAKEUPREASON_IR:               return("IR");
@@ -1399,7 +1399,6 @@ const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason) {
     return(ctrlm_invalid_return(wakeup_reason));
 }
 #endif
-
 
 bool ctrlm_file_copy(const char* src, const char* dst, bool overwrite, bool follow_dst_symbolic_link) {
    bool    ret   = FALSE;

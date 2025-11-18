@@ -29,6 +29,7 @@
 #include "ctrlm_log.h"
 
 #define CERT_FILENAME_PREFIX "file://"
+#define S_CERT "OPERSE_P12"
 
 ctrlm_auth_certificate_t *ctrlm_auth_certificate_get() {
    return(new(ctrlm_auth_certificate_t));
@@ -42,12 +43,14 @@ ctrlm_auth_certificate_t::ctrlm_auth_certificate_t() {
 
    char *cert_path     = NULL;
    char *cert_password = NULL;
-   rdkcertselector_h cert_selector = rdkcertselector_new( NULL, NULL, "MTLS" );
+   rdkcertlocator_t *cert_locator = NULL;
+   rdkcertlocatorStatus_t cert_status;
+   cert_locator = rdkcertlocator_new( NULL, NULL );   
 
-   if(cert_selector == NULL){
+   if(cert_locator == NULL){
       XLOGD_TELEMETRY("cert selector init failed");
-   } else {
-      rdkcertselectorStatus_t cert_status = rdkcertselector_getCert(cert_selector, &cert_path, &cert_password);
+   } else {      
+      cert_status = rdkcertlocator_locateCert(cert_locator, OPERFB_P12, &cert_path, &cert_password);
 
       if(cert_status != certselectorOk) {
          XLOGD_TELEMETRY("cert selector retrieval failed");

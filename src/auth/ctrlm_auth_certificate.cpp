@@ -48,14 +48,17 @@ ctrlm_auth_certificate_t::ctrlm_auth_certificate_t() {
    cert_locator = rdkcertlocator_new( NULL, NULL );   
 
    if(cert_locator == NULL){
+      XLOGD_INFO("P12 cert selector init failed");
       XLOGD_TELEMETRY("cert selector init failed");
    } else {      
       cert_status = rdkcertlocator_locateCert(cert_locator, STATIC_CERT, &cert_path, &cert_password);
-
-      if(cert_status != certselectorOk) { 
+      XLOGD_INFO("P12 certificate <%s>:<%d>", cert_path, cert_status);
+      if(cert_status != certselectorOk) {
+         XLOGD_INFO("P12 cert selector retrieval failed");
          XLOGD_TELEMETRY("cert selector retrieval failed");
       } else {
          if(cert_path == NULL || cert_password == NULL) {
+            XLOGD_INFO("P12 cert selector get failed");
             XLOGD_TELEMETRY("cert selector get failed");
          } else {
 
@@ -63,6 +66,7 @@ ctrlm_auth_certificate_t::ctrlm_auth_certificate_t() {
             if(strncmp(local_path, CERT_FILENAME_PREFIX, strlen(CERT_FILENAME_PREFIX)) == 0) {
                local_path += strlen(CERT_FILENAME_PREFIX);
             }
+            XLOGD_INFO("P12 cert selector local_path <%s>",local_path);
             if(!this->device_cert_p12_set(local_path, cert_password)) {
                XLOGD_TELEMETRY("unable to set device certificate <%s>", local_path);
             } else {

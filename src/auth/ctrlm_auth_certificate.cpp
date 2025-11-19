@@ -29,7 +29,6 @@
 #include "ctrlm_log.h"
 
 #define CERT_FILENAME_PREFIX "file://"
-#define STATIC_CERT "/etc/ssl/certsel/static-cert.cfg"
 
 ctrlm_auth_certificate_t *ctrlm_auth_certificate_get() {
    return(new(ctrlm_auth_certificate_t));
@@ -43,7 +42,7 @@ ctrlm_auth_certificate_t::ctrlm_auth_certificate_t() {
 
    char *cert_path     = NULL;
    char *cert_password = NULL;
-   rdkcertselector_h cert_selector = rdkcertselector_new( STATIC_CERT, NULL, "MTLS" );
+   rdkcertselector_h cert_selector = rdkcertselector_new( NULL, NULL, "FW_MTLS" );
 
    if(cert_selector == NULL){
       XLOGD_TELEMETRY("cert selector init failed");

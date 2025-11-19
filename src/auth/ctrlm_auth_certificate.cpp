@@ -29,7 +29,7 @@
 #include "ctrlm_log.h"
 
 #define CERT_FILENAME_PREFIX "file://"
-#define STATIC_CERT "/etc/ssl/certsel/es1.cfg"
+#define STATIC_CERT "/etc/ssl/certsel/static-cert.cfg"
 
 ctrlm_auth_certificate_t *ctrlm_auth_certificate_get() {
    return(new(ctrlm_auth_certificate_t));

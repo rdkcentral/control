@@ -1257,14 +1257,22 @@ bool BleRcuAdapterBluez::addDevice(const BleAddress &address)
 /*!
     \internal
 
-    Sends a request to bluez to reconnect all devices stored in our internal map
+    Sends a request to bluez to reconnect all devices stored in our internal map if paired
 
  */
 void BleRcuAdapterBluez::reconnectAllDevices()
 {
     for (auto const &device : m_devices) {
-        XLOGD_INFO("reconnecting to %s", device.first.toString().c_str());
-        device.second->connect();
+        bool isPaired = false;
+        if (device.second->m_deviceProxy) {
+            device.second->m_deviceProxy->paired(isPaired);
+        }
+        if (isPaired) {
+            XLOGD_INFO("reconnecting to %s", device.first.toString().c_str());
+            device.second->connect();
+        } else {
+            XLOGD_INFO("not paired, skipping reconnecting to %s", device.first.toString().c_str());
+        }
     }
 }
 

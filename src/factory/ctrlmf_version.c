@@ -146,6 +146,5 @@ void *ctrlmf_load_plugin_audio_analysis(ctrlmf_mic_test_audio_analyze_t *audio_a
    }
 
    XLOGD_INFO("Audio Analysis plugin is loaded.");
-   
    return(handle);
 }

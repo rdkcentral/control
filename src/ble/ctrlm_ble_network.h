@@ -192,6 +192,8 @@ public:
 
    std::shared_ptr<ConfigSettings> getConfigSettings();
 
+   virtual void                  start_controller_audio_streaming(ctrlm_voice_start_audio_params_t *params);
+
 private:
    ctrlm_obj_network_ble_t();
 

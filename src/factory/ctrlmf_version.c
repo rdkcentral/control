@@ -43,7 +43,7 @@ bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback, bool requires
 
    rdk_version_object_free(&info);
 
-   int rc = xlog_init(XLOG_MODULE_ID, NULL, 0);
+   int rc = xlog_init(XLOG_MODULE_ID, NULL, 0, true, false);
    xlog_level_set_all(level);
 
    if(rc != 0) {

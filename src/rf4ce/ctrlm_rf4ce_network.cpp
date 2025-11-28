@@ -3660,6 +3660,11 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
       device_type = CTRLM_VOICE_DEVICE_FF;
    }
 
+   if(device_type == CTRLM_VOICE_DEVICE_PTT) {
+      // Send voice key down event since the session was requested
+      process_event_key(dqm->controller_id, CTRLM_KEY_STATUS_DOWN, CTRLM_KEY_CODE_PUSH_TO_TALK);
+   }
+
    bool command_status = (controller_type == RF4CE_CONTROLLER_TYPE_XR11 ||
                           controller_type == RF4CE_CONTROLLER_TYPE_XR19) ? true : false;
 
@@ -3746,10 +3751,18 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
       XLOGD_INFO("processing session request - type <%s> voice format <%s>", ctrlm_voice_device_str(device_type), ctrlm_voice_format_str(voice_format));
    }
 
-   std::string controller_name =     controllers_[dqm->controller_id]->product_name_get();
-   ctrlm_hal_rf4ce_cfm_data_t        cb_confirm_rf4ce     = NULL;
-   void *                            cb_confirm_param     = NULL;
+   std::string controller_name  = controllers_[dqm->controller_id]->product_name_get();
+   void * cb_confirm_param = NULL;
    ctrlm_voice_session_rsp_confirm_t cb_confirm_voice_obj = NULL;
+
+   ctrlm_voice_start_audio_params_t start_audio_params;
+   start_audio_params.m_controller_id     = dqm->controller_id;
+   start_audio_params.m_use_stream_params = use_stream_params;
+   start_audio_params.m_offset            = offset;
+   start_audio_params.m_started           = false;
+   start_audio_params.m_timestamp         = dqm->timestamp;
+   start_audio_params.m_device_type       = device_type;
+   auto audio_start_cb = std::bind(&ctrlm_obj_network_rf4ce_t::start_controller_audio_streaming, this, std::placeholders::_1);
 
    session = ctrlm_get_voice_obj()->voice_session_req(network_id_get(),         dqm->controller_id,
                                                           device_type,              voice_format,
@@ -3757,82 +3770,15 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
                                                           controller_name.c_str(), 
                                                           sw_version.to_string().c_str(), hw_version.to_string().c_str(), 
                                                           (((double)battery_status.get_voltage_loaded()) *  4.0 / 255), command_status,
-                                                          &dqm->timestamp, &cb_confirm_voice_obj, &cb_confirm_param);
-   if(session == VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
-      if(controllers_[dqm->controller_id]->get_capabilities().has_capability(ctrlm_controller_capabilities_t::capability::PAR)) {
-         session = VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE;
-      } else {
-         session = VOICE_SESSION_RESPONSE_AVAILABLE;
-      }
+                                                          &dqm->timestamp, &cb_confirm_voice_obj, &cb_confirm_param,
+                                                          false, false, audio_start_cb, &start_audio_params);
+
+   if(!start_audio_params.m_started) {
+       start_audio_params.m_cb_confirm_voice_obj = cb_confirm_voice_obj;
+       start_audio_params.m_cb_confirm_param     = cb_confirm_param;
+       start_audio_params.m_status               = session;
+       start_controller_audio_streaming(&start_audio_params);
    }
-   if(session == VOICE_SESSION_RESPONSE_AVAILABLE) {
-      session = VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK;
-   }
-
-   XLOGD_INFO("Voice Session Response Status <%#x>", session);
-
-   // Send the response back to the HAL device
-   guchar response[5];
-   guchar response_len = 2;
-
-   response[0] = MSO_VOICE_CMD_ID_VOICE_SESSION_RESPONSE;
-   response[1] = session;
-   if(use_stream_params && session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK) { // Add stream params in the response
-      response[1] |= 0x80;
-      response[2] = (guchar) stream_begin_;
-      response[3] = (offset & 0xFF);
-      response[4] = (offset >> 8);
-      response_len = 5;
-   }
-
-   if(session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE) {
-      voice_params_par_t params;
-      ctrlm_get_voice_obj()->voice_params_par_get(&params);
-
-      XLOGD_INFO("PAR Voice EOS data bytes timeout <%d> method <%d>", params.par_voice_eos_timeout, params.par_voice_eos_method);
-      response[2] = params.par_voice_eos_method;
-      response[3] = (params.par_voice_eos_timeout & 0xFF);
-      response[4] = (params.par_voice_eos_timeout >> 8);
-      response_len = 5;
-   }
-
-   ctrlm_timestamp_t hal_timestamp = dqm->timestamp;
-
-   // Determine when to send the response (50 ms after receipt)
-   if(controller_type_get(dqm->controller_id) == RF4CE_CONTROLLER_TYPE_XR19) {
-      ctrlm_timestamp_add_ms(&dqm->timestamp, response_idle_time_ff_);
-   } else {
-      ctrlm_timestamp_add_ms(&dqm->timestamp, CTRLM_RF4CE_CONST_RESPONSE_IDLE_TIME);
-   }
-   
-
-   if(cb_confirm_voice_obj != NULL && (session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK ||
-                                       session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE)) { // Only confirm response for accepted session so there is only ever one response stored
-      voice_session_rsp_confirm_       = cb_confirm_voice_obj;
-      voice_session_rsp_confirm_param_ = cb_confirm_param;
-
-      timestamp_voice_session_request_ = hal_timestamp;
-      timestamp_voice_first_packet_    = hal_timestamp;
-
-      cb_confirm_rf4ce = ctrlm_network_rf4ce_cfm_voice_session_rsp;
-      cb_confirm_param = voice_session_rsp_params_.network_id;
-
-      // Store controller id, packet and timestamp for retransmission in case of send error
-      voice_session_rsp_params_.controller_id   = dqm->controller_id;
-      voice_session_rsp_params_.response_len    = response_len;
-      voice_session_rsp_params_.timestamp_hal   = hal_timestamp;
-      voice_session_rsp_params_.timestamp_begin = dqm->timestamp;
-      voice_session_rsp_params_.timestamp_end   = dqm->timestamp;
-      voice_session_rsp_params_.retries         = 0;
-      ctrlm_timestamp_add_ms(&voice_session_rsp_params_.timestamp_end, CTRLM_RF4CE_CONST_RESPONSE_WAIT_TIME);
-      errno_t safec_rc = memcpy_s(&voice_session_rsp_params_.response, sizeof(voice_session_rsp_params_.response),response, response_len);
-      ERR_CHK(safec_rc);
-      ctrlm_timestamp_get(&voice_session_rsp_params_.timestamp_rsp_req);
-   }
-
-   req_data(CTRLM_RF4CE_PROFILE_ID_VOICE, dqm->controller_id, dqm->timestamp, response_len, response, NULL, NULL, false, single_channel_rsp_, cb_confirm_rf4ce, cb_confirm_param);
-
-   XLOGD_INFO("session response delivered");
 
    if(session != VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK           && session != VOICE_SESSION_RESPONSE_AVAILABLE &&
       session != VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE && session != VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
@@ -3846,17 +3792,6 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
 
    if(dqm->status != VOICE_SESSION_RESPONSE_AVAILABLE && dqm->status != VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK) { // Session was aborted
       XLOGD_INFO("voice session abort");
-
-      // // Broadcast the event over the iarm bus
-      // ctrlm_voice_iarm_event_session_abort_t event;
-      // event.api_revision  = CTRLM_VOICE_IARM_BUS_API_REVISION;
-      // event.network_id    = dqm->header.network_id;
-      // event.network_type  = ctrlm_network_type_get(dqm->header.network_id);
-      // event.controller_id = dqm->controller_id;
-      // event.session_id    = ctrlm_voice_session_id_get_next();
-      // event.reason        = dqm->reason;
-
-      // ctrlm_voice_iarm_event_session_abort(&event);
    }
 }
 
@@ -3891,7 +3826,6 @@ void ctrlm_obj_network_rf4ce_t::cfm_voice_session_rsp(void *data, int size) {
        }
        ctrlm_timestamp_t now;
        ctrlm_timestamp_get(&now);
-
        double loadavg[3] = { -1, -1, -1 };
        getloadavg(loadavg, 3);
        struct sysinfo s_info;
@@ -3936,6 +3870,17 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_stop(void *data, int s
 
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_voice_session_stop_t));
+
+   if(!controller_exists(dqm->controller_id)) {
+      XLOGD_INFO("invalid controller id (%u)", dqm->controller_id);
+      return;
+   }
+   
+   ctrlm_rf4ce_controller_type_t controller_type = controllers_[dqm->controller_id]->controller_type_get();
+   if(!ctrlm_is_voice_assistant((ctrlm_rcu_controller_type_t) controller_type)) {
+      // Send voice key up event since the session stop was received
+      process_event_key(dqm->controller_id, CTRLM_KEY_STATUS_UP, CTRLM_KEY_CODE_PUSH_TO_TALK);
+   }
 
    // Check adjacent key press
    if(CTRLM_VOICE_SESSION_END_REASON_OTHER_KEY_PRESSED == dqm->session_end_reason && true == is_key_adjacent(dqm->controller_id, dqm->key_code)) {
@@ -5071,4 +5016,118 @@ void ctrlm_obj_network_rf4ce_t::controller_init_uinput(ctrlm_controller_id_t con
       XLOGD_ERROR("Failed to initialize a uinput device for controller %d", controller_id);
       return;
    }
+}
+
+void ctrlm_obj_network_rf4ce_t::start_controller_audio_streaming(ctrlm_voice_start_audio_params_t *params) {
+   THREAD_ID_VALIDATE();
+   params->m_started = false;
+   ctrlm_controller_id_t controller_id = params->m_controller_id;
+   ctrlm_voice_device_t  device_type   = params->m_device_type;
+
+   if(!ready_) {
+      XLOGD_FATAL("Network is not ready!");
+      return;
+   }
+
+   if(!controller_exists(controller_id)) {
+      XLOGD_WARN("Controller %u doesn't exist.", controller_id);
+      return;
+   }
+
+   ctrlm_voice_session_response_status_t session = params->m_status;
+
+   if(session == VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
+      if(controllers_[controller_id]->get_capabilities().has_capability(ctrlm_controller_capabilities_t::capability::PAR)) {
+         session = VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE;
+      } else {
+         session = VOICE_SESSION_RESPONSE_AVAILABLE;
+      }
+   }
+   if(session == VOICE_SESSION_RESPONSE_AVAILABLE) {
+      session = VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK;
+   }
+
+   XLOGD_INFO("Voice Session Response Status <%#x>", session);
+
+   // Send the response back to the HAL device
+   guchar response[5];
+   guchar response_len = 2;
+   gint16 offset = params->m_offset;
+
+   response[0] = MSO_VOICE_CMD_ID_VOICE_SESSION_RESPONSE;
+   response[1] = session;
+   if(params->m_use_stream_params && session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK) { // Add stream params in the response
+      response[1] |= 0x80;
+      response[2] = (guchar) stream_begin_;
+      response[3] = (offset & 0xFF);
+      response[4] = (offset >> 8);
+      response_len = 5;
+   }
+
+   if(session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE) {
+      voice_params_par_t voice_params;
+      ctrlm_get_voice_obj()->voice_params_par_get(&voice_params);
+
+      XLOGD_INFO("PAR Voice EOS data bytes timeout <%d> method <%d>", voice_params.par_voice_eos_timeout, voice_params.par_voice_eos_method);
+      response[2] = voice_params.par_voice_eos_method;
+      response[3] = (voice_params.par_voice_eos_timeout & 0xFF);
+      response[4] = (voice_params.par_voice_eos_timeout >> 8);
+      response_len = 5;
+   }
+
+   ctrlm_timestamp_t hal_timestamp = params->m_timestamp;
+
+   // Determine when to send the response (50 ms after receipt)
+   if(controller_type_get(controller_id) == RF4CE_CONTROLLER_TYPE_XR19) {
+      ctrlm_timestamp_add_ms(&params->m_timestamp, response_idle_time_ff_);
+   } else {
+      ctrlm_timestamp_add_ms(&params->m_timestamp, CTRLM_RF4CE_CONST_RESPONSE_IDLE_TIME);
+   }
+   
+   ctrlm_hal_rf4ce_cfm_data_t cb_confirm_rf4ce = NULL;
+
+   if(params->m_cb_confirm_voice_obj != NULL && (session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK ||
+                                                session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE)) { // Only confirm response for accepted session so there is only ever one response stored
+      voice_session_rsp_confirm_       = params->m_cb_confirm_voice_obj;
+      voice_session_rsp_confirm_param_ = params->m_cb_confirm_param;
+
+      timestamp_voice_session_request_ = hal_timestamp;
+      timestamp_voice_first_packet_    = hal_timestamp;
+
+      cb_confirm_rf4ce = ctrlm_network_rf4ce_cfm_voice_session_rsp;
+      params->m_cb_confirm_param = voice_session_rsp_params_.network_id;
+
+      // Store controller id, packet and timestamp for retransmission in case of send error
+      voice_session_rsp_params_.controller_id   = controller_id;
+      voice_session_rsp_params_.response_len    = response_len;
+      voice_session_rsp_params_.timestamp_hal   = hal_timestamp;
+      voice_session_rsp_params_.timestamp_begin = params->m_timestamp;
+      voice_session_rsp_params_.timestamp_end   = params->m_timestamp;
+      voice_session_rsp_params_.retries         = 0;
+      ctrlm_timestamp_add_ms(&voice_session_rsp_params_.timestamp_end, CTRLM_RF4CE_CONST_RESPONSE_WAIT_TIME);
+      errno_t safec_rc = memcpy_s(&voice_session_rsp_params_.response, sizeof(voice_session_rsp_params_.response),response, response_len);
+      ERR_CHK(safec_rc);
+      ctrlm_timestamp_get(&voice_session_rsp_params_.timestamp_rsp_req);
+   }
+
+   req_data(CTRLM_RF4CE_PROFILE_ID_VOICE, controller_id, params->m_timestamp, response_len, response, NULL, NULL, false, single_channel_rsp_, cb_confirm_rf4ce, params->m_cb_confirm_param);
+
+   XLOGD_INFO("session response delivered");
+
+   if(session != VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK           && session != VOICE_SESSION_RESPONSE_AVAILABLE &&
+      session != VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE && session != VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
+      voice_session_active_count_--;
+      if(voice_session_active_count_ == 0) { // Re-enable frequency agility if the no other active RF4CE voice sessions
+         ctrlm_hal_network_property_frequency_agility_t property;
+         property.state = CTRLM_HAL_FREQUENCY_AGILITY_ENABLE;
+         ctrlm_network_property_set(network_id_get(), CTRLM_HAL_NETWORK_PROPERTY_FREQUENCY_AGILITY, (void *)&property, sizeof(property));
+      }
+
+      if(device_type == CTRLM_VOICE_DEVICE_PTT) {
+         // Send voice key up event since the session was not accepted
+         process_event_key(controller_id, CTRLM_KEY_STATUS_UP, CTRLM_KEY_CODE_PUSH_TO_TALK);
+      }
+   }
+
+   params->m_started = true;
 }

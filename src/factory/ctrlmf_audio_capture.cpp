@@ -17,13 +17,8 @@
 #define CTRLMF_WS_PORT_STR "9880"
 #define CTRLMF_WS_PORT_INT (9880)
 
-#ifdef CTRLMF_WSS_ENABLED
-#define CTRLMF_WS_URL_BASE "aowss://"
-#else
-#define CTRLMF_WS_URL_BASE "aows://"
-#endif
-
-#define CTRLMF_WS_URL CTRLMF_WS_URL_BASE CTRLMF_WS_HOST ":" CTRLMF_WS_PORT_STR "/mic_test"
+#define CTRLMF_WS_URL  "aows://" CTRLMF_WS_HOST ":" CTRLMF_WS_PORT_STR "/mic_test"
+#define CTRLMF_WSS_URL "aowss://" CTRLMF_WS_HOST ":" CTRLMF_WS_PORT_STR "/mic_test"
 
 typedef struct {
    sem_t semaphore_connected;
@@ -107,8 +102,20 @@ bool ctrlmf_audio_capture_init(uint32_t audio_frame_size, bool *has_local_mic_ta
 
    XLOGD_INFO("get url <%s> enabled <%s> request types <%s>", g_audio_cap.url.c_str(), g_audio_cap.url_enabled ? "YES" : "NO", request_types.str().c_str());
 
+   // Start websocket server
+   sem_init(&g_audio_cap.callback_data.semaphore_connected, 0, 0);
+   sem_init(&g_audio_cap.callback_data.semaphore_disconnected, 0, 0);
+
+   g_audio_cap.callbacks.connected    = ctrlmf_ws_connected;
+   g_audio_cap.callbacks.disconnected = ctrlmf_ws_disconnected;
+   g_audio_cap.callbacks.data         = &g_audio_cap.callback_data;
+   g_audio_cap.session_id             = "";
+
+   bool has_valid_cert = false;
+   ctrlmf_ws_init(audio_frame_size, CTRLMF_WS_PORT_INT, true, &g_audio_cap.callbacks, &has_valid_cert);
+
    // Set the FFV url to our websocket
-   std::string url_new = CTRLMF_WS_URL;
+   std::string url_new = has_valid_cert ? CTRLMF_WSS_URL : CTRLMF_WS_URL;
 
    if(g_audio_cap.use_mic_tap) {
       if(!g_audio_cap.obj_ctrlm->configure_voice_mic_tap(url_new, true)) {
@@ -121,16 +128,6 @@ bool ctrlmf_audio_capture_init(uint32_t audio_frame_size, bool *has_local_mic_ta
          return(false);
       }
    }
-
-   // Start websocket server
-   sem_init(&g_audio_cap.callback_data.semaphore_connected, 0, 0);
-   sem_init(&g_audio_cap.callback_data.semaphore_disconnected, 0, 0);
-
-   g_audio_cap.callbacks.connected    = ctrlmf_ws_connected;
-   g_audio_cap.callbacks.disconnected = ctrlmf_ws_disconnected;
-   g_audio_cap.callbacks.data         = &g_audio_cap.callback_data;
-   g_audio_cap.session_id             = "";
-   ctrlmf_ws_init(audio_frame_size, CTRLMF_WS_PORT_INT, true, &g_audio_cap.callbacks);
 
    if(has_local_mic_tap != NULL) {
       *has_local_mic_tap = g_audio_cap.use_mic_tap;

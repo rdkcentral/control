@@ -52,7 +52,7 @@ target_link_libraries(controlFactory c ctrlm-fta secure_wrapper)
 
 if(AUTH_ENABLED)
    add_compile_definitions(PRIVATE CTRLMF_WSS_ENABLED)
-   target_link_libraries(ctrlm-fta RdkCertSelector)
+   target_link_libraries(ctrlm-fta RdkCertSelector rdkconfig)
 endif()
 
 if(THUNDER)

@@ -236,7 +236,7 @@ if(THUNDER)
       endif()
       #By default disabled but can be enabled
       #add_compile_definitions(AUTH_EXPERIENCE)
-      target_link_libraries(controlMgr RdkCertSelector)
+      target_link_libraries(controlMgr RdkCertSelector rdkconfig)
    endif()
 endif()
 

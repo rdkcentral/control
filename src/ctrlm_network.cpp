@@ -113,12 +113,14 @@ ctrlm_obj_network_t::~ctrlm_obj_network_t() {
       }
    }
 
+   #ifdef CTRLM_THUNDER
    ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
    if (rcp_ipc) {
        rcp_ipc->deregister_ipc();
    }
    // No need to also destroy rcp_ipc instance here because its a singleton and will get 
    // automatically destroyed at ctrlm-main shutdown.
+   #endif
 }
 
 ctrlm_network_id_t ctrlm_obj_network_t::network_id_get() const {
@@ -1020,6 +1022,7 @@ ctrlm_rf_pair_state_t ctrlm_obj_network_t::get_rf_pair_state() const {
 void ctrlm_obj_network_t::iarm_event_rcu_status(void) {
    XLOGD_DEBUG("Enter...");
 
+   #ifdef CTRLM_THUNDER
    ctrlm_rcp_ipc_net_status_t msg;
    msg.populate_status(*this);
 
@@ -1030,11 +1033,13 @@ void ctrlm_obj_network_t::iarm_event_rcu_status(void) {
    if (!rcp_ipc->on_status(msg)) {
        XLOGD_ERROR("Error broadcasting IARM message");
    }
+   #endif
 }
 
 void ctrlm_obj_network_t::iarm_event_rcu_validation_status(void) {
    XLOGD_DEBUG("Enter...");
 
+   #ifdef CTRLM_THUNDER
    ctrlm_rcp_ipc_validation_status_t msg;
    msg.populate_status(*this);
 
@@ -1045,10 +1050,13 @@ void ctrlm_obj_network_t::iarm_event_rcu_validation_status(void) {
    if (!rcp_ipc->on_validation_status(msg)) {
        XLOGD_ERROR("Error broadcasting IARM message");
    }
+   #endif
 }
 
 void ctrlm_obj_network_t::iarm_event_rcu_firmware_status(const ctrlm_obj_controller_t &rcu) {
    XLOGD_DEBUG("Enter...");
+
+   #ifdef CTRLM_THUNDER
    ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
 
    if (!rcp_ipc->is_thunder_device_update_enabled()) {
@@ -1064,4 +1072,5 @@ void ctrlm_obj_network_t::iarm_event_rcu_firmware_status(const ctrlm_obj_control
    if (!rcp_ipc->on_firmware_update_progress(msg)) {
        XLOGD_ERROR("Error broadcasting IARM message");
    }
+   #endif
 }

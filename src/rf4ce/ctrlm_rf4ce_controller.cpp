@@ -135,10 +135,8 @@ ctrlm_obj_controller_rf4ce_t::ctrlm_obj_controller_rf4ce_t(ctrlm_controller_id_t
    rib_configuration_complete_status_(RF4CE_RIB_CONFIGURATION_COMPLETE_PAIRING_INCOMPLETE),
    asb_key_derivation_method_used_(ASB_KEY_DERIVATION_NONE),
    metrics_tag_ (0),
-#ifdef XR15_704
    needs_reset_(false),
    did_reset_(false),
-#endif
    mfg_test_result_(1)
 {
    XLOGD_INFO("constructor - %u", controller_id);
@@ -1037,12 +1035,9 @@ void ctrlm_obj_controller_rf4ce_t::validation_result_set(ctrlm_rcu_binding_type_
       validation_type_  = validation_type;
       db_create();
       db_store();
-      // HACK for XR15-704, possible duplicate pairing
-#ifdef XR15_704
+      // possible duplicate pairing
       needs_reset_ = false;
       did_reset_   = false;
-#endif
-      // HACK for XR15-704
 
       // Telemetry needs to keep track of binding.  
       log_binding_for_telemetry();
@@ -2049,8 +2044,7 @@ guchar ctrlm_obj_controller_rf4ce_t::property_read_ir_rf_database(guchar index, 
       }
    }
    len = obj_network_rf4ce_->property_read_ir_rf_database(index, data, length);
-   // HACK for XR15-704
-#ifdef XR15_704
+   
    if(needs_reset_) {
       if(!ctrlm_device_update_is_controller_updating(network_id_get(), controller_id_get(), true)) {
          if(len < 2) {
@@ -2071,8 +2065,7 @@ guchar ctrlm_obj_controller_rf4ce_t::property_read_ir_rf_database(guchar index, 
       needs_reset_ = false;
       XLOGD_INFO("EXITING XR15 CRASH CODE: XR15 was reset <%s>", (did_reset_ ? "TRUE" : "FALSE"));
    }
-#endif
-   // HACK for XR15-704
+   
    return(len);
 }
 
@@ -2842,8 +2835,6 @@ void ctrlm_obj_controller_rf4ce_t::print_remote_firmware_debug_info(ctrlm_rf4ce_
 }
 
 
-// These functions are HACKS for XR15-704
-#ifdef XR15_704
 void ctrlm_obj_controller_rf4ce_t::set_reset() {
    ctrlm_sw_version_t version_bug(XR15_DEVICE_UPDATE_BUG_FIRMWARE_MAJOR, XR15_DEVICE_UPDATE_BUG_FIRMWARE_MINOR, XR15_DEVICE_UPDATE_BUG_FIRMWARE_REVISION, XR15_DEVICE_UPDATE_BUG_FIRMWARE_PATCH);
 
@@ -2857,8 +2848,6 @@ void ctrlm_obj_controller_rf4ce_t::set_reset() {
 bool ctrlm_obj_controller_rf4ce_t::needs_reset() {
    return(needs_reset_);
 }
-#endif
-// These functions are HACKS for XR15-704
 
 // Polling Functions
 void ctrlm_obj_controller_rf4ce_t::polling_action_push(ctrlm_rf4ce_polling_action_msg_t *action) {

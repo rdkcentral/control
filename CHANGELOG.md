@@ -16,6 +16,26 @@ All notable changes to this project will be documented in this file.
 
 * In the future, generate this file by [`auto-changelog`](https://github.com/CookPete/auto-changelog).
 
+## [1.1.4] - 2025-09-17
+
+### Changed
+- move certselector logic into ctrlm-main repo (#102)
+- use version/branch from recipe (#109)
+
+### Added
+- update AMC APP key mapping (#98)
+
+### Fixed
+- getNetStatus call time out due to SAT download retries (#97)   
+- remove device from bluez during factory reset (#100)
+- Missing Thunder cflags in ctrlm implemenation (#103)
+
+### Removed
+- remove ctrlm compile flags (#104)
+- remove ctrlm build flags - CPC, DUNFELL (#105)
+- remove ctrlm build flags - RF4CE_PACKET_ANALYSIS (#107)
+- remove ctrlm build flags - DISABLE_BLE_VOICE (#106)
+
 ## [1.1.3] - 2025-08-19
 
 ### Changed

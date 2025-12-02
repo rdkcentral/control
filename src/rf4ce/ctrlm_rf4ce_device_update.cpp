@@ -166,12 +166,10 @@ void ctrlm_obj_controller_rf4ce_t::device_update_image_check_request(ctrlm_times
    gboolean manual_poll = false;
    errno_t safec_rc = -1;
 
-#ifdef XR15_704
    if(did_reset_) {
       XLOGD_INFO("CHECK IMAGE REQUEST due to XR15 reset code!");
       did_reset_ = false;
    }
-#endif
 
    // is image type supported?
    switch(image_type) {
@@ -233,10 +231,8 @@ void ctrlm_obj_controller_rf4ce_t::device_update_image_check_request(ctrlm_times
       download_in_progress_ = true;
    }
 
-#ifdef XR15_704
-   // HACK: We need to make XR15s running < 2.0.0.0 do not get an image pending flag to avoid bug on device.
+   // We need to make XR15s running < 2.0.0.0 do not get an image pending flag to avoid bug on device.
    ctrlm_sw_version_t version_bug(XR15_DEVICE_UPDATE_BUG_FIRMWARE_MAJOR, XR15_DEVICE_UPDATE_BUG_FIRMWARE_MINOR, XR15_DEVICE_UPDATE_BUG_FIRMWARE_REVISION, XR15_DEVICE_UPDATE_BUG_FIRMWARE_PATCH);
-#endif
  
    if(!image_available || !ready_to_download) {
       guchar  flags_check     = IMAGE_CHECK_RESPONSE_FLAG_NO_IMAGE;
@@ -249,10 +245,7 @@ void ctrlm_obj_controller_rf4ce_t::device_update_image_check_request(ctrlm_times
          if (is_controller_type_z()) {
             ota_failure_type_z_cnt_set(ota_failure_type_z_cnt_get() + 1);
          }
-      }
-#ifdef XR15_704
-      // HACK: We need to make XR15s running < 2.0.0.0 do not get an image pending flag to avoid bug on device.
-      else if(RF4CE_CONTROLLER_TYPE_XR15 == controller_type_ && *version_software_ < version_bug) {
+      } else if(RF4CE_CONTROLLER_TYPE_XR15 == controller_type_ && *version_software_ < version_bug) {
          XLOGD_INFO("Image Check response - Image is pending - XR15v1 running < 2.0.0.0, sending No image available");
          print_remote_firmware_debug_info(RF4CE_PRINT_FIRMWARE_LOG_IMAGE_DOWNLOAD_PENDING, ctrlm_device_update_get_software_version(image_info.id));
          if(begin_info.when == RF4CE_DEVICE_UPDATE_IMAGE_CHECK_POLL_TIME) {
@@ -260,9 +253,7 @@ void ctrlm_obj_controller_rf4ce_t::device_update_image_check_request(ctrlm_times
          } else {
             next_check_time = update_polling_period_get() * 60 * 60; // Use update polling rib entry - convert to seconds
          }
-      }
-#endif 
-      else {
+      } else {
          flags_check = IMAGE_CHECK_RESPONSE_FLAG_IMAGE_PENDING;
          XLOGD_INFO("Image Check response - Image is pending");
          print_remote_firmware_debug_info(RF4CE_PRINT_FIRMWARE_LOG_IMAGE_DOWNLOAD_PENDING, ctrlm_device_update_get_software_version(image_info.id));
@@ -423,8 +414,7 @@ void ctrlm_obj_controller_rf4ce_t::device_update_image_load_request(ctrlm_timest
 
    std::string log_string = ctrlm_device_update_get_software_version(image_id) + ". ";
 
-#ifdef XR15_704
-   // HACK: We need to make XR15s running < 2.0.0.0 load ASAP to avoid bug on device.
+   // We need to make XR15s running < 2.0.0.0 load ASAP to avoid bug on device.
    ctrlm_sw_version_t version_bug(XR15_DEVICE_UPDATE_BUG_FIRMWARE_MAJOR, XR15_DEVICE_UPDATE_BUG_FIRMWARE_MINOR, XR15_DEVICE_UPDATE_BUG_FIRMWARE_REVISION, XR15_DEVICE_UPDATE_BUG_FIRMWARE_PATCH);
 
    if(RF4CE_CONTROLLER_TYPE_XR15 == controller_type_ && *version_software_ < version_bug) {
@@ -432,7 +422,6 @@ void ctrlm_obj_controller_rf4ce_t::device_update_image_load_request(ctrlm_timest
        load_info.when = RF4CE_DEVICE_UPDATE_IMAGE_LOAD_NOW;
        log_string += "Load scheduled: Immediately.";
    }
-#endif
 
    if(load_info.when == RF4CE_DEVICE_UPDATE_IMAGE_LOAD_NOW) {
       load_response = RF4CE_DEVICE_UPDATE_IMAGE_LOAD_RSP_NOW;

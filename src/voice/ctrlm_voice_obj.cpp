@@ -56,14 +56,18 @@
 #define ADPCM_COMMAND_ID_MIN             (0x20)    ///< Minimum bound of command id as defined by XVP Spec.
 #define ADPCM_COMMAND_ID_MAX             (0x3F)    ///< Maximum bound of command id as defined by XVP Spec.
 
+#define BEEP_ON_KWD_FILE_VD "/vendor/usr/share/keyword_beep.wav"
+#define BEEP_ON_KWD_FILE_MW "/usr/share/keyword_beep.wav"
+
+#define BEEP_ON_KWD_SAP_VD "file://" BEEP_ON_KWD_FILE_VD
+#define BEEP_ON_KWD_SAP_MW "file://" BEEP_ON_KWD_FILE_MW
+
 static void ctrlm_voice_session_response_confirm(bool result, signed long long rsp_time, unsigned int rsp_window, const std::string &err_str, ctrlm_timestamp_t *timestamp, void *user_data);
 static void ctrlm_voice_data_post_processing_cb(int bytes_sent, void *user_data);
 
 static ctrlm_voice_session_group_t voice_device_to_session_group(ctrlm_voice_device_t device_type);
 
-#ifdef BEEP_ON_KWD_ENABLED
 static void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t event, void *user_data);
-#endif
 
 static xrsr_power_mode_t voice_xrsr_power_map(ctrlm_power_state_t ctrlm_power_state);
 
@@ -138,15 +142,38 @@ ctrlm_voice_t::ctrlm_voice_t() {
     this->session_id                      =  0;
     this->software_version                = "N/A";
     this->mask_pii                        = ctrlm_is_production_build() ? JSON_ARRAY_VAL_BOOL_CTRLM_GLOBAL_MASK_PII_0 : JSON_ARRAY_VAL_BOOL_CTRLM_GLOBAL_MASK_PII_1;
+
+    xrsr_config_t xrsr_config;
+    if(xrsr_config_get(&xrsr_config)) {
+        this->local_mic                       = xrsr_config.local_mic;
+        this->local_mic_tap                   = xrsr_config.local_mic_tap;
+        this->local_mic_disable_via_privacy   = this->local_mic; // set if local mic is present for now
+    } else {
+        XLOGD_ERROR("xrsr_config_get failed");
+        this->local_mic                       = false;
+        this->local_mic_tap                   = false;
+        this->local_mic_disable_via_privacy   = false;
+        
+    }
+
+    if(ctrlm_file_exists(BEEP_ON_KWD_FILE_VD)) {
+        this->beep_on_kwd_file            = BEEP_ON_KWD_SAP_VD;
+        this->beep_on_kwd_supported       = true;
+    } else if(ctrlm_file_exists(BEEP_ON_KWD_FILE_MW)) {
+        this->beep_on_kwd_file            = BEEP_ON_KWD_SAP_MW;
+        this->beep_on_kwd_supported       = true;
+    } else {
+        this->beep_on_kwd_file            = NULL;
+        this->beep_on_kwd_supported       = false;
+    }
+
     this->ocsp_verify_stapling            = false;
     this->ocsp_verify_ca                  = false;
     this->capture_active                  = false;
     this->device_cert.type                = CTRLM_VOICE_CERT_TYPE_NONE;
     this->prefs.server_url_src_ptt        = JSON_STR_VALUE_VOICE_URL_SRC_PTT;
     this->prefs.server_url_src_ff         = JSON_STR_VALUE_VOICE_URL_SRC_FF;
-    #ifdef CTRLM_LOCAL_MIC_TAP
     this->prefs.server_url_src_mic_tap    = JSON_STR_VALUE_VOICE_URL_SRC_MIC_TAP;
-    #endif
     #ifdef JSON_ARRAY_VAL_STR_VOICE_SERVER_HOSTS_0
     this->url_hostname_pattern_add(JSON_ARRAY_VAL_STR_VOICE_SERVER_HOSTS_0);
     #endif
@@ -203,14 +230,12 @@ ctrlm_voice_t::ctrlm_voice_t() {
     }
     #endif
 
-    #ifdef NETWORKED_STANDBY_MODE_ENABLED
     this->prefs.dst_params_standby.connect_check_interval = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL;
     this->prefs.dst_params_standby.timeout_connect        = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT;
     this->prefs.dst_params_standby.timeout_inactivity     = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY;
     this->prefs.dst_params_standby.timeout_session        = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_TIMEOUT_SESSION;
     this->prefs.dst_params_standby.ipv4_fallback          = JSON_BOOL_VALUE_VOICE_DST_PARAMS_STANDBY_IPV4_FALLBACK;
     this->prefs.dst_params_standby.backoff_delay          = JSON_INT_VALUE_VOICE_DST_PARAMS_STANDBY_BACKOFF_DELAY;
-    #endif
 
     this->prefs.dst_params_low_latency.connect_check_interval = JSON_INT_VALUE_VOICE_DST_PARAMS_LOW_LATENCY_CONNECT_CHECK_INTERVAL;
     this->prefs.dst_params_low_latency.timeout_connect        = JSON_INT_VALUE_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_CONNECT;
@@ -225,14 +250,10 @@ ctrlm_voice_t::ctrlm_voice_t() {
     this->device_requires_stb_data[CTRLM_VOICE_DEVICE_PTT] = true;
     this->device_status[CTRLM_VOICE_DEVICE_FF]             = CTRLM_VOICE_DEVICE_STATUS_NONE;
     this->device_requires_stb_data[CTRLM_VOICE_DEVICE_FF]  = true;
-#ifdef CTRLM_LOCAL_MIC
     this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE]            = CTRLM_VOICE_DEVICE_STATUS_NONE;
     this->device_requires_stb_data[CTRLM_VOICE_DEVICE_MICROPHONE] = true;
-#endif
-#ifdef CTRLM_LOCAL_MIC_TAP
     this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE_TAP]            = CTRLM_VOICE_DEVICE_STATUS_NONE;
     this->device_requires_stb_data[CTRLM_VOICE_DEVICE_MICROPHONE_TAP] = true;
-#endif
     this->device_status[CTRLM_VOICE_DEVICE_INVALID]             = CTRLM_VOICE_DEVICE_STATUS_NOT_SUPPORTED;
     this->device_requires_stb_data[CTRLM_VOICE_DEVICE_INVALID]  = true;
 
@@ -247,14 +268,14 @@ ctrlm_voice_t::ctrlm_voice_t() {
     // These semaphores are used to make sure we have all the data before calling the session begin callback
     sem_init(&this->vsr_semaphore, 0, 0);
 
-    #ifdef BEEP_ON_KWD_ENABLED
-    this->obj_sap = Thunder::SystemAudioPlayer::ctrlm_thunder_plugin_system_audio_player_t::getInstance();
-    this->obj_sap->add_event_handler(ctrlm_voice_system_audio_player_event_handler, this);
-    this->sap_opened = this->obj_sap->open(SYSTEM_AUDIO_PLAYER_AUDIO_TYPE_WAV, SYSTEM_AUDIO_PLAYER_SOURCE_TYPE_FILE, SYSTEM_AUDIO_PLAYER_PLAY_MODE_SYSTEM);
-    if(!this->sap_opened) {
-       XLOGD_WARN("unable to open system audio player");
+    if(this->beep_on_kwd_supported) {
+        this->obj_sap = Thunder::SystemAudioPlayer::ctrlm_thunder_plugin_system_audio_player_t::getInstance();
+        this->obj_sap->add_event_handler(ctrlm_voice_system_audio_player_event_handler, this);
+        this->sap_opened = this->obj_sap->open(SYSTEM_AUDIO_PLAYER_AUDIO_TYPE_WAV, SYSTEM_AUDIO_PLAYER_SOURCE_TYPE_FILE, SYSTEM_AUDIO_PLAYER_PLAY_MODE_SYSTEM);
+        if(!this->sap_opened) {
+            XLOGD_WARN("unable to open system audio player");
+        }
     }
-    #endif
 
     // Set audio mode to default
     ctrlm_voice_audio_settings_t settings = CTRLM_VOICE_AUDIO_SETTINGS_INITIALIZER;
@@ -293,14 +314,12 @@ ctrlm_voice_t::~ctrlm_voice_t() {
         }
     }
 
-    #ifdef BEEP_ON_KWD_ENABLED
-    if(this->sap_opened) {
+    if(this->beep_on_kwd_supported && this->sap_opened) {
         if(!this->obj_sap->close()) {
             XLOGD_WARN("unable to close system audio player");
         }
         this->sap_opened = false;
     }
-    #endif
 
     /* Close Voice SDK */
 
@@ -422,9 +441,7 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             conf.config_value_get(JSON_BOOL_NAME_VOICE_ENABLE,                      enabled);
             conf.config_value_get(JSON_STR_NAME_VOICE_URL_SRC_PTT,                  this->prefs.server_url_src_ptt);
             conf.config_value_get(JSON_STR_NAME_VOICE_URL_SRC_FF,                   this->prefs.server_url_src_ff);
-            #ifdef CTRLM_LOCAL_MIC_TAP
             conf.config_value_get(JSON_STR_NAME_VOICE_URL_SRC_MIC_TAP,              this->prefs.server_url_src_mic_tap);
-            #endif
             conf.config_value_get(JSON_STR_NAME_VOICE_LANGUAGE,                     this->prefs.guide_language);
             conf.config_value_get(JSON_INT_NAME_VOICE_MINIMUM_DURATION,             this->prefs.utterance_duration_min);
             if(conf.config_value_get(JSON_BOOL_NAME_VOICE_ENABLE_SAT,                  this->sat_token_required)) {
@@ -483,14 +500,12 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
         conf.config_value_get(JSON_FLOAT_NAME_VOICE_AUDIO_DUCKING_LEVEL,        audio_settings.ducking_level, 0.0, 1.0);
         conf.config_value_get(JSON_BOOL_NAME_VOICE_AUDIO_DUCKING_BEEP,          audio_settings.ducking_beep);
 
-        #ifdef NETWORKED_STANDBY_MODE_ENABLED
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL, this->prefs.dst_params_standby.connect_check_interval);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,        this->prefs.dst_params_standby.timeout_connect);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,     this->prefs.dst_params_standby.timeout_inactivity);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_SESSION,        this->prefs.dst_params_standby.timeout_session);
         conf.config_value_get(JSON_BOOL_NAME_VOICE_DST_PARAMS_STANDBY_IPV4_FALLBACK,         this->prefs.dst_params_standby.ipv4_fallback);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_BACKOFF_DELAY,          this->prefs.dst_params_standby.backoff_delay);
-        #endif
 
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_CONNECT_CHECK_INTERVAL, this->prefs.dst_params_low_latency.connect_check_interval);
         conf.config_value_get(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_CONNECT,        this->prefs.dst_params_low_latency.timeout_connect);
@@ -517,11 +532,9 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             for(int i = CTRLM_VOICE_DEVICE_PTT; i < CTRLM_VOICE_DEVICE_INVALID; i++) {
                 uint8_t voice_device_status = CTRLM_VOICE_DEVICE_STATUS_NONE;
                 ctrlm_db_voice_read_device_status(i, (int *)&voice_device_status);
-                #ifdef CTRLM_LOCAL_MIC
                 if((i == CTRLM_VOICE_DEVICE_MICROPHONE) && (voice_device_status & CTRLM_VOICE_DEVICE_STATUS_PRIVACY)) {
                     this->voice_privacy_enable(false);
                 }
-                #endif
                 if((voice_device_status & CTRLM_VOICE_DEVICE_STATUS_LEGACY) && (voice_device_status != CTRLM_VOICE_DEVICE_STATUS_DISABLED)) { // Convert from legacy to current (some value other than DISABLED set)
                     XLOGD_INFO("Converting legacy device status value 0x%02X", voice_device_status);
                     voice_device_status = CTRLM_VOICE_DEVICE_STATUS_NONE;
@@ -533,9 +546,7 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             }
             ctrlm_sm_voice_url_ptt_read(this->prefs.server_url_src_ptt);
             ctrlm_sm_voice_url_ff_read(this->prefs.server_url_src_ff);
-            #ifdef CTRLM_LOCAL_MIC_TAP
             ctrlm_sm_voice_url_mic_tap_read(this->prefs.server_url_src_mic_tap);
-            #endif
             ctrlm_sm_voice_sat_enable_read(this->sat_token_required);
             ctrlm_sm_voice_mtls_enable_read(this->mtls_required);
             ctrlm_sm_voice_secure_url_required_read(this->secure_url_required);
@@ -584,28 +595,28 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
     // Update routes
     this->voice_sdk_update_routes();
 
-    #ifdef CTRLM_LOCAL_MIC
-    // Read privacy mode state from the DB in case power cycle lost HW GPIO state
-    if(this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_DISABLED) {
-        XLOGD_INFO("voice is disabled, skip privacy");
-    } else {
-        bool privacy_enabled = this->voice_is_privacy_enabled();
-        if(privacy_enabled != this->vsdk_is_privacy_enabled()) {
-            privacy_enabled ? this->voice_privacy_enable(false) : this->voice_privacy_disable(false);
-        }
-        // Check keyword detector sensitivity value against limits; apply default if out of range.
-        double sensitivity_set = this->vsdk_keyword_sensitivity_limit_check(this->prefs.keyword_sensitivity);
-        if(sensitivity_set != this->prefs.keyword_sensitivity) {
-            xrsr_keyword_config_t kw_config;
-            kw_config.sensitivity = (float)sensitivity_set;
-            if(!xrsr_keyword_config_set(&kw_config)) {
-                XLOGD_ERROR("error updating keyword config");
-            } else {
-                this->prefs.keyword_sensitivity = sensitivity_set;
+    if(this->local_mic) {
+        // Read privacy mode state from the DB in case power cycle lost HW GPIO state
+        if(this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_DISABLED) {
+            XLOGD_INFO("voice is disabled, skip privacy");
+        } else {
+            bool privacy_enabled = this->voice_is_privacy_enabled();
+            if(privacy_enabled != this->vsdk_is_privacy_enabled()) {
+                privacy_enabled ? this->voice_privacy_enable(false) : this->voice_privacy_disable(false);
+            }
+            // Check keyword detector sensitivity value against limits; apply default if out of range.
+            double sensitivity_set = this->vsdk_keyword_sensitivity_limit_check(this->prefs.keyword_sensitivity);
+            if(sensitivity_set != this->prefs.keyword_sensitivity) {
+                xrsr_keyword_config_t kw_config;
+                kw_config.sensitivity = (float)sensitivity_set;
+                if(!xrsr_keyword_config_set(&kw_config)) {
+                    XLOGD_ERROR("error updating keyword config");
+                } else {
+                    this->prefs.keyword_sensitivity = sensitivity_set;
+                }
             }
         }
     }
-    #endif
 
     // Set init message if read from DB
     if(!init.empty()) {
@@ -726,7 +737,6 @@ bool ctrlm_voice_t::voice_configure(ctrlm_voice_iarm_call_settings_t *settings, 
             ctrlm_sm_voice_url_ff_write(this->prefs.server_url_src_ff);
         }
     }
-    #ifdef CTRLM_LOCAL_MIC_TAP
     if(settings->available & CTRLM_VOICE_SETTINGS_MIC_TAP_SERVER_URL) {
         settings->server_url_src_mic_tap[CTRLM_VOICE_SERVER_URL_MAX_LENGTH - 1] = '\0';
         XLOGD_INFO("Mic tap URL <%s>", this->mask_pii ? "***" : settings->server_url_src_mic_tap);
@@ -736,7 +746,6 @@ bool ctrlm_voice_t::voice_configure(ctrlm_voice_iarm_call_settings_t *settings, 
             ctrlm_sm_voice_url_mic_tap_write(this->prefs.server_url_src_mic_tap);
         }
     }
-    #endif
 
     if(update_routes && this->xrsr_opened) {
         this->voice_sdk_update_routes();
@@ -781,9 +790,7 @@ bool ctrlm_voice_t::voice_configure(json_t *settings, bool db_write) {
             }
         }
         if(conf.config_value_get("urlAll", url)) {
-            #ifdef CTRLM_LOCAL_MIC_TAP
             this->prefs.server_url_src_mic_tap = url;
-            #endif
             this->prefs.server_url_src_ptt     = url;
             this->prefs.server_url_src_ff      = std::move(url);
             update_routes = true;
@@ -796,12 +803,10 @@ bool ctrlm_voice_t::voice_configure(json_t *settings, bool db_write) {
             this->prefs.server_url_src_ff  = std::move(url);
             update_routes = true;
         }
-        #ifdef CTRLM_LOCAL_MIC_TAP
         if(conf.config_value_get("urlMicTap", url)) {
             this->prefs.server_url_src_mic_tap  = std::move(url);
             update_routes = true;
         }
-        #endif
         if(conf.config_value_get("prv", prv_enabled)) {
             this->prefs.par_voice_enabled = prv_enabled;
             XLOGD_INFO("Press and Release Voice is <%s>", this->prefs.par_voice_enabled ? "ENABLED" : "DISABLED");
@@ -829,45 +834,43 @@ bool ctrlm_voice_t::voice_configure(json_t *settings, bool db_write) {
                 }
             }
         }
-        #ifdef CTRLM_LOCAL_MIC
-        if(conf.config_object_get("mic", device_config)) {
-            if(device_config.config_value_get("enable", enable)) {
-                XLOGD_TELEMETRY("Voice Control MIC is <%s>", enable ? "ENABLED" : "DISABLED");
-                #ifdef CTRLM_LOCAL_MIC_DISABLE_VIA_PRIVACY
-                bool privacy_enabled = this->voice_is_privacy_enabled();
-                if(enable) {
-                    if(privacy_enabled) {
-                        this->voice_privacy_disable(true);
+        if(this->local_mic) {
+            if(conf.config_object_get("mic", device_config)) {
+                if(device_config.config_value_get("enable", enable)) {
+                    XLOGD_TELEMETRY("Voice Control MIC is <%s>", enable ? "ENABLED" : "DISABLED");
+                    if(this->local_mic_disable_via_privacy) {
+                        bool privacy_enabled = this->voice_is_privacy_enabled();
+                        if(enable) {
+                            if(privacy_enabled) {
+                                this->voice_privacy_disable(true);
+                            }
+                        } else if(!privacy_enabled) {
+                            this->voice_privacy_enable(true);
+                        }
+                    } else {
+                        if(enable) {
+                            this->voice_device_enable(CTRLM_VOICE_DEVICE_MICROPHONE, db_write, &update_routes);
+                        } else {
+                            this->voice_device_disable(CTRLM_VOICE_DEVICE_MICROPHONE, db_write, &update_routes);
+                        }
                     }
-                } else if(!privacy_enabled) {
-                    this->voice_privacy_enable(true);
                 }
-                #else
-                if(enable) {
-                    this->voice_device_enable(CTRLM_VOICE_DEVICE_MICROPHONE, db_write, &update_routes);
-                } else {
-                    this->voice_device_disable(CTRLM_VOICE_DEVICE_MICROPHONE, db_write, &update_routes);
-                }
-                #endif
             }
-        }
-        #endif
-        if(conf.config_value_get("wwFeedback", enable)) { // This option will enable / disable the Wake Word feedback (typically an audible beep).
-           XLOGD_INFO("Voice Control kwd feedback is <%s>", enable ? "ENABLED" : "DISABLED");
-           this->audio_ducking_beep_enabled = enable;
+            if(conf.config_value_get("wwFeedback", enable)) { // This option will enable / disable the Wake Word feedback (typically an audible beep).
+                XLOGD_INFO("Voice Control kwd feedback is <%s>", enable ? "ENABLED" : "DISABLED");
+                this->audio_ducking_beep_enabled = enable;
 
-           if(db_write) {
-              ctrlm_db_voice_write_audio_ducking_beep_enable(enable);
-           }
+                if(db_write) {
+                    ctrlm_db_voice_write_audio_ducking_beep_enable(enable);
+                }
+            }
         }
         if(update_routes && this->xrsr_opened) {
             this->voice_sdk_update_routes();
             if(db_write) {
                 ctrlm_sm_voice_url_ptt_write(this->prefs.server_url_src_ptt);
                 ctrlm_sm_voice_url_ff_write(this->prefs.server_url_src_ff);
-                #ifdef CTRLM_LOCAL_MIC_TAP
                 ctrlm_sm_voice_url_mic_tap_write(this->prefs.server_url_src_mic_tap);
-                #endif
             }
         }
     }
@@ -914,11 +917,7 @@ bool ctrlm_voice_t::voice_status(ctrlm_voice_status_t *status) {
      */
     ctrlm_voice_status_capabilities_t capabilities = {
        .prv = true,
-    #ifdef BEEP_ON_KWD_ENABLED
-       .wwFeedback = true,
-    #else
-       .wwFeedback = false,
-    #endif
+       .wwFeedback = this->beep_on_kwd_supported,
     };
 
     if(!this->xrsr_opened) {
@@ -928,9 +927,7 @@ bool ctrlm_voice_t::voice_status(ctrlm_voice_status_t *status) {
     } else {
         status->urlPtt    = this->prefs.server_url_src_ptt;
         status->urlHf     = this->prefs.server_url_src_ff;
-        #ifdef CTRLM_LOCAL_MIC_TAP
         status->urlMicTap = this->prefs.server_url_src_mic_tap;
-        #endif
         sem_wait(&this->device_status_semaphore);
         for(int i = CTRLM_VOICE_DEVICE_PTT; i < CTRLM_VOICE_DEVICE_INVALID; i++) {
             status->status[i] = this->device_status[i];
@@ -1347,7 +1344,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                                                                        ctrlm_voice_device_t device_type, ctrlm_voice_format_t format,
                                                                        voice_session_req_stream_params *stream_params,
                                                                        const char *controller_name, const char *sw_version, const char *hw_version, double voltage, bool command_status,
-                                                                       ctrlm_timestamp_t *timestamp, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param, bool use_external_data_pipe, bool press_and_hold, const char *l_transcription_in, const char *audio_file_in, const uuid_t *uuid, bool low_latency, bool low_cpu_util, int audio_fd) {
+                                                                       ctrlm_timestamp_t *timestamp, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param, bool use_external_data_pipe, bool press_and_hold, std::function<void(ctrlm_voice_start_audio_params_t *)> cb_start_audio, ctrlm_voice_start_audio_params_t *cb_audio_start_params, const char *l_transcription_in, const char *audio_file_in, const uuid_t *uuid, bool low_latency, bool low_cpu_util, int audio_fd) {
 
     ctrlm_voice_session_t *session = &this->voice_session[voice_device_to_session_group(device_type)];
 
@@ -1379,6 +1376,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
 
         // Cancel current speech router session
         XLOGD_INFO("Waiting on the results from previous session, aborting this and continuing..");
+        pre_session_terminate(cb_start_audio, cb_audio_start_params, cb_confirm, cb_confirm_param);
         xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.
     }
     bool request_new_session = true;
@@ -1390,6 +1388,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                 request_new_session = false;
             } else { // Cancel current speech router session
                 XLOGD_WARN("Session in progress with same controller - src <%s> dst <%s>, aborting this and continuing..", ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
+                pre_session_terminate(cb_start_audio, cb_audio_start_params, cb_confirm, cb_confirm_param);
                 xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.
             }
         } else { // session in progress with different controller
@@ -2358,6 +2357,14 @@ bool ctrlm_voice_t::voice_stb_data_pii_mask_get() const {
    return(this->mask_pii);
 }
 
+bool ctrlm_voice_t::voice_stb_data_local_mic_get() const {
+   return(this->local_mic);
+}
+
+bool ctrlm_voice_t::voice_stb_data_local_mic_tap_get() const {
+   return(this->local_mic_tap);
+}
+
 bool ctrlm_voice_t::voice_stb_data_device_certificate_set(ctrlm_voice_cert_t &device_cert, bool &ocsp_verify_stapling, bool &ocsp_verify_ca) {
    this->ocsp_verify_stapling = ocsp_verify_stapling;
    this->ocsp_verify_ca       = ocsp_verify_ca;
@@ -2659,29 +2666,20 @@ void ctrlm_voice_t::voice_session_end_callback(ctrlm_voice_session_end_cb_t *ses
                 this->voice_status_set(session);
                 break;
             }
-            #ifdef CTRLM_LOCAL_MIC
             case CTRLM_VOICE_DEVICE_MICROPHONE: {
                 command_status = (session_end->success ? VOICE_COMMAND_STATUS_SUCCESS : VOICE_COMMAND_STATUS_FAILURE);
                 // No need to set, as it's not a controller
                 break;
             }
-            #endif
             default: {
                 break;
             }
         }
     }
 
-    #ifdef CTRLM_LOCAL_MIC
-    #ifdef CTRLM_LOCAL_MIC_TAP
     if(session->voice_device == CTRLM_VOICE_DEVICE_MICROPHONE || session->voice_device == CTRLM_VOICE_DEVICE_MICROPHONE_TAP) {
-    #else
-    if(session->voice_device == CTRLM_VOICE_DEVICE_MICROPHONE) {
-    #endif
         XLOGD_INFO("src <%s> reason <%s> voice command status <%s>", ctrlm_voice_device_str(session->voice_device), xrsr_session_end_reason_str(stats->reason), ctrlm_voice_command_status_str(command_status));
-    } else 
-    #endif
-    {
+    } else {
         XLOGD_INFO("src <%s> audio sent bytes <%u> samples <%u> reason <%s> voice command status <%s>", ctrlm_voice_device_str(session->voice_device), session->audio_sent_bytes, session->audio_sent_samples, xrsr_session_end_reason_str(stats->reason), ctrlm_voice_command_status_str(command_status));
     }
 
@@ -3079,8 +3077,7 @@ void ctrlm_voice_t::voice_action_keyword_verification_callback(const uuid_t uuid
 }
 
 void ctrlm_voice_t::voice_keyword_verified_action(void) {
-   #ifdef BEEP_ON_KWD_ENABLED
-   if(this->audio_ducking_beep_enabled) { // play beep audio before ducking audio
+   if(this->beep_on_kwd_supported && (this->beep_on_kwd_file != NULL) && this->audio_ducking_beep_enabled) { // play beep audio before ducking audio
       if(this->audio_ducking_beep_in_progress) {
          XLOGD_WARN("audio ducking beep already in progress!");
          this->obj_sap->close();
@@ -3102,8 +3099,8 @@ void ctrlm_voice_t::voice_keyword_verified_action(void) {
             }
          }
 
-         if(!this->obj_sap->play("file://" BEEP_ON_KWD_FILE)) {
-            XLOGD_WARN("unable to play beep file <%s>", BEEP_ON_KWD_FILE);
+         if(!this->obj_sap->play(this->beep_on_kwd_file)) {
+            XLOGD_WARN("unable to play beep file <%s>", this->beep_on_kwd_file);
             if(!this->obj_sap->close()) {
                XLOGD_WARN("unable to close system audio player");
             }
@@ -3120,11 +3117,9 @@ void ctrlm_voice_t::voice_keyword_verified_action(void) {
          return;
       } while(retry >= 0);
    }
-   #endif
    this->audio_state_set(true);
 }
 
-#ifdef BEEP_ON_KWD_ENABLED
 void ctrlm_voice_t::voice_keyword_beep_completed_normal(void *data, int size) {
    this->voice_keyword_beep_completed_callback(false, false);
 }
@@ -3159,7 +3154,6 @@ void ctrlm_voice_t::voice_keyword_beep_completed_callback(bool timeout, bool pla
       this->audio_state_set(true);
    }
 }
-#endif
 
 void ctrlm_voice_t::voice_session_transcription_callback(const uuid_t uuid, const char *transcription) {
     // Get session based on uuid
@@ -3241,12 +3235,8 @@ const char *ctrlm_voice_device_str(ctrlm_voice_device_t device) {
    switch(device) {
        case CTRLM_VOICE_DEVICE_PTT:            return("PTT");
        case CTRLM_VOICE_DEVICE_FF:             return("FF");
-       #ifdef CTRLM_LOCAL_MIC
        case CTRLM_VOICE_DEVICE_MICROPHONE:     return("MICROPHONE");
-       #endif
-       #ifdef CTRLM_LOCAL_MIC_TAP
        case CTRLM_VOICE_DEVICE_MICROPHONE_TAP: return("MICROPHONE_TAP");
-       #endif
        case CTRLM_VOICE_DEVICE_INVALID:        return("INVALID");
    }
    return("UNKNOWN");
@@ -3307,18 +3297,14 @@ ctrlm_voice_device_t xrsr_to_voice_device(xrsr_src_t device) {
             ret = CTRLM_VOICE_DEVICE_FF;
             break;
         }
-        #ifdef CTRLM_LOCAL_MIC
         case XRSR_SRC_MICROPHONE: {
             ret = CTRLM_VOICE_DEVICE_MICROPHONE;
             break;
         }
-        #endif
-        #ifdef CTRLM_LOCAL_MIC_TAP
         case XRSR_SRC_MICROPHONE_TAP: {
             ret = CTRLM_VOICE_DEVICE_MICROPHONE_TAP;
             break;
         }
-        #endif
         default: {
             XLOGD_ERROR("unrecognized device type %d", device);
             break;
@@ -3338,18 +3324,14 @@ xrsr_src_t voice_device_to_xrsr(ctrlm_voice_device_t device) {
             ret = XRSR_SRC_RCU_FF;
             break;
         }
-        #ifdef CTRLM_LOCAL_MIC
         case CTRLM_VOICE_DEVICE_MICROPHONE: {
             ret = XRSR_SRC_MICROPHONE;
             break;
         }
-        #endif
-        #ifdef CTRLM_LOCAL_MIC_TAP
         case CTRLM_VOICE_DEVICE_MICROPHONE_TAP: {
             ret = XRSR_SRC_MICROPHONE_TAP;
             break;
         }
-        #endif
         default: {
             XLOGD_ERROR("unrecognized device type %d", device);
             break;
@@ -3359,11 +3341,9 @@ xrsr_src_t voice_device_to_xrsr(ctrlm_voice_device_t device) {
 }
 
 ctrlm_voice_session_group_t voice_device_to_session_group(ctrlm_voice_device_t device_type) {
-   #ifdef CTRLM_LOCAL_MIC_TAP
    if(device_type == CTRLM_VOICE_DEVICE_MICROPHONE_TAP) {
       return(VOICE_SESSION_GROUP_MIC_TAP);
    }
-   #endif
    return(VOICE_SESSION_GROUP_DEFAULT);
 }
 
@@ -3463,16 +3443,12 @@ ctrlm_voice_format_t xrsr_to_voice_format(xrsr_audio_format_t format) {
 bool ctrlm_voice_t::is_voice_assistant(ctrlm_voice_device_t device) {
     bool voice_assistant = false;
     switch(device) {
-        #ifdef CTRLM_LOCAL_MIC
         case CTRLM_VOICE_DEVICE_MICROPHONE:
-        #endif
         case CTRLM_VOICE_DEVICE_FF:  {
             voice_assistant = true;
             break;
         }
-        #ifdef CTRLM_LOCAL_MIC_TAP
         case CTRLM_VOICE_DEVICE_MICROPHONE_TAP:
-        #endif
         case CTRLM_VOICE_DEVICE_PTT: 
         case CTRLM_VOICE_DEVICE_INVALID:
         default: {
@@ -3590,12 +3566,10 @@ int ctrlm_voice_t::ctrlm_voice_controller_command_status_read_timeout(void *data
     return(false);
 }
 
-#ifdef BEEP_ON_KWD_ENABLED
 int ctrlm_voice_t::ctrlm_voice_keyword_beep_end_timeout(void *data) {
     ctrlm_get_voice_obj()->voice_keyword_beep_completed_callback(true, false);
     return(false);
 }
-#endif
 
 // Timeouts end
 
@@ -3642,9 +3616,7 @@ const char *ctrlm_voice_session_response_status_str(ctrlm_voice_session_response
 const char *ctrlm_voice_session_group_str(ctrlm_voice_session_group_t group) {
    switch(group) {
       case VOICE_SESSION_GROUP_DEFAULT: return("DEFAULT");
-      #ifdef CTRLM_LOCAL_MIC_TAP
       case VOICE_SESSION_GROUP_MIC_TAP: return("MIC_TAP");
-      #endif
       case VOICE_SESSION_GROUP_QTY: break; // fall thru to return an invalid group
    }
    return(ctrlm_invalid_return(group));
@@ -3810,14 +3782,14 @@ void  ctrlm_voice_t::voice_power_state_change(ctrlm_power_state_t power_state) {
 
    xrsr_power_mode_t xrsr_power_mode = voice_xrsr_power_map(power_state);
 
-   #ifdef CTRLM_LOCAL_MIC
-   if(power_state == CTRLM_POWER_STATE_ON) {
-      bool privacy_enabled = this->vsdk_is_privacy_enabled();
-      if(privacy_enabled != this->voice_is_privacy_enabled()) {
-         privacy_enabled ? this->voice_privacy_enable(false) : this->voice_privacy_disable(false);
+   if(this->local_mic) {
+      if(power_state == CTRLM_POWER_STATE_ON) {
+         bool privacy_enabled = this->vsdk_is_privacy_enabled();
+         if(privacy_enabled != this->voice_is_privacy_enabled()) {
+            privacy_enabled ? this->voice_privacy_enable(false) : this->voice_privacy_disable(false);
+         }
       }
    }
-   #endif
 
    if(!xrsr_power_mode_set(xrsr_power_mode)) {
       XLOGD_ERROR("failed to set xrsr to power state %s", ctrlm_power_state_str(power_state));
@@ -3851,57 +3823,56 @@ void ctrlm_voice_t::voice_session_set_inactive(ctrlm_voice_device_t device) {
 }
 
 bool ctrlm_voice_t::voice_is_privacy_enabled(void) {
-   #ifdef CTRLM_LOCAL_MIC
-   sem_wait(&this->device_status_semaphore);
-   bool value = (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_PRIVACY) ? true : false;
-   sem_post(&this->device_status_semaphore);
-   return(value);
-   #else
+   if(this->local_mic) {
+      sem_wait(&this->device_status_semaphore);
+      bool value = (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_PRIVACY) ? true : false;
+      sem_post(&this->device_status_semaphore);
+      return(value);
+   }
    return(false);
-   #endif
 }
 
 void ctrlm_voice_t::voice_privacy_enable(bool update_vsdk) {
-   #ifdef CTRLM_LOCAL_MIC
-    sem_wait(&this->device_status_semaphore);
-    if(this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_PRIVACY) {
-        sem_post(&this->device_status_semaphore);
-        XLOGD_WARN("already enabled");
-        return;
-    }
+   if(this->local_mic) {
+      sem_wait(&this->device_status_semaphore);
+      if(this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_PRIVACY) {
+         sem_post(&this->device_status_semaphore);
+         XLOGD_WARN("already enabled");
+         return;
+      }
 
-    this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] |= CTRLM_VOICE_DEVICE_STATUS_PRIVACY;
-    ctrlm_db_voice_write_device_status(CTRLM_VOICE_DEVICE_MICROPHONE, (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_MASK_DB));
+      this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] |= CTRLM_VOICE_DEVICE_STATUS_PRIVACY;
+      ctrlm_db_voice_write_device_status(CTRLM_VOICE_DEVICE_MICROPHONE, (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_MASK_DB));
 
-    #ifdef CTRLM_LOCAL_MIC_DISABLE_VIA_PRIVACY
-    if(update_vsdk && this->xrsr_opened && !xrsr_privacy_mode_set(true)) {
-        XLOGD_ERROR("xrsr_privacy_mode_set failed");
-    }
-    #endif
+      if(this->local_mic_disable_via_privacy) {
+         if(update_vsdk && this->xrsr_opened && !xrsr_privacy_mode_set(true)) {
+            XLOGD_ERROR("xrsr_privacy_mode_set failed");
+         }
+      }
 
-    sem_post(&this->device_status_semaphore);
-    #endif
+      sem_post(&this->device_status_semaphore);
+   }
 }
 
 void ctrlm_voice_t::voice_privacy_disable(bool update_vsdk) {
-    #ifdef CTRLM_LOCAL_MIC
-    sem_wait(&this->device_status_semaphore);
-    if(!(this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_PRIVACY)) {
-        sem_post(&this->device_status_semaphore);
-        XLOGD_WARN("already disabled");
-        return;
-    }
+   if(this->local_mic) {
+      sem_wait(&this->device_status_semaphore);
+      if(!(this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_PRIVACY)) {
+         sem_post(&this->device_status_semaphore);
+         XLOGD_WARN("already disabled");
+         return;
+      }
 
-    this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] &= ~CTRLM_VOICE_DEVICE_STATUS_PRIVACY;
-    ctrlm_db_voice_write_device_status(CTRLM_VOICE_DEVICE_MICROPHONE, (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_MASK_DB));
+      this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] &= ~CTRLM_VOICE_DEVICE_STATUS_PRIVACY;
+      ctrlm_db_voice_write_device_status(CTRLM_VOICE_DEVICE_MICROPHONE, (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_MASK_DB));
 
-    #ifdef CTRLM_LOCAL_MIC_DISABLE_VIA_PRIVACY
-    if(update_vsdk && this->xrsr_opened && !xrsr_privacy_mode_set(false)) {
-        XLOGD_ERROR("xrsr_privacy_mode_set failed");
-    }
-    #endif
-    sem_post(&this->device_status_semaphore);
-    #endif
+      if(this->local_mic_disable_via_privacy) {
+         if(update_vsdk && this->xrsr_opened && !xrsr_privacy_mode_set(false)) {
+            XLOGD_ERROR("xrsr_privacy_mode_set failed");
+         }
+      }
+      sem_post(&this->device_status_semaphore);
+   }
 }
 
 void ctrlm_voice_t::voice_device_enable(ctrlm_voice_device_t device, bool db_write, bool *update_routes) {
@@ -3940,7 +3911,6 @@ void ctrlm_voice_t::voice_device_disable(ctrlm_voice_device_t device, bool db_wr
     sem_post(&this->device_status_semaphore);
 }
 
-#ifdef BEEP_ON_KWD_ENABLED
 void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t event, void *user_data) {
    if(user_data == NULL) {
       return;
@@ -3980,27 +3950,24 @@ void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t e
       }
    }
 }
-#endif
 
-#ifdef NETWORKED_STANDBY_MODE_ENABLED
 void ctrlm_voice_t::voice_nsm_session_request(void) {
     ctrlm_network_id_t network_id = CTRLM_MAIN_NETWORK_ID_DSP;
     ctrlm_controller_id_t controller_id = CTRLM_MAIN_CONTROLLER_ID_DSP;
     ctrlm_voice_device_t device = CTRLM_VOICE_DEVICE_MICROPHONE;
     ctrlm_voice_format_t format = { .type = CTRLM_VOICE_FORMAT_PCM_32_BIT };
 
-    #ifdef CTRLM_LOCAL_MIC_DISABLE_VIA_PRIVACY
-    //If the user un-muted the microphones in standby, we must un-mute our components
-    if(this->voice_is_privacy_enabled()) {
-        this->voice_privacy_disable(true);
+    if(this->local_mic_disable_via_privacy) {
+        //If the user un-muted the microphones in standby, we must un-mute our components
+        if(this->voice_is_privacy_enabled()) {
+            this->voice_privacy_disable(true);
+        }
     }
-    #endif
 
     this->nsm_voice_session = true;
     voice_session_req(network_id, controller_id, device, format, NULL, "NSM", "0.0.0.0",  "0.0.0.0",  0.0);
 
 }
-#endif
 
 int ctrlm_voice_t::packet_loss_threshold_get() const {
     return(this->packet_loss_threshold);
@@ -4025,11 +3992,11 @@ xrsr_power_mode_t voice_xrsr_power_map(ctrlm_power_state_t ctrlm_power_state) {
 
    switch(ctrlm_power_state) {
       case CTRLM_POWER_STATE_DEEP_SLEEP:
-         #ifdef NETWORKED_STANDBY_MODE_ENABLED
-         xrsr_power_mode = ctrlm_main_get_networked_standby_mode() ? XRSR_POWER_MODE_LOW : XRSR_POWER_MODE_SLEEP;
-         #else
-         xrsr_power_mode = XRSR_POWER_MODE_SLEEP;
-         #endif
+         if(ctrlm_is_networked_standby_supported()) {
+            xrsr_power_mode = ctrlm_main_get_networked_standby_mode() ? XRSR_POWER_MODE_LOW : XRSR_POWER_MODE_SLEEP;
+         } else {
+            xrsr_power_mode = XRSR_POWER_MODE_SLEEP;
+         }
          break;
       case CTRLM_POWER_STATE_ON:
       case CTRLM_POWER_STATE_STANDBY:
@@ -4149,14 +4116,13 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
 
     // All attributes that need a re-route to apply
     if(attr.get_rfc_value(JSON_INT_NAME_VOICE_MINIMUM_DURATION,                              this->prefs.utterance_duration_min) |
-    #ifdef NETWORKED_STANDBY_MODE_ENABLED
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL,     this->prefs.dst_params_standby.connect_check_interval) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,            this->prefs.dst_params_standby.timeout_connect) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,         this->prefs.dst_params_standby.timeout_inactivity) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_SESSION,            this->prefs.dst_params_standby.timeout_session) |
        attr.get_rfc_value(JSON_BOOL_NAME_VOICE_DST_PARAMS_STANDBY_IPV4_FALLBACK,             this->prefs.dst_params_standby.ipv4_fallback) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_BACKOFF_DELAY,              this->prefs.dst_params_standby.backoff_delay) |
-    #endif
+    
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_CONNECT_CHECK_INTERVAL, this->prefs.dst_params_low_latency.connect_check_interval) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_CONNECT,        this->prefs.dst_params_low_latency.timeout_connect) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_INACTIVITY,     this->prefs.dst_params_low_latency.timeout_inactivity) |
@@ -4176,9 +4142,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
         attr.get_rfc_value(JSON_BOOL_NAME_VOICE_ENABLE,                      enabled);
         attr.get_rfc_value(JSON_STR_NAME_VOICE_URL_SRC_PTT,                  this->prefs.server_url_src_ptt);
         attr.get_rfc_value(JSON_STR_NAME_VOICE_URL_SRC_FF,                   this->prefs.server_url_src_ff);
-        #ifdef CTRLM_LOCAL_MIC_TAP
         attr.get_rfc_value(JSON_STR_NAME_VOICE_URL_SRC_MIC_TAP,              this->prefs.server_url_src_mic_tap);
-        #endif
         // Check if enabled
         if(!enabled) {
             for(int i = CTRLM_VOICE_DEVICE_PTT; i < CTRLM_VOICE_DEVICE_INVALID; i++) {
@@ -4280,5 +4244,16 @@ void ctrlm_voice_t::url_hostname_patterns(const std::vector<std::string> &obj_se
     for(auto &itr : obj_server_hosts) {
         XLOGD_INFO("Adding server host pattern <%s>", itr.c_str());
         this->url_hostname_pattern_add(itr.c_str());
+    }
+}
+
+void ctrlm_voice_t::pre_session_terminate(std::function<void(ctrlm_voice_start_audio_params_t *)> cb_start_audio, ctrlm_voice_start_audio_params_t *cb_audio_start_params, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param) {
+    if (cb_start_audio != nullptr && cb_audio_start_params != nullptr) {
+        if(cb_confirm != NULL && cb_confirm_param != NULL) {
+           cb_audio_start_params->m_cb_confirm_voice_obj = ctrlm_voice_session_response_confirm;
+           cb_audio_start_params->m_cb_confirm_param     = NULL;
+           cb_audio_start_params->m_status               = (this->prefs.par_voice_enabled) ? VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE : VOICE_SESSION_RESPONSE_AVAILABLE;
+        }
+        cb_start_audio(cb_audio_start_params);
     }
 }

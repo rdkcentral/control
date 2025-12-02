@@ -537,9 +537,11 @@ void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmas
       return;
    }
 
+   ctrlm_irdb_vendor_info_t rcu_vendor_info{};
+   rcu_vendor_info.rcu_support_bitmask = vendor_support_bitmask;
+   irdb->set_vendor(rcu_vendor_info);
+
    ctrlm_irdb_vendor_info_t vendor_info{};
-   vendor_info.rcu_support_bitmask = vendor_support_bitmask;
-   irdb->set_vendor(vendor_info);
 
    if (irdb->get_vendor_info(vendor_info)) {
       XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>, which %s support the loaded IRDB plugin vendor <%s>", 

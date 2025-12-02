@@ -806,7 +806,7 @@ int main(int argc, char *argv[]) {
 
    ctrlm_trigger_startup_actions();
 
-   XLOGD_INFO("Enter main loop");
+   XLOGD_AUTOMATION_INFO("Enter main loop");
    g_main_loop_run(g_ctrlm.main_loop);
 
    //Save the shutdown time if it is valid
@@ -988,7 +988,7 @@ gboolean ctrlm_thread_monitor(gpointer user_data) {
          XLOGD_DEBUG("Checking %s", it->name);
 
          if(it->response != CTRLM_THREAD_MONITOR_RESPONSE_ALIVE) {
-            XLOGD_TELEMETRY("Thread %s is unresponsive", it->name);
+            XLOGD_AUTOMATION_TELEMETRY("Thread %s is unresponsive", it->name);
             #ifdef BREAKPAD_SUPPORT
             if(g_ctrlm.thread_monitor_minidump) {
                XLOGD_FATAL("Thread Monitor Minidump is enabled");
@@ -2329,7 +2329,7 @@ gpointer ctrlm_main_thread(gpointer param) {
    // Unblock the caller that launched this thread
    sem_post(&g_ctrlm.semaphore);
 
-   XLOGD_INFO("Enter main loop");
+   XLOGD_AUTOMATION_INFO("Enter main loop");
    do {
       gpointer msg = g_async_queue_pop(g_ctrlm.queue);
 
@@ -2675,7 +2675,7 @@ gpointer ctrlm_main_thread(gpointer param) {
             //If execution reaches here, then change power state and inform VSDK of on or deep sleep states
             g_ctrlm.power_state = dqm->new_state;
 
-            XLOGD_INFO("Enter power state <%s>", ctrlm_power_state_str(g_ctrlm.power_state));
+            XLOGD_AUTOMATION_INFO("Enter power state <%s>", ctrlm_power_state_str(g_ctrlm.power_state));
             if(g_ctrlm.networked_standby_supported && (g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP)) {
                XLOGD_INFO("NSM is <%s>", (ctrlm_main_get_networked_standby_mode())?"ENABLED":"DISABLED");
             }

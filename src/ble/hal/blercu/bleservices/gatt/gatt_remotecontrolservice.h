@@ -96,9 +96,11 @@ private:
     void requestRebootReason();
     void requestAssertReport();
     void requestLastKeypress();
+    void requestRawBatteryVoltage();
     void requestAdvConfig();
     void requestAdvConfigCustomList();
     
+    void onRawBatteryVoltageChanged(const std::vector<uint8_t> &newValue);
     void onWriteAdvConfigReply(PendingReply<> *reply);
     void onWriteAdvConfigCustomListReply(PendingReply<> *reply);
 
@@ -112,6 +114,7 @@ private:
     std::shared_ptr<BleGattCharacteristic> m_advConfigCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_advConfigCustomListCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_assertReportCharacteristic;
+    std::shared_ptr<BleGattCharacteristic> m_rawBatteryVoltageCharacteristic;
 
     StateMachine m_stateMachine;
 
@@ -119,6 +122,9 @@ private:
     uint8_t m_rebootReason;
     uint8_t m_rcuAction;
     uint8_t m_lastKeypress;
+    uint8_t m_unloadedVoltage;
+    uint8_t m_loadedVoltage;
+    uint8_t m_voltagePercentage;
     uint8_t m_advConfig;
     std::vector<uint8_t> m_advConfigCustomList;
     
@@ -135,6 +141,7 @@ private:
     static const BleUuid m_advConfigCharUuid;
     static const BleUuid m_advConfigCustomListCharUuid;
     static const BleUuid m_assertReportCharUuid;
+    static const BleUuid m_rawBatteryVoltageCharUuid;
 
 private:
     static const Event::Type StartServiceRequestEvent       = Event::Type(Event::User + 1);

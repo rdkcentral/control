@@ -165,6 +165,8 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
     errno_t safec_rc = memset_s(&routes, sizeof(routes), 0, sizeof(routes));
     ERR_CHK(safec_rc);
 
+    bool networked_standby_supported = ctrlm_is_networked_standby_supported();
+
     // iterate over source to url mapping
     for(int j = 0; j < XRSR_SRC_INVALID; j++) {
         xrsr_src_t            src        = (xrsr_src_t)j;
@@ -178,19 +180,15 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                     url = &this->prefs.server_url_src_ptt;
                     break;
                 }
-                #ifdef CTRLM_LOCAL_MIC
                 case CTRLM_VOICE_DEVICE_MICROPHONE:
-                #endif
                 case CTRLM_VOICE_DEVICE_FF: {
                     url = &this->prefs.server_url_src_ff;
                     break;
                 }
-                #ifdef CTRLM_LOCAL_MIC_TAP
                 case CTRLM_VOICE_DEVICE_MICROPHONE_TAP: {
                    url = &this->prefs.server_url_src_mic_tap;
                    break;
                 }
-                #endif
                 default: {
                     break;
                 }
@@ -243,11 +241,9 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                 routes[i].dsts[0].stream_from     = stream_from;
                 routes[i].dsts[0].stream_offset   = stream_offset;
                 routes[i].dsts[0].stream_until    = stream_until;
-                #ifdef NETWORKED_STANDBY_MODE_ENABLED
-                if(src == XRSR_SRC_MICROPHONE) {
+                if(networked_standby_supported && (src == XRSR_SRC_MICROPHONE)) {
                     routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                 }
-                #endif
                 i++;
                 XLOGD_INFO("url translation from %s to %s", url->c_str(), urls_translated[translated_index].c_str());
             }
@@ -277,11 +273,9 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                 routes[i].dsts[0].stream_from     = XRSR_STREAM_FROM_LIVE;
                 routes[i].dsts[0].stream_offset   = 0;
                 routes[i].dsts[0].stream_until    = XRSR_STREAM_UNTIL_END_OF_STREAM;
-                #ifdef NETWORKED_STANDBY_MODE_ENABLED
-                if(src == XRSR_SRC_MICROPHONE) {
+                if(networked_standby_supported && (src == XRSR_SRC_MICROPHONE)) {
                     routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                 }
-                #endif
 
                 // Set low latency websocket parameters
                 routes[i].dsts[0].params[XRSR_POWER_MODE_FULL] = &this->prefs.dst_params_low_latency;
@@ -324,11 +318,9 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                 routes[i].dsts[0].stream_from     = stream_from;
                 routes[i].dsts[0].stream_offset   = stream_offset;
                 routes[i].dsts[0].stream_until    = stream_until;
-                #ifdef NETWORKED_STANDBY_MODE_ENABLED
-                if(src == XRSR_SRC_MICROPHONE) {
+                if(networked_standby_supported && (src == XRSR_SRC_MICROPHONE)) {
                     routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                 }
-                #endif
                 i++;
             }
         }
@@ -351,11 +343,9 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                 routes[i].dsts[0].stream_from     = stream_from;
                 routes[i].dsts[0].stream_offset   = stream_offset;
                 routes[i].dsts[0].stream_until    = stream_until;
-                #ifdef NETWORKED_STANDBY_MODE_ENABLED
-                if(src == XRSR_SRC_MICROPHONE) {
+                if(networked_standby_supported && (src == XRSR_SRC_MICROPHONE)) {
                     routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                 }
-                #endif
                 i++;
             }
         } else if(url->rfind("avs", 0) == 0) {
@@ -376,11 +366,9 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                         routes[i].dsts[0].stream_from     = stream_from;
                         routes[i].dsts[0].stream_offset   = stream_offset;
                         routes[i].dsts[0].stream_until    = stream_until;
-                        #ifdef NETWORKED_STANDBY_MODE_ENABLED
-                        if(src == XRSR_SRC_MICROPHONE) {
+                        if(networked_standby_supported && (src == XRSR_SRC_MICROPHONE)) {
                                 routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                         }
-                        #endif
                         i++;
                }
         }

@@ -133,7 +133,7 @@ void ctrlm_voice_endpoint_ws_nsp_t::voice_session_begin_callback_ws_nsp(void *da
     config_in.ws.cert_revoked_allow   = false;
     config_in.ws.ocsp_expired_allow   = false;
 
-    XLOGD_TELEMETRY("session begin - src <%s> x_MTLS <%s> x_OCSPst <%s> x_OCSPca <%s>", ctrlm_voice_device_str(source), use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO");
+    XLOGD_AUTOMATION_TELEMETRY("session begin - src <%s> x_MTLS <%s> x_OCSPst <%s> x_OCSPca <%s>", ctrlm_voice_device_str(source), use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO");
 
     ctrlm_voice_session_begin_cb_t session_begin;
     uuid_copy(session_begin.header.uuid, dqm->uuid);

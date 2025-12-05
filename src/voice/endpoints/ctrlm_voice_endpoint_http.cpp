@@ -194,7 +194,7 @@ void ctrlm_voice_endpoint_http_t::voice_session_begin_callback_http(void *data, 
         has_sat = true;
     }
 
-    XLOGD_TELEMETRY("session begin - src <%s> h_SAT <%s> h_MTLS <%s> h_OCSPst <%s> h_OCSPca <%s>", ctrlm_voice_device_str(source), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO");
+    XLOGD_AUTOMATION_TELEMETRY("session begin - src <%s> h_SAT <%s> h_MTLS <%s> h_OCSPst <%s> h_OCSPca <%s>", ctrlm_voice_device_str(source), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO");
 
     errno_t safec_rc = strcpy_s(this->user_agent, sizeof(this->user_agent), user_agent.str().c_str());
     ERR_CHK(safec_rc);

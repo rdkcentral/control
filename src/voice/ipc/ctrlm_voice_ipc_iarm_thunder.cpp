@@ -324,8 +324,8 @@ bool ctrlm_voice_ipc_iarm_thunder_t::session_end(const ctrlm_voice_ipc_event_ses
         char *json_str = json_dumps(event_data, JSON_ENCODE_FLAGS);
         if(json_str) {
             //TODO: surface the event through IARM
-            XLOGD_INFO("<%s>", this->obj_voice->voice_stb_data_pii_mask_get() ? "***" : json_str);
-            ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_BUS_API_REVISION, CTRLM_VOICE_IARM_EVENT_JSON_SESSION_END, json_str);
+            XLOGD_AUTOMATION_INFO("<%s>", this->obj_voice->voice_stb_data_pii_mask_get() ? "***" : json_str);
+            ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_SESSION_END, json_str);
             free(json_str);
         } else {
             XLOGD_ERROR("Failed to encode JSON string");
@@ -340,8 +340,8 @@ bool ctrlm_voice_ipc_iarm_thunder_t::session_end(const ctrlm_voice_ipc_event_ses
 bool ctrlm_voice_ipc_iarm_thunder_t::server_message(const char *message, unsigned long size) {
     bool    ret   = false;
     if(message) {
-        XLOGD_INFO("%ul : <%s>", size, this->obj_voice->voice_stb_data_pii_mask_get() ? "***" : message);  //CID -160950 - Printargs
-        ret = broadcast_iarm_event<ctrlm_voice_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_BUS_API_REVISION, CTRLM_VOICE_IARM_EVENT_JSON_SERVER_MESSAGE, message);
+        XLOGD_AUTOMATION_INFO("%ul : <%s>", size, this->obj_voice->voice_stb_data_pii_mask_get() ? "***" : message);  //CID -160950 - Printargs
+        ret = broadcast_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_JSON_SERVER_MESSAGE, message);
     }
     return(ret);
 }
@@ -760,7 +760,8 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                     ctrlm_voice_session_response_status_t voice_status = voice_obj->voice_session_req(
                             CTRLM_MAIN_NETWORK_ID_INVALID, CTRLM_MAIN_CONTROLLER_ID_INVALID, 
                             request_config.device, request_config.format, NULL, str_name_of_source.c_str(), "0.0.0.0", "0.0.0.0", 0.0,
-                            false, NULL, NULL, NULL, (fd >= 0) ? true : false, true, str_transcription.empty() ? NULL : str_transcription.c_str(), str_audio_file.empty() ? NULL : str_audio_file.c_str(), &request_uuid, request_config.low_latency, request_config.low_cpu_util, fd);
+                            false, NULL, NULL, NULL, (fd >= 0) ? true : false, true, NULL, NULL,
+                            str_transcription.empty() ? NULL : str_transcription.c_str(), str_audio_file.empty() ? NULL : str_audio_file.c_str(), &request_uuid, request_config.low_latency, request_config.low_cpu_util, fd);
                     if (voice_status != VOICE_SESSION_RESPONSE_AVAILABLE && 
                         voice_status != VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
                         XLOGD_ERROR("Failed opening voice session <%s>", ctrlm_voice_session_response_status_str(voice_status));

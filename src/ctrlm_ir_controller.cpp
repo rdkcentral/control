@@ -489,7 +489,7 @@ void* ctrlm_ir_key_monitor_thread(void *data) {
                         case 2: { key_status = CTRLM_KEY_STATUS_REPEAT; break; }
                         default: break;
                      }
-                     XLOGD_TELEMETRY("%s - code = <%d> (%s key), status = <%s>", ir_controller->name_get().c_str(),
+                     XLOGD_AUTOMATION_TELEMETRY("%s - code = <%d> (%s key), status = <%s>", ir_controller->name_get().c_str(),
                            ir_controller->mask_key_codes_get() ? -1 : event.code, 
                            ctrlm_linux_key_code_str(event.code, ir_controller->mask_key_codes_get()), ctrlm_key_status_str(key_status));
 

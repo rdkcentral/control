@@ -91,7 +91,7 @@ bool ctrlm_irdb_initialize();
 // Will return info on all the IRDB vendors currently installed, could be multiple vendors returned
 bool ctrlm_irdb_get_supported_vendor_info(std::vector<ctrlm_irdb_vendor_info_t> &info);
 
-// This will basically pass through the bitmask coming from the RCU, so it will be Ruwido ONLY, Quickset ONLY, or BOTH
+// Tell the IRDB plugin which vendor(s) the RCU supports
 bool ctrlm_irdb_set_preferred_vendor(const ctrlm_irdb_vendor_info_t &vendor);
 
 bool ctrlm_irdb_get_vendor_info(ctrlm_irdb_vendor_info_t &info);

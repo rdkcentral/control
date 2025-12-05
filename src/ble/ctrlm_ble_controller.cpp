@@ -542,7 +542,6 @@ void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmas
    if (!irdb->set_vendor(rcu_vendor_info)) {
       XLOGD_ERROR("Failed to set IRDB vendor info for controller <%s> with bitmask <0x%X>.", 
             ieee_address_get().to_string().c_str(), vendor_support_bitmask);
-
    }
 
    ctrlm_irdb_vendor_info_t vendor_info{};

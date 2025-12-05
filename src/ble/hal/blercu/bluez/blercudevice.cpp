@@ -668,7 +668,7 @@ void BleRcuDeviceBluez::onEnteredRecoveryDisconnectingState()
     m_recoveryAttempts++;
 
     // log the attempt
-    XLOGD_AUTOMATION_ERROR("entered recovery state after device %s failed to resolve services (attempt #%d)",
+    XLOGD_ERROR("entered recovery state after device %s failed to resolve services (attempt #%d)", 
             m_address.toString().c_str(), m_recoveryAttempts);
 
 

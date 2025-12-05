@@ -1,6 +1,6 @@
-### Changelog
+# Changelog
 
-All notable changes to this project will be documented in this file. Dates are displayed in UTC.
+All notable changes to this project will be documented in this file.
 
 * Each RDK Service has a CHANGELOG file that contains all changes done so far. When version is updated, add a entry in the CHANGELOG.md at the top with user friendly information on what was changed with the new version. Please don't mention JIRA tickets in CHANGELOG. 
 
@@ -95,150 +95,46 @@ All notable changes to this project will be documented in this file. Dates are d
 ### Fixed
 - crash during OTA interrupted by unpair or reset
 
-<!-- auto-changelog-above -->
 
-#### [1.1.7](https://github.com/rdkcentral/control/compare/1.1.6...1.1.7)
+## [1.0.10] - 2025-05-16
 
-> 4 December 2025
+### Changed
+- ctrlm crash from main queue msgs getting to networks prior to initialization
+- ctrlm support both old and new deviceType
+- Control manager crashes on rapid MIC button presses
+- [Logging] Add Invalid firmware version OTA error code (0x8) mapping in ctrlmgr logs
+- Changed deviceType from tv to IpTv.
+- Extend adpcm frame info.
 
-- RDKEMW-11159: new_certselector_type [`#157`](https://github.com/rdkcentral/control/pull/157)
-- RDKEMW-10425: Automation Logging [`#144`](https://github.com/rdkcentral/control/pull/144)
-- RDKEMW-9600: FIRST_PACKET_TIMEOUTs [`#135`](https://github.com/rdkcentral/control/pull/135)
 
-#### [1.1.6](https://github.com/rdkcentral/control/compare/1.1.5...1.1.6)
+## [1.0.9] - 2025-04-28
 
-> 19 November 2025
+### Changed
+- Audio samples is always reported as 0 for FFV sessions
+- Remove 'volatile' type qualifier of "binding_in_progress"
+- Upgrading the halif-headers as iarmmgr
 
-- RDKEMW-9124 : remove xr-voice-sdk build flags - XRAUDIO_CURTAIL XLOG_CURTAIL [`#132`](https://github.com/rdkcentral/control/pull/132)
-- RDKEMW-8676 : remove ctrlm build flags - MIC_TAP, LOCAL_MIC, LOCAL_MIC_DISABLE_VIA_PRIVACY [`#120`](https://github.com/rdkcentral/control/pull/120)
-- RDKEMW-8664 : remove ctrlm build flags - MEM_DEBUG, ASSERT_ON_WRONG_THREAD [`#118`](https://github.com/rdkcentral/control/pull/118)
-- RDKEMW-8297 : remove ctrlm build flags - A5000_ENABLE [`#117`](https://github.com/rdkcentral/control/pull/117)
-- RDKEMW-8668 : modify ctrlm build flag - BREAKPAD [`#119`](https://github.com/rdkcentral/control/pull/119)
-- RDKEMW-8296 : remove ctrlm build flags - DEEPSLEEP_CLOSE_DB [`#112`](https://github.com/rdkcentral/control/pull/112)
-- RDKEMW-8295 : remove ctrlm build flags - MEMORY_LOCK [`#111`](https://github.com/rdkcentral/control/pull/111)
-- RDKEMW-7905 : remove ctrlm build flags - ANSI_CODES_DISABLED [`#110`](https://github.com/rdkcentral/control/pull/110)
-- Revert "RDKEMW-8929 (#129)" [`#145`](https://github.com/rdkcentral/control/pull/145)
-- RDKEMW-10311 : RF4CE update key mapping [`#140`](https://github.com/rdkcentral/control/pull/140)
-- RDKEMW-10164: update CHANGELOG for release v1.1.5 [`#139`](https://github.com/rdkcentral/control/pull/139)
 
-#### [1.1.5](https://github.com/rdkcentral/control/compare/1.1.4...1.1.5)
+## [1.0.8] - 2025-04-15
 
-> 5 November 2025
+### Changed
+- use list of all possible names for IR input device discovery instead of product specific config
 
-- RDKEMW-9924 : ctrlm RF4CE upgrade skipped when BLE enabled [`#137`](https://github.com/rdkcentral/control/pull/137)
-- RDKEMW-7225: BLE pairing retries [`#126`](https://github.com/rdkcentral/control/pull/126)
-- RDKEMW-8929: Refactor ctrlm_voice_ipc_t to inherit ctrlm_ipc_iarm_t [`#129`](https://github.com/rdkcentral/control/pull/129)
-- Update CODEOWNERS [`#130`](https://github.com/rdkcentral/control/pull/130)
-- RDKEMW-8815: only return SUCCESS for autolookup if it found at least 1 code. [`#125`](https://github.com/rdkcentral/control/pull/125)
-- Deploy fossid_integration_stateless_diffscan_target_repo action [`#121`](https://github.com/rdkcentral/control/pull/121)
-- Deploy cla action [`#74`](https://github.com/rdkcentral/control/pull/74)
-- RDKEMW-8354: ctrlm-main crash while holding standby during OTA [`#115`](https://github.com/rdkcentral/control/pull/115)
-- RDKEMW-8133: Optional param name for voiceSessionRequest [`#108`](https://github.com/rdkcentral/control/pull/108)
 
-#### [1.1.4](https://github.com/rdkcentral/control/compare/1.1.3...1.1.4)
+## [1.0.7] - 2025-03-31
 
-> 18 September 2025
-
-- RDKEMW-8349 : ctrlm release v1.1.4 [`#113`](https://github.com/rdkcentral/control/pull/113)
-- RDKEMW-7979 : use version/branch from recipe [`#109`](https://github.com/rdkcentral/control/pull/109)
-- RDKEMW-7122 : Missing Thunder cflags in ctrlm implementation [`#103`](https://github.com/rdkcentral/control/pull/103)
-- RDKEMW-7772 : remove ctrlm build flags - DISABLE_BLE_VOICE [`#106`](https://github.com/rdkcentral/control/pull/106)
-- RDKEMW-7834 : remove ctrlm build flags - RF4CE_PACKET_ANALYSIS [`#107`](https://github.com/rdkcentral/control/pull/107)
-- RDKEMW-7694 : remove ctrlm build flags - CPC, DUNFELL [`#105`](https://github.com/rdkcentral/control/pull/105)
-- RDKEMW-7573 : remove ctrlm compile flags [`#104`](https://github.com/rdkcentral/control/pull/104)
-- RDKEMW-7333: remove device from bluez during factory reset [`#100`](https://github.com/rdkcentral/control/pull/100)
-- RDKEMW-6767: getNetStatus call time out due to SAT download retries [`#97`](https://github.com/rdkcentral/control/pull/97)
-- RDKEMW-3409 : move certselector logic into ctrlm-main repo [`#102`](https://github.com/rdkcentral/control/pull/102)
-- RDKEMW-7174 : update AMC APP key mapping [`#98`](https://github.com/rdkcentral/control/pull/98)
-
-#### [1.1.3](https://github.com/rdkcentral/control/compare/1.1.2...1.1.3)
-
-> 19 August 2025
-
-- RDKEMW-7232: update CHANGELOG for controlMgr release v1.1.3 [`#99`](https://github.com/rdkcentral/control/pull/99)
-- RDKEMW-5576: ctrlm mac address fetch [`#92`](https://github.com/rdkcentral/control/pull/92)
-- RDKEMW-4309 : Modify Remote Control plugin for RF4CE support [`#80`](https://github.com/rdkcentral/control/pull/80)
-- RDKEMW-5604 : runtime detection of ASB [`#96`](https://github.com/rdkcentral/control/pull/96)
-
-#### [1.1.2](https://github.com/rdkcentral/control/compare/1.1.1...1.1.2)
-
-> 18 August 2025
-
-- RDKEMW-6034: update CHANGELOG for controlMgr release v1.1.2 [`#95`](https://github.com/rdkcentral/control/pull/95)
-- RDKEMW-6538: use HdmiCecSource instead of deprecated HdmiCec [`#93`](https://github.com/rdkcentral/control/pull/93)
-- RDKEMW-6383 : update key code mapping [`#91`](https://github.com/rdkcentral/control/pull/91)
-- RDKEMW-3797 : BLE network discovery [`#94`](https://github.com/rdkcentral/control/pull/94)
-- RDKEMW-6195: try to load VL provided IRDB, upon failure fallback to existing IRDB in MW [`#79`](https://github.com/rdkcentral/control/pull/79)
-- RDKEMW-5714: Voice not initiated in ctrlm-main [`#81`](https://github.com/rdkcentral/control/pull/81)
-- RDKEMW-6884: Logs indicate missing receiver ID [`#85`](https://github.com/rdkcentral/control/pull/85)
-- RDKEMW-5413 : Remove RF4CE HAL from the middleware layer [`#75`](https://github.com/rdkcentral/control/pull/75)
-- RDKEMW-5506 : stop BLE audio stream on the RCU when server ends session early [`#76`](https://github.com/rdkcentral/control/pull/76)
-- RDKEMW-3965: print raw EDID data at debug log level [`447ae08`](https://github.com/rdkcentral/control/commit/447ae0826d15351fa97ccb12b3b18f435ff40089)
-
-#### [1.1.1](https://github.com/rdkcentral/control/compare/1.1.0...1.1.1)
-
-> 30 June 2025
-
-- RDKEMW-4913: ctrlm release v1.1.1 [`#77`](https://github.com/rdkcentral/control/pull/77)
-- RDKEMW-4788: use HDMI Input plugin RDKV and AVInput RDKE [`#67`](https://github.com/rdkcentral/control/pull/67)
-- RDKEMW-5247 : BLE audio pipe size too small [`#68`](https://github.com/rdkcentral/control/pull/68)
-- RDKEMW-3411 : receive RF4CE IR binding key codes over IR input device [`#69`](https://github.com/rdkcentral/control/pull/69)
-- RDKEMW-3563: Enable ASB [`#63`](https://github.com/rdkcentral/control/pull/63)
-- RDKEMW-3119: Control Manager to use Power Manager Thunder Plugin [`07c1d22`](https://github.com/rdkcentral/control/commit/07c1d222b5d99849713a4db8dcef3bd847380f4b)
-
-#### [1.1.0](https://github.com/rdkcentral/control/compare/1.0.10...1.1.0)
-
-> 30 June 2025
-
-- RDKEMW-4793: ctrlm release v1.1.0 [`#61`](https://github.com/rdkcentral/control/pull/61)
-- RDKEMW-3408: [ctrlm] refactor interface to ctrlm IR Database for Vendor layer integration [`#18`](https://github.com/rdkcentral/control/pull/18)
-- RDKEMW-3798 : RF4CE network discovery [`#53`](https://github.com/rdkcentral/control/pull/53)
-- RDKEMW-3410 : Default BLE controller type list [`#29`](https://github.com/rdkcentral/control/pull/29)
-- RDKEMW-4381: ctrlm crash during OTA interrupted by unpair or reset [`#54`](https://github.com/rdkcentral/control/pull/54)
-
-#### [1.0.10](https://github.com/rdkcentral/control/compare/1.0.9...1.0.10)
-
-> 4 June 2025
-
-- RDKEMW-4424: update CHANGELOG for release 1.0.10 [`#55`](https://github.com/rdkcentral/control/pull/55)
-- RDKEMW-3916: ctrlm crash from main queue msgs getting to networks prior to initialization [`#38`](https://github.com/rdkcentral/control/pull/38)
-- RDKEMW-4146: ctrlm support both old and new deviceType [`#48`](https://github.com/rdkcentral/control/pull/48)
-- RDKEMW-3918 : Control manager crashes on rapid MIC button presses [`#42`](https://github.com/rdkcentral/control/pull/42)
-- RDK-56578 : Changed deviceType from tv to IpTv. [`#34`](https://github.com/rdkcentral/control/pull/34)
-- RDKEMW-3609 : extend adpcm frame info [`#28`](https://github.com/rdkcentral/control/pull/28)
-- RDKEMW-3916: IARM calls registered too early [`ae82b1e`](https://github.com/rdkcentral/control/commit/ae82b1e66f70d6f621eb3c680b7bf870379bd84c)
-- RDKEMW-3835 - [Logging] Add Invalid firmware version OTA error code (0x8) mapping in ctrlmgr logs [`80e4d59`](https://github.com/rdkcentral/control/commit/80e4d59e841f3e9744fc6d3dd92b8bccec26c3ea)
-
-#### [1.0.9](https://github.com/rdkcentral/control/compare/1.0.8...1.0.9)
-
-> 7 May 2025
-
-- update CHANGELOG for controlMgr release 1.0.9 [`#35`](https://github.com/rdkcentral/control/pull/35)
-- RDKEMW-3737:Upgrading the halif-headers as iarmmgr [`#30`](https://github.com/rdkcentral/control/pull/30)
-- RDKEMW-3564 : Audio samples is always reported as 0 for FFV sessions [`2920c1a`](https://github.com/rdkcentral/control/commit/2920c1a455d1e1afe1d095c0b09fd841a305974d)
-- RDKEMW-3605: Remove 'volatile' type qualifier of "binding_in_progress" [`a7d2310`](https://github.com/rdkcentral/control/commit/a7d23104a3b961a26621a1c688ba775c3fe2ad3f)
-
-#### [1.0.8](https://github.com/rdkcentral/control/compare/1.0.7...1.0.8)
-
-> 28 April 2025
-
-- update CHANGELOG for controlMgr release 1.0.8 [`#25`](https://github.com/rdkcentral/control/pull/25)
-- RDKEMW-3276: common udev node and provide list of possible names for IR input device discovery [`#20`](https://github.com/rdkcentral/control/pull/20)
-
-#### [1.0.7](https://github.com/rdkcentral/control/compare/1.0.6...1.0.7)
-
-> 10 April 2025
-
-- XCTRL-400: add irdb stub implementation if ctrlm-hal-irdb lib does not exist [`#17`](https://github.com/rdkcentral/control/pull/17)
-- Merge pull request #14 from rdkcentral/feature/XCTRL-400_rdkv_code_sy… [`#16`](https://github.com/rdkcentral/control/pull/16)
-- XCTRL-400: RDKE Release 2025-03-31 (ctrlm v1.0.7) [`#14`](https://github.com/rdkcentral/control/pull/14)
+### Changed
 - Rationalize Voice Logging
 - move auth from ctrlm-cpc to ctrlm-main
 - Add ctrlm HAL certificate interace
 - Remove irMgr dependencies in controlMgr
 - create HAL interface for platform specific IRDBs
+
+### Added
 - BLE audio stream end time telemetry
 - voice stream telemetry in single line/event
+
+### Fixed
 - Type-Z OTA bug
 - Remote type changed to type-Z early
 - controlMgr maintenance time crash at onInitializedTimer
@@ -249,35 +145,28 @@ All notable changes to this project will be documented in this file. Dates are d
 - Logline error event rcu firmware status
 
 
-#### [1.0.6](https://github.com/rdkcentral/control/compare/1.0.5...1.0.6)
+## [1.0.6] - 2025-03-18
 
-> 18 March 2025
-
-- RDKEMW-1397: IR input device name move to config file [`#1`](https://github.com/rdkcentral/control/pull/1)
-- RDKEMW-1783: controlMgr crash at onInitializedTimer when going to dee… [`#11`](https://github.com/rdkcentral/control/pull/11)
+### Added
 - custom target to build ctrlm config file only
 - additional config override file that can be provided by vendor layer
 
-#### [1.0.5](https://github.com/rdkcentral/control/compare/1.0.4...1.0.5)
 
-> 25 February 2025
+## [1.0.5] - 2025-02-24
 
-- RDKEMW-1783: controlMgr crash at onInitializedTimer when going to deepsleep [`#10`](https://github.com/rdkcentral/control/pull/10)
-
-#### [1.0.4](https://github.com/rdkcentral/control/compare/1.0.3...1.0.4)
-
-> 25 February 2025
-
-- RDKEMW-1890: Remove irMgr dependencies in controlMgr [`#6`](https://github.com/rdkcentral/control/pull/6)
+### Changed
+- crash at onInitializedTimer when going to deepsleep
 
 
-#### 1.0.3
+## [1.0.4] - 2025-02-20
 
-> 13 February 2025
+### Changed
+- removed references to deprecated irMgr component
 
-- XCTRL-379: CTRLM RDKE Release 2025-02-07 [`#4`](https://github.com/rdkcentral/control/pull/4)
-- XCTRL-379: CTRLM RDKE Release 2025-02-07 [`#3`](https://github.com/rdkcentral/control/pull/3)
-- Import of source (develop) [`83e2f7b`](https://github.com/rdkcentral/control/commit/83e2f7bd1f5a179b47e0278f49e17466f4b1c457)
+
+## [1.0.3] - 2025-02-07
+
+### Changed
 - check that a file descriptor is valid before FD_SET()
 - standardize use of singleton pattern ctrlm
 - speed up BLE auto pairing and surface failures immediately
@@ -287,13 +176,16 @@ All notable changes to this project will be documented in this file. Dates are d
 - remove legacy url_vrex config field
 - Add ctrlm Support for XRA BLE key - QAM
 - ControlMgr crash pairWithMacHash when going to deepsleep
+
+### Added
 - RemoteControl plugin methods to pair and unpair targetted RCU devices based on MAC
 - RemoteControl plugin methods to trigger RCU firmware upgrade and report status of upgrade
 - ctrlm-factory added to this repo, its no longer a separate repo
 
-#### 1.0.2
 
-> 6 December 2024
+## [1.0.2] - 2024-12-06
+
+### Changed
 - ctrlm IR uinput device match exact name, simplify IR-initiated BLE pairing event handling
 - Check for Invalid avDevType
 - move stop audio stream to separate non iarm related function
@@ -302,5 +194,7 @@ All notable changes to this project will be documented in this file. Dates are d
 - Detect the platform type (TV vs STB) using DeviceInfo plugin
 - IR keypresses use same PII mask variable as Voice
 - fix "last wakeup key code" not received, along with defering gdbus proxy calls for characteristics until they are needed.
+
+### Added
 - unit test function to set IR protocol support characteristic on RCU
 - Added Alexa voice service support in SDT endpoint, along with async voice message support

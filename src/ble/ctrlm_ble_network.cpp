@@ -525,6 +525,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
 
          // only support ADPCM from ble-rcu component
          ctrlm_hal_ble_VoiceEncoding_t  encoding  = CTRLM_HAL_BLE_ENCODING_ADPCM;
+         ctrlm_hal_ble_VoiceStreamEnd_t streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_KEY_UP;
 
          ctrlm_voice_format_t voice_format = { .type = CTRLM_VOICE_FORMAT_INVALID };
 
@@ -542,21 +543,18 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                audio_format.getHeaderInfoAdpcm(adpcm_frame->offset_step_size_index, adpcm_frame->offset_predicted_sample_lsb, adpcm_frame->offset_predicted_sample_msb, adpcm_frame->offset_sequence_value, adpcm_frame->shift_sequence_value, adpcm_frame->sequence_value_min, adpcm_frame->sequence_value_max);
 
                pressAndHoldSupport = audio_format.getPressAndHoldSupport();
+               if(!pressAndHoldSupport) {
+                  streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION;
+               }
                controllers_[controller_id]->setPressAndHoldSupport(pressAndHoldSupport);
             }
          }
-
-         ctrlm_voice_start_audio_params_t audio_start_params;
-         audio_start_params.m_controller_id = controller_id;
-         audio_start_params.m_fd            = -1;
-         audio_start_params.m_started       = false;
-         auto audio_start_cb = std::bind(&ctrlm_obj_network_ble_t::start_controller_audio_streaming, this, std::placeholders::_1);
 
          voice_status = ctrlm_get_voice_obj()->voice_session_req(network_id_get(), controller_id, device, voice_format, NULL,
                                                                 controllers_[controller_id]->get_model().c_str(),
                                                                 controllers_[controller_id]->get_sw_revision().to_string().c_str(),
                                                                 controllers_[controller_id]->get_hw_revision().to_string().c_str(), 0.0,
-                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport, audio_start_cb, &audio_start_params);
+                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport);
          if (!controllers_[controller_id]->get_capabilities().has_capability(ctrlm_controller_capabilities_t::capability::PAR) && (VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE == voice_status)) {
             XLOGD_WARN("PAR voice is enabled but not supported by BLE controller treating as normal voice session");
             voice_status = VOICE_SESSION_RESPONSE_AVAILABLE;
@@ -564,21 +562,24 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
          if (VOICE_SESSION_RESPONSE_AVAILABLE != voice_status) {
             XLOGD_TELEMETRY("Failed opening voice session in ctrlm_voice_t, error = <%d>", voice_status);
          } else {
-            int  fd = -1;
             bool success = false;
 
-            if (!audio_start_params.m_started) { // voice session req did not need to start audio
-                start_controller_audio_streaming(&audio_start_params);
-            }
-            fd = audio_start_params.m_fd;
+            if (ble_rcu_interface_) {
+               int fd = -1;
 
-            if (fd < 0) {
-               XLOGD_ERROR("Voice streaming pipe invalid (fd = <%d>), aborting voice session", fd);
-               success = false;
-            } else {
-               XLOGD_AUTOMATION_INFO("Acquired voice streaming pipe fd = <%d>, sending to voice engine", fd);
-               //Send the fd acquired from bluez to the voice engine
-               success = ctrlm_get_voice_obj()->voice_session_data(network_id_get(), controller_id, fd);
+               if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd)) {
+                     XLOGD_ERROR("failed to start audio streaming on remote");
+               } else {
+
+                  if (fd < 0) {
+                     XLOGD_ERROR("Voice streaming pipe invalid (fd = <%d>), aborting voice session", fd);
+                     success = false;
+                  } else {
+                     XLOGD_INFO("Acquired voice streaming pipe fd = <%d>, sending to voice engine", fd);
+                     //Send the fd acquired from bluez to the voice engine
+                     success = ctrlm_get_voice_obj()->voice_session_data(network_id_get(), controller_id, fd);
+                  }
+               }
             }
 
             if (false == success) {
@@ -1825,7 +1826,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   print_status = false;
                   break;
                case CTRLM_HAL_BLE_PROPERTY_IS_UPGRADING:
-                  XLOGD_AUTOMATION_INFO("Controller <%s> firmware upgrading = %s", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.is_upgrading ? "TRUE" : "FALSE");
+                  XLOGD_INFO("Controller <%s> firmware upgrading = %s", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.is_upgrading ? "TRUE" : "FALSE");
                   upgrade_in_progress_ = dqm->rcu_data.is_upgrading;
                   if (!dqm->rcu_data.is_upgrading) {
                      // If we get FALSE here, make sure the controller upgrade progress flag is cleared.  But we don't want to set the controller progress
@@ -1836,7 +1837,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   print_status = false;
                   break;
                case CTRLM_HAL_BLE_PROPERTY_UPGRADE_PROGRESS:
-                  XLOGD_AUTOMATION_INFO("Controller <%s> firmware upgrade %d%% complete...", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.upgrade_progress);
+                  XLOGD_INFO("Controller <%s> firmware upgrade %d%% complete...", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.upgrade_progress);
                   // From a controller perspective, we cannot use the CTRLM_HAL_BLE_PROPERTY_IS_UPGRADING flag above to determine if its actively upgrading.
                   // Instead, its more accurate to use the progress percentage to determine if the remote is actively receiving firmware packets.
                   controller->setUpgradeInProgress(dqm->rcu_data.upgrade_progress > 0 && dqm->rcu_data.upgrade_progress < 100);
@@ -1849,7 +1850,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   print_status = false;
                   break;
                case CTRLM_HAL_BLE_PROPERTY_UPGRADE_ERROR:
-                  XLOGD_AUTOMATION_ERROR("Controller <%s> firmware upgrade FAILED with error <%s>.", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.upgrade_error);
+                  XLOGD_ERROR("Controller <%s> firmware upgrade FAILED with error <%s>.", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.upgrade_error);
                   report_status = false;
                   print_status = false;
                   controller->set_upgrade_error(dqm->rcu_data.upgrade_error);
@@ -1882,7 +1883,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   controller->ota_failure_cnt_incr();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_UNPAIR_REASON:
-                  XLOGD_AUTOMATION_INFO("Controller <%s> notified reason for unpairing = <%s>", controller->ieee_address_get().to_string().c_str(), ctrlm_ble_unpair_reason_str(dqm->rcu_data.unpair_reason));
+                  XLOGD_INFO("Controller <%s> notified reason for unpairing = <%s>", controller->ieee_address_get().to_string().c_str(), ctrlm_ble_unpair_reason_str(dqm->rcu_data.unpair_reason));
                   last_rcu_unpair_metrics_.write_rcu_unpair_event(controller->ieee_address_get().get_value(), string(ctrlm_ble_unpair_reason_str(dqm->rcu_data.unpair_reason)));
                   report_status = false;
                   print_status = false;
@@ -1897,7 +1898,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   }
                   break;
                case CTRLM_HAL_BLE_PROPERTY_REBOOT_REASON:
-                  XLOGD_AUTOMATION_TELEMETRY("Controller <%s> notified reason for rebooting = <%s%s%s%s>",
+                  XLOGD_TELEMETRY("Controller <%s> notified reason for rebooting = <%s%s%s%s>", 
                         controller->ieee_address_get().to_string().c_str(), 
                         ctrlm_ble_reboot_reason_str(dqm->rcu_data.reboot_reason),
                         dqm->rcu_data.reboot_reason == CTRLM_BLE_RCU_REBOOT_REASON_ASSERT ? " - \"" : "",
@@ -2205,7 +2206,7 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
             controller->setVoiceStartTime(keyDownTime);
 
             XLOGD_INFO("------------------------------------------------------------------------");
-            XLOGD_AUTOMATION_INFO("CODE_VOICE_KEY button PRESSED event for device: %s", controller->ieee_address_get().to_string().c_str());
+            XLOGD_INFO("CODE_VOICE_KEY button PRESSED event for device: %s", controller->ieee_address_get().to_string().c_str());
             XLOGD_INFO("------------------------------------------------------------------------");
 
             ctrlm_voice_iarm_call_voice_session_t v_params;
@@ -2255,7 +2256,7 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
          if (controller->isVoiceKey(dqm->event.code)) {
             if(!controller->getPressAndHoldSupport()) { // if the voice session is "Press and Release" then don't end session on voice key up event
                XLOGD_INFO("------------------------------------------------------------------------");
-               XLOGD_AUTOMATION_INFO("CODE_VOICE_KEY button RELEASED event for device: %s (ignored for PAR session)", controller->ieee_address_get().to_string().c_str());
+               XLOGD_INFO("CODE_VOICE_KEY button RELEASED event for device: %s (ignored for PAR session)", controller->ieee_address_get().to_string().c_str());
                XLOGD_INFO("------------------------------------------------------------------------");
             } else {
                rdkx_timestamp_t keyUpTime, keyUpTimeLocal, voiceStartTimeLocal, firstAudioDataTime;
@@ -2290,11 +2291,11 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
                   }
 
                   XLOGD_INFO("------------------------------------------------------------------------");
-                  XLOGD_AUTOMATION_INFO("CODE_VOICE_KEY button RELEASED event for device: %s duration <%lld ms> start lag <%lld ms>", controller->ieee_address_get().to_string().c_str(), audioDurationKeys, startAudioLag);
+                  XLOGD_INFO("CODE_VOICE_KEY button RELEASED event for device: %s duration <%lld ms> start lag <%lld ms>", controller->ieee_address_get().to_string().c_str(), audioDurationKeys, startAudioLag);
                   XLOGD_INFO("------------------------------------------------------------------------");
                } else {
                   XLOGD_INFO("------------------------------------------------------------------------");
-                  XLOGD_AUTOMATION_INFO("CODE_VOICE_KEY button RELEASED event for device: %s duration <%lld ms>", controller->ieee_address_get().to_string().c_str(), audioDurationKeys);
+                  XLOGD_INFO("CODE_VOICE_KEY button RELEASED event for device: %s duration <%lld ms>", controller->ieee_address_get().to_string().c_str(), audioDurationKeys);
                   XLOGD_INFO("------------------------------------------------------------------------");
                }
 
@@ -2497,7 +2498,7 @@ void ctrlm_obj_network_ble_t::printStatus() {
       it->second->print_status();
    }
    XLOGD_INFO("BLE Network Status:    <%s>", ctrlm_rf_pair_state_str(state_));
-   XLOGD_AUTOMATION_TELEMETRY("IR Programming Status: <%s>", ctrlm_ir_state_str(ir_state_));
+   XLOGD_TELEMETRY("IR Programming Status: <%s>", ctrlm_ir_state_str(ir_state_));
    XLOGD_WARN("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }
 
@@ -2614,44 +2615,4 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::find_controller_from_upgrade_sess
         }
     }
     return id;
-}
-
-void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start_audio_params_t *params) {
-    THREAD_ID_VALIDATE();
-    int fd = -1;
-    ctrlm_controller_id_t id = params->m_controller_id;
-    params->m_fd = fd;
-    params->m_started = false;
-
-    if (!ready_) {
-       XLOGD_FATAL("Network is not ready!");
-       return;
-    }
-
-    if(!controller_exists(id)) {
-       XLOGD_WARN("Controller %u doesn't exist.", id);
-       return;
-    }
-
-    if (!ble_rcu_interface_) {
-       XLOGD_WARN("ble rcu interface not ready");
-       return;
-    }
-
-    ctrlm_hal_ble_VoiceEncoding_t  encoding  = CTRLM_HAL_BLE_ENCODING_ADPCM;
-    ctrlm_hal_ble_VoiceStreamEnd_t streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_KEY_UP;
-    auto rcu = controllers_.at(id);
-
-    if (rcu->getPressAndHoldSupport()) {
-       streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION;
-    }
-
-    uint64_t ieee_address = rcu->ieee_address_get().get_value();
-    if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd)) {
-       XLOGD_ERROR("failed to start audio streaming on remote");
-       return;
-    }
-
-    params->m_fd = fd;
-    params->m_started = true;
 }

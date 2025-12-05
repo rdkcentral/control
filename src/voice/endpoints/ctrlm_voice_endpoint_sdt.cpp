@@ -250,7 +250,7 @@ void ctrlm_voice_endpoint_sdt_t::voice_session_begin_callback_sdt(void *data, in
               keyword_verification = true;
           }
        }
-       XLOGD_AUTOMATION_INFO("session begin - ptt <%s> keyword begin <%u> end <%u> doa <%u> gain <%4.1f> db", (stream_params->push_to_talk ? "TRUE" : "FALSE"), stream_params->keyword_sample_begin, stream_params->keyword_sample_end, stream_params->keyword_doa, stream_params->dynamic_gain);
+       XLOGD_INFO("session begin - ptt <%s> keyword begin <%u> end <%u> doa <%u> gain <%4.1f> db", (stream_params->push_to_talk ? "TRUE" : "FALSE"), stream_params->keyword_sample_begin, stream_params->keyword_sample_end, stream_params->keyword_doa, stream_params->dynamic_gain);
     }
     // End handle stream parameters
 

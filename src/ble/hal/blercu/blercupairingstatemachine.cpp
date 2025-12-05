@@ -517,19 +517,19 @@ void BleRcuPairingStateMachine::onStateTransition(int oldState, int newState)
 {
     if (newState == FinishedState) {
         if (oldState == UnpairingState) {
-            XLOGD_AUTOMATION_WARN("timed-out in un-pairing phase (failed rcu may be left paired)");
+            XLOGD_WARN("timed-out in un-pairing phase (failed rcu may be left paired)");
         } else if (oldState == StartingDiscoveryState) {
-            XLOGD_AUTOMATION_ERROR("timed-out waiting for discovery started signal");
+            XLOGD_ERROR("timed-out waiting for discovery started signal");
         } else if (oldState == DiscoveringState) {
-            XLOGD_AUTOMATION_ERROR("timed-out in discovery phase (didn't find target rcu device to pair to)");
+            XLOGD_ERROR("timed-out in discovery phase (didn't find target rcu device to pair to)");
         } else if (oldState == StoppingDiscoveryState) {
-            XLOGD_AUTOMATION_ERROR("timed-out waiting for discovery to stop (suggesting something has gone wrong inside bluez)");
+            XLOGD_ERROR("timed-out waiting for discovery to stop (suggesting something has gone wrong inside bluez)");
         }
     } else if (newState == UnpairingState) {
         if (oldState == EnablePairableState || oldState == PairingState) {
-            XLOGD_AUTOMATION_WARN("timed-out in pairing phase (rcu device didn't pair within %dms)", m_pairingTimeout);
+            XLOGD_WARN("timed-out in pairing phase (rcu device didn't pair within %dms)", m_pairingTimeout);
         } else if (oldState == SetupState) {
-            XLOGD_AUTOMATION_WARN("timed-out in setup phase (rcu didn't response to all requests within %dms)", m_setupTimeout);
+            XLOGD_WARN("timed-out in setup phase (rcu didn't response to all requests within %dms)", m_setupTimeout);
         }
     }
 }

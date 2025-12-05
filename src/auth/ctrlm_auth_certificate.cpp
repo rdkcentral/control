@@ -42,7 +42,7 @@ ctrlm_auth_certificate_t::ctrlm_auth_certificate_t() {
 
    char *cert_path     = NULL;
    char *cert_password = NULL;
-   rdkcertselector_h cert_selector = rdkcertselector_new( NULL, NULL, "FBK_MTLS" );
+   rdkcertselector_h cert_selector = rdkcertselector_new( NULL, NULL, "MTLS" );
 
    if(cert_selector == NULL){
       XLOGD_TELEMETRY("cert selector init failed");

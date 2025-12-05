@@ -11,8 +11,10 @@ public:
 
    bool is_ready();
    ctrlm_power_state_t get_power_state();
+   #ifdef NETWORKED_STANDBY_MODE
    bool get_networked_standby_mode();
    bool get_wakeup_reason_voice();
+   #endif
 
 private:
    Thunder::PowerManager::ctrlm_thunder_plugin_powermanager_t *plugin;

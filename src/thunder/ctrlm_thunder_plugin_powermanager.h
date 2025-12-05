@@ -54,6 +54,7 @@ public:
      */
     ctrlm_power_state_t get_power_state();
 
+    #ifdef NETWORKED_STANDBY_MODE_ENABLED
     /**
      * This function is used to get the networked standby mode from PowerManager plugin.
      * 
@@ -66,6 +67,7 @@ public:
      * 
      */
     bool get_wakeup_reason_voice();
+    #endif
 
     void on_power_state_changed(const ctrlm_power_state_t &current_state, const ctrlm_power_state_t &new_state);
 

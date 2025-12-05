@@ -462,8 +462,6 @@ public:
    virtual std::vector<ctrlm_obj_controller_t *> get_controller_obj_list() const;
    void                                 rcu_timeout_key_release(void *data, int data_size);
 
-   virtual void                         start_controller_audio_streaming(ctrlm_voice_start_audio_params_t *params);
-
 protected:
    virtual gboolean                     key_event_hook(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_key_status_t key_status, ctrlm_key_code_t key_code);
 

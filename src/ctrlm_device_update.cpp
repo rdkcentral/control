@@ -1462,7 +1462,7 @@ gpointer ctrlm_device_update_thread(gpointer param) {
 
             ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_network_managed_upgrade, &msg, sizeof(msg), NULL, CTRLM_MAIN_NETWORK_ID_ALL, true);
 
-            if (ctrlm_is_rf4ce_enabled()) {
+            if (!network_managing_upgrade) {
                ctrlm_device_update_process_device_file(xconf_msg->update_file_name, "", NULL);
                ctrlm_device_update_rf4ce_session_resume_check(g_ctrlm_device_update.sessions, false);
             }

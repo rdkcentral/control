@@ -289,8 +289,6 @@ public:
    virtual void         iarm_event_rcu_validation_status(void);
    virtual void         iarm_event_rcu_firmware_status(const ctrlm_obj_controller_t &rcu);
 
-   virtual void         start_controller_audio_streaming(ctrlm_voice_start_audio_params_t *params);
-
    // Internal methods
 
    std::string              version_;

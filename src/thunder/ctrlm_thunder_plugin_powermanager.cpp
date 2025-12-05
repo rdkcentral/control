@@ -86,6 +86,7 @@ ctrlm_power_state_t ctrlm_thunder_plugin_powermanager_t::get_power_state() {
 }
 
 
+#ifdef NETWORKED_STANDBY_MODE_ENABLED
 /* root@pioneer-uhd:~# curl --request POST --url http://127.0.0.1:9998/jsonrpc --header 'Content-Type: application/json' --data '{ "jsonrpc": "2.0", "id": 1234567890, "method": "org.rdk.PowerManager.1.getNetworkStandbyMode", "params": {} }'
 {"jsonrpc":"2.0","id":1234567890,"result":true} */
 bool ctrlm_thunder_plugin_powermanager_t::get_networked_standby_mode() {
@@ -123,6 +124,7 @@ bool ctrlm_thunder_plugin_powermanager_t::get_wakeup_reason_voice() {
 
    return wakeup_reason_voice;
 }
+#endif
 
 void ctrlm_thunder_plugin_powermanager_t::on_power_state_changed(const ctrlm_power_state_t &current_state, const ctrlm_power_state_t &new_state) {
    ctrlm_main_queue_power_state_change_t *msg = (ctrlm_main_queue_power_state_change_t *)g_malloc(sizeof(ctrlm_main_queue_power_state_change_t));

@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-bool ctrlmf_audio_capture_init(uint32_t audio_frame_size, bool use_mic_tap);
+bool ctrlmf_audio_capture_init(uint32_t audio_frame_size, bool *has_local_mic_tap);
 bool ctrlmf_audio_capture_term(void);
 
 bool ctrlmf_audio_capture_start(const char *request_type, ctrlmf_audio_frame_t audio_frames, uint32_t audio_frame_qty, uint32_t duration);

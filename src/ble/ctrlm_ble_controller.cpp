@@ -615,13 +615,13 @@ void ctrlm_obj_controller_ble_t::print_status() {
    XLOGD_INFO("Model                        : %s", model_->to_string().c_str());
    XLOGD_INFO("MAC Address                  : %s", ieee_address_->to_string().c_str());
    XLOGD_INFO("Device Minor ID              : %d", device_minor_id_);
-   XLOGD_INFO("Battery Level                : %u%%", get_battery_percent());
+   XLOGD_AUTOMATION_INFO("Battery Level                : %u%%", get_battery_percent());
    XLOGD_INFO("HW Revision                  : %s", hw_revision_->to_string().c_str());
    XLOGD_INFO("FW Revision                  : %s", fw_revision_->to_string().c_str());
-   XLOGD_INFO("SW Revision                  : %s", sw_revision_->to_string().c_str());
+   XLOGD_AUTOMATION_INFO("SW Revision                  : %s", sw_revision_->to_string().c_str());
    XLOGD_INFO("Serial Number                : %s", serial_number_->to_string().c_str());
    XLOGD_INFO("");
-   XLOGD_INFO("Connected                    : %s", (connected_==true) ? "true" : "false");
+   XLOGD_AUTOMATION_INFO("Connected                    : %s", (connected_==true) ? "true" : "false");
    XLOGD_INFO("Last Activity Time           : %s", ctrlm_utils_time_as_string(this->last_activity_time_get()).c_str());
    XLOGD_INFO("Bound Time                   : %s", ctrlm_utils_time_as_string(this->time_binding_get()).c_str());
    XLOGD_INFO("");

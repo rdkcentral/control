@@ -1772,16 +1772,16 @@ void ctrlm_voice_t::voice_session_data_post_processing(int bytes_sent, const cha
        float rx_rate = (elapsed == 0) ? 0 : (session->audio_sent_samples * 2 * 8) / elapsed;
 
        session->timeout_packet_tag = g_timeout_add(timeout, ctrlm_voice_packet_timeout, NULL);
-       XLOGD_DEBUG("Audio %s bytes <%lu> samples <%lu> rate <%6.2f kbps> timeout <%lu ms>", action, session->audio_sent_bytes, session->audio_sent_samples, rx_rate, timeout);
+       XLOGD_AUTOMATION_DEBUG("Audio %s bytes <%lu> samples <%lu> rate <%6.2f kbps> timeout <%lu ms>", action, session->audio_sent_bytes, session->audio_sent_samples, rx_rate, timeout);
     } else {
        #ifdef VOICE_BUFFER_STATS
        if(voice_buffer_warning_triggered) {
-          XLOGD_DEBUG("Audio %s bytes <%lu> samples <%lu> pkt cnt <%3u> elapsed <%8llu ms> lag <%8lld ms> (%4.2f packets)", action, session->audio_sent_bytes, session->audio_sent_samples, packets_total, session_time / 1000, session_delta / 1000, (((float)session_delta) / this->voice_packet_interval));
+          XLOGD_AUTOMATION_DEBUG("Audio %s bytes <%lu> samples <%lu> pkt cnt <%3u> elapsed <%8llu ms> lag <%8lld ms> (%4.2f packets)", action, session->audio_sent_bytes, session->audio_sent_samples, packets_total, session_time / 1000, session_delta / 1000, (((float)session_delta) / this->voice_packet_interval));
        } else {
-          XLOGD_DEBUG("Audio %s bytes <%lu> samples <%lu>", action, session->audio_sent_bytes, session->audio_sent_samples);
+          XLOGD_AUTOMATION_DEBUG("Audio %s bytes <%lu> samples <%lu>", action, session->audio_sent_bytes, session->audio_sent_samples);
        }
        #else
-       XLOGD_DEBUG("Audio %s bytes <%lu> samples <%lu>", action, session->audio_sent_bytes, session->audio_sent_samples);
+       XLOGD_AUTOMATION_DEBUG("Audio %s bytes <%lu> samples <%lu>", action, session->audio_sent_bytes, session->audio_sent_samples);
        #endif
     }
 }
@@ -2061,10 +2061,10 @@ void ctrlm_voice_t::voice_session_timeout() {
       signed long long elapsed = rdkx_timestamp_subtract_ms(session->session_timing.ctrl_audio_rxd_first, timestamp);
       float rx_rate = (elapsed == 0) ? 0 : (session->audio_sent_samples * 2 * 8) / elapsed;
 
-      XLOGD_INFO("elapsed time <%llu> ms rx samples <%u> rate <%6.1f> kbps", elapsed, session->audio_sent_samples, rx_rate);
+      XLOGD_AUTOMATION_INFO("elapsed time <%llu> ms rx samples <%u> rate <%6.1f> kbps", elapsed, session->audio_sent_samples, rx_rate);
       reason = CTRLM_VOICE_SESSION_END_REASON_MINIMUM_QOS;
    }
-   XLOGD_INFO("%s", ctrlm_voice_session_end_reason_str(reason));
+   XLOGD_AUTOMATION_INFO("%s", ctrlm_voice_session_end_reason_str(reason));
    this->voice_session_end(session, reason);
 }
 
@@ -2981,7 +2981,7 @@ void ctrlm_voice_t::voice_stream_end_callback(ctrlm_voice_stream_end_cb_t *strea
                 stream_duration    = (session->packets_processed * frame_duration_us) / 1000;
                 samples_per_packet = (session->format.value.adpcm_frame.size_packet - session->format.value.adpcm_frame.size_header) * 2; // 2 samples per byte for ADPCM
             }
-            XLOGD_TELEMETRY("src <%s> Packets Lost/Total <%u/%u> %.02f%% duration <%u> ms", ctrlm_voice_device_str(session->voice_device), session->packets_lost, session->packets_lost + session->packets_processed, 100.0 * ((double)session->packets_lost / (double)(session->packets_lost + session->packets_processed)), stream_duration);
+            XLOGD_AUTOMATION_TELEMETRY("src <%s> Packets Lost/Total <%u/%u> %.02f%% duration <%u> ms", ctrlm_voice_device_str(session->voice_device), session->packets_lost, session->packets_lost + session->packets_processed, 100.0 * ((double)session->packets_lost / (double)(session->packets_lost + session->packets_processed)), stream_duration);
             #ifdef TELEMETRY_SUPPORT
             if(this->prefs.telemetry_session_stats) {
                 uint32_t packets_total = session->packets_lost + session->packets_processed;

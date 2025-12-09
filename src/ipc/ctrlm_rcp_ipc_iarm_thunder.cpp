@@ -36,6 +36,7 @@ ctrlm_rcp_ipc_iarm_thunder_t::ctrlm_rcp_ipc_iarm_thunder_t() : ctrlm_ipc_iarm_t(
 {
     XLOGD_INFO("");
     configure();
+    set_api_revision(CTRLM_MAIN_IARM_BUS_API_REVISION);
 }
 
 ctrlm_rcp_ipc_iarm_thunder_t::~ctrlm_rcp_ipc_iarm_thunder_t()
@@ -125,7 +126,7 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_status(const ctrlm_rcp_ipc_net_status_t &n
         return(false);
     }
 
-    return broadcast_iarm_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_RCU_STATUS, ret);
+    return broadcast_iarm_event<ctrlm_main_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_RCU_STATUS, ret);
 }
 
 bool ctrlm_rcp_ipc_iarm_thunder_t::on_validation_status(const ctrlm_rcp_ipc_validation_status_t &validation_status) const
@@ -151,7 +152,7 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_validation_status(const ctrlm_rcp_ipc_vali
         return(false);
     }
 
-    return broadcast_iarm_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_VALIDATION_STATUS, ret);
+    return broadcast_iarm_event<ctrlm_main_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_VALIDATION_STATUS, ret);
 }
 
 bool ctrlm_rcp_ipc_iarm_thunder_t::on_firmware_update_progress(const ctrlm_rcp_ipc_upgrade_status_t &upgrade_status) const
@@ -177,7 +178,7 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_firmware_update_progress(const ctrlm_rcp_i
         return(false);
     }
 
-    return broadcast_iarm_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_FIRMWARE_UPDATE_PROGRESS, ret);
+    return broadcast_iarm_event<ctrlm_main_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_FIRMWARE_UPDATE_PROGRESS, ret);
 }
 
 bool ctrlm_rcp_ipc_iarm_thunder_t::on_validation(const ctrlm_rcp_ipc_validation_status_t &validation_status) const
@@ -198,7 +199,7 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_validation(const ctrlm_rcp_ipc_validation_
         return(false);
     }
 
-    return broadcast_iarm_event(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_VALIDATION_STATUS, ret);
+    return broadcast_iarm_event<ctrlm_main_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_VALIDATION_STATUS, ret);
 }
 
 IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_pairing(void *arg)

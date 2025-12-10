@@ -539,7 +539,7 @@ void GattRemoteControlService::requestLastKeypress()
     \internal
 
     Sends a request to org.bluez.GattCharacteristic1.Value() to get the value
-    propery of the characteristic which contains the raw battery voltage.
+    property of the characteristic which contains the raw battery voltage.
 
  */
 void GattRemoteControlService::requestRawBatteryVoltage()
@@ -659,7 +659,7 @@ void GattRemoteControlService::requestAdvConfigCustomList()
 void GattRemoteControlService::onRawBatteryVoltageChanged(const std::vector<uint8_t> &newValue) {
     m_unloadedVoltage = newValue[0];
     m_loadedVoltage = newValue[1];
-    m_voltagePercentage = newValue[2];
+    m_voltagePercentage = std::clamp(newValue[2], uint8_t(0), uint8_t(100)); // Clamp percentage between 0 - 100
 
     // Formats an 8-bit unsigned integer as a voltage string.
     // Upper 2 bits = whole voltage (0-3v), lower 6 bits = 1/64v increments.

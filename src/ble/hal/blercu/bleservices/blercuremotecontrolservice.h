@@ -64,7 +64,7 @@ public:
     {
         m_lastKeypressChangedSlots.addSlot(func);
     }
-    inline void addRawBatteryVolatageChangedSlot(const Slot<const std::vector<uint8_t> &> &func)
+    inline void addRawBatteryVoltageChangedSlot(const Slot<const std::vector<uint8_t> &> &func)
     {
         m_rawBatteryVoltageChangedSlots.addSlot(func);
     }

@@ -677,7 +677,7 @@ void GattRemoteControlService::onRawBatteryVoltageChanged(const std::vector<uint
         return buffer;
     };
 
-    XLOGD_TELEMETRY("Successfully read raw battery voltage characteristic, unloaded = %s, loaded = %s, percentage = %u%%",
+    XLOGD_TELEMETRY("Successfully read raw battery voltage characteristic, unloaded = %s, loaded = %s, loaded percentage = %u%%",
        formatVoltage(m_unloadedVoltage).c_str(), formatVoltage(m_loadedVoltage).c_str(), (unsigned int)m_voltagePercentage);
     m_rawBatteryVoltageChangedSlots.invoke(newValue);
 }

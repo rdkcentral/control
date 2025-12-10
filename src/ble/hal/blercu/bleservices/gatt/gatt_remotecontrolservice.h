@@ -92,6 +92,7 @@ private:
 private:
     void requestStartUnpairNotify();
     void requestStartRebootNotify();
+    void requestRawBatteryVoltageChangedNotify();
     void requestUnpairReason();
     void requestRebootReason();
     void requestAssertReport();

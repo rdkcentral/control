@@ -252,6 +252,7 @@ void GattRemoteControlService::onEnteredState(int state)
     } else if (state == EnableNotificationsState) {
         requestStartUnpairNotify();
         requestStartRebootNotify();
+        requestRawBatteryVoltageChangedNotify();
     }
 }
 
@@ -309,6 +310,30 @@ void GattRemoteControlService::requestStartRebootNotify()
     m_rebootReasonCharacteristic->enableNotifications(
             Slot<const std::vector<uint8_t> &>(m_isAlive,
                 std::bind(&GattRemoteControlService::onRebootReasonChanged, this, std::placeholders::_1)), 
+            PendingReply<>(m_isAlive, replyHandler));
+}
+
+void GattRemoteControlService::requestRawBatteryVoltageChangedNotify()
+{
+    auto replyHandler = [this](PendingReply<> *reply)
+        {
+            // check for errors
+            if (reply->isError()) {
+                // this is bad if this happens as we won't get updates, so we install a timer to
+                // retry enabling notifications in a couple of seconds time
+                XLOGD_ERROR("failed to enable raw battery voltage characteristic notifications due to <%s>",
+                        reply->errorMessage().c_str());
+
+                m_stateMachine.cancelDelayedEvents(RetryStartNotifyEvent);
+                m_stateMachine.postDelayedEvent(RetryStartNotifyEvent, 2000);
+            } else {
+                XLOGD_INFO("request to start notifications on Raw Battery Voltage characteristic succeeded");
+            }
+        };
+
+    m_rebootReasonCharacteristic->enableNotifications(
+            Slot<const std::vector<uint8_t> &>(m_isAlive,
+                std::bind(&GattRemoteControlService::onRawBatteryVoltageChanged, this, std::placeholders::_1)),
             PendingReply<>(m_isAlive, replyHandler));
 }
 

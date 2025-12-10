@@ -753,7 +753,7 @@ IARM_Result_t ctrlm_main_iarm_call_start_pair_with_code(void *arg) {
       return(IARM_RESULT_INVALID_PARAM);
    }
 
-   XLOGD_INFO("params->network_id = <%d>, params->pair_code = 0x%X", params->network_id, params->pair_code);
+   XLOGD_AUTOMATION_INFO("params->network_id = <%d>, params->pair_code = 0x%X", params->network_id, params->pair_code);
 
    // Signal completion of the operation
    sem_t semaphore;

@@ -95,35 +95,35 @@ bool ctrlm_voice_ipc_iarm_thunder_t::register_ipc() const {
     XLOGD_INFO("Thunder");
     // NOTE: The IARM events are registered in ctrlm_main.cpp
 
-    if(register_iarm_call(CTRLM_VOICE_IARM_CALL_STATUS, &ctrlm_voice_ipc_iarm_thunder_t::status)) {
+    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_STATUS, &ctrlm_voice_ipc_iarm_thunder_t::status)) {
         ret = false;
     }
 
-    if(register_iarm_call(CTRLM_VOICE_IARM_CALL_CONFIGURE_VOICE, &ctrlm_voice_ipc_iarm_thunder_t::configure_voice)) {
+    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_CONFIGURE_VOICE, &ctrlm_voice_ipc_iarm_thunder_t::configure_voice)) {
         ret = false;
     }
 
-    if(register_iarm_call(CTRLM_VOICE_IARM_CALL_SET_VOICE_INIT, &ctrlm_voice_ipc_iarm_thunder_t::set_voice_init)) {
+    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_SET_VOICE_INIT, &ctrlm_voice_ipc_iarm_thunder_t::set_voice_init)) {
         ret = false;
     }
 
-    if(register_iarm_call(CTRLM_VOICE_IARM_CALL_SEND_VOICE_MESSAGE, &ctrlm_voice_ipc_iarm_thunder_t::send_voice_message)) {
+    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_SEND_VOICE_MESSAGE, &ctrlm_voice_ipc_iarm_thunder_t::send_voice_message)) {
         ret = false;
     }
 
-    if(register_iarm_call(CTRLM_VOICE_IARM_CALL_SESSION_TYPES, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_types)) {
+    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_SESSION_TYPES, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_types)) {
         ret = false;
     }
 
-    if(register_iarm_call(CTRLM_VOICE_IARM_CALL_SESSION_REQUEST, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_request)) {
+    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_SESSION_REQUEST, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_request)) {
         ret = false;
     }
 
-    if(register_iarm_call(CTRLM_VOICE_IARM_CALL_SESSION_TERMINATE, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_terminate)) {
+    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_SESSION_TERMINATE, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_terminate)) {
         ret = false;
     }
 
-    if(register_iarm_call(CTRLM_VOICE_IARM_CALL_SESSION_AUDIO_STREAM_START, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_audio_stream_start)) {
+    if(!register_iarm_call(CTRLM_VOICE_IARM_CALL_SESSION_AUDIO_STREAM_START, &ctrlm_voice_ipc_iarm_thunder_t::voice_session_audio_stream_start)) {
         ret = false;
     }
 

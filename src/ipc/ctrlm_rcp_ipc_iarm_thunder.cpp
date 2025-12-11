@@ -397,19 +397,16 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_net_status(void *arg)
         return(IARM_RESULT_INVALID_PARAM);
     }
 
-    int net_type = CTRLM_NETWORK_TYPE_INVALID;
-    if (!config.config_value_get(NET_TYPE, net_type)) {
-        XLOGD_INFO("Missing %s parameter - defaulting to all networks", NET_TYPE);
-    }
 
     std::shared_ptr<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>> params = std::make_shared<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>>();
-    params->set_net_id((net_type == CTRLM_NETWORK_TYPE_INVALID) ? CTRLM_MAIN_NETWORK_ID_ALL : ctrlm_network_id_get(static_cast<ctrlm_network_type_t>(net_type)));
+    params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
 
     sync_send_netw_handler_to_main_queue_new<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>,
                                              ctrlm_main_queue_msg_get_rcu_status_t>
                                              (params,
                                              (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_get_rcu_status);
 
+    // TODO: consolidate to single status object
     json_t *ret = json_object();
     json_t *status_array = json_array();
     std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> status_map = params->get_reply();
@@ -463,13 +460,8 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_last_keypress(void *arg)
         return(IARM_RESULT_INVALID_PARAM);
     }
 
-    int net_type = CTRLM_NETWORK_TYPE_INVALID;
-    if (!config.config_value_get(NET_TYPE, net_type)) {
-        XLOGD_INFO("Missing %s parameter - defaulting to all networks", NET_TYPE);
-    }
-
     std::shared_ptr<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_main_iarm_call_last_key_info_t>> params = std::make_shared<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_main_iarm_call_last_key_info_t>>();
-    params->set_net_id((net_type == CTRLM_NETWORK_TYPE_INVALID) ? CTRLM_MAIN_NETWORK_ID_ALL : ctrlm_network_id_get(static_cast<ctrlm_network_type_t>(net_type)));
+    params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
 
     sync_send_netw_handler_to_main_queue_new<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_main_iarm_call_last_key_info_t>,
                                              ctrlm_main_queue_msg_get_last_keypress_t>
@@ -484,18 +476,13 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_last_keypress(void *arg)
     ctrlm_network_id_t net_id_index = 0;
     int                err = 0;
 
-    if (params->get_net_id() != CTRLM_MAIN_NETWORK_ID_ALL) {
-        itr = key_info_map.find(params->get_net_id());
-        key_info = itr->second;
-    } else {
-        for (itr = key_info_map.begin(); itr != key_info_map.end(); itr++) {
-            if (itr->second.timestamp > time_last_key) {
-                time_last_key = itr->second.timestamp;
-                net_id_index = itr->first;
-            }
+    for (itr = key_info_map.begin(); itr != key_info_map.end(); itr++) {
+        if (itr->second.timestamp > time_last_key) {
+            time_last_key = itr->second.timestamp;
+            net_id_index = itr->first;
         }
-        key_info = key_info_map[net_id_index];
     }
+    key_info = key_info_map[net_id_index];
 
     err |= json_object_set_new_nocheck(ret, CONTROLLER_ID,        json_integer(key_info.controller_id));
     err |= json_object_set_new_nocheck(ret, TIMESTAMP,            json_integer(key_info.timestamp));
@@ -544,11 +531,6 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::find_my_remote(void *arg)
         return(IARM_RESULT_INVALID_PARAM);
     }
 
-    int net_type = CTRLM_NETWORK_TYPE_INVALID;
-    if(!config.config_value_get(NET_TYPE, net_type)) {
-        XLOGD_INFO("Missing %s parameter - defaulting to all networks", NET_TYPE);
-    }
-
     std::string level;
     if(!config.config_value_get(LEVEL, level)) {
         XLOGD_ERROR("Missing %s parameter", LEVEL);
@@ -556,7 +538,7 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::find_my_remote(void *arg)
     }
 
     std::shared_ptr<ctrlm_iarm_call_FindMyRemote_params_t> params = std::make_shared<ctrlm_iarm_call_FindMyRemote_params_t>();
-    params->set_net_id((net_type == CTRLM_NETWORK_TYPE_INVALID) ? CTRLM_MAIN_NETWORK_ID_ALL : ctrlm_network_id_get(static_cast<ctrlm_network_type_t>(net_type)));
+    params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
     params->level    = ctrlm_utils_str_to_fmr_level(level);
     params->duration = 0;
 
@@ -645,10 +627,6 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::write_rcu_wakeup_config(void *arg)
          return(IARM_RESULT_INVALID_PARAM);
     }
 
-    int net_type = CTRLM_NETWORK_TYPE_INVALID;
-    if(!config.config_value_get(NET_TYPE, net_type)) {
-         XLOGD_INFO("Missing %s parameter - defaulting to all networks", NET_TYPE);
-    }
 
     std::string wakeup_config;
     if(!config.config_value_get(WAKEUP_CONFIG, wakeup_config)) {
@@ -665,7 +643,7 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::write_rcu_wakeup_config(void *arg)
     }
 
     ctrlm_iarm_call_WriteRcuWakeupConfig_params_t params = {};
-    params.network_id     = (net_type == CTRLM_NETWORK_TYPE_INVALID) ? CTRLM_MAIN_NETWORK_ID_ALL : ctrlm_network_id_get(static_cast<ctrlm_network_type_t>(net_type));
+    params.network_id     = CTRLM_MAIN_NETWORK_ID_ALL;
     params.config         = ctrlm_utils_str_to_wakeup_config(wakeup_config);
     params.customListSize = ctrlm_utils_custom_key_str_to_array(custom_keys, params.customList);
 

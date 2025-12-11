@@ -331,7 +331,7 @@ void GattRemoteControlService::requestRawBatteryVoltageChangedNotify()
             }
         };
 
-    m_rebootReasonCharacteristic->enableNotifications(
+    m_rawBatteryVoltageCharacteristic->enableNotifications(
             Slot<const std::vector<uint8_t> &>(m_isAlive,
                 std::bind(&GattRemoteControlService::onRawBatteryVoltageChanged, this, std::placeholders::_1)),
             PendingReply<>(m_isAlive, replyHandler));

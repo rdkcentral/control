@@ -1344,7 +1344,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                                                                        ctrlm_voice_device_t device_type, ctrlm_voice_format_t format,
                                                                        voice_session_req_stream_params *stream_params,
                                                                        const char *controller_name, const char *sw_version, const char *hw_version, double voltage, bool command_status,
-                                                                       ctrlm_timestamp_t *timestamp, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param, bool use_external_data_pipe, bool press_and_hold, const char *l_transcription_in, const char *audio_file_in, const uuid_t *uuid, bool low_latency, bool low_cpu_util, int audio_fd) {
+                                                                       ctrlm_timestamp_t *timestamp, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param, bool use_external_data_pipe, bool press_and_hold, std::function<void(ctrlm_voice_start_audio_params_t *)> cb_start_audio, ctrlm_voice_start_audio_params_t *cb_audio_start_params, const char *l_transcription_in, const char *audio_file_in, const uuid_t *uuid, bool low_latency, bool low_cpu_util, int audio_fd) {
 
     ctrlm_voice_session_t *session = &this->voice_session[voice_device_to_session_group(device_type)];
 
@@ -1376,6 +1376,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
 
         // Cancel current speech router session
         XLOGD_INFO("Waiting on the results from previous session, aborting this and continuing..");
+        pre_session_terminate(cb_start_audio, cb_audio_start_params, cb_confirm, cb_confirm_param);
         xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.
     }
     bool request_new_session = true;
@@ -1387,6 +1388,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                 request_new_session = false;
             } else { // Cancel current speech router session
                 XLOGD_WARN("Session in progress with same controller - src <%s> dst <%s>, aborting this and continuing..", ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
+                pre_session_terminate(cb_start_audio, cb_audio_start_params, cb_confirm, cb_confirm_param);
                 xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.
             }
         } else { // session in progress with different controller
@@ -1770,16 +1772,16 @@ void ctrlm_voice_t::voice_session_data_post_processing(int bytes_sent, const cha
        float rx_rate = (elapsed == 0) ? 0 : (session->audio_sent_samples * 2 * 8) / elapsed;
 
        session->timeout_packet_tag = g_timeout_add(timeout, ctrlm_voice_packet_timeout, NULL);
-       XLOGD_DEBUG("Audio %s bytes <%lu> samples <%lu> rate <%6.2f kbps> timeout <%lu ms>", action, session->audio_sent_bytes, session->audio_sent_samples, rx_rate, timeout);
+       XLOGD_AUTOMATION_DEBUG("Audio %s bytes <%lu> samples <%lu> rate <%6.2f kbps> timeout <%lu ms>", action, session->audio_sent_bytes, session->audio_sent_samples, rx_rate, timeout);
     } else {
        #ifdef VOICE_BUFFER_STATS
        if(voice_buffer_warning_triggered) {
-          XLOGD_DEBUG("Audio %s bytes <%lu> samples <%lu> pkt cnt <%3u> elapsed <%8llu ms> lag <%8lld ms> (%4.2f packets)", action, session->audio_sent_bytes, session->audio_sent_samples, packets_total, session_time / 1000, session_delta / 1000, (((float)session_delta) / this->voice_packet_interval));
+          XLOGD_AUTOMATION_DEBUG("Audio %s bytes <%lu> samples <%lu> pkt cnt <%3u> elapsed <%8llu ms> lag <%8lld ms> (%4.2f packets)", action, session->audio_sent_bytes, session->audio_sent_samples, packets_total, session_time / 1000, session_delta / 1000, (((float)session_delta) / this->voice_packet_interval));
        } else {
-          XLOGD_DEBUG("Audio %s bytes <%lu> samples <%lu>", action, session->audio_sent_bytes, session->audio_sent_samples);
+          XLOGD_AUTOMATION_DEBUG("Audio %s bytes <%lu> samples <%lu>", action, session->audio_sent_bytes, session->audio_sent_samples);
        }
        #else
-       XLOGD_DEBUG("Audio %s bytes <%lu> samples <%lu>", action, session->audio_sent_bytes, session->audio_sent_samples);
+       XLOGD_AUTOMATION_DEBUG("Audio %s bytes <%lu> samples <%lu>", action, session->audio_sent_bytes, session->audio_sent_samples);
        #endif
     }
 }
@@ -2059,10 +2061,10 @@ void ctrlm_voice_t::voice_session_timeout() {
       signed long long elapsed = rdkx_timestamp_subtract_ms(session->session_timing.ctrl_audio_rxd_first, timestamp);
       float rx_rate = (elapsed == 0) ? 0 : (session->audio_sent_samples * 2 * 8) / elapsed;
 
-      XLOGD_INFO("elapsed time <%llu> ms rx samples <%u> rate <%6.1f> kbps", elapsed, session->audio_sent_samples, rx_rate);
+      XLOGD_AUTOMATION_INFO("elapsed time <%llu> ms rx samples <%u> rate <%6.1f> kbps", elapsed, session->audio_sent_samples, rx_rate);
       reason = CTRLM_VOICE_SESSION_END_REASON_MINIMUM_QOS;
    }
-   XLOGD_INFO("%s", ctrlm_voice_session_end_reason_str(reason));
+   XLOGD_AUTOMATION_INFO("%s", ctrlm_voice_session_end_reason_str(reason));
    this->voice_session_end(session, reason);
 }
 
@@ -2979,7 +2981,7 @@ void ctrlm_voice_t::voice_stream_end_callback(ctrlm_voice_stream_end_cb_t *strea
                 stream_duration    = (session->packets_processed * frame_duration_us) / 1000;
                 samples_per_packet = (session->format.value.adpcm_frame.size_packet - session->format.value.adpcm_frame.size_header) * 2; // 2 samples per byte for ADPCM
             }
-            XLOGD_TELEMETRY("src <%s> Packets Lost/Total <%u/%u> %.02f%% duration <%u> ms", ctrlm_voice_device_str(session->voice_device), session->packets_lost, session->packets_lost + session->packets_processed, 100.0 * ((double)session->packets_lost / (double)(session->packets_lost + session->packets_processed)), stream_duration);
+            XLOGD_AUTOMATION_TELEMETRY("src <%s> Packets Lost/Total <%u/%u> %.02f%% duration <%u> ms", ctrlm_voice_device_str(session->voice_device), session->packets_lost, session->packets_lost + session->packets_processed, 100.0 * ((double)session->packets_lost / (double)(session->packets_lost + session->packets_processed)), stream_duration);
             #ifdef TELEMETRY_SUPPORT
             if(this->prefs.telemetry_session_stats) {
                 uint32_t packets_total = session->packets_lost + session->packets_processed;
@@ -4242,5 +4244,16 @@ void ctrlm_voice_t::url_hostname_patterns(const std::vector<std::string> &obj_se
     for(auto &itr : obj_server_hosts) {
         XLOGD_INFO("Adding server host pattern <%s>", itr.c_str());
         this->url_hostname_pattern_add(itr.c_str());
+    }
+}
+
+void ctrlm_voice_t::pre_session_terminate(std::function<void(ctrlm_voice_start_audio_params_t *)> cb_start_audio, ctrlm_voice_start_audio_params_t *cb_audio_start_params, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param) {
+    if (cb_start_audio != nullptr && cb_audio_start_params != nullptr) {
+        if(cb_confirm != NULL && cb_confirm_param != NULL) {
+           cb_audio_start_params->m_cb_confirm_voice_obj = ctrlm_voice_session_response_confirm;
+           cb_audio_start_params->m_cb_confirm_param     = NULL;
+           cb_audio_start_params->m_status               = (this->prefs.par_voice_enabled) ? VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE : VOICE_SESSION_RESPONSE_AVAILABLE;
+        }
+        cb_start_audio(cb_audio_start_params);
     }
 }

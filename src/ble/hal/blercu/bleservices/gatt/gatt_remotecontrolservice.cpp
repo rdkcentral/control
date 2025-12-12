@@ -315,6 +315,11 @@ void GattRemoteControlService::requestStartRebootNotify()
 
 void GattRemoteControlService::requestRawBatteryVoltageChangedNotify()
 {
+    if (!m_rawBatteryVoltageCharacteristic || !m_rawBatteryVoltageCharacteristic->isValid()) {
+        XLOGD_WARN("Invalid raw battery voltage characteristic, skipping notification setup");
+        return;
+    }
+
     auto replyHandler = [this](PendingReply<> *reply)
         {
             // check for errors

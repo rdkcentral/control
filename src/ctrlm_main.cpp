@@ -113,11 +113,6 @@ using namespace std;
 
 #define CTRLM_MAIN_QUEUE_REPEAT_DELAY   (5000)
 
-#define NETWORK_ID_BASE_RF4CE   1
-#define NETWORK_ID_BASE_IP      11
-#define NETWORK_ID_BASE_BLE     21
-#define NETWORK_ID_BASE_CUSTOM  41
-
 #define CTRLM_MAIN_FIRST_BOOT_TIME_MAX (180) // maximum amount of uptime allowed (in seconds) for declaring "first boot"
 
 typedef void (*ctrlm_queue_push_t)(gpointer);

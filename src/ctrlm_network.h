@@ -36,6 +36,11 @@
 
 #define THREAD_ID_VALIDATE() thread_id_validate(__FUNCTION__)
 
+#define NETWORK_ID_BASE_RF4CE   1
+#define NETWORK_ID_BASE_IP      11
+#define NETWORK_ID_BASE_BLE     21
+#define NETWORK_ID_BASE_CUSTOM  41
+
 typedef struct : public ctrlm_network_all_ipc_result_wrapper_t {
    unsigned char            api_revision;
    unsigned int             timeout;

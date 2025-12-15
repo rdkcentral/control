@@ -2440,7 +2440,7 @@ void ctrlm_obj_network_ble_t::controller_remove(ctrlm_controller_id_t controller
 
 ctrlm_controller_id_t ctrlm_obj_network_ble_t::controller_id_assign() {
    // Get the next available controller id
-   for(ctrlm_controller_id_t index = 1; index < CTRLM_MAIN_CONTROLLER_ID_ALL; index++) {
+   for(ctrlm_controller_id_t index = BLE_RCU_ID_RANGE_MIN; index < BLE_RCU_ID_RANGE_MAX; index++) {
       if(!controller_exists(index)) {
          XLOGD_INFO("controller id %u", index);
          return(index);
@@ -2461,6 +2461,10 @@ void ctrlm_obj_network_ble_t::controllers_load() {
       add_controller->db_load();
       if (add_controller->get_name().find("IR Device") != std::string::npos) {
          XLOGD_WARN("deleting legacy IR controller object");
+         add_controller->db_destroy();
+         delete add_controller;
+      } else if (id < BLE_RCU_ID_RANGE_MIN || id > BLE_RCU_ID_RANGE_MAX) {
+          XLOGD_WARN("Deleting legacy controller id <%d> entry - will update on re-connect", id);
          add_controller->db_destroy();
          delete add_controller;
       } else {

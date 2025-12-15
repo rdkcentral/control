@@ -41,6 +41,8 @@
 
 // End Includes
 
+#define BLE_RCU_ID_RANGE_MIN (NETWORK_ID_BASE_BLE)
+#define BLE_RCU_ID_RANGE_MAX ((BLE_RCU_ID_RANGE_MIN)+(10))
 
 typedef struct {
    ctrlm_main_queue_msg_header_t               header;

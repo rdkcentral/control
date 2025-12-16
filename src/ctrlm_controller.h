@@ -59,7 +59,6 @@ public:
    std::string             get_irdb_entry_id_name_avr() const;
 
    ctrlm_controller_id_t   controller_id_get() const;
-   void                    controller_id_set(ctrlm_controller_id_t id);
    ctrlm_network_id_t      network_id_get() const;
    std::string             device_id_get() const;
    std::string             service_account_id_get() const;
@@ -68,6 +67,7 @@ public:
    std::string             stb_name_get() const;
    void                    set_device_minor_id(int device_minor_id);
    int                     get_device_minor_id() const;
+   void                    update_controller_id_and_db_entry(std::string db_name, ctrlm_network_id_t network_id, ctrlm_controller_id_t id);
 
    virtual ctrlm_controller_capabilities_t get_capabilities() const;
 

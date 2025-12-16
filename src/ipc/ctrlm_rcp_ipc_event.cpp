@@ -147,7 +147,7 @@ ctrlm_rf_pair_state_t ctrlm_rcp_ipc_net_status_t::get_rf_pair_state(void)
 
 void ctrlm_rcp_ipc_net_status_t::get_controller_status_list(std::vector<ctrlm_rcp_ipc_controller_status_t> &list)
 {
-    for (auto status : controller_status_list_) {
+    for (const auto &status : controller_status_list_) {
         list.push_back(status);
     }
 }

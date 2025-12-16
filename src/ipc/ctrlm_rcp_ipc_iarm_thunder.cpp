@@ -425,7 +425,7 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_net_status(void *arg)
     for (auto &it : status_map) {
         it.second.get_controller_status_list(remotes);
     }
-    for (auto remote : remotes) {
+    for (const auto &remote : remotes) {
         err |= json_array_append_new(remote_array, remote.to_json());
     }
     // For now default to RF4CE network reporting if available

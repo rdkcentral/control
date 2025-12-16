@@ -2465,10 +2465,21 @@ void ctrlm_obj_network_ble_t::controllers_load() {
          delete add_controller;
          continue;
       }
-      if (id < BLE_RCU_ID_RANGE_MIN || id > BLE_RCU_ID_RANGE_MAX) {
-         XLOGD_WARN("Legacy BLE RCU controller id <%d> found - updating controller id", id);
-         id = controller_id_assign();
-         add_controller->controller_id_set(id);
+      if (id < BLE_RCU_ID_RANGE_MIN || id >= BLE_RCU_ID_RANGE_MAX) {
+         ctrlm_controller_id_t new_id = controller_id_assign();
+
+         add_controller->db_destroy(); // safely can destroy the old entry since it was loaded earlier
+
+         if (new_id == 0) {
+             XLOGD_ERROR("Unable to assign a new ID - deleting controller <%d>", id);
+             delete add_controller;
+             continue;
+         }
+
+         add_controller->update_controller_id_and_db_entry(db_name_get(), network_id_get(), new_id);
+         add_controller->db_create(); // create the new entry with its new ID
+         XLOGD_WARN("Legacy BLE RCU controller id <%d> found - updating controller id to <%d>", id, new_id);
+         id = new_id;
       }
       XLOGD_INFO("adding BLE controller with ID = 0x%X", id);
       controllers_[id] = add_controller;

@@ -410,3 +410,7 @@ uint8_t ctrlm_obj_controller_t::get_upgrade_increment() const {
 bool ctrlm_obj_controller_t::is_upgrade_progress_at_increment() const {
     return ((upgrade_progress_ % upgrade_increment_ == 0) || (upgrade_progress_ == 100));
 }
+
+void ctrlm_obj_controller_t::controller_id_set(ctrlm_controller_id_t id) {
+    controller_id_ = id;
+}

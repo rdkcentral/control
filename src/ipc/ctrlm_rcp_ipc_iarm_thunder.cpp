@@ -410,32 +410,40 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_net_status(void *arg)
     json_t *status             = json_object();
     json_t *net_type_supported = json_array();
     json_t *remote_array       = json_array();
+
     std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> status_map = params->get_reply();
     std::vector<ctrlm_rcp_ipc_controller_status_t> remotes;
-    std::string ir_prog_state, rf_pair_state;
+
+    ctrlm_network_type_t  type = CTRLM_NETWORK_TYPE_INVALID;
+    ctrlm_ir_state_t      ir_prog_state = CTRLM_IR_STATE_UNKNOWN;
+    ctrlm_rf_pair_state_t rf_pair_state = CTRLM_RF_PAIR_STATE_UNKNOWN;
     int err = 0;
 
     for (auto const &it : ctrlm_network_types_get()) {
         err |= json_array_append_new(net_type_supported, json_integer(it));
     }
-
     for (auto &it : status_map) {
-        if (it.second.get_type() == CTRLM_NETWORK_TYPE_BLUETOOTH_LE) {
-            ir_prog_state = it.second.get_ir_prog_state();
-        }
-        rf_pair_state = it.second.get_rf_pair_state();
         it.second.get_controller_status_list(remotes);
     }
-
     for (auto remote : remotes) {
         err |= json_array_append_new(remote_array, remote.to_json());
+    }
+    // For now default to RF4CE network reporting if available
+    for (auto &it : status_map) {
+        ir_prog_state = it.second.get_ir_prog_state();
+        rf_pair_state = it.second.get_rf_pair_state();
+        type          = it.second.get_type();
+
+        if (type == CTRLM_NETWORK_TYPE_RF4CE) {
+            break;
+        }
     }
 
     err |= json_object_set_new_nocheck(status, REMOTE_DATA,         remote_array);
     err |= json_object_set_new_nocheck(status, NET_TYPES_SUPPORTED, net_type_supported);
-    err |= json_object_set_new_nocheck(status, NET_TYPE,            json_integer(0)); // TODO
-    err |= json_object_set_new_nocheck(status, PAIRING_STATE,       json_string(ir_prog_state.c_str())); // TODO
-    err |= json_object_set_new_nocheck(status, IR_PROG_STATE,       json_string(rf_pair_state.c_str()));
+    err |= json_object_set_new_nocheck(status, NET_TYPE,            json_integer(type));
+    err |= json_object_set_new_nocheck(status, IR_PROG_STATE,       json_string(ctrlm_ir_state_str(ir_prog_state)));
+    err |= json_object_set_new_nocheck(status, PAIRING_STATE,       json_string(ctrlm_rf_pair_state_str(rf_pair_state)));
 
     err |= json_object_set_new_nocheck(ret, STATUS, status);
     err |= json_object_set_new_nocheck(ret, SUCCESS, json_boolean(params->get_result()));

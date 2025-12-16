@@ -2463,14 +2463,15 @@ void ctrlm_obj_network_ble_t::controllers_load() {
          XLOGD_WARN("deleting legacy IR controller object");
          add_controller->db_destroy();
          delete add_controller;
-      } else if (id < BLE_RCU_ID_RANGE_MIN || id > BLE_RCU_ID_RANGE_MAX) {
-          XLOGD_WARN("Deleting legacy controller id <%d> entry - will update on re-connect", id);
-         add_controller->db_destroy();
-         delete add_controller;
-      } else {
-         XLOGD_INFO("adding BLE controller with ID = 0x%X", id);
-         controllers_[id] = add_controller;
+         continue;
       }
+      if (id < BLE_RCU_ID_RANGE_MIN || id > BLE_RCU_ID_RANGE_MAX) {
+         XLOGD_WARN("Legacy BLE RCU controller id <%d> found - updating controller id", id);
+         id = controller_id_assign();
+         add_controller->controller_id_set(id);
+      }
+      XLOGD_INFO("adding BLE controller with ID = 0x%X", id);
+      controllers_[id] = add_controller;
    }
 }
 

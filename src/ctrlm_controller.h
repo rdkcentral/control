@@ -59,6 +59,7 @@ public:
    std::string             get_irdb_entry_id_name_avr() const;
 
    ctrlm_controller_id_t   controller_id_get() const;
+   void                    controller_id_set(ctrlm_controller_id_t id);
    ctrlm_network_id_t      network_id_get() const;
    std::string             device_id_get() const;
    std::string             service_account_id_get() const;

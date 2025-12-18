@@ -2440,7 +2440,7 @@ void ctrlm_obj_network_ble_t::controller_remove(ctrlm_controller_id_t controller
 
 ctrlm_controller_id_t ctrlm_obj_network_ble_t::controller_id_assign() {
    // Get the next available controller id
-   for(ctrlm_controller_id_t index = BLE_RCU_ID_RANGE_MIN; index <= BLE_RCU_ID_RANGE_MAX; index++) {
+   for(ctrlm_controller_id_t index = BLE_RCU_ID_RANGE_MIN; index < BLE_RCU_ID_RANGE_MAX; index++) {
       if(!controller_exists(index)) {
          XLOGD_INFO("controller id %u", index);
          return(index);
@@ -2465,7 +2465,7 @@ void ctrlm_obj_network_ble_t::controllers_load() {
          delete add_controller;
          continue;
       }
-      if (id < BLE_RCU_ID_RANGE_MIN || id >= BLE_RCU_ID_RANGE_MAX) {
+      if (id < BLE_RCU_ID_RANGE_MIN || id > BLE_RCU_ID_RANGE_MAX) {
          ctrlm_controller_id_t new_id = controller_id_assign();
 
          add_controller->db_destroy(); // safely can destroy the old entry since it was loaded earlier

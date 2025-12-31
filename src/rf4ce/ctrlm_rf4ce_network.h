@@ -469,6 +469,7 @@ public:
 
 protected:
    virtual gboolean                     key_event_hook(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_key_status_t key_status, ctrlm_key_code_t key_code);
+   virtual bool                         is_managed_by_network(ctrlm_controller_id_t id);
 
 private:
    ctrlm_hal_rf4ce_network_main_t     hal_api_main_;

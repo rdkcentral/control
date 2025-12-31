@@ -41,6 +41,7 @@
 
 #include <chrono>
 #include <dlfcn.h>
+#include <memory>
 
 using namespace std;
 
@@ -543,17 +544,34 @@ bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctr
 
 bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes) {
     bool ret = false;
+    vector<char> success_vec;
 
-    ctrlm_main_queue_msg_program_ir_codes_t msg = {0};
-    msg.network_id         = network_id;
-    msg.controller_id      = controller_id;
-    msg.ir_codes           = ir_codes;
-    msg.success            = &ret;
+    std::shared_ptr<ctrlm_main_queue_msg_program_ir_codes_t> msg = std::make_shared<ctrlm_main_queue_msg_program_ir_codes_t>();
+    msg->network_id         = network_id;
+    msg->controller_id      = controller_id;
+    msg->ir_codes           = ir_codes;
+    msg->success            = &success_vec;
 
-    if (false == get_vendor_info(msg.vendor_info)) {
-        msg.vendor_info.rcu_support_bitmask = 0;
+    if (false == get_vendor_info(msg->vendor_info)) {
+        msg->vendor_info.rcu_support_bitmask = 0;
     }
-    ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_program_ir_codes, &msg, sizeof(msg), NULL, network_id, true);
+    ctrlm_main_queue_handler_push_new<ctrlm_msg_handler_network_t,
+                                     ctrlm_main_queue_msg_program_ir_codes_t>
+                                     (CTRLM_HANDLER_NETWORK,
+                                     (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_program_ir_codes,
+                                     std::move(msg),
+                                     NULL,
+                                     network_id,
+                                     true);
+
+    for (char success : success_vec) {
+        if (success) {
+            ret = true;
+        } else {
+            ret = false;
+            break;
+        }
+    }
 
     return(ret);
 }
@@ -566,14 +584,30 @@ bool ctrlm_irdb_interface_t::clear_ir_codes(ctrlm_network_id_t network_id, ctrlm
 
 bool ctrlm_irdb_interface_t::_clear_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id) {
     bool ret = false;
+    vector<char> success_vec;
 
-    ctrlm_main_queue_msg_ir_clear_t msg = {0};
+    std::shared_ptr<ctrlm_main_queue_msg_ir_clear_t> msg = std::make_shared<ctrlm_main_queue_msg_ir_clear_t>();
 
-    msg.network_id    = network_id;
-    msg.controller_id = controller_id;
-    msg.success       = &ret;
+    msg->network_id    = network_id;
+    msg->controller_id = controller_id;
+    msg->success       = &success_vec;
 
-    ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_ir_clear_codes, &msg, sizeof(msg), NULL, network_id, true);
-    
+    ctrlm_main_queue_handler_push_new<ctrlm_msg_handler_network_t,
+                                     ctrlm_main_queue_msg_ir_clear_t>
+                                     (CTRLM_HANDLER_NETWORK,
+                                     (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_ir_clear_codes,
+                                     std::move(msg),
+                                     NULL,
+                                     network_id,
+                                     true);
+
+    for (char success : success_vec) {
+        if (success) {
+            ret = true;
+        } else {
+            ret = false;
+            break;
+        }
+    }
     return(ret);
 }

@@ -318,6 +318,7 @@ protected:
    const char *         get_thread_name(const GThread *thread_id) const;
    void                 thread_id_validate(const char *pCallingFunction) const;
    virtual gboolean     key_event_hook(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_key_status_t key_status, ctrlm_key_code_t key_code);
+   virtual bool         is_managed_by_network(ctrlm_controller_id_t id);
 
 private:
    gboolean                      mask_key_codes_ = true;

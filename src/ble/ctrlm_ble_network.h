@@ -196,6 +196,9 @@ public:
 
    virtual void                  start_controller_audio_streaming(ctrlm_voice_start_audio_params_t *params);
 
+protected:
+   virtual bool                  is_managed_by_network(ctrlm_controller_id_t id);
+
 private:
    ctrlm_obj_network_ble_t();
 

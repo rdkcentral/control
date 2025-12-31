@@ -779,13 +779,16 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_program_ir_codes_t));
 
-   if(dqm->success) {*(dqm->success) = false;}
+   bool success = false;
 
    if (!ready_) {
       XLOGD_FATAL("Network is not ready!");
    } else {
       ctrlm_controller_id_t controller_id = dqm->controller_id;
-      if (!controller_exists(controller_id)) {
+      if (!is_managed_by_network(controller_id)) {
+         XLOGD_INFO("Controller %d is not managed by the %s network", controller_id, name_get());
+         success = true;
+      } else if (!controller_exists(controller_id)) {
          XLOGD_ERROR("Controller doesn't exist!");
       } else if (!controllers_[controller_id]->isSupportedIrdb(dqm->vendor_info)) {
          XLOGD_ERROR("Unsupported IRDB - not continuing with ir code download!");
@@ -815,12 +818,10 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
 
                   XLOGD_ERROR("failed to program IR signal waveforms on remote");
                } else {
-                                                                  
-                     if (dqm->success) { *(dqm->success) = true; }
-
-                     controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, ir_rf_database_.get_tv_ir_code_id());
-                     controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, ir_rf_database_.get_avr_ir_code_id());
-                     XLOGD_INFO("irdb_entry_id_name = <%s>", dqm->ir_codes->id.c_str());
+                  success = true;
+                  controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, ir_rf_database_.get_tv_ir_code_id());
+                  controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, ir_rf_database_.get_avr_ir_code_id());
+                  XLOGD_INFO("irdb_entry_id_name = <%s>", dqm->ir_codes->id.c_str());
                }
             }
             // Store the IR codes in the database
@@ -828,6 +829,7 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
          }
       }
    }
+   if(dqm->success) {dqm->success->push_back(success);}
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
    }
@@ -842,13 +844,16 @@ void ctrlm_obj_network_ble_t::req_process_ir_clear_codes(void *data, int size) {
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_ir_clear_t));
 
-   if(dqm->success) {*(dqm->success) = false;}
+   bool success = false;
 
    if (!ready_) {
       XLOGD_FATAL("Network is not ready!");
    } else {
       ctrlm_controller_id_t controller_id = dqm->controller_id;
-      if (!controller_exists(controller_id)) {
+      if (!is_managed_by_network(controller_id)) {
+         XLOGD_INFO("Controller %d is not managed by the %s network", controller_id, name_get());
+         success = true;
+      } else if (!controller_exists(controller_id)) {
          XLOGD_ERROR("Controller doesn't exist!");
       } else {
 
@@ -856,9 +861,7 @@ void ctrlm_obj_network_ble_t::req_process_ir_clear_codes(void *data, int size) {
             if (!ble_rcu_interface_->eraseIrSignals(controllers_[controller_id]->ieee_address_get().get_value())) {
                XLOGD_ERROR("failed to erase IR signal waveforms on remote");
             } else {
-               
-               if (dqm->success) { *(dqm->success) = true; }
-
+               success = true;
                ir_rf_database_.clear_ir_codes();
                XLOGD_INFO("\n%s", ir_rf_database_.to_string(true).c_str());
                controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, "0");
@@ -868,6 +871,7 @@ void ctrlm_obj_network_ble_t::req_process_ir_clear_codes(void *data, int size) {
          ir_rf_database_.store_db();
       }
    }
+   if(dqm->success) {dqm->success->push_back(success);}
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
    }
@@ -973,8 +977,8 @@ void ctrlm_obj_network_ble_t::req_process_find_my_remote(void *data, int size) {
       ctrlm_controller_id_t controller_id = get_last_used_controller();
 
       if (CTRLM_HAL_CONTROLLER_ID_INVALID == controller_id) {
-         XLOGD_ERROR("no connected controllers to find!!");
-         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
+         XLOGD_INFO("no connected %s controllers to find!!", name_get());
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
       } else {
          if (ble_rcu_interface_) {
             if (!ble_rcu_interface_->findMe(controllers_[controller_id]->ieee_address_get().get_value(), dqm->params->level)) {
@@ -2465,7 +2469,7 @@ void ctrlm_obj_network_ble_t::controllers_load() {
          delete add_controller;
          continue;
       }
-      if (id < BLE_RCU_ID_RANGE_MIN || id >= BLE_RCU_ID_RANGE_MAX) {
+      if (!is_managed_by_network(id)) {
          ctrlm_controller_id_t new_id = controller_id_assign();
 
          add_controller->db_destroy(); // safely can destroy the old entry since it was loaded earlier
@@ -2670,4 +2674,8 @@ void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start
 
     params->m_fd = fd;
     params->m_started = true;
+}
+
+bool ctrlm_obj_network_ble_t::is_managed_by_network(ctrlm_controller_id_t id) {
+    return (id >= BLE_RCU_ID_RANGE_MIN && id < BLE_RCU_ID_RANGE_MAX) ? true : false;
 }

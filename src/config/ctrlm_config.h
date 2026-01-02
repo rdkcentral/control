@@ -51,6 +51,12 @@ public:
      */
     bool load_config(const std::string &file_path);
     /**
+     * Function which appends a configuration file into the configuration object.
+     * @param file_path The path to the configuration file
+     * @return True on success, otherwise False
+     */
+    bool append_config(const std::string &file_path);
+    /**
      * Function to check if object exists from a path
      * @param path A period seperated string used to navigate a JSON object i.e. "network_rf4ce.polling.enabled"
      * @return True if the object exists, else False

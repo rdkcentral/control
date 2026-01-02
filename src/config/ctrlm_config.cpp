@@ -77,6 +77,34 @@ bool ctrlm_config_t::load_config(const std::string &file_path) {
     return(ret);
 }
 
+bool ctrlm_config_t::append_config(const std::string &file_path) {
+    if(this->root == NULL) {
+        XLOGD_ERROR("no config file loaded");
+        return(false);
+    }
+    bool ret = false;
+    std::string contents = file_to_string(file_path);
+    if(contents.empty()) {
+        XLOGD_ERROR("no config file contents");
+    } else {
+        json_error_t json_error;
+        XLOGD_INFO_OPTS(XLOG_OPTS_DEFAULT, 20 * 1024, "Appending Configuration for <%s> <%s>", file_path.c_str(), contents.c_str());
+        
+        json_t *append_root = json_loads(contents.c_str(), JSON_REJECT_DUPLICATES, &json_error);
+        if(append_root == NULL) {
+            XLOGD_ERROR("JSON ERROR: Line <%u> Column <%u> Text <%s>", json_error.line, json_error.column, json_error.text);
+        } else {
+            if(json_object_update(this->root, append_root) != 0) {
+                XLOGD_ERROR("Failed to merge JSON objects");
+            } else {
+                ret = true;
+            }
+            json_decref(append_root);
+        }
+    }
+    return(ret);
+}
+
 bool ctrlm_config_t::path_exists(const std::string &path) {
     return(ctrlm_utils_json_from_path(this->root, path, false) != NULL ? true : false);
 }

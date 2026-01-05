@@ -1607,12 +1607,15 @@ gboolean ctrlm_load_authservice_data(void) {
 gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, json_t **json_obj_voice, json_t **json_obj_device_update, json_t **json_obj_validation, json_t **json_obj_vsdk) {
    std::string config_fn_opt = "/opt/ctrlm_config.json";
    std::string config_fn_etc = "/etc/ctrlm_config.json";
+   std::string config_fn_tpl = "/etc/ctrlm_config.json.template";
    std::string config_fn_oem = "/etc/vendor/input/ctrlm_config.json";
    json_t *json_obj_ctrlm;
    ctrlm_config_t *ctrlm_config = ctrlm_config_t::get_instance();
    gboolean local_conf = false;
    
    XLOGD_INFO("");
+
+   bool oem_append = g_file_test(config_fn_oem.c_str(), G_FILE_TEST_EXISTS);
 
    if(ctrlm_config == NULL) {
       XLOGD_ERROR("Failed to get config manager instance");
@@ -1622,6 +1625,8 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
       local_conf = true;
    } else if(g_file_test(config_fn_etc.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_etc)) {
       XLOGD_INFO("Read configuration from <%s>", config_fn_etc.c_str());
+   } else if(oem_append && g_file_test(config_fn_tpl.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_tpl)) {
+      XLOGD_INFO("Read configuration from <%s>", config_fn_tpl.c_str());
    } else {
       XLOGD_WARN("Configuration error. Configuration file(s) missing, using defaults");
       return(false);
@@ -1641,8 +1646,14 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
    }
 
    // Check for OEM config file override
-   if(g_file_test(config_fn_oem.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->append_config(config_fn_oem)) {
+   if(oem_append) {
       XLOGD_INFO("Appending OEM configuration from <%s>", config_fn_oem.c_str());
+      if(!ctrlm_config->append_config(config_fn_oem)) {
+         XLOGD_ERROR("Failed to append OEM configuration from <%s>", config_fn_oem.c_str());
+         json_decref(*json_obj_root);
+         *json_obj_root = NULL;
+         return(false);
+      }
    }
 
    // Extract the RF4CE network configuration object

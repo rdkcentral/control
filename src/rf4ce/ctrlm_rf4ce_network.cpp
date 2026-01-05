@@ -3143,7 +3143,7 @@ ctrlm_controller_status_cmd_result_t  ctrlm_obj_network_rf4ce_t::req_process_rev
    if(0 == (polling_methods_ & POLLING_METHODS_FLAG_MAC)) {
       XLOGD_INFO(": Mac polling is disabled");
       dqm->reverse_command.cmd_result = CTRLM_RCU_REVERSE_CMD_DISABLED;
-      return CTRLM_CONTROLLER_STATUS_REQUEST_SUCCESS;
+      return CTRLM_CONTROLLER_STATUS_REQUEST_ERROR;
    }
 
    if (!reverse_cmd_end_event_pending_.empty()) {
@@ -3201,7 +3201,7 @@ ctrlm_controller_status_cmd_result_t  ctrlm_obj_network_rf4ce_t::req_process_rev
    if (last_used_sorted.empty()) {
       XLOGD_INFO(": No controllers supporting MAC polling found");
       dqm->reverse_command.cmd_result = CTRLM_RCU_REVERSE_CMD_CONTROLLER_NOT_CAPABLE;
-      return CTRLM_CONTROLLER_STATUS_REQUEST_SUCCESS;
+      return CTRLM_CONTROLLER_STATUS_REQUEST_ERROR;
    }
 
    char data[POLLING_RESPONSE_DATA_LEN] = {0};
@@ -4393,9 +4393,10 @@ void ctrlm_obj_network_rf4ce_t::req_process_program_ir_codes(void *data, int siz
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_program_ir_codes_t));
 
+   bool success = false;
+
    if(!is_managed_by_network(dqm->controller_id)) {
-      XLOGD_INFO("controller %d is not managed by the %s network", dqm->controller_id, name_get());
-      if(dqm->success) dqm->success->push_back(true);
+      XLOGD_ERROR("controller %d is not managed by the %s network", dqm->controller_id, name_get());
    } else if(controller_exists(dqm->controller_id)) {
       if(dqm->ir_codes) {
          XLOGD_INFO("Setting IR Codes on Controller %u", dqm->controller_id);
@@ -4406,16 +4407,15 @@ void ctrlm_obj_network_rf4ce_t::req_process_program_ir_codes(void *data, int siz
          controllers_[dqm->controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, ir_rf_database_.get_tv_ir_code_id());
          controllers_[dqm->controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, ir_rf_database_.get_avr_ir_code_id());
          this->ir_rf_database_.store_db();
-         if(dqm->success) dqm->success->push_back(true);
+         success = true;
       } else {
          XLOGD_ERROR("Invalid IR Codes");
-         if(dqm->success) dqm->success->push_back(false);
       }
    } else {
       XLOGD_ERROR("Controller %u doesn't exist", dqm->controller_id);
-      if(dqm->success) dqm->success->push_back(false);
    }
 
+   if(dqm->success) dqm->success->push_back(success);
    // post the semaphore
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
@@ -4427,9 +4427,10 @@ void ctrlm_obj_network_rf4ce_t::req_process_ir_clear_codes(void *data, int size)
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_ir_clear_t));
 
+   bool success = false;
+
    if(!is_managed_by_network(dqm->controller_id)) {
-      XLOGD_INFO("controller %d is not managed by the %s network", dqm->controller_id, name_get());
-      if(dqm->success) dqm->success->push_back(true);
+      XLOGD_ERROR("controller %d is not managed by the %s network", dqm->controller_id, name_get());
    } else if(controller_exists(dqm->controller_id)) {
       XLOGD_INFO("Clearing IR Codes on Controller %u", dqm->controller_id);
       unsigned char status[1] = {IR_RF_DATABASE_STATUS_DB_DOWNLOAD_YES | IR_RF_DATABASE_STATUS_FORCE_DOWNLOAD};
@@ -4439,12 +4440,12 @@ void ctrlm_obj_network_rf4ce_t::req_process_ir_clear_codes(void *data, int size)
       controllers_[dqm->controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, "0");
       controllers_[dqm->controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, "0");
       controllers_[dqm->controller_id]->rf4ce_rib_set_target(CTRLM_RF4CE_RIB_ATTR_ID_IR_RF_DATABASE_STATUS, CTRLM_RF4CE_RIB_ATTR_INDEX_GENERAL, CTRLM_RF4CE_RIB_ATTR_LEN_IR_RF_DATABASE_STATUS, status);
-      if(dqm->success) dqm->success->push_back(true);
+      success = true;
    } else {
       XLOGD_ERROR("Controller %u doesn't exist", dqm->controller_id);
-      if(dqm->success) dqm->success->push_back(false);
    }
 
+   if(dqm->success) dqm->success->push_back(success);
    // post the semaphore
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
@@ -5139,5 +5140,5 @@ void ctrlm_obj_network_rf4ce_t::start_controller_audio_streaming(ctrlm_voice_sta
 }
 
 bool ctrlm_obj_network_rf4ce_t::is_managed_by_network(ctrlm_controller_id_t id) {
-   return (id >= RF4CE_RCU_ID_RANGE_MIN && id < RF4CE_RCU_ID_RANGE_MAX) ? true : false;
+   return (id >= RF4CE_RCU_ID_RANGE_MIN && id < RF4CE_RCU_ID_RANGE_MAX);
 }

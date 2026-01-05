@@ -202,11 +202,11 @@ public:
             return (result_map_[network_id_] == CTRLM_IARM_CALL_RESULT_SUCCESS);
         } else {
             for (const auto &it : result_map_) {
-                if (it.second != CTRLM_IARM_CALL_RESULT_SUCCESS) {
-                    return false;
+                if (it.second == CTRLM_IARM_CALL_RESULT_SUCCESS) {
+                    return true;
                 }
             }
-            return true;
+            return false;
         }
     }
 };

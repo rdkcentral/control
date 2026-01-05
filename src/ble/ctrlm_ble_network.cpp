@@ -786,8 +786,7 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
    } else {
       ctrlm_controller_id_t controller_id = dqm->controller_id;
       if (!is_managed_by_network(controller_id)) {
-         XLOGD_INFO("Controller %d is not managed by the %s network", controller_id, name_get());
-         success = true;
+         XLOGD_ERROR("Controller %d is not managed by the %s network", controller_id, name_get());
       } else if (!controller_exists(controller_id)) {
          XLOGD_ERROR("Controller doesn't exist!");
       } else if (!controllers_[controller_id]->isSupportedIrdb(dqm->vendor_info)) {
@@ -851,8 +850,7 @@ void ctrlm_obj_network_ble_t::req_process_ir_clear_codes(void *data, int size) {
    } else {
       ctrlm_controller_id_t controller_id = dqm->controller_id;
       if (!is_managed_by_network(controller_id)) {
-         XLOGD_INFO("Controller %d is not managed by the %s network", controller_id, name_get());
-         success = true;
+         XLOGD_ERROR("Controller %d is not managed by the %s network", controller_id, name_get());
       } else if (!controller_exists(controller_id)) {
          XLOGD_ERROR("Controller doesn't exist!");
       } else {
@@ -977,8 +975,8 @@ void ctrlm_obj_network_ble_t::req_process_find_my_remote(void *data, int size) {
       ctrlm_controller_id_t controller_id = get_last_used_controller();
 
       if (CTRLM_HAL_CONTROLLER_ID_INVALID == controller_id) {
-         XLOGD_INFO("no connected %s controllers to find!!", name_get());
-         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+         XLOGD_ERROR("no connected %s controllers to find!!", name_get());
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
       } else {
          if (ble_rcu_interface_) {
             if (!ble_rcu_interface_->findMe(controllers_[controller_id]->ieee_address_get().get_value(), dqm->params->level)) {
@@ -2677,5 +2675,5 @@ void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start
 }
 
 bool ctrlm_obj_network_ble_t::is_managed_by_network(ctrlm_controller_id_t id) {
-    return (id >= BLE_RCU_ID_RANGE_MIN && id < BLE_RCU_ID_RANGE_MAX) ? true : false;
+    return (id >= BLE_RCU_ID_RANGE_MIN && id < BLE_RCU_ID_RANGE_MAX);
 }

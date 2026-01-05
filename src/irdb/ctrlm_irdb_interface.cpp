@@ -567,9 +567,9 @@ bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ct
     for (char success : success_vec) {
         if (success) {
             ret = true;
+            break;
         } else {
             ret = false;
-            break;
         }
     }
 
@@ -604,9 +604,9 @@ bool ctrlm_irdb_interface_t::_clear_ir_codes(ctrlm_network_id_t network_id, ctrl
     for (char success : success_vec) {
         if (success) {
             ret = true;
+            break;
         } else {
             ret = false;
-            break;
         }
     }
     return(ret);

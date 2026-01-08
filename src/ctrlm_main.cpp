@@ -287,6 +287,7 @@ typedef struct {
    ctrlm_ir_controller_t             *ir_controller;
    bool                               networked_standby_supported;
    gboolean                           wake_with_voice_allowed;
+   gboolean                           initiating_session;
 } ctrlm_global_t;
 
 static ctrlm_global_t g_ctrlm;
@@ -578,6 +579,7 @@ int main(int argc, char *argv[]) {
    XLOGD_INFO("networked standby supported <%s>", g_ctrlm.networked_standby_supported ? "YES" : "NO");
    
    g_ctrlm.wake_with_voice_allowed            = false;
+   g_ctrlm.initiating_session                 = false;
    errno_t safec_rc = strcpy_s(g_ctrlm.last_key_info.source_name, sizeof(g_ctrlm.last_key_info.source_name), ctrlm_rcu_ir_remote_types_str(g_ctrlm.last_key_info.last_ir_remote_type));
    ERR_CHK(safec_rc);
 
@@ -977,10 +979,13 @@ gboolean ctrlm_thread_monitor(gpointer user_data) {
    #endif
 
    if(ctrlm_was_cpu_halted()) {
-      XLOGD_INFO("skipping response check due to power state <%s>",ctrlm_power_state_str(g_ctrlm.power_state));
+      XLOGD_INFO("skipping response check due to power state <%s>", ctrlm_power_state_str(g_ctrlm.power_state));
+      g_ctrlm.thread_monitor_active = false; // Deactivate thread monitoring
+   } else if(g_ctrlm.initiating_session == true) {
+      XLOGD_INFO("skipping response check due to session initiation");
       g_ctrlm.thread_monitor_active = false; // Deactivate thread monitoring
    } else if(!g_ctrlm.thread_monitor_active) {
-      XLOGD_INFO("activate due to power state <%s>",ctrlm_power_state_str(g_ctrlm.power_state));
+      XLOGD_INFO("activate due to power state <%s>", ctrlm_power_state_str(g_ctrlm.power_state));
       g_ctrlm.thread_monitor_active = true;  // Activate thread monitoring again
    } else {
       // Check the response from each thread on the previous attempt
@@ -5812,6 +5817,11 @@ ctrlm_power_state_t ctrlm_main_get_system_power_state(void) {
    }
    return power_state;
 }
+
+void ctrlm_initiating_session(gboolean initiating) {
+   g_ctrlm.initiating_session = initiating;
+}
+
 
 gboolean ctrlm_main_get_networked_standby_mode(void) {
    bool networked_standby_mode = false;

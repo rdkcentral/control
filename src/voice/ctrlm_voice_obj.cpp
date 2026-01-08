@@ -2518,7 +2518,6 @@ void ctrlm_voice_t::voice_session_begin_callback(ctrlm_voice_session_begin_cb_t 
         return;
     }
 
-    XLOGD_INFO("initiating true");
     ctrlm_initiating_session(true);
 
     // Fetch session based on xrsr source
@@ -2884,7 +2883,6 @@ void ctrlm_voice_t::voice_server_sent_init_callback(ctrlm_voice_cb_header_t *ini
 
 void ctrlm_voice_t::voice_stream_begin_callback(ctrlm_voice_stream_begin_cb_t *stream_begin) {
 
-    XLOGD_INFO("initiating false");
     ctrlm_initiating_session(false);
 
     if(NULL == stream_begin) {

@@ -1408,15 +1408,10 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
     xrsr_session_request_t request_params;
     request_params.type = XRSR_SESSION_REQUEST_TYPE_INVALID;
     
-    XLOGD_INFO("initiating true");
-    ctrlm_initiating_session(true);
-
     if(is_session_by_text) {
         XLOGD_INFO("Requesting the speech router start a text-only session with transcription = <%s>", l_transcription_in);
         if(session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING || session->state_dst != CTRLM_VOICE_STATE_DST_READY) {
             XLOGD_ERROR("unable to accept a text-only session due to current session - state src <%s> dst <%s>.", ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
-            XLOGD_INFO("initiating false");
-            ctrlm_initiating_session(false);
             return VOICE_SESSION_RESPONSE_BUSY;
         }
         request_params.type = XRSR_SESSION_REQUEST_TYPE_TEXT;
@@ -1425,16 +1420,12 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
         xrsr_audio_format_t xrsr_format = { .type = XRSR_AUDIO_FORMAT_NONE};
         if (false == xrsr_session_request(voice_device_to_xrsr(device_type), xrsr_format, request_params, uuid, false, false)) {
             XLOGD_ERROR("Failed to acquire the text-only session from the speech router.");
-            XLOGD_INFO("initiating false");
-            ctrlm_initiating_session(false);
             return VOICE_SESSION_RESPONSE_BUSY;
         }
     } else if(is_session_by_file) {
         XLOGD_INFO("Requesting the speech router start a session with audio file  = <%s>", audio_file_in);
         if(session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING || session->state_dst != CTRLM_VOICE_STATE_DST_READY) {
             XLOGD_ERROR("unable to accept an audio file session due to current session - state src <%s> dst <%s>.", ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
-            XLOGD_INFO("initiating false");
-            ctrlm_initiating_session(false);
             return VOICE_SESSION_RESPONSE_BUSY;
         }
         request_params.type = XRSR_SESSION_REQUEST_TYPE_AUDIO_FILE;
@@ -1449,8 +1440,6 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
 
         if (false == xrsr_session_request(voice_device_to_xrsr(device_type), xrsr_format, request_params, uuid, false, false)) {
             XLOGD_ERROR("Failed to acquire the audio file session from the speech router.");
-            XLOGD_INFO("initiating false");
-            ctrlm_initiating_session(false);
             return VOICE_SESSION_RESPONSE_BUSY;
         }
     } else if(is_mic) {
@@ -1468,16 +1457,12 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
 
        if(false == xrsr_session_request(voice_device_to_xrsr(device_type), xrsr_format, request_params, uuid, low_latency, low_cpu_util)) {
            XLOGD_ERROR("Failed to acquire the microphone session from the speech router.");
-           XLOGD_INFO("initiating false");
-           ctrlm_initiating_session(false);
            return VOICE_SESSION_RESPONSE_BUSY;
        }
     } else {
         XLOGD_INFO("Requesting the speech router start a session with audio fd <%d>", fds[PIPE_READ]);
         if(session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING || ((session->state_dst != CTRLM_VOICE_STATE_DST_READY) && (session->state_dst != CTRLM_VOICE_STATE_DST_OPENED))) { // DST_OPENED occurs when the session is in progress and more audio is requested
             XLOGD_ERROR("unable to accept an audio fd session due to current session - state src <%s> dst <%s>.", ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
-            XLOGD_INFO("initiating false");
-            ctrlm_initiating_session(false);
             return VOICE_SESSION_RESPONSE_BUSY;
         }
 
@@ -1487,8 +1472,6 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
             if(pipe(fds) < 0) {
                 int errsv = errno;
                 XLOGD_ERROR("Failed to create pipe <%s>", strerror(errsv));
-                XLOGD_INFO("initiating false");
-                ctrlm_initiating_session(false);
                 this->voice_session_notify_abort(network_id, controller_id, 0, CTRLM_VOICE_SESSION_ABORT_REASON_FAILURE);
                 return(VOICE_SESSION_RESPONSE_FAILURE);
             } // set to non-blocking
@@ -1508,8 +1491,6 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                     close(fds[PIPE_WRITE]);
                     close(fds[PIPE_READ]);
                 }
-                XLOGD_INFO("initiating false");
-                ctrlm_initiating_session(false);
                 return(VOICE_SESSION_RESPONSE_BUSY);
             }
         } else if(create_pipe) { // RF4CE controllers already have the fd so make the call to update it here for secondary audio streams
@@ -2537,8 +2518,8 @@ void ctrlm_voice_t::voice_session_begin_callback(ctrlm_voice_session_begin_cb_t 
         return;
     }
 
-    XLOGD_INFO("initiating false");
-    ctrlm_initiating_session(false);
+    XLOGD_INFO("initiating true");
+    ctrlm_initiating_session(true);
 
     // Fetch session based on xrsr source
     ctrlm_voice_session_group_t group = voice_device_to_session_group(xrsr_to_voice_device(session_begin->src));
@@ -2902,6 +2883,10 @@ void ctrlm_voice_t::voice_server_sent_init_callback(ctrlm_voice_cb_header_t *ini
 }
 
 void ctrlm_voice_t::voice_stream_begin_callback(ctrlm_voice_stream_begin_cb_t *stream_begin) {
+
+    XLOGD_INFO("initiating false");
+    ctrlm_initiating_session(false);
+
     if(NULL == stream_begin) {
         XLOGD_ERROR("NULL data");
         return;

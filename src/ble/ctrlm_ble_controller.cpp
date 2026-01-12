@@ -654,4 +654,21 @@ void ctrlm_obj_controller_ble_t::print_status() {
    XLOGD_WARN("------------------------------------------------------------");
 }
 
+void ctrlm_obj_controller_ble_t::update_controller_id_and_db_entry(std::string db_name, ctrlm_network_id_t network_id, ctrlm_controller_id_t new_id) {
+    ctrlm_obj_controller_t::update_controller_id_and_db_entry(db_name, network_id, new_id);
+
+    std::stringstream new_controller_db_table;
+    new_controller_db_table << db_name << "_" << COUT_HEX_MODIFIER << (int)network_id << "_controller_" << COUT_HEX_MODIFIER << (int)new_id;
+    std::string new_table = new_controller_db_table.str();
+
+    product_name_->set_table(new_table);
+    serial_number_->set_table(new_table);
+    manufacturer_->set_table(new_table);
+    model_->set_table(new_table);
+    fw_revision_->set_table(new_table);
+    sw_revision_->set_table(new_table);
+    hw_revision_->set_table(new_table);
+    battery_percent_->set_table(new_table);
+}
+
 // End Function Implementations

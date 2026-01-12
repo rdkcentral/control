@@ -1209,7 +1209,7 @@ void ctrlm_obj_network_rf4ce_t::controllers_load() {
 
 ctrlm_controller_id_t ctrlm_obj_network_rf4ce_t::controller_id_assign(void) {
    // Get the next available controller id
-   for(ctrlm_controller_id_t index = 1; index < 255; index++) {
+   for(ctrlm_controller_id_t index = RF4CE_RCU_ID_RANGE_MIN; index < RF4CE_RCU_ID_RANGE_MAX; index++) {
       if(!controller_exists(index)) {
          XLOGD_INFO("controller id %u", index);
          return(index);
@@ -4432,7 +4432,9 @@ void ctrlm_obj_network_rf4ce_t::req_process_program_ir_codes(void *data, int siz
 
    bool success = false;
 
-   if(controller_exists(dqm->controller_id)) {
+   if(!is_managed_by_network(dqm->controller_id)) {
+      XLOGD_ERROR("controller %d is not managed by the %s network", dqm->controller_id, name_get());
+   } else if(controller_exists(dqm->controller_id)) {
       if(dqm->ir_codes) {
          XLOGD_INFO("Setting IR Codes on Controller %u", dqm->controller_id);
          unsigned char status[1] = {IR_RF_DATABASE_STATUS_DB_DOWNLOAD_YES | IR_RF_DATABASE_STATUS_FORCE_DOWNLOAD};
@@ -4452,7 +4454,7 @@ void ctrlm_obj_network_rf4ce_t::req_process_program_ir_codes(void *data, int siz
 
    ir_prog_state_set(success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED);
 
-   if(dqm->success) *dqm->success = success;
+   if(dqm->success) dqm->success->push_back(success);
    // post the semaphore
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
@@ -4466,7 +4468,9 @@ void ctrlm_obj_network_rf4ce_t::req_process_ir_clear_codes(void *data, int size)
 
    bool success = false;
 
-   if(controller_exists(dqm->controller_id)) {
+   if(!is_managed_by_network(dqm->controller_id)) {
+      XLOGD_ERROR("controller %d is not managed by the %s network", dqm->controller_id, name_get());
+   } else if(controller_exists(dqm->controller_id)) {
       XLOGD_INFO("Clearing IR Codes on Controller %u", dqm->controller_id);
       unsigned char status[1] = {IR_RF_DATABASE_STATUS_DB_DOWNLOAD_YES | IR_RF_DATABASE_STATUS_FORCE_DOWNLOAD};
       this->ir_rf_database_.clear_ir_codes();
@@ -4482,7 +4486,7 @@ void ctrlm_obj_network_rf4ce_t::req_process_ir_clear_codes(void *data, int size)
 
    ir_prog_state_set(success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED);
 
-   if(dqm->success) *dqm->success = success;
+   if(dqm->success) dqm->success->push_back(success);
    // post the semaphore
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
@@ -5174,4 +5178,8 @@ void ctrlm_obj_network_rf4ce_t::start_controller_audio_streaming(ctrlm_voice_sta
    }
 
    params->m_started = true;
+}
+
+bool ctrlm_obj_network_rf4ce_t::is_managed_by_network(ctrlm_controller_id_t id) {
+   return (id >= RF4CE_RCU_ID_RANGE_MIN && id < RF4CE_RCU_ID_RANGE_MAX);
 }

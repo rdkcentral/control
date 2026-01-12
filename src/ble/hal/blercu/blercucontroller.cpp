@@ -65,7 +65,7 @@ BleRcuControllerImpl::BleRcuControllerImpl(const shared_ptr<const ConfigSettings
     , m_adapter(adapter)
     , m_pairingStateMachine(config, m_adapter)
     , m_lastError(BleRcuError::NoError)
-    , m_maxManagedDevices(1)
+    , m_maxManagedDevices(BLE_MAX_MANAGED_RCUS)
     , m_state(Initialising)
     , m_ignorePairingFailure(false)
 {

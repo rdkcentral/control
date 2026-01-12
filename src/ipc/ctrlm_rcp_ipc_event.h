@@ -111,13 +111,18 @@ public:
 
     virtual json_t *to_json() const;
 
-    char              *to_string() const;
-    uint8_t            get_api_revision() const                             { return api_revision_; }
-    bool               get_result() const                                   { return (result_ == CTRLM_IARM_CALL_RESULT_SUCCESS) ? true : false; }
-    void               set_result(ctrlm_iarm_call_result_t result)          { result_ = result; }
-    ctrlm_network_id_t get_net_id() const                                   { return net_id_; }
-    void               set_net_id(ctrlm_network_id_t net_id)                { net_id_ = net_id; }
-    void               populate_status(const ctrlm_obj_network_t &network);
+    char                *to_string() const;
+    uint8_t              get_api_revision() const                    { return api_revision_; }
+    bool                 get_result() const                          { return (result_ == CTRLM_IARM_CALL_RESULT_SUCCESS) ? true : false; }
+    void                 set_result(ctrlm_iarm_call_result_t result) { result_ = result; }
+    ctrlm_network_id_t   get_net_id() const                          { return net_id_; }
+    void                 set_net_id(ctrlm_network_id_t net_id)       { net_id_ = net_id; }
+    ctrlm_network_type_t get_type() const                            { return net_type_; }
+
+    void                  populate_status(const ctrlm_obj_network_t &network);
+    ctrlm_ir_state_t      get_ir_prog_state(void);
+    ctrlm_rf_pair_state_t get_rf_pair_state(void);
+    void                  get_controller_status_list(std::vector<ctrlm_rcp_ipc_controller_status_t> &list);
 
 private:
     uint8_t                  api_revision_   = 0;
@@ -197,11 +202,11 @@ public:
             return (result_map_[network_id_] == CTRLM_IARM_CALL_RESULT_SUCCESS);
         } else {
             for (const auto &it : result_map_) {
-                if (it.second != CTRLM_IARM_CALL_RESULT_SUCCESS) {
-                    return false;
+                if (it.second == CTRLM_IARM_CALL_RESULT_SUCCESS) {
+                    return true;
                 }
             }
-            return true;
+            return false;
         }
     }
 };

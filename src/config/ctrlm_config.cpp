@@ -54,7 +54,7 @@ ctrlm_config_t::~ctrlm_config_t() {
     }
 }
 
-bool ctrlm_config_t::load_config(const std::string &file_path) {
+bool ctrlm_config_t::load_config(const std::string &file_path, bool verbose) {
     bool ret = false;
     std::string contents = file_to_string(file_path);
     if(this->root) {
@@ -63,13 +63,19 @@ bool ctrlm_config_t::load_config(const std::string &file_path) {
     }
     if(!contents.empty()) {
         json_error_t json_error;
-        XLOGD_INFO_OPTS(XLOG_OPTS_DEFAULT, 20 * 1024, "Loading Configuration for <%s> <%s>", file_path.c_str(), contents.c_str());
+        if(verbose) {
+           XLOGD_INFO_OPTS(XLOG_OPTS_DEFAULT, 20 * 1024, "Loading Configuration for <%s> <%s>", file_path.c_str(), contents.c_str());
+        } else {
+            XLOGD_INFO("Loading Configuration for <%s>", file_path.c_str());
+        }
         this->root = json_loads(contents.c_str(), JSON_REJECT_DUPLICATES, &json_error);
         if(this->root != NULL) {
-            XLOGD_INFO("config loaded successfully as JSON");
+            if(verbose) {
+               XLOGD_INFO("config loaded successfully as JSON for <%s>", file_path.c_str());
+            }
             ret = true;
         } else {
-            XLOGD_ERROR("JSON ERROR: Line <%u> Column <%u> Text <%s>", json_error.line, json_error.column, json_error.text);
+            XLOGD_ERROR("JSON ERROR: Line <%u> Column <%u> Text <%s> Contents <%s>", json_error.line, json_error.column, json_error.text, contents.c_str());
         }
     } else {
         XLOGD_ERROR("no config file contents");
@@ -77,7 +83,7 @@ bool ctrlm_config_t::load_config(const std::string &file_path) {
     return(ret);
 }
 
-bool ctrlm_config_t::append_config(const std::string &file_path) {
+bool ctrlm_config_t::append_config(const std::string &file_path, bool verbose) {
     if(this->root == NULL) {
         XLOGD_ERROR("no config file loaded");
         return(false);
@@ -88,15 +94,22 @@ bool ctrlm_config_t::append_config(const std::string &file_path) {
         XLOGD_ERROR("no config file contents");
     } else {
         json_error_t json_error;
-        XLOGD_INFO_OPTS(XLOG_OPTS_DEFAULT, 20 * 1024, "Appending Configuration for <%s> <%s>", file_path.c_str(), contents.c_str());
+        if(verbose) {
+            XLOGD_INFO_OPTS(XLOG_OPTS_DEFAULT, 20 * 1024, "Appending Configuration for <%s> <%s>", file_path.c_str(), contents.c_str());
+        } else {
+            XLOGD_INFO("Appending Configuration for <%s>", file_path.c_str());
+        }
         
         json_t *append_root = json_loads(contents.c_str(), JSON_REJECT_DUPLICATES, &json_error);
         if(append_root == NULL) {
-            XLOGD_ERROR("JSON ERROR: Line <%u> Column <%u> Text <%s>", json_error.line, json_error.column, json_error.text);
+            XLOGD_ERROR("JSON ERROR: Line <%u> Column <%u> Text <%s> Contents <%s>", json_error.line, json_error.column, json_error.text, contents.c_str());
         } else {
             if(json_object_update(this->root, append_root) != 0) {
                 XLOGD_ERROR("Failed to merge JSON objects");
             } else {
+                if(verbose) {
+                    XLOGD_INFO("config appended successfully as JSON for <%s>", file_path.c_str());
+                }
                 ret = true;
             }
             json_decref(append_root);

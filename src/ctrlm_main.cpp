@@ -1628,7 +1628,7 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
    } else if(oem_append && g_file_test(config_fn_tpl.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_tpl)) {
       XLOGD_INFO("Read configuration from <%s>", config_fn_tpl.c_str());
    } else {
-      XLOGD_WARN("Configuration error. Configuration file(s) missing, using defaults");
+      XLOGD_INFO("Using default configuration");
       return(false);
    }
 
@@ -1654,6 +1654,13 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
          *json_obj_root = NULL;
          return(false);
       }
+   }
+
+   // Print the configuration since it was loaded from files
+   char *json_dump = json_dumps(*json_obj_root, JSON_INDENT(3) | JSON_SORT_KEYS);
+   if(json_dump != NULL) {
+      XLOGD_INFO_OPTS(XLOG_OPTS_DEFAULT, 20 * 1024, "Final configuration:\n%s", json_dump);
+      free(json_dump);
    }
 
    // Extract the RF4CE network configuration object

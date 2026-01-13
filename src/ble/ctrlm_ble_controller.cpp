@@ -615,13 +615,13 @@ void ctrlm_obj_controller_ble_t::print_status() {
    XLOGD_INFO("Model                        : %s", model_->to_string().c_str());
    XLOGD_INFO("MAC Address                  : %s", ieee_address_->to_string().c_str());
    XLOGD_INFO("Device Minor ID              : %d", device_minor_id_);
-   XLOGD_INFO("Battery Level                : %u%%", get_battery_percent());
+   XLOGD_AUTOMATION_INFO("Battery Level                : %u%%", get_battery_percent());
    XLOGD_INFO("HW Revision                  : %s", hw_revision_->to_string().c_str());
    XLOGD_INFO("FW Revision                  : %s", fw_revision_->to_string().c_str());
-   XLOGD_INFO("SW Revision                  : %s", sw_revision_->to_string().c_str());
+   XLOGD_AUTOMATION_INFO("SW Revision                  : %s", sw_revision_->to_string().c_str());
    XLOGD_INFO("Serial Number                : %s", serial_number_->to_string().c_str());
    XLOGD_INFO("");
-   XLOGD_INFO("Connected                    : %s", (connected_==true) ? "true" : "false");
+   XLOGD_AUTOMATION_INFO("Connected                    : %s", (connected_==true) ? "true" : "false");
    XLOGD_INFO("Last Activity Time           : %s", ctrlm_utils_time_as_string(this->last_activity_time_get()).c_str());
    XLOGD_INFO("Bound Time                   : %s", ctrlm_utils_time_as_string(this->time_binding_get()).c_str());
    XLOGD_INFO("");
@@ -652,6 +652,23 @@ void ctrlm_obj_controller_ble_t::print_status() {
    XLOGD_INFO("");
    voice_metrics_->print(__FUNCTION__);
    XLOGD_WARN("------------------------------------------------------------");
+}
+
+void ctrlm_obj_controller_ble_t::update_controller_id_and_db_entry(std::string db_name, ctrlm_network_id_t network_id, ctrlm_controller_id_t new_id) {
+    ctrlm_obj_controller_t::update_controller_id_and_db_entry(db_name, network_id, new_id);
+
+    std::stringstream new_controller_db_table;
+    new_controller_db_table << db_name << "_" << COUT_HEX_MODIFIER << (int)network_id << "_controller_" << COUT_HEX_MODIFIER << (int)new_id;
+    std::string new_table = new_controller_db_table.str();
+
+    product_name_->set_table(new_table);
+    serial_number_->set_table(new_table);
+    manufacturer_->set_table(new_table);
+    model_->set_table(new_table);
+    fw_revision_->set_table(new_table);
+    sw_revision_->set_table(new_table);
+    hw_revision_->set_table(new_table);
+    battery_percent_->set_table(new_table);
 }
 
 // End Function Implementations

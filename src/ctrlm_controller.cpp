@@ -172,11 +172,11 @@ void ctrlm_obj_controller_t::process_event_key(ctrlm_key_status_t key_status, ui
    last_key_code_->set_value((uint64_t)key_code);
    last_key_time_update();
 
-   XLOGD_TELEMETRY("ind_process_keypress: %s - MAC Address <%s>, code = <%d> (%s key), status = <%s>", controller_type_str_get().c_str(),
-                                                                                 ieee_address_get().to_string().c_str(),
-                                                                                 mask ? -1 : key_code,
-                                                                                 ctrlm_linux_key_code_str(key_code, mask),
-                                                                                 ctrlm_key_status_str(key_status));
+   XLOGD_AUTOMATION_TELEMETRY("ind_process_keypress: %s - MAC Address <%s>, code = <%d> (%s key), status = <%s>", controller_type_str_get().c_str(),
+                                                                                                                  ieee_address_get().to_string().c_str(),
+                                                                                                                  mask ? -1 : key_code,
+                                                                                                                  ctrlm_linux_key_code_str(key_code, mask),
+                                                                                                                  ctrlm_key_status_str(key_status));
 }
 
 ctrlm_controller_capabilities_t ctrlm_obj_controller_t::get_capabilities() const {
@@ -409,4 +409,21 @@ uint8_t ctrlm_obj_controller_t::get_upgrade_increment() const {
 
 bool ctrlm_obj_controller_t::is_upgrade_progress_at_increment() const {
     return ((upgrade_progress_ % upgrade_increment_ == 0) || (upgrade_progress_ == 100));
+}
+
+void ctrlm_obj_controller_t::update_controller_id_and_db_entry(std::string db_name, ctrlm_network_id_t network_id, ctrlm_controller_id_t new_id) {
+    controller_id_ = new_id;
+    std::stringstream new_controller_db_table;
+    new_controller_db_table << db_name << "_" << COUT_HEX_MODIFIER << (int)network_id << "_controller_" << COUT_HEX_MODIFIER << (int)new_id;
+    std::string new_table = new_controller_db_table.str();
+
+    ieee_address_->set_table(new_table);
+    time_binding_->set_table(new_table);
+    last_activity_time_->set_table(new_table);
+    last_key_time_->set_table(new_table);
+    last_key_code_->set_table(new_table);
+    irdb_entry_id_name_tv_->set_table(new_table);
+    irdb_entry_id_name_avr_->set_table(new_table);
+    voice_metrics_->set_table(new_table);
+    ota_failure_cnt_from_last_success_->set_table(new_table);
 }

@@ -67,6 +67,9 @@
 #define IR_RF_DATABASE_STATUS_DB_DOWNLOAD_YES           (0x80)
 #define IR_RF_DATABASE_STATUS_RESERVED                  (0x20)
 
+#define RF4CE_RCU_ID_RANGE_MIN (NETWORK_ID_BASE_RF4CE)
+#define RF4CE_RCU_ID_RANGE_MAX (RF4CE_RCU_ID_RANGE_MIN + CTRLM_MAIN_MAX_BOUND_CONTROLLERS)
+
 typedef enum {
    CTRLM_RF4CE_DEVICE_TYPE_STB         = 0x09,
    CTRLM_RF4CE_DEVICE_TYPE_AUTOBIND    = 0xD0,
@@ -462,8 +465,11 @@ public:
    virtual std::vector<ctrlm_obj_controller_t *> get_controller_obj_list() const;
    void                                 rcu_timeout_key_release(void *data, int data_size);
 
+   virtual void                         start_controller_audio_streaming(ctrlm_voice_start_audio_params_t *params);
+
 protected:
    virtual gboolean                     key_event_hook(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_key_status_t key_status, ctrlm_key_code_t key_code);
+   virtual bool                         is_managed_by_network(ctrlm_controller_id_t id);
 
 private:
    ctrlm_hal_rf4ce_network_main_t     hal_api_main_;

@@ -26,6 +26,9 @@
 #include <atomic>
 
 class ctrlm_ipc_iarm_t {
+private:
+    unsigned char api_revision_ = 0;
+
 public:
     ctrlm_ipc_iarm_t() {};
     virtual ~ctrlm_ipc_iarm_t() {};
@@ -38,26 +41,52 @@ protected:
     static void turn_on(std::atomic_bool &abool) { abool.store(true); }
     static void turn_off(std::atomic_bool &abool) { abool.store(false); }
 
+    void          set_api_revision(unsigned char api_revision);
+    unsigned char get_api_revision(void) const;
+
     bool register_iarm_call(const char *call, IARM_BusCall_t handler) const;
     bool broadcast_iarm_event_legacy(const char *bus_name, int event, void *data, size_t data_size) const;
 
     template <typename T>
-    bool broadcast_iarm_event(const char *bus_name, unsigned char api_revision, int event, const char *str) const {
+    bool broadcast_iarm_event(const char *bus_name, int event, json_t* event_data) const
+    {
+        bool ret = false;
+        if(!event_data) {
+            return(ret);
+        }
+
+        char *payload_str = json_dumps(event_data, JSON_COMPACT);
+
+        if(payload_str != NULL) {
+            ret = broadcast_iarm_event<T>(bus_name, event, payload_str);
+            free(payload_str);
+        }
+
+        if(event_data) {
+            json_decref(event_data);
+        }
+
+        return(ret);
+    }
+
+    template <typename T>
+    bool broadcast_iarm_event(const char *bus_name, int event, const char *str) const
+    {
         bool ret = false;
         size_t str_size = strlen(str) + 1;
         size_t size = sizeof(T) + str_size;
+
         T *data = (T *)calloc(1, size);
-        data->api_revision = api_revision;
-        if(!data) {
-            return(ret);
-        } else {
+        if (data != nullptr) {
+            data->api_revision = api_revision_;
+            //Can't be replaced with safeC version of this, as safeC string functions doesn't allow string size more than 4K
             snprintf(data->payload, str_size, "%s", str);
-            if(IARM_Bus_BroadcastEvent(bus_name, event, data, size)) {
+
+            IARM_Result_t res = IARM_Bus_BroadcastEvent(bus_name, event, data, size);
+            if(res == IARM_RESULT_SUCCESS) {
                 ret = true;
             }
-            if(data) {
-                free(data);
-            }
+            free(data);
         }
         return(ret);
     }

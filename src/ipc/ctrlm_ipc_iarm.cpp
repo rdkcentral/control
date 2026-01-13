@@ -20,6 +20,15 @@
 #include "ctrlm_ipc_iarm.h"
 #include "ctrlm.h"
 #include "ctrlm_log.h"
+#include "ctrlm_ipc_voice.h"
+
+void ctrlm_ipc_iarm_t::set_api_revision(unsigned char api_revision) {
+    api_revision_ = api_revision;
+}
+
+unsigned char ctrlm_ipc_iarm_t::get_api_revision(void) const {
+    return api_revision_;
+}
 
 bool ctrlm_ipc_iarm_t::register_iarm_call(const char *call, IARM_BusCall_t handler) const
 {

@@ -365,7 +365,7 @@ void ctrlm_voice_endpoint_ws_nextgen_t::voice_session_begin_callback_ws_nextgen(
        }
        config_in.ws.app_config = stream_params_out;
 
-       XLOGD_TELEMETRY("session begin - src <%s> ptt <%s> w_SAT <%s> w_MTLS <%s> w_OCSPst <%s> w_OCSPca <%s> keyword begin <%u> end <%u> doa <%u> gain <%4.1f> db", ctrlm_voice_device_str(source), (stream_params->push_to_talk ? "TRUE" : "FALSE"), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO", stream_params->keyword_sample_begin, stream_params->keyword_sample_end, stream_params->keyword_doa, stream_params->dynamic_gain);
+       XLOGD_AUTOMATION_TELEMETRY("session begin - src <%s> ptt <%s> w_SAT <%s> w_MTLS <%s> w_OCSPst <%s> w_OCSPca <%s> keyword begin <%u> end <%u> doa <%u> gain <%4.1f> db", ctrlm_voice_device_str(source), (stream_params->push_to_talk ? "TRUE" : "FALSE"), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO", stream_params->keyword_sample_begin, stream_params->keyword_sample_end, stream_params->keyword_doa, stream_params->dynamic_gain);
     } else if(!is_mic || dqm->configuration.user_initiated) {
        xrsv_ws_nextgen_stream_params_t *stream_params = (xrsv_ws_nextgen_stream_params_t *)malloc(sizeof(xrsv_ws_nextgen_stream_params_t));
 
@@ -378,7 +378,7 @@ void ctrlm_voice_endpoint_ws_nextgen_t::voice_session_begin_callback_ws_nextgen(
        }
        config_in.ws.app_config = stream_params;
 
-       XLOGD_TELEMETRY("session begin - src <%s> ptt <TRUE> w_SAT <%s> w_MTLS <%s> w_OCSPst <%s> w_OCSPca <%s>", ctrlm_voice_device_str(source), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO");
+       XLOGD_AUTOMATION_TELEMETRY("session begin - src <%s> ptt <TRUE> w_SAT <%s> w_MTLS <%s> w_OCSPst <%s> w_OCSPca <%s>", ctrlm_voice_device_str(source), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO");
     } else {
        XLOGD_ERROR("session begin - invalid params - src <%s>", ctrlm_voice_device_str(source));
     }

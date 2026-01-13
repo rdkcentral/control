@@ -66,7 +66,7 @@ const std::map<ctrlm_key_code_t, linux_ui_code_values_t> ctrlm_key_to_linux_map 
     {CTRLM_KEY_CODE_CH_DOWN,      linux_ui_code_values_t(KEY_PAGEDOWN,     0x59, KEY_LEFTCTRL)},
     {CTRLM_KEY_CODE_LAST,         linux_ui_code_values_t(KEY_ESC,          0x0,  KEY_LEFTCTRL)},
     {CTRLM_KEY_CODE_INPUT_SELECT, linux_ui_code_values_t(KEY_F15,          0x0,  KEY_RESERVED)},
-    {CTRLM_KEY_CODE_INFO,         linux_ui_code_values_t(KEY_F9,           0xcb, KEY_LEFTCTRL)},
+    {CTRLM_KEY_CODE_INFO,         linux_ui_code_values_t(KEY_F20,          0x0,  KEY_RESERVED)},
     {CTRLM_KEY_CODE_VOL_UP,       linux_ui_code_values_t(KEY_KPPLUS,       0x0,  KEY_RESERVED)},
     {CTRLM_KEY_CODE_VOL_DOWN,     linux_ui_code_values_t(KEY_KPMINUS,      0x0,  KEY_RESERVED)},
     {CTRLM_KEY_CODE_MUTE,         linux_ui_code_values_t(KEY_KPASTERISK,   0x0,  KEY_RESERVED)},
@@ -86,6 +86,7 @@ const std::map<ctrlm_key_code_t, linux_ui_code_values_t> ctrlm_key_to_linux_map 
     {CTRLM_KEY_CODE_OCAP_C,       linux_ui_code_values_t(KEY_RESERVED,     0x0,  KEY_RESERVED)},
     {CTRLM_KEY_CODE_OCAP_D,       linux_ui_code_values_t(KEY_RESERVED,     0x0,  KEY_RESERVED)},
     {CTRLM_KEY_CODE_ASTERISK,     linux_ui_code_values_t(KEY_F14,          0x0,  KEY_RESERVED)},
+    {CTRLM_KEY_CODE_PUSH_TO_TALK, linux_ui_code_values_t(KEY_F8,           0x0,  KEY_RESERVED)}
 };
 
 enum class key_stroke {

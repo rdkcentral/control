@@ -36,7 +36,7 @@
 #include "libIBus.h"
 #include "libIBusDaemon.h"
 #include <jansson.h>
-#ifdef NETWORKED_STANDBY_MODE_ENABLED
+#ifdef USE_IARM_POWER_MANAGER
 #include "deepSleepMgr.h"
 #endif
 #ifdef TELEMETRY_SUPPORT
@@ -205,7 +205,7 @@ const char *ctrlm_ir_state_str(ctrlm_ir_state_t state);
 const char *ctrlm_power_state_str(ctrlm_power_state_t state);
 const char *ctrlm_device_type_str(ctrlm_device_type_t device_type);
 
-#ifdef NETWORKED_STANDBY_MODE_ENABLED
+#ifdef USE_IARM_POWER_MANAGER
 const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason);
 #endif
 const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config);

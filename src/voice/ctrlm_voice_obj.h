@@ -296,7 +296,6 @@ typedef struct {
    unsigned long               utterance_duration_min;
    unsigned long               ffv_leading_samples;
    bool                        force_voice_settings;
-   double                      keyword_sensitivity;
    bool                        vrex_test_flag;
    bool                        vrex_wuw_bypass_success_flag;
    bool                        vrex_wuw_bypass_failure_flag;

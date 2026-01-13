@@ -263,7 +263,6 @@
       "utterance_path"                   : "/opt/logs/rf4ce_adpcm_header_vrex.raw",
       "force_voice_settings"             :     false,
       "vrex_response_timeout"            :     10000,
-      "keyword_detect_sensitivity"       :       0.3,
       "opus_encoder_params"              : "4080084410",
       "packet_loss_threshold"            :         5,
       "vrex_test_flag"                   :     false,

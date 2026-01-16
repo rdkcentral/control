@@ -36,6 +36,11 @@
 
 #define THREAD_ID_VALIDATE() thread_id_validate(__FUNCTION__)
 
+#define NETWORK_ID_BASE_RF4CE   1
+#define NETWORK_ID_BASE_IP      11
+#define NETWORK_ID_BASE_BLE     21
+#define NETWORK_ID_BASE_CUSTOM  41
+
 typedef struct : public ctrlm_network_all_ipc_result_wrapper_t {
    unsigned char            api_revision;
    unsigned int             timeout;
@@ -313,6 +318,7 @@ protected:
    const char *         get_thread_name(const GThread *thread_id) const;
    void                 thread_id_validate(const char *pCallingFunction) const;
    virtual gboolean     key_event_hook(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_key_status_t key_status, ctrlm_key_code_t key_code);
+   virtual bool         is_managed_by_network(ctrlm_controller_id_t id);
 
 private:
    gboolean                      mask_key_codes_ = true;

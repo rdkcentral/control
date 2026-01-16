@@ -41,6 +41,8 @@
 
 // End Includes
 
+#define BLE_RCU_ID_RANGE_MIN (NETWORK_ID_BASE_BLE)
+#define BLE_RCU_ID_RANGE_MAX ((BLE_RCU_ID_RANGE_MIN)+BLE_MAX_MANAGED_RCUS+1) // +1 as a buffer for pairing
 
 typedef struct {
    ctrlm_main_queue_msg_header_t               header;
@@ -193,6 +195,9 @@ public:
    std::shared_ptr<ConfigSettings> getConfigSettings();
 
    virtual void                  start_controller_audio_streaming(ctrlm_voice_start_audio_params_t *params);
+
+protected:
+   virtual bool                  is_managed_by_network(ctrlm_controller_id_t id);
 
 private:
    ctrlm_obj_network_ble_t();

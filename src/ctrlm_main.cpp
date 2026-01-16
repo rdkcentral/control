@@ -1601,8 +1601,7 @@ gboolean ctrlm_load_authservice_data(void) {
 
 gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, json_t **json_obj_voice, json_t **json_obj_device_update, json_t **json_obj_validation, json_t **json_obj_vsdk) {
    std::string config_fn_opt = "/opt/ctrlm_config.json";
-   std::string config_fn_etc = "/etc/ctrlm_config.json";
-   std::string config_fn_tpl = "/etc/ctrlm_config.json.template";
+   std::string config_fn_def = "/etc/ctrlm_config.json";
    std::string config_fn_oem = "/etc/vendor/input/ctrlm_config.json";
    json_t *json_obj_ctrlm;
    ctrlm_config_t *ctrlm_config = ctrlm_config_t::get_instance();
@@ -1611,17 +1610,16 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
    XLOGD_INFO("");
 
    bool oem_append = g_file_test(config_fn_oem.c_str(), G_FILE_TEST_EXISTS);
+   bool opt_append = ctrlm_is_production_build() ? false : g_file_test(config_fn_opt.c_str(), G_FILE_TEST_EXISTS);
 
    if(ctrlm_config == NULL) {
       XLOGD_ERROR("Failed to get config manager instance");
       return(false);
    } else if(!ctrlm_is_production_build() && g_file_test(config_fn_opt.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_opt)) {
       XLOGD_INFO("Read configuration from <%s>", config_fn_opt.c_str());
-      local_conf = true;
-   } else if(g_file_test(config_fn_etc.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_etc)) {
-      XLOGD_INFO("Read configuration from <%s>", config_fn_etc.c_str());
-   } else if(oem_append && g_file_test(config_fn_tpl.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_tpl)) {
-      XLOGD_INFO("Read configuration from <%s>", config_fn_tpl.c_str());
+      
+   } else if(oem_append && g_file_test(config_fn_def.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_def)) {
+      XLOGD_INFO("Read configuration from <%s>", config_fn_def.c_str());
    } else {
       XLOGD_INFO("Using default configuration");
       return(false);
@@ -1649,6 +1647,18 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
          *json_obj_root = NULL;
          return(false);
       }
+   }
+
+   // Check for OPT config file override
+   if(opt_append) {
+      XLOGD_INFO("Appending OPT configuration from <%s>", config_fn_opt.c_str());
+      if(!ctrlm_config->append_config(config_fn_opt)) {
+         XLOGD_ERROR("Failed to append OPT configuration from <%s>", config_fn_opt.c_str());
+         json_decref(*json_obj_root);
+         *json_obj_root = NULL;
+         return(false);
+      }
+      local_conf = true;
    }
 
    // Print the configuration since it was loaded from files

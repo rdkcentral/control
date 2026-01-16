@@ -266,6 +266,16 @@ bool BleRcuControllerImpl::startPairingWithCode(uint8_t pairingCode)
         return false;
     }
 
+    for (const auto& address : m_managedDevices) {
+        if (m_adapter->isDevicePaired(address) && m_adapter->isDeviceConnected(address)) {
+            // We are assuming this device request pairing and is already paired and connected, ignore
+            // TODO: Look for a better way to prevent pairing if already paired and connected...
+            m_lastError = BleRcuError(BleRcuError::Rejected, "Device already paired");
+            XLOGD_INFO("Device <%s> already paired", address.toString().c_str());
+            return false;
+        }
+    }
+
     // start the pairing process
     m_pairingStateMachine.startWithCode(pairingCode);
     return true;

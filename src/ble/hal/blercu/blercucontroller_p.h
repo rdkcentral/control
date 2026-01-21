@@ -35,12 +35,12 @@
 
 #include <string>
 
+#define BLE_MAX_MANAGED_RCUS (1)
+
 class ConfigSettings;
 
 class BleRcuAdapter;
 class BleRcuDevice;
-
-
 
 class BleRcuControllerImpl final : public BleRcuController
 {

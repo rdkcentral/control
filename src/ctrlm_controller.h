@@ -67,6 +67,7 @@ public:
    std::string             stb_name_get() const;
    void                    set_device_minor_id(int device_minor_id);
    int                     get_device_minor_id() const;
+   void                    update_controller_id_and_db_entry(std::string db_name, ctrlm_network_id_t network_id, ctrlm_controller_id_t id);
 
    virtual ctrlm_controller_capabilities_t get_capabilities() const;
 

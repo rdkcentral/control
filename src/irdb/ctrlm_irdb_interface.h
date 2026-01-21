@@ -31,7 +31,6 @@
 #include "ctrlm_hal.h"
 #include "ctrlm_irdb_plugin.h"
 
-
 inline bool operator==(const ctrlm_irdb_autolookup_entry_ranked_t& lhs, const ctrlm_irdb_autolookup_entry_ranked_t& rhs) {
       return (lhs.id.compare(rhs.id) == 0);
 }
@@ -42,7 +41,7 @@ typedef struct {
    ctrlm_network_id_t         network_id;
    ctrlm_controller_id_t      controller_id;
    ctrlm_irdb_ir_code_set_t * ir_codes;
-   bool *                     success;
+   std::vector<char> *        success;
    sem_t *                    semaphore;
    ctrlm_irdb_vendor_info_t   vendor_info;
 } ctrlm_main_queue_msg_program_ir_codes_t;
@@ -50,7 +49,7 @@ typedef struct {
 typedef struct {
    ctrlm_network_id_t    network_id;
    ctrlm_controller_id_t controller_id;
-   bool *                success;
+   std::vector<char> *   success;
    sem_t *               semaphore;
 } ctrlm_main_queue_msg_ir_clear_t;
 

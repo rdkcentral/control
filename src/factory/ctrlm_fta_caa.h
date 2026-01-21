@@ -48,6 +48,8 @@ extern "C" {
 
 bool ctrlmf_mic_test_audio_analyze(ctrlmf_test_type_t test_type, const char *output_filename, uint32_t level, ctrlmf_audio_frame_t audio_frames_noise, ctrlmf_audio_frame_t audio_frames_signal, uint32_t frame_qty, uint32_t mic_qty, ctrlmf_test_result_t *test_result);
 
+typedef bool (*ctrlmf_mic_test_audio_analyze_t)(ctrlmf_test_type_t test_type, const char *output_filename, uint32_t level, ctrlmf_audio_frame_t audio_frames_noise, ctrlmf_audio_frame_t audio_frames_signal, uint32_t frame_qty, uint32_t mic_qty, ctrlmf_test_result_t *test_result);
+
 #ifdef __cplusplus
 }
 #endif

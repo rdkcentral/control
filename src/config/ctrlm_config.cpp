@@ -99,7 +99,6 @@ bool ctrlm_config_t::append_config(const std::string &file_path, bool verbose) {
         } else {
             XLOGD_INFO("Appending Configuration for <%s>", file_path.c_str());
         }
-        
         json_t *append_root = json_loads(contents.c_str(), JSON_REJECT_DUPLICATES, &json_error);
         if(append_root == NULL) {
             XLOGD_ERROR("JSON ERROR: Line <%u> Column <%u> Text <%s> Contents <%s>", json_error.line, json_error.column, json_error.text, contents.c_str());

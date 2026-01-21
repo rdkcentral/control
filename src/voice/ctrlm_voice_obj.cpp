@@ -467,8 +467,9 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
         conf.config_value_get(JSON_BOOL_NAME_VOICE_TELEMETRY_SESSION_STATS,     this->prefs.telemetry_session_stats);
 
         std::string opus_encoder_params_str;
-        conf.config_value_get(JSON_STR_NAME_VOICE_OPUS_ENCODER_PARAMS,          opus_encoder_params_str);
-        this->voice_params_opus_encoder_validate(opus_encoder_params_str);
+        if(conf.config_value_get(JSON_STR_NAME_VOICE_OPUS_ENCODER_PARAMS,       opus_encoder_params_str)) {
+            this->voice_params_opus_encoder_validate(opus_encoder_params_str);
+        }
 
         conf.config_value_get(JSON_INT_NAME_VOICE_PAR_VOICE_EOS_METHOD,         this->prefs.par_voice_eos_method);
         conf.config_value_get(JSON_INT_NAME_VOICE_PAR_VOICE_EOS_TIMEOUT,        this->prefs.par_voice_eos_timeout);

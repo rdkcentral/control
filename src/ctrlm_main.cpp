@@ -1649,13 +1649,6 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
       local_conf = true;
    }
 
-   // Print the configuration since it was loaded from files
-   char *json_dump = json_dumps(*json_obj_root, JSON_INDENT(3) | JSON_SORT_KEYS);
-   if(json_dump != NULL) {
-      XLOGD_INFO_OPTS(XLOG_OPTS_DEFAULT, 20 * 1024, "Final configuration:\n%s", json_dump);
-      free(json_dump);
-   }
-
    // Parse the JSON data
    *json_obj_root = ctrlm_config->json_from_path("", true); // Get root AND add ref to it, since this code derefs it
    if(*json_obj_root == NULL) {
@@ -1667,6 +1660,18 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
       json_decref(*json_obj_root);
       *json_obj_root = NULL;
       return(false);
+   }
+
+   // Print the configuration since it was loaded from files
+   char *json_dump = json_dumps(*json_obj_root, JSON_INDENT(3) | JSON_SORT_KEYS);
+   if(json_dump == NULL) {
+      XLOGD_ERROR("unable to dump JSON object");
+      json_decref(*json_obj_root);
+      *json_obj_root = NULL;
+      return(false);
+   } else {
+      XLOGD_INFO_OPTS(XLOG_OPTS_DEFAULT, 20 * 1024, "Final configuration:\n%s", json_dump);
+      free(json_dump);
    }
 
    // Extract the RF4CE network configuration object

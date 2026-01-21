@@ -1640,7 +1640,7 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
          }
       } else {
          XLOGD_INFO("Appending OPT configuration from <%s>", config_fn_opt.c_str());
-      
+
          if(!ctrlm_config->append_config(config_fn_opt)) {
             XLOGD_ERROR("Failed to append OPT configuration from <%s>", config_fn_opt.c_str());
             return(false);

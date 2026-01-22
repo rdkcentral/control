@@ -1699,14 +1699,14 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
   //Extract the vsdk configuration object
    *json_obj_vsdk = json_object_get( *json_obj_root, JSON_OBJ_NAME_VSDK);
    if(*json_obj_vsdk == NULL || !json_is_object(*json_obj_vsdk)) {
-      XLOGD_WARN("vsdk object not found");
+      XLOGD_INFO("vsdk object not found");
       *json_obj_vsdk = NULL;
    }
 
    // Extract the ctrlm global configuration object
    json_obj_ctrlm = json_object_get(*json_obj_root, JSON_OBJ_NAME_CTRLM_GLOBAL);
    if(json_obj_ctrlm == NULL || !json_is_object(json_obj_ctrlm)) {
-      XLOGD_INFO("control manger object not found");
+      XLOGD_INFO("control manager object not found");
    } else {
       json_config conf_global;
       if(!conf_global.config_object_set(json_obj_ctrlm)) {

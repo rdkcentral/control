@@ -744,7 +744,6 @@ public:
     void                 set_audio_mode(ctrlm_voice_audio_settings_t *settings);
     void                 audio_state_set(bool session);
     bool                 vsdk_is_privacy_enabled(void);
-    double               vsdk_keyword_sensitivity_limit_check(double sensitivity);
     void                 pre_session_terminate(std::function<void(ctrlm_voice_start_audio_params_t *)> cb_start_audio,
                                                ctrlm_voice_start_audio_params_t *cb_audio_start_params,
                                                ctrlm_voice_session_rsp_confirm_t *cb_confirm,

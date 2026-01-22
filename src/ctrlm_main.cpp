@@ -1679,6 +1679,7 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
       *json_obj_net_rf4ce = json_object_get(*json_obj_root, JSON_OBJ_NAME_NETWORK_RF4CE);
       if(*json_obj_net_rf4ce == NULL || !json_is_object(*json_obj_net_rf4ce)) {
          XLOGD_INFO("RF4CE network object not found");
+         *json_obj_net_rf4ce = NULL;
       }
    }
 
@@ -1686,19 +1687,20 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
    *json_obj_voice = json_object_get(*json_obj_root, JSON_OBJ_NAME_VOICE);
    if(*json_obj_voice == NULL || !json_is_object(*json_obj_voice)) {
       XLOGD_INFO("voice object not found");
+      *json_obj_voice = NULL;
    }
 
    // Extract the device update configuration object
    *json_obj_device_update = json_object_get(*json_obj_root, JSON_OBJ_NAME_DEVICE_UPDATE);
    if(*json_obj_device_update == NULL || !json_is_object(*json_obj_device_update)) {
       XLOGD_INFO("device update object not found");
-   }
+      *json_obj_device_update = NULL;
 
   //Extract the vsdk configuration object
    *json_obj_vsdk = json_object_get( *json_obj_root, JSON_OBJ_NAME_VSDK);
    if(*json_obj_vsdk == NULL || !json_is_object(*json_obj_vsdk)) {
       XLOGD_WARN("vsdk object not found");
-      json_obj_vsdk = NULL;
+      *json_obj_vsdk = NULL;
    }
 
    // Extract the ctrlm global configuration object

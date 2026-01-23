@@ -1079,3 +1079,8 @@ void ctrlm_obj_network_t::start_controller_audio_streaming(ctrlm_voice_start_aud
    XLOGD_WARN("not implemented for %s network", name_get());
    return;
 }
+
+bool ctrlm_obj_network_t::is_managed_by_network(ctrlm_controller_id_t) {
+   XLOGD_WARN("not implemented for %s network", name_get());
+   return false;
+}

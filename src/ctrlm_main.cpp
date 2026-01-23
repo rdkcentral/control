@@ -1695,6 +1695,7 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
    if(*json_obj_device_update == NULL || !json_is_object(*json_obj_device_update)) {
       XLOGD_INFO("device update object not found");
       *json_obj_device_update = NULL;
+   }
 
   //Extract the vsdk configuration object
    *json_obj_vsdk = json_object_get( *json_obj_root, JSON_OBJ_NAME_VSDK);

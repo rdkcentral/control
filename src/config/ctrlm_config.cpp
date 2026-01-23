@@ -103,7 +103,7 @@ bool ctrlm_config_t::append_config(const std::string &file_path, bool verbose) {
         if(append_root == NULL) {
             XLOGD_ERROR("JSON ERROR: Line <%u> Column <%u> Text <%s> Contents <%s>", json_error.line, json_error.column, json_error.text, contents.c_str());
         } else {
-            if(json_object_update_recursive(this->root, append_root) != 0) {
+            if(json_object_update(this->root, append_root) != 0) {
                 XLOGD_ERROR("Failed to merge JSON objects");
             } else {
                 if(verbose) {

@@ -28,7 +28,7 @@
 
 using namespace std;
 
-#define OTA_MAX_RETRIES (2)
+#define OTA_MAX_RETRIES (0)
 
 ctrlm_obj_controller_t::ctrlm_obj_controller_t(ctrlm_controller_id_t controller_id, ctrlm_obj_network_t &network, unsigned long long ieee_address) :
    controller_id_(controller_id),

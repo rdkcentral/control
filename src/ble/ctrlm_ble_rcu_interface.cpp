@@ -603,11 +603,6 @@ void ctrlm_ble_rcu_interface_t::handleDeepsleep(bool wakingUp)
 
         initialize();
 
-        if (m_adapter) {
-            m_adapter->reconnectAllDevices();
-        }
-
-
         ctrlm_ble_key_queue_msg_header_t msg;
         msg.type = CTRLM_BLE_KEY_QUEUE_MSG_TYPE_DEEPSLEEP_WAKEUP;
         ctrlm_utils_queue_msg_push(m_keyThreadMsgQ, (const char *)&msg, sizeof(msg));

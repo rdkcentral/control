@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include "ctrlm_ipc_key_codes.h"
 #include "ctrlm_ipc.h"
+#include <string>
 
 class linux_ui_code_values_t {
 public:
@@ -105,8 +106,9 @@ const std::map<ctrlm_key_status_t, key_stroke> ev_key_value_map =
 
 class ctrlm_input_event_writer {
 private:
-    bool initialized_ = false;
-    int  fd_          = -1;
+    bool initialized_       = false;
+    int  fd_                = -1;
+    std::string sysfs_name_ = "";
 
 protected:
     bool write_event_internal(uint32_t scan_code, uint16_t key_code, key_stroke stroke);

@@ -3261,7 +3261,13 @@ bool ctrlm_obj_controller_rf4ce_t::init_uinput_writer() {
     }
 
     std::string uinput_name = product_name_get() + " " + std::to_string(controller_id_get());
-    ret = uinput_writer_->init(uinput_name, version_hardware_->get_manufacturer(), version_hardware_->get_model());
+    uint32_t vendor = 0x293c;
+    uint32_t product = version_hardware_->get_manufacturer() << 12;
+    product |= version_hardware_->get_model() << 8;
+    product |= version_hardware_->get_revision() << 4;
+    product |= version_hardware_->get_lot();
+
+    ret = uinput_writer_->init(uinput_name, vendor, product);
     if (!ret) {
         XLOGD_ERROR("Controller <%s><%d> failed to initialize a uinput device", ctrlm_rf4ce_controller_type_str(controller_type_), controller_id_get());
         return ret;

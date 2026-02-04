@@ -27,7 +27,6 @@
 #include <sys/stat.h>
 #include "ctrlm_ipc_key_codes.h"
 #include "ctrlm_ipc.h"
-#include <string>
 
 class linux_ui_code_values_t {
 public:

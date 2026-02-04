@@ -28,6 +28,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include <sstream>
 
 bool ctrlm_input_event_writer::init(std::string uinput_name, uint32_t vendor, uint32_t product) {

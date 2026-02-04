@@ -167,21 +167,27 @@ bool ctrlm_input_event_writer::get_meta_data(struct stat &file_meta_data) {
 
     struct dirent *entry;
     std::string stat_path = "/dev/input/";
+    bool event_node_found = false;
 
     while ((entry = readdir(dir)) != nullptr) {
         std::string filename = entry->d_name;
         if (filename.find("event") == 0) {
+            event_node_found = true;
             stat_path += filename;
-            closedir(dir);
             break;
         }
     }
+    closedir(dir);
+
     XLOGD_DEBUG("dev input event path = %s", stat_path.c_str());
+    if (!event_node_found) {
+        return false;
+    }
 
     int ret = stat(stat_path.c_str(), &file_meta_data);
     if (ret == -1) {
         int errsv = errno;
-        XLOGD_ERROR("fstat() failed: error = <%d>, <%s>", errsv, std::strerror(errsv));
+        XLOGD_ERROR("stat() failed: error = <%d>, <%s>", errsv, std::strerror(errsv));
         return false;
     }
     return true;

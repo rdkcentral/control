@@ -61,10 +61,23 @@ bool ctrlm_input_event_writer::init(std::string uinput_name, uint32_t vendor, ui
     errno_t safec_rc = strcpy_s(usetup.name, sizeof(usetup.name), uinput_name.c_str());
     ERR_CHK(safec_rc);
 
-    ioctl(fd, UI_DEV_SETUP, &usetup);
-    ioctl(fd, UI_DEV_CREATE);
+    int err = ioctl(fd, UI_DEV_SETUP, &usetup);
+    if (err == -1) {
+        int errsv = errno;
+        XLOGD_ERROR("UI_DEV_SETUP failed with errno %d (%s)", errsv, std::strerror(errsv));
+        close(fd);
+        return false;
+    }
 
-    char sysfs_name[16];
+    ioctl(fd, UI_DEV_CREATE);
+    if (err == -1) {
+        int errsv = errno;
+        XLOGD_ERROR("UI_DEV_CREATE failed with errno %d (%s)", errsv, std::strerror(errsv));
+        close(fd);
+        return false;
+    }
+
+    char sysfs_name[16] = {0};
     ioctl(fd, UI_GET_SYSNAME(sizeof(sysfs_name)), sysfs_name);
     sysfs_name_ = sysfs_name;
 
@@ -182,6 +195,7 @@ bool ctrlm_input_event_writer::get_meta_data(struct stat &file_meta_data) {
 
     XLOGD_DEBUG("dev input event path = %s", stat_path.c_str());
     if (!event_node_found) {
+        XLOGD_ERROR("no event node found in virtual device dir %s", dir_path.c_str());
         return false;
     }
 

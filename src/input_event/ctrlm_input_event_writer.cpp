@@ -202,7 +202,7 @@ bool ctrlm_input_event_writer::get_meta_data(struct stat &file_meta_data) {
 
     XLOGD_DEBUG("dev input event path = %s", stat_path.c_str());
     if (!event_node_found) {
-        XLOGD_ERROR("no event node found in virtual device dir %s", dir_path.c_str());
+        XLOGD_ERROR("no event node found in virtual device dir <%s>", dir_path.c_str());
         return false;
     }
 

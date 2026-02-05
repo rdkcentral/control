@@ -3263,9 +3263,9 @@ bool ctrlm_obj_controller_rf4ce_t::init_uinput_writer() {
     std::string uinput_name = product_name_get() + " " + std::to_string(controller_id_get());
     uint32_t vendor       = 0x293c;
     uint32_t product      = 0;
-    uint32_t manufacturer = version_hardware_->get_manufacturer() << 12;
-    uint32_t model        = version_hardware_->get_model() << 8;
-    uint32_t revision     = version_hardware_->get_revision() << 4;
+    uint32_t manufacturer = version_hardware_->get_manufacturer();
+    uint32_t model        = version_hardware_->get_model();
+    uint32_t revision     = version_hardware_->get_revision();
     uint32_t lot          = version_hardware_->get_lot();
 
     if (manufacturer > 0xF || model > 0xF || revision > 0xF || lot > 0xF) {

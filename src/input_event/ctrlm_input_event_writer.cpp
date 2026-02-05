@@ -69,7 +69,7 @@ bool ctrlm_input_event_writer::init(std::string uinput_name, uint32_t vendor, ui
         return false;
     }
 
-    ioctl(fd, UI_DEV_CREATE);
+    err = ioctl(fd, UI_DEV_CREATE);
     if (err == -1) {
         int errsv = errno;
         XLOGD_ERROR("UI_DEV_CREATE failed with errno %d (%s)", errsv, std::strerror(errsv));

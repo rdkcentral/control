@@ -78,7 +78,14 @@ bool ctrlm_input_event_writer::init(std::string uinput_name, uint32_t vendor, ui
     }
 
     char sysfs_name[16] = {0};
-    ioctl(fd, UI_GET_SYSNAME(sizeof(sysfs_name)), sysfs_name);
+    err = ioctl(fd, UI_GET_SYSNAME(sizeof(sysfs_name)), sysfs_name);
+    if (err == -1) {
+        int errsv = errno;
+        XLOGD_ERROR("UI_GET_SYSNAME failed with errno %d (%s)", errsv, std::strerror(errsv));
+        ioctl(fd, UI_DEV_DESTROY);
+        close(fd);
+        return false;
+    }
     sysfs_name_ = sysfs_name;
 
     fd_ = fd;

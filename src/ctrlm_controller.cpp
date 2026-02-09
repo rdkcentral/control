@@ -410,3 +410,20 @@ uint8_t ctrlm_obj_controller_t::get_upgrade_increment() const {
 bool ctrlm_obj_controller_t::is_upgrade_progress_at_increment() const {
     return ((upgrade_progress_ % upgrade_increment_ == 0) || (upgrade_progress_ == 100));
 }
+
+void ctrlm_obj_controller_t::update_controller_id_and_db_entry(std::string db_name, ctrlm_network_id_t network_id, ctrlm_controller_id_t new_id) {
+    controller_id_ = new_id;
+    std::stringstream new_controller_db_table;
+    new_controller_db_table << db_name << "_" << COUT_HEX_MODIFIER << (int)network_id << "_controller_" << COUT_HEX_MODIFIER << (int)new_id;
+    std::string new_table = new_controller_db_table.str();
+
+    ieee_address_->set_table(new_table);
+    time_binding_->set_table(new_table);
+    last_activity_time_->set_table(new_table);
+    last_key_time_->set_table(new_table);
+    last_key_code_->set_table(new_table);
+    irdb_entry_id_name_tv_->set_table(new_table);
+    irdb_entry_id_name_avr_->set_table(new_table);
+    voice_metrics_->set_table(new_table);
+    ota_failure_cnt_from_last_success_->set_table(new_table);
+}

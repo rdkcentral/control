@@ -165,7 +165,7 @@ target_link_libraries(
 
 install(TARGETS controlMgr RUNTIME DESTINATION bin)
 
-install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json.template DESTINATION ${CMAKE_INSTALL_SYSCONFDIR} COMPONENT config )
+install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json DESTINATION ${CMAKE_INSTALL_SYSCONFDIR} COMPONENT config )
 
 # DEFINES FROM OPTIONS
 if(ANSI_CODES_DISABLED)
@@ -260,7 +260,7 @@ endif()
 
 install(TARGETS  controlMgr RUNTIME DESTINATION bin)
 
-install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json.template DESTINATION ${CMAKE_INSTALL_SYSCONFDIR} COMPONENT config )
+install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json DESTINATION ${CMAKE_INSTALL_SYSCONFDIR} COMPONENT config )
 
 # GENERATED FILES
 add_custom_command( OUTPUT ctrlm_version_build.h
@@ -276,16 +276,16 @@ add_custom_command( OUTPUT ctrlm_version_build.h
 )
 
 add_custom_command(
-   OUTPUT ${CMAKE_BINARY_DIR}/ctrlm_config.json.template
-   COMMAND python3 ${CTRLM_UTILS_JSON_COMBINE} -i ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.json -a ${CTRLM_CONFIG_JSON_VSDK}:vsdk -a ${CTRLM_CONFIG_JSON_CPC} -s ${CTRLM_CONFIG_JSON_CPC_SUB} -a ${CTRLM_CONFIG_JSON_CPC_ADD} -s ${CTRLM_CONFIG_JSON_OEM_SUB} -a ${CTRLM_CONFIG_JSON_OEM_ADD} -s ${CTRLM_CONFIG_JSON_MAIN_SUB} -a ${CTRLM_CONFIG_JSON_MAIN_ADD} -o ${CMAKE_BINARY_DIR}/ctrlm_config.json.template
+   OUTPUT ${CMAKE_BINARY_DIR}/ctrlm_config.json
+   COMMAND python3 ${CTRLM_UTILS_JSON_COMBINE} -i ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.json -a ${CTRLM_CONFIG_JSON_CPC} -s ${CTRLM_CONFIG_JSON_CPC_SUB} -a ${CTRLM_CONFIG_JSON_CPC_ADD} -s ${CTRLM_CONFIG_JSON_MAIN_SUB} -a ${CTRLM_CONFIG_JSON_MAIN_ADD} -o ${CMAKE_BINARY_DIR}/ctrlm_config.json
    DEPENDS src/ctrlm_config_default.json
    VERBATIM
    )
 
 add_custom_command(
    OUTPUT ctrlm_config_default.h ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.c
-   COMMAND python3 ${CTRLM_UTILS_JSON_TO_HEADER} -i ${CMAKE_BINARY_DIR}/ctrlm_config.json.template -o ctrlm_config_default.h -c ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.c -v "ctrlm_global,network_rf4ce,network_ip,network_ble,ir,voice,device_update" -d "network_ble"
-   DEPENDS ${CMAKE_BINARY_DIR}/ctrlm_config.json.template
+   COMMAND python3 ${CTRLM_UTILS_JSON_TO_HEADER} -i ${CMAKE_BINARY_DIR}/ctrlm_config.json -o ctrlm_config_default.h -c ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.c -v "ctrlm_global,network_rf4ce,network_ip,network_ble,ir,voice,device_update" -d "network_ble"
+   DEPENDS ${CMAKE_BINARY_DIR}/ctrlm_config.json
    VERBATIM
    )
 
@@ -296,5 +296,5 @@ add_custom_command(
    )
 
 add_custom_target( ctrlm_config
-   DEPENDS ${CMAKE_BINARY_DIR}/ctrlm_config.json.template
+   DEPENDS ${CMAKE_BINARY_DIR}/ctrlm_config.json
    )

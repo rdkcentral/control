@@ -531,13 +531,30 @@ void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmas
    this->irdbs_supported_ = vendor_support_bitmask;
 
    ctrlm_irdb_interface_t *irdb = ctrlm_main_irdb_get();
-   ctrlm_irdb_vendor_info_t vendor_info;
-   if (irdb && irdb->get_vendor_info(vendor_info)) {
-      XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>, which %s support the loaded IRDB plugin vendor <%s>", 
-            ieee_address_get().to_string().c_str(), vendor_support_bitmask, 
-            isSupportedIrdb(vendor_info) ? "DOES" : "does NOT", vendor_info.name.c_str());
+
+   if (irdb == NULL) {
+      XLOGD_ERROR("IRDB interface is NULL!!!");
+      return;
+   }
+
+   ctrlm_irdb_vendor_info_t rcu_vendor_info{};
+   rcu_vendor_info.rcu_support_bitmask = vendor_support_bitmask;
+   if (!irdb->set_vendor(rcu_vendor_info)) {
+      XLOGD_ERROR("Failed to set IRDB vendor info for controller <%s> with bitmask <0x%X>.", 
+            ieee_address_get().to_string().c_str(), vendor_support_bitmask);
+   }
+
+   ctrlm_irdb_vendor_info_t vendor_info{};
+   if (irdb->get_vendor_info(vendor_info)) {
+      if (isSupportedIrdb(vendor_info)) {
+         XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>, which DOES support the loaded IRDB plugin vendor <%s>", 
+               ieee_address_get().to_string().c_str(), vendor_support_bitmask, vendor_info.name.c_str());
+      } else {
+         XLOGD_ERROR("Controller <%s> IRDBs supported bitmask = <0x%X>, which does NOT support the loaded IRDB plugin vendor <%s>", 
+               ieee_address_get().to_string().c_str(), vendor_support_bitmask, vendor_info.name.c_str());
+      }
    } else {
-      XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>, couldn't retrieve IRDB plugin vendor info.", 
+      XLOGD_WARN("Controller <%s> IRDBs supported bitmask = <0x%X>, couldn't retrieve IRDB plugin vendor info.", 
             ieee_address_get().to_string().c_str(), vendor_support_bitmask);
    }
 }

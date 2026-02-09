@@ -205,7 +205,6 @@ ctrlm_voice_t::ctrlm_voice_t() {
     this->prefs.utterance_duration_min       = JSON_INT_VALUE_VOICE_MINIMUM_DURATION;
     this->prefs.ffv_leading_samples          = JSON_INT_VALUE_VOICE_FFV_LEADING_SAMPLES;
     this->prefs.force_voice_settings         = JSON_BOOL_VALUE_VOICE_FORCE_VOICE_SETTINGS;
-    this->prefs.keyword_sensitivity          = JSON_FLOAT_VALUE_VOICE_KEYWORD_DETECT_SENSITIVITY;
     this->prefs.vrex_test_flag               = JSON_BOOL_VALUE_VOICE_VREX_TEST_FLAG;
     this->prefs.vrex_wuw_bypass_success_flag = JSON_BOOL_VALUE_VOICE_VREX_WUW_BYPASS_SUCCESS_FLAG;
     this->prefs.vrex_wuw_bypass_failure_flag = JSON_BOOL_VALUE_VOICE_VREX_WUW_BYPASS_FAILURE_FLAG;
@@ -340,29 +339,12 @@ bool ctrlm_voice_t::vsdk_is_privacy_enabled(void) {
    return privacy;
 }
 
-double ctrlm_voice_t::vsdk_keyword_sensitivity_limit_check(double sensitivity) {
-    float sensitivity_min;
-    float sensitivity_max;
-
-    if(!xrsr_keyword_sensitivity_limits_get(&sensitivity_min, &sensitivity_max)) {
-        XLOGD_WARN("Unable to get keyword detector sensitivity limits. Using default sensitivity <%f>.", JSON_FLOAT_VALUE_VOICE_KEYWORD_DETECT_SENSITIVITY);
-        return(JSON_FLOAT_VALUE_VOICE_KEYWORD_DETECT_SENSITIVITY);
-    } else {
-        if(((float)(sensitivity) < sensitivity_min) || ((float)(sensitivity) > sensitivity_max)) {
-            XLOGD_WARN("Keyword detector sensitivity <%f> outside of range <%f to %f>. Using default sensitivity <%f>.", (float)(sensitivity), sensitivity_min, sensitivity_max, JSON_FLOAT_VALUE_VOICE_KEYWORD_DETECT_SENSITIVITY);
-            return(JSON_FLOAT_VALUE_VOICE_KEYWORD_DETECT_SENSITIVITY);
-        }
-    }
-    return(sensitivity);
-}
-
 void ctrlm_voice_t::voice_sdk_open(json_t *json_obj_vsdk) {
    if(this->xrsr_opened) {
       XLOGD_ERROR("already open");
       return;
    }
    xrsr_route_t          routes[1];
-   xrsr_keyword_config_t kw_config;
    xrsr_capture_config_t capture_config = {
          .delete_files  = !this->prefs.utterance_save,
          .enable        = this->prefs.utterance_save,
@@ -382,7 +364,6 @@ void ctrlm_voice_t::voice_sdk_open(json_t *json_obj_vsdk) {
    /* Open Voice SDK */
    routes[0].src                  = XRSR_SRC_INVALID;
    routes[0].dst_qty              = 0;
-   kw_config.sensitivity          = this->prefs.keyword_sensitivity;
 
    char host_name[HOST_NAME_MAX];
    host_name[0] = '\0';
@@ -398,7 +379,7 @@ void ctrlm_voice_t::voice_sdk_open(json_t *json_obj_vsdk) {
    ctrlm_power_state_t ctrlm_power_state = ctrlm_main_get_internal_power_state();
    xrsr_power_mode_t   xrsr_power_mode   = voice_xrsr_power_map(ctrlm_power_state);
 
-   if(!xrsr_open(host_name, routes, &kw_config, &capture_config, xrsr_power_mode, privacy, this->mask_pii, json_obj_vsdk)) {
+   if(!xrsr_open(host_name, routes, NULL, &capture_config, xrsr_power_mode, privacy, this->mask_pii, json_obj_vsdk)) {
       XLOGD_ERROR("Failed to open speech router");
       g_assert(0);
    }
@@ -479,7 +460,6 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
         conf.config_value_get(JSON_INT_NAME_VOICE_FFV_LEADING_SAMPLES,          this->prefs.ffv_leading_samples, 0);
         conf.config_value_get(JSON_STR_NAME_VOICE_APP_ID_HTTP,                  this->prefs.app_id_http);
         conf.config_value_get(JSON_STR_NAME_VOICE_APP_ID_WS,                    this->prefs.app_id_ws);
-        conf.config_value_get(JSON_FLOAT_NAME_VOICE_KEYWORD_DETECT_SENSITIVITY, this->prefs.keyword_sensitivity, 0.0, DBL_MAX);
         conf.config_value_get(JSON_BOOL_NAME_VOICE_VREX_TEST_FLAG,              this->prefs.vrex_test_flag);
         conf.config_value_get(JSON_BOOL_NAME_VOICE_VREX_WUW_BYPASS_SUCCESS_FLAG,this->prefs.vrex_wuw_bypass_success_flag);
         conf.config_value_get(JSON_BOOL_NAME_VOICE_VREX_WUW_BYPASS_FAILURE_FLAG,this->prefs.vrex_wuw_bypass_failure_flag);
@@ -487,8 +467,9 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
         conf.config_value_get(JSON_BOOL_NAME_VOICE_TELEMETRY_SESSION_STATS,     this->prefs.telemetry_session_stats);
 
         std::string opus_encoder_params_str;
-        conf.config_value_get(JSON_STR_NAME_VOICE_OPUS_ENCODER_PARAMS,          opus_encoder_params_str);
-        this->voice_params_opus_encoder_validate(opus_encoder_params_str);
+        if(conf.config_value_get(JSON_STR_NAME_VOICE_OPUS_ENCODER_PARAMS,       opus_encoder_params_str)) {
+            this->voice_params_opus_encoder_validate(opus_encoder_params_str);
+        }
 
         conf.config_value_get(JSON_INT_NAME_VOICE_PAR_VOICE_EOS_METHOD,         this->prefs.par_voice_eos_method);
         conf.config_value_get(JSON_INT_NAME_VOICE_PAR_VOICE_EOS_TIMEOUT,        this->prefs.par_voice_eos_timeout);
@@ -603,17 +584,6 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             bool privacy_enabled = this->voice_is_privacy_enabled();
             if(privacy_enabled != this->vsdk_is_privacy_enabled()) {
                 privacy_enabled ? this->voice_privacy_enable(false) : this->voice_privacy_disable(false);
-            }
-            // Check keyword detector sensitivity value against limits; apply default if out of range.
-            double sensitivity_set = this->vsdk_keyword_sensitivity_limit_check(this->prefs.keyword_sensitivity);
-            if(sensitivity_set != this->prefs.keyword_sensitivity) {
-                xrsr_keyword_config_t kw_config;
-                kw_config.sensitivity = (float)sensitivity_set;
-                if(!xrsr_keyword_config_set(&kw_config)) {
-                    XLOGD_ERROR("error updating keyword config");
-                } else {
-                    this->prefs.keyword_sensitivity = sensitivity_set;
-                }
             }
         }
     }
@@ -1010,12 +980,6 @@ void ctrlm_voice_t::process_xconf(json_t **json_obj_vsdk, bool local_conf) {
    }
 
    // CTRLM_TR181_VOICE_PARAMS_AUDIO_DUCKING_BEEP doesn't exist because this is a user configurable setting via configureVoice thunder api
-
-   double keyword_sensitivity = 0.0;
-   result = ctrlm_tr181_real_get(CTRLM_TR181_VOICE_PARAMS_KEYWORD_SENSITIVITY, &keyword_sensitivity);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-      this->prefs.keyword_sensitivity = (keyword_sensitivity < 0.0) ? JSON_FLOAT_VALUE_VOICE_KEYWORD_DETECT_SENSITIVITY : keyword_sensitivity;
-   }
 
    result = ctrlm_tr181_string_get(CTRLM_TR181_VOICE_PARAMS_VSDK_CONFIGURATION, &vsdk_config_str[0], CTRLM_RFC_MAX_PARAM_LEN);
    if(result == CTRLM_TR181_RESULT_SUCCESS) {
@@ -4038,22 +4002,6 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
     attr.get_rfc_value(JSON_STR_NAME_VOICE_APP_ID_WS,                    this->prefs.app_id_ws);
     attr.get_rfc_value(JSON_STR_NAME_VOICE_LANGUAGE,                     this->prefs.guide_language);
 
-    double keyword_sensitivity = 0.0;
-    if(attr.get_rfc_value(JSON_FLOAT_NAME_VOICE_KEYWORD_DETECT_SENSITIVITY, keyword_sensitivity)) {
-        // Check keyword detector sensitivity value against limits; apply default if out of range.
-        double sensitivity_set = this->vsdk_keyword_sensitivity_limit_check(keyword_sensitivity);
-        if(sensitivity_set != keyword_sensitivity) {
-            XLOGD_ERROR("keyword sensitivity <%5.2f> out of limits", keyword_sensitivity);
-        } else {
-            this->prefs.keyword_sensitivity = keyword_sensitivity;
-            XLOGD_INFO("keyword sensitivity <%5.2f>", this->prefs.keyword_sensitivity);
-            xrsr_keyword_config_t kw_config;
-            kw_config.sensitivity = (float)this->prefs.keyword_sensitivity;
-            if(!xrsr_keyword_config_set(&kw_config)) {
-                XLOGD_ERROR("error updating keyword config");
-            }
-        }
-    }
     attr.get_rfc_value(JSON_BOOL_NAME_VOICE_VREX_TEST_FLAG,              this->prefs.vrex_test_flag);
     attr.get_rfc_value(JSON_BOOL_NAME_VOICE_VREX_WUW_BYPASS_SUCCESS_FLAG,this->prefs.vrex_wuw_bypass_success_flag);
     attr.get_rfc_value(JSON_BOOL_NAME_VOICE_VREX_WUW_BYPASS_FAILURE_FLAG,this->prefs.vrex_wuw_bypass_failure_flag);

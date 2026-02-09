@@ -2031,6 +2031,8 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::controller_add(ctrlm_hal_ble_rcu_
       controller->setName(string(rcu_data.name));
       controller->setAudioCodecs(rcu_data.audio_codecs);
       controller->setConnected(rcu_data.connected);
+      controller->setSupportedIrdbs(rcu_data.irdbs_supported);
+
       // only update these parameters if they are not empty or invalid.
       if (rcu_data.serial_number[0] != '\0') { controller->setSerialNumber(string(rcu_data.serial_number)); }
       if (rcu_data.manufacturer[0] != '\0') { controller->setManufacturer(string(rcu_data.manufacturer)); }
@@ -2042,7 +2044,6 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::controller_add(ctrlm_hal_ble_rcu_
       if (rcu_data.battery_level != 0xFF) { controller->setBatteryPercent(rcu_data.battery_level); }
       if (rcu_data.wakeup_config != 0xFF) { controller->setWakeupConfig(rcu_data.wakeup_config); }
       if (rcu_data.wakeup_custom_list_size != 0) { controller->setWakeupCustomList(rcu_data.wakeup_custom_list, rcu_data.wakeup_custom_list_size); }
-      if (rcu_data.irdbs_supported != 0) { controller->setSupportedIrdbs(rcu_data.irdbs_supported); }
       if (rcu_data.last_wakeup_key != 0xFF) { controller->setLastWakeupKey(rcu_data.last_wakeup_key); }
 
       controller->db_store();

@@ -1601,8 +1601,7 @@ gboolean ctrlm_load_authservice_data(void) {
 
 gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, json_t **json_obj_voice, json_t **json_obj_device_update, json_t **json_obj_validation, json_t **json_obj_vsdk) {
    std::string config_fn_opt = "/opt/ctrlm_config.json";
-   std::string config_fn_etc = "/etc/ctrlm_config.json";
-   std::string config_fn_etc_override = "/etc/ctrlm_config.json.OVERRIDE";
+   std::string config_fn_oem = "/etc/vendor/input/ctrlm_config.json";
    json_t *json_obj_ctrlm;
    ctrlm_config_t *ctrlm_config = ctrlm_config_t::get_instance();
    gboolean local_conf = false;
@@ -1612,16 +1611,42 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
    if(ctrlm_config == NULL) {
       XLOGD_ERROR("Failed to get config manager instance");
       return(false);
-   } else if(!ctrlm_is_production_build() && g_file_test(config_fn_opt.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_opt)) {
-      XLOGD_INFO("Read configuration from <%s>", config_fn_opt.c_str());
-      local_conf = true;
-   } else if(g_file_test(config_fn_etc.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_etc)) {
-      XLOGD_INFO("Read configuration from <%s>", config_fn_etc.c_str());
-   } else if(g_file_test(config_fn_etc_override.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_etc_override)) {
-      XLOGD_INFO("Read configuration from <%s>", config_fn_etc_override.c_str());
-   } else {
-      XLOGD_WARN("Configuration error. Configuration file(s) missing, using defaults");
+   }
+   
+   bool oem_append = g_file_test(config_fn_oem.c_str(), G_FILE_TEST_EXISTS);
+   bool opt_append = ctrlm_is_production_build() ? false : g_file_test(config_fn_opt.c_str(), G_FILE_TEST_EXISTS);
+
+   if(!oem_append && !opt_append) {
+      XLOGD_INFO("Using default configuration");
       return(false);
+   }
+
+   // Check for OEM config file override
+   if(oem_append) {
+      XLOGD_INFO("Loading OEM configuration from <%s>", config_fn_oem.c_str());
+      if(!ctrlm_config->load_config(config_fn_oem)) {
+         XLOGD_ERROR("Failed to load OEM configuration from <%s>", config_fn_oem.c_str());
+         return(false);
+      }
+   }
+
+   // Check for OPT config file override
+   if(opt_append) {
+      if(!oem_append) {
+         XLOGD_INFO("Loading OPT configuration from <%s>", config_fn_opt.c_str());
+         if(!ctrlm_config->load_config(config_fn_opt)) {
+            XLOGD_ERROR("Failed to load OPT configuration from <%s>", config_fn_opt.c_str());
+            return(false);
+         }
+      } else {
+         XLOGD_INFO("Appending OPT configuration from <%s>", config_fn_opt.c_str());
+      
+         if(!ctrlm_config->append_config(config_fn_opt)) {
+            XLOGD_ERROR("Failed to append OPT configuration from <%s>", config_fn_opt.c_str());
+            return(false);
+         }
+      }
+      local_conf = true;
    }
 
    // Parse the JSON data
@@ -1637,37 +1662,52 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
       return(false);
    }
 
+   // Print the configuration since it was loaded from files
+   char *json_dump = json_dumps(*json_obj_root, JSON_INDENT(3) | JSON_SORT_KEYS);
+   if(json_dump == NULL) {
+      XLOGD_ERROR("unable to dump JSON object");
+      json_decref(*json_obj_root);
+      *json_obj_root = NULL;
+      return(false);
+   } else {
+      XLOGD_INFO_OPTS(XLOG_OPTS_DEFAULT, 20 * 1024, "Final configuration:\n%s", json_dump);
+      free(json_dump);
+   }
+
    // Extract the RF4CE network configuration object
    if(g_ctrlm.rf4ce_enabled) {
       *json_obj_net_rf4ce = json_object_get(*json_obj_root, JSON_OBJ_NAME_NETWORK_RF4CE);
       if(*json_obj_net_rf4ce == NULL || !json_is_object(*json_obj_net_rf4ce)) {
-         XLOGD_WARN("RF4CE network object not found");
+         XLOGD_INFO("RF4CE network object not found");
+         *json_obj_net_rf4ce = NULL;
       }
    }
 
    // Extract the voice configuration object
    *json_obj_voice = json_object_get(*json_obj_root, JSON_OBJ_NAME_VOICE);
    if(*json_obj_voice == NULL || !json_is_object(*json_obj_voice)) {
-      XLOGD_WARN("voice object not found");
+      XLOGD_INFO("voice object not found");
+      *json_obj_voice = NULL;
    }
 
    // Extract the device update configuration object
    *json_obj_device_update = json_object_get(*json_obj_root, JSON_OBJ_NAME_DEVICE_UPDATE);
    if(*json_obj_device_update == NULL || !json_is_object(*json_obj_device_update)) {
-      XLOGD_WARN("device update object not found");
+      XLOGD_INFO("device update object not found");
+      *json_obj_device_update = NULL;
    }
 
   //Extract the vsdk configuration object
    *json_obj_vsdk = json_object_get( *json_obj_root, JSON_OBJ_NAME_VSDK);
    if(*json_obj_vsdk == NULL || !json_is_object(*json_obj_vsdk)) {
-      XLOGD_WARN("vsdk object not found");
-      json_obj_vsdk = NULL;
+      XLOGD_INFO("vsdk object not found");
+      *json_obj_vsdk = NULL;
    }
 
    // Extract the ctrlm global configuration object
    json_obj_ctrlm = json_object_get(*json_obj_root, JSON_OBJ_NAME_CTRLM_GLOBAL);
    if(json_obj_ctrlm == NULL || !json_is_object(json_obj_ctrlm)) {
-      XLOGD_WARN("control manger object not found");
+      XLOGD_INFO("control manager object not found");
    } else {
       json_config conf_global;
       if(!conf_global.config_object_set(json_obj_ctrlm)) {
@@ -1677,7 +1717,7 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
       // Extract the validation configuration object
       *json_obj_validation = json_object_get(json_obj_ctrlm, JSON_OBJ_NAME_CTRLM_GLOBAL_VALIDATION_CONFIG);
       if(*json_obj_validation == NULL || !json_is_object(*json_obj_validation)) {
-         XLOGD_WARN("validation object not found");
+         XLOGD_INFO("validation object not found");
       }
 
       // Now parse the control manager object

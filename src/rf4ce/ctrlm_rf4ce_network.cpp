@@ -1445,6 +1445,13 @@ void ctrlm_obj_network_rf4ce_t::factory_reset(void) {
    // Delete control manager persistent data
    // TODO
 
+   ctrlm_main_queue_msg_header_t *msg = (ctrlm_main_queue_msg_header_t *)g_malloc(sizeof(ctrlm_main_queue_msg_header_t));
+   if(msg == NULL) {
+      XLOGD_ERROR("Out of memory");
+   } else {
+      msg->type = CTRLM_MAIN_QUEUE_MSG_TYPE_EXPORT_CONTROLLER_LIST;
+      ctrlm_main_queue_msg_push((gpointer)msg);
+   }
 }
 
 bool ctrlm_obj_network_rf4ce_t::controller_exists(ctrlm_controller_id_t controller_id) {

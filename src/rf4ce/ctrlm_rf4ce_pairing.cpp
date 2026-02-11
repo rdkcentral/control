@@ -678,18 +678,17 @@ void ctrlm_obj_network_rf4ce_t::ind_process_unpair(void *data, int size) { //ctr
       controller_unbind(controller_id, CTRLM_UNBIND_REASON_CONTROLLER);
 
       params.result = CTRLM_HAL_RESULT_UNPAIR_SUCCESS;
+
+      ctrlm_main_queue_msg_header_t *msg = (ctrlm_main_queue_msg_header_t *)g_malloc(sizeof(ctrlm_main_queue_msg_header_t));
+      if(msg == NULL) {
+         XLOGD_ERROR("Out of memory");
+      } else {
+         msg->type = CTRLM_MAIN_QUEUE_MSG_TYPE_EXPORT_CONTROLLER_LIST;
+         ctrlm_main_queue_msg_push((gpointer)msg);
+      }
    }
 
    ctrlm_network_queue_deliver_result_unpair(dqm, params);
-
-   ctrlm_main_queue_msg_header_t *msg = (ctrlm_main_queue_msg_header_t *)g_malloc(sizeof(ctrlm_main_queue_msg_header_t));
-   if(msg == NULL) {
-      XLOGD_ERROR("Out of memory");
-   } else {
-      msg->type = CTRLM_MAIN_QUEUE_MSG_TYPE_EXPORT_CONTROLLER_LIST;
-      ctrlm_main_queue_msg_push((gpointer)msg);
-   }
-
 }
 
 void ctrlm_obj_network_rf4ce_t::controller_bind_update(ctrlm_main_queue_msg_rf4ce_ind_pair_t *dqm, ctrlm_controller_id_t controller_id, ctrlm_hal_rf4ce_result_t &status) {

@@ -2710,11 +2710,7 @@ void ctrlm_voice_t::voice_session_end_callback(ctrlm_voice_session_end_cb_t *ses
             end.return_code_server           = session->server_ret_code;
             end.return_code_internal         = stats->ret_code_internal;
             end.transcription                = session->transcription;
-            if(session->server_message.empty()) {
-               end.return_code_server_str    = xrsr_session_end_reason_str(stats->reason);
-            } else {
-                end.return_code_server_str   = session->server_message;
-            }
+            end.return_code_server_str       = session->server_message.empty() ? xrsr_session_end_reason_str(stats->reason) : session->server_message;
             
             if(stats->server_ip[0] != 0) {
                 server_stats.server_ip = stats->server_ip;

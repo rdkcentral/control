@@ -244,7 +244,6 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_stb(ctrlm_main_queue_msg_rf4ce_
          user_string[CTRLM_HAL_RF4CE_USER_STRING_SIZE - 1] = '\0';
       }
       controller_user_string_set(params.controller_id, (guchar*)user_string);
-      controller_init_uinput(params.controller_id);
    }
    controller_autobind_in_progress_set(params.controller_id, false);
    controller_binding_button_in_progress_set(params.controller_id, false);
@@ -326,7 +325,6 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_autobind(ctrlm_main_queue_msg_r
       // Create the controller object
       controller_insert(params.controller_id, dqm->params.src_ieee_addr, true);
       controller_user_string_set(params.controller_id, dqm->params.org_user_string);
-      controller_init_uinput(params.controller_id);
    }
    controller_autobind_in_progress_set(params.controller_id, true);
    controller_binding_button_in_progress_set(params.controller_id, false);
@@ -423,7 +421,6 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_binding_button(ctrlm_main_queue
          user_string[CTRLM_HAL_RF4CE_USER_STRING_SIZE - 1] = '\0';
       }
       controller_user_string_set(params.controller_id, (guchar*)user_string);
-      controller_init_uinput(params.controller_id);
    }
    controller_autobind_in_progress_set(params.controller_id, false);
    controller_binding_button_in_progress_set(params.controller_id, true);
@@ -506,7 +503,6 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_screen_bind(ctrlm_main_queue_ms
       // Create the controller object
       controller_insert(params.controller_id, dqm->params.src_ieee_addr, true);
       controller_user_string_set(params.controller_id, dqm->params.org_user_string);
-      controller_init_uinput(params.controller_id);
    }
    controller_autobind_in_progress_set(params.controller_id, false);
    controller_binding_button_in_progress_set(params.controller_id, false);

@@ -41,6 +41,7 @@
 
 #include <chrono>
 #include <dlfcn.h>
+#include <memory>
 
 using namespace std;
 
@@ -68,6 +69,8 @@ typedef struct {
     std::string (*pluginVersion)() = NULL;
     bool (*pluginInitialize)() = NULL;
     bool (*pluginGetVendorInfo)(ctrlm_irdb_vendor_info_t &info) = NULL;
+    bool (*pluginGetSupportedVendors)(std::vector<ctrlm_irdb_vendor_info_t> &info) = NULL;
+    bool (*pluginSetPreferredVendor)(const ctrlm_irdb_vendor_info_t &vendor) = NULL;
     bool (*pluginGetManufacturers)(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix) = NULL;
     bool (*pluginGetModels)(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &prefix) = NULL;
     bool (*pluginGetEntryIds)(ctrlm_irdb_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model) = NULL;
@@ -132,6 +135,8 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
         g_irdb.pluginVersion = STUB_irdb_version;
         g_irdb.pluginInitialize = STUB_ctrlm_irdb_initialize;
         g_irdb.pluginGetVendorInfo = STUB_ctrlm_irdb_get_vendor_info;
+        g_irdb.pluginSetPreferredVendor = STUB_ctrlm_irdb_set_preferred_vendor;
+        g_irdb.pluginGetSupportedVendors = STUB_ctrlm_irdb_get_supported_vendor_info;
         g_irdb.pluginGetManufacturers = STUB_ctrlm_irdb_get_manufacturers;
         g_irdb.pluginGetModels = STUB_ctrlm_irdb_get_models;
         g_irdb.pluginGetEntryIds = STUB_ctrlm_irdb_get_entry_ids;
@@ -179,6 +184,20 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
         if ((error = dlerror()) != NULL)  {
             XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_get_vendor_info), error <%s>, Using STUB implementation", error);
             g_irdb.pluginGetVendorInfo = STUB_ctrlm_irdb_get_vendor_info;
+        }
+        dlerror();  // Clear any existing error
+
+        *(void **) (&g_irdb.pluginGetSupportedVendors) = dlsym(m_irdbPluginHandle, "ctrlm_irdb_get_supported_vendor_info");
+        if ((error = dlerror()) != NULL)  {
+            XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_get_supported_vendor_info), error <%s>, Using STUB implementation", error);
+            g_irdb.pluginGetSupportedVendors = STUB_ctrlm_irdb_get_supported_vendor_info;
+        }
+        dlerror();  // Clear any existing error
+
+        *(void **) (&g_irdb.pluginSetPreferredVendor) = dlsym(m_irdbPluginHandle, "ctrlm_irdb_set_preferred_vendor");
+        if ((error = dlerror()) != NULL)  {
+            XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_set_preferred_vendor), error <%s>, Using STUB implementation", error);
+            g_irdb.pluginSetPreferredVendor = STUB_ctrlm_irdb_set_preferred_vendor;
         }
         dlerror();  // Clear any existing error
 
@@ -278,6 +297,17 @@ bool ctrlm_irdb_interface_t::open_plugin() {
         }
     }
     XLOGD_INFO("IRDB plugin opened, ret = <%s>", ret ? "SUCCESS" : "ERROR");
+
+    if (g_irdb.pluginGetSupportedVendors) {
+        std::vector<ctrlm_irdb_vendor_info_t> supported_vendors;
+        if ((*g_irdb.pluginGetSupportedVendors)(supported_vendors) == true) {
+            for (const auto &it : supported_vendors) {
+                XLOGD_INFO("Found supported IRDB Vendor <%s, 0x%X>", it.name.c_str(), it.rcu_support_bitmask);
+            }
+        } else {
+            XLOGD_WARN("Unable to query IRDB plugin for list of supported vendors, check version of the plugin...");
+        }
+    }
     return ret;
 }
 
@@ -295,6 +325,14 @@ bool ctrlm_irdb_interface_t::get_vendor_info(ctrlm_irdb_vendor_info_t &info) {
     std::unique_lock<std::mutex> guard(m_mutex);
     if (g_irdb.pluginGetVendorInfo) {
         return (*g_irdb.pluginGetVendorInfo)(info);
+    }
+    return false;
+}
+
+bool ctrlm_irdb_interface_t::set_vendor(const ctrlm_irdb_vendor_info_t &info) {
+    std::unique_lock<std::mutex> guard(m_mutex);
+    if (g_irdb.pluginSetPreferredVendor) {
+        return (*g_irdb.pluginSetPreferredVendor)(info);
     }
     return false;
 }
@@ -543,17 +581,34 @@ bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctr
 
 bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes) {
     bool ret = false;
+    vector<char> success_vec;
 
-    ctrlm_main_queue_msg_program_ir_codes_t msg = {0};
-    msg.network_id         = network_id;
-    msg.controller_id      = controller_id;
-    msg.ir_codes           = ir_codes;
-    msg.success            = &ret;
+    std::shared_ptr<ctrlm_main_queue_msg_program_ir_codes_t> msg = std::make_shared<ctrlm_main_queue_msg_program_ir_codes_t>();
+    msg->network_id         = network_id;
+    msg->controller_id      = controller_id;
+    msg->ir_codes           = ir_codes;
+    msg->success            = &success_vec;
 
-    if (false == get_vendor_info(msg.vendor_info)) {
-        msg.vendor_info.rcu_support_bitmask = 0;
+    if (false == get_vendor_info(msg->vendor_info)) {
+        msg->vendor_info.rcu_support_bitmask = 0;
     }
-    ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_program_ir_codes, &msg, sizeof(msg), NULL, network_id, true);
+    ctrlm_main_queue_handler_push_new<ctrlm_msg_handler_network_t,
+                                     ctrlm_main_queue_msg_program_ir_codes_t>
+                                     (CTRLM_HANDLER_NETWORK,
+                                     (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_program_ir_codes,
+                                     std::move(msg),
+                                     NULL,
+                                     network_id,
+                                     true);
+
+    for (char success : success_vec) {
+        if (success) {
+            ret = true;
+            break;
+        } else {
+            ret = false;
+        }
+    }
 
     return(ret);
 }
@@ -566,14 +621,30 @@ bool ctrlm_irdb_interface_t::clear_ir_codes(ctrlm_network_id_t network_id, ctrlm
 
 bool ctrlm_irdb_interface_t::_clear_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id) {
     bool ret = false;
+    vector<char> success_vec;
 
-    ctrlm_main_queue_msg_ir_clear_t msg = {0};
+    std::shared_ptr<ctrlm_main_queue_msg_ir_clear_t> msg = std::make_shared<ctrlm_main_queue_msg_ir_clear_t>();
 
-    msg.network_id    = network_id;
-    msg.controller_id = controller_id;
-    msg.success       = &ret;
+    msg->network_id    = network_id;
+    msg->controller_id = controller_id;
+    msg->success       = &success_vec;
 
-    ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_ir_clear_codes, &msg, sizeof(msg), NULL, network_id, true);
-    
+    ctrlm_main_queue_handler_push_new<ctrlm_msg_handler_network_t,
+                                     ctrlm_main_queue_msg_ir_clear_t>
+                                     (CTRLM_HANDLER_NETWORK,
+                                     (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_ir_clear_codes,
+                                     std::move(msg),
+                                     NULL,
+                                     network_id,
+                                     true);
+
+    for (char success : success_vec) {
+        if (success) {
+            ret = true;
+            break;
+        } else {
+            ret = false;
+        }
+    }
     return(ret);
 }

@@ -917,12 +917,6 @@ void BleRcuPairingStateMachine::processDevice(const BleAddress &address,
         // is the device currently paired? if so we have to remove (unpair)
         // it and then remain in the current state
         if (m_adapter->isDevicePaired(address)) {
-            if (m_adapter->isDeviceConnected(address)) {
-                XLOGD_INFO("Ignoring device (%s, %s)... it is currently paired and connected, no need to re-pair.", 
-                        name.c_str(), address.toString().c_str());
-                return;
-            }
-
             XLOGD_INFO("Found target device (%s, %s) but it's currently paired.  Will unpair and wait till it shows up in a scan again.", 
                     name.c_str(), address.toString().c_str());
 

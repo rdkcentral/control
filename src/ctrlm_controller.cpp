@@ -172,11 +172,18 @@ void ctrlm_obj_controller_t::process_event_key(ctrlm_key_status_t key_status, ui
    last_key_code_->set_value((uint64_t)key_code);
    last_key_time_update();
 
-   XLOGD_AUTOMATION_TELEMETRY("ind_process_keypress: %s - MAC Address <%s>, code = <%d> (%s key), status = <%s>", controller_type_str_get().c_str(),
-                                                                                                                  ieee_address_get().to_string().c_str(),
-                                                                                                                  mask ? -1 : key_code,
-                                                                                                                  ctrlm_linux_key_code_str(key_code, mask),
-                                                                                                                  ctrlm_key_status_str(key_status));
+   xlog_level_t level = XLOG_LEVEL_TELEMETRY;
+   const char *color = XLOG_COLOR_BLU;
+   // Proximity key (KEY_F17) is logged to debug while the rest is logged to telemetry
+   if(key_code == KEY_F17) {
+      level = XLOG_LEVEL_DEBUG;
+      color = XLOG_COLOR_GRN;
+   }
+   XLOGD(level, XLOG_OPTS_DEFAULT, color, XLOG_BUF_SIZE_DEFAULT, "ind_process_keypress: %s - MAC Address <%s>, code = <%d> (%s key), status = <%s>", controller_type_str_get().c_str(),
+                                                                                                                                                     ieee_address_get().to_string().c_str(),
+                                                                                                                                                     mask ? -1 : key_code,
+                                                                                                                                                     ctrlm_linux_key_code_str(key_code, mask),
+                                                                                                                                                     ctrlm_key_status_str(key_status));
 }
 
 ctrlm_controller_capabilities_t ctrlm_obj_controller_t::get_capabilities() const {

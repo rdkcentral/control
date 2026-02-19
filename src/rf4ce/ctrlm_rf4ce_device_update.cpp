@@ -549,6 +549,14 @@ void ctrlm_obj_controller_rf4ce_t::device_update_image_download_complete(ctrlm_t
       }
    }
 
+   ctrlm_main_queue_msg_header_t *msg = (ctrlm_main_queue_msg_header_t *)g_malloc(sizeof(ctrlm_main_queue_msg_header_t));
+   if(msg == NULL) {
+      XLOGD_ERROR("Out of memory");
+   } else {
+      msg->type = CTRLM_MAIN_QUEUE_MSG_TYPE_EXPORT_CONTROLLER_LIST;
+      ctrlm_main_queue_msg_push((gpointer)msg);
+   }
+
    print_remote_firmware_debug_info(RF4CE_PRINT_FIRMWARE_LOG_IMAGE_DOWNLOAD_COMPLETE, log_string);
 
    if(download_in_progress_) { // End the download session since the controller has finished loading the image

@@ -666,18 +666,18 @@ const char *ctrlm_voice_session_result_str(ctrlm_voice_session_result_t result) 
    return(ctrlm_invalid_return(result));
 }
 
-const char *ctrlm_voice_session_end_reason_str(ctrlm_voice_session_end_reason_t reason) {
+const char *ctrlm_voice_session_end_reason_rcu_str(ctrlm_voice_session_end_reason_rcu_t reason) {
    switch(reason) {
-      case CTRLM_VOICE_SESSION_END_REASON_DONE:                 return("DONE");
-      case CTRLM_VOICE_SESSION_END_REASON_TIMEOUT_FIRST_PACKET: return("TIMEOUT_FIRST_PACKET");
-      case CTRLM_VOICE_SESSION_END_REASON_TIMEOUT_INTERPACKET:  return("TIMEOUT_INTERPACKET");
-      case CTRLM_VOICE_SESSION_END_REASON_TIMEOUT_MAXIMUM:      return("TIMEOUT_MAXIMUM");
-      case CTRLM_VOICE_SESSION_END_REASON_ADJACENT_KEY_PRESSED: return("ADJACENT_KEY_PRESSED");
-      case CTRLM_VOICE_SESSION_END_REASON_OTHER_KEY_PRESSED:    return("OTHER_KEY_PRESSED");
-      case CTRLM_VOICE_SESSION_END_REASON_NEW_SESSION:          return("NEW_SESSION");
-      case CTRLM_VOICE_SESSION_END_REASON_OTHER_ERROR:          return("OTHER_ERROR");
-      case CTRLM_VOICE_SESSION_END_REASON_MINIMUM_QOS:          return("MINIMUM_QOS");
-      case CTRLM_VOICE_SESSION_END_REASON_MAX:                  return("MAX");
+      case CTRLM_VOICE_SESSION_END_REASON_RCU_DONE:                 return("DONE");
+      case CTRLM_VOICE_SESSION_END_REASON_RCU_TIMEOUT_FIRST_PACKET: return("TIMEOUT_FIRST_PACKET");
+      case CTRLM_VOICE_SESSION_END_REASON_RCU_TIMEOUT_INTERPACKET:  return("TIMEOUT_INTERPACKET");
+      case CTRLM_VOICE_SESSION_END_REASON_RCU_TIMEOUT_MAXIMUM:      return("TIMEOUT_MAXIMUM");
+      case CTRLM_VOICE_SESSION_END_REASON_RCU_ADJACENT_KEY_PRESSED: return("ADJACENT_KEY_PRESSED");
+      case CTRLM_VOICE_SESSION_END_REASON_RCU_OTHER_KEY_PRESSED:    return("OTHER_KEY_PRESSED");
+      case CTRLM_VOICE_SESSION_END_REASON_RCU_NEW_SESSION:          return("NEW_SESSION");
+      case CTRLM_VOICE_SESSION_END_REASON_RCU_OTHER_ERROR:          return("OTHER_ERROR");
+      case CTRLM_VOICE_SESSION_END_REASON_RCU_MINIMUM_QOS:          return("MINIMUM_QOS");
+      case CTRLM_VOICE_SESSION_END_REASON_RCU_MAX:                  return("MAX");
    }
    return(ctrlm_invalid_return(reason));
 }

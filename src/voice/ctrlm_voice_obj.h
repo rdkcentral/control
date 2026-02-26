@@ -207,13 +207,13 @@ typedef struct {
 typedef struct {
    ctrlm_controller_id_t            controller_id;
    ctrlm_timestamp_t                timestamp;
-   ctrlm_voice_session_end_reason_t session_end_reason;
+   ctrlm_voice_session_end_reason_rcu_t session_end_reason;
    unsigned char                    key_code;
 } ctrlm_main_queue_msg_voice_session_stop_t;
 
 typedef struct {
    ctrlm_controller_id_t            controller_id;
-   ctrlm_voice_session_end_reason_t reason;
+   ctrlm_voice_session_end_reason_rcu_t reason;
    unsigned char                    utterance_too_short;
 } ctrlm_main_queue_msg_voice_session_end_t;
 
@@ -443,7 +443,7 @@ typedef struct {
    uint32_t                         packets_lost;
    uint32_t                         lqi_total;
 
-   ctrlm_voice_session_end_reason_t end_reason;
+   ctrlm_voice_session_end_reason_rcu_t end_reason;
 
    bool                             is_press_and_release;
    bool                             is_session_by_text;
@@ -498,8 +498,8 @@ class ctrlm_voice_t {
     bool                                  voice_session_data(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, const char *buffer, long unsigned int length, ctrlm_timestamp_t *timestamp=NULL, uint8_t *lqi=NULL);
     bool                                  voice_session_data(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, int fd, const uuid_t *uuid=NULL);
     void                                  voice_session_data_post_processing(int bytes_sent, const char *action, ctrlm_timestamp_t *timestamp);
-    void                                  voice_session_end(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_voice_session_end_reason_t reason, ctrlm_timestamp_t *timestamp=NULL, ctrlm_voice_session_end_stats_t *stats=NULL);
-    void                                  voice_session_end(ctrlm_voice_session_t *session, ctrlm_voice_session_end_reason_t reason, ctrlm_timestamp_t *timestamp=NULL, ctrlm_voice_session_end_stats_t *stats=NULL);
+    void                                  voice_session_end(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_voice_session_end_reason_rcu_t reason, ctrlm_timestamp_t *timestamp=NULL, ctrlm_voice_session_end_stats_t *stats=NULL);
+    void                                  voice_session_end(ctrlm_voice_session_t *session, ctrlm_voice_session_end_reason_rcu_t reason, ctrlm_timestamp_t *timestamp=NULL, ctrlm_voice_session_end_stats_t *stats=NULL);
     void                                  voice_session_controller_stats_rxd_timeout();
     void                                  voice_session_stats(ctrlm_voice_stats_session_t session);
     void                                  voice_session_stats(ctrlm_voice_stats_reboot_t reboot);

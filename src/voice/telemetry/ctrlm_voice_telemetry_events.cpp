@@ -207,7 +207,8 @@ bool ctrlm_voice_telemetry_session_t::event() {
     ss << m_decoder_failures << ",";
     ss << m_samples_buffered_max << ",";
     ss << m_end_reason_stream << ",";
-    ss << m_end_reason_protocol << ",";
+    ss << m_end_reason_session << ",";
+    ss << m_ret_code_protocol << ",";
     ss << m_end_reason_server << ",";
     ss << "\"" << m_server_message << "\",";
     ss << m_result << "]]";
@@ -279,10 +280,11 @@ void ctrlm_voice_telemetry_session_t::update_on_stream_end(uint32_t time_stream_
     }
 }
 
-bool ctrlm_voice_telemetry_session_t::update_on_session_end(bool result, int32_t end_reason_stream, int32_t end_reason_protocol, int32_t end_reason_server, const std::string &server_message, int32_t time_stream_len_exp) {
+bool ctrlm_voice_telemetry_session_t::update_on_session_end(bool result, int32_t end_reason_stream, int32_t end_reason_session, int32_t ret_code_protocol, int32_t end_reason_server, const std::string &server_message, int32_t time_stream_len_exp) {
     m_result               = result;
     m_end_reason_stream    = end_reason_stream;
-    m_end_reason_protocol  = end_reason_protocol;
+    m_end_reason_session   = end_reason_session;
+    m_ret_code_protocol    = ret_code_protocol;
     m_end_reason_server    = end_reason_server;
     m_server_message       = server_message;
     
@@ -311,7 +313,8 @@ void ctrlm_voice_telemetry_session_t::reset_stats() {
     m_samples_buffered_max = 0;
 
     m_end_reason_stream    = 0;
-    m_end_reason_protocol  = 0;
+    m_end_reason_session   = 0;
+    m_ret_code_protocol  = 0;
     m_end_reason_server    = 0;
     m_result               = false;
 

@@ -414,7 +414,7 @@ ctrlm_hal_result_t ctrlm_voice_ind_data_rf4ce(ctrlm_network_id_t network_id, ctr
 
          msg.controller_id      = controller_id;
          msg.timestamp          = timestamp;
-         msg.session_end_reason = CTRLM_VOICE_SESSION_END_REASON_DONE;
+         msg.session_end_reason = CTRLM_VOICE_SESSION_END_REASON_RCU_DONE;
          msg.key_code           = 0;
 
          ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::ind_process_voice_session_stop, &msg, sizeof(msg), NULL, network_id);
@@ -436,17 +436,17 @@ ctrlm_hal_result_t ctrlm_voice_ind_data_rf4ce(ctrlm_network_id_t network_id, ctr
 
             msg.controller_id      = controller_id;
             msg.timestamp          = timestamp;
-            msg.session_end_reason = CTRLM_VOICE_SESSION_END_REASON_OTHER_KEY_PRESSED;
+            msg.session_end_reason = CTRLM_VOICE_SESSION_END_REASON_RCU_OTHER_KEY_PRESSED;
             msg.key_code           = data[2];
 
             ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::ind_process_voice_session_stop, &msg, sizeof(msg), NULL, network_id);
          } else { // CRTLM_VOICE_REMOTE_*
-            ctrlm_voice_session_end_reason_t session_end_reason = CTRLM_VOICE_SESSION_END_REASON_DONE;
+            ctrlm_voice_session_end_reason_rcu_t session_end_reason = CTRLM_VOICE_SESSION_END_REASON_RCU_DONE;
 
             if(reason == CRTLM_VOICE_REMOTE_VOICE_END_TIMEOUT_MAXIMUM) {
-               session_end_reason = CTRLM_VOICE_SESSION_END_REASON_TIMEOUT_MAXIMUM;
+               session_end_reason = CTRLM_VOICE_SESSION_END_REASON_RCU_TIMEOUT_MAXIMUM;
             } else if(reason == CRTLM_VOICE_REMOTE_VOICE_END_MINIMUM_QOS) {
-               session_end_reason = CTRLM_VOICE_SESSION_END_REASON_MINIMUM_QOS;
+               session_end_reason = CTRLM_VOICE_SESSION_END_REASON_RCU_MINIMUM_QOS;
             }
             ctrlm_main_queue_msg_voice_session_stop_t msg = {0};
 

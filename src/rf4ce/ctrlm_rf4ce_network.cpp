@@ -3890,8 +3890,8 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_stop(void *data, int s
    }
 
    // Check adjacent key press
-   if(CTRLM_VOICE_SESSION_END_REASON_OTHER_KEY_PRESSED == dqm->session_end_reason && true == is_key_adjacent(dqm->controller_id, dqm->key_code)) {
-      dqm->session_end_reason = CTRLM_VOICE_SESSION_END_REASON_ADJACENT_KEY_PRESSED;
+   if(CTRLM_VOICE_SESSION_END_REASON_RCU_OTHER_KEY_PRESSED == dqm->session_end_reason && true == is_key_adjacent(dqm->controller_id, dqm->key_code)) {
+      dqm->session_end_reason = CTRLM_VOICE_SESSION_END_REASON_RCU_ADJACENT_KEY_PRESSED;
       XLOGD_INFO("Adjacent key press.  Modifying end reason.");
    }
 

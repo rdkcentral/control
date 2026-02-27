@@ -314,7 +314,7 @@ void ctrlm_voice_telemetry_session_t::reset_stats() {
 
     m_end_reason_stream    = 0;
     m_end_reason_session   = 0;
-    m_ret_code_protocol  = 0;
+    m_ret_code_protocol    = 0;
     m_end_reason_server    = 0;
     m_result               = false;
 

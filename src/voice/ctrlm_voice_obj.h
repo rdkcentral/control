@@ -443,7 +443,7 @@ typedef struct {
    uint32_t                         packets_lost;
    uint32_t                         lqi_total;
 
-   ctrlm_voice_session_end_reason_t end_reason;
+   ctrlm_voice_session_end_reason_t end_reason_rcu;
 
    bool                             is_press_and_release;
    bool                             is_session_by_text;

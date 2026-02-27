@@ -95,7 +95,7 @@ ctrlm_voice_t::ctrlm_voice_t() {
         session->session_active_controller = false;
         session->state_src                 = CTRLM_VOICE_STATE_SRC_INVALID;
         session->state_dst                 = CTRLM_VOICE_STATE_DST_INVALID;
-        session->end_reason                = CTRLM_VOICE_SESSION_END_REASON_DONE;
+        session->end_reason_rcu            = CTRLM_VOICE_SESSION_END_REASON_DONE;
 
         session->audio_pipe[PIPE_READ]     = -1;
         session->audio_pipe[PIPE_WRITE]    = -1;
@@ -1872,7 +1872,7 @@ void ctrlm_voice_t::voice_session_end(ctrlm_voice_session_t *session, ctrlm_voic
         return;
     }
 
-    session->end_reason = reason;
+    session->end_reason_rcu = reason;
 
     if(timestamp != NULL) {
        session->session_timing.ctrl_stop = *timestamp;
@@ -2522,7 +2522,7 @@ void ctrlm_voice_t::voice_session_begin_callback(ctrlm_voice_session_begin_cb_t 
     session->ipc_common_data.voice_assistant   = is_voice_assistant(session->voice_device);
     session->ipc_common_data.device_type       = session->voice_device;
     session->endpoint_current                  = session_begin->endpoint;
-    session->end_reason                        = CTRLM_VOICE_SESSION_END_REASON_DONE;
+    session->end_reason_rcu                    = CTRLM_VOICE_SESSION_END_REASON_DONE;
 
     errno_t safec_rc = memset_s(&session->status, sizeof(session->status), 0 , sizeof(session->status));
     ERR_CHK(safec_rc);
@@ -2661,7 +2661,7 @@ void ctrlm_voice_t::voice_session_end_callback(ctrlm_voice_session_end_cb_t *ses
             ctrlm_voice_ipc_event_session_end_t end;
             end.common = session->ipc_common_data;
             end.result = SESSION_END_SHORT_UTTERANCE;
-            end.reason = (int)session->end_reason;
+            end.reason = (int)session->end_reason_rcu;
             this->voice_ipc->session_end(end);
         } else {
             ctrlm_voice_ipc_event_session_end_server_stats_t server_stats;
@@ -2719,7 +2719,7 @@ void ctrlm_voice_t::voice_session_end_callback(ctrlm_voice_session_end_cb_t *ses
     if(telemetry) {
         ctrlm_telemetry_event_t<int> vs_marker(MARKER_VOICE_SESSION_TOTAL, 1);
         ctrlm_telemetry_event_t<int> vs_status_marker(session_end->success ? MARKER_VOICE_SESSION_SUCCESS : MARKER_VOICE_SESSION_FAILURE, 1);
-        ctrlm_telemetry_event_t<int> vs_end_reason_marker(MARKER_VOICE_END_REASON_PREFIX + std::string(ctrlm_voice_session_end_reason_str(session->end_reason)), 1);
+        ctrlm_telemetry_event_t<int> vs_end_reason_marker(MARKER_VOICE_END_REASON_PREFIX + std::string(ctrlm_voice_session_end_reason_str(session->end_reason_rcu)), 1);
         ctrlm_telemetry_event_t<int> vs_xrsr_end_reason_marker(MARKER_VOICE_XRSR_END_REASON_PREFIX + std::string(xrsr_session_end_reason_str(stats->reason)), 1);
 
         // Handle all VSRsp error telemetry
@@ -2745,7 +2745,7 @@ void ctrlm_voice_t::voice_session_end_callback(ctrlm_voice_session_end_cb_t *ses
         telemetry->event(ctrlm_telemetry_report_t::VOICE, vs_xrsr_end_reason_marker);
 
         if(this->prefs.telemetry_session_stats) {
-            if(!session->telemetry_session_stats.update_on_session_end(session_end->success, session->end_reason, stats->reason, stats->ret_code_protocol, session->server_ret_code, session->server_message, session->stats_session.voice_key_held_ms)) {
+            if(!session->telemetry_session_stats.update_on_session_end(session_end->success, session->end_reason_rcu, stats->reason, session->server_ret_code, session->server_message, session->stats_session.voice_key_held_ms, stats->ret_code_protocol)) {
                 XLOGD_ERROR("failed to generate session stats event");
             }
         }
@@ -2980,7 +2980,7 @@ void ctrlm_voice_t::voice_stream_end_callback(ctrlm_voice_stream_end_cb_t *strea
         // This is a STREAM end..
         ctrlm_voice_ipc_event_stream_end_t end;
         end.common = session->ipc_common_data;
-        end.reason = (int)session->end_reason;
+        end.reason = (int)session->end_reason_rcu;
         this->voice_ipc->stream_end(end);
     }
 

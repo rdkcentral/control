@@ -95,7 +95,7 @@ ctrlm_voice_t::ctrlm_voice_t() {
         session->session_active_controller = false;
         session->state_src                 = CTRLM_VOICE_STATE_SRC_INVALID;
         session->state_dst                 = CTRLM_VOICE_STATE_DST_INVALID;
-        session->end_reason                = CTRLM_VOICE_SESSION_END_REASON_RCU_DONE;
+        session->end_reason                = CTRLM_VOICE_SESSION_END_REASON_DONE;
 
         session->audio_pipe[PIPE_READ]     = -1;
         session->audio_pipe[PIPE_WRITE]    = -1;
@@ -1855,7 +1855,7 @@ bool ctrlm_voice_t::voice_session_data(ctrlm_network_id_t network_id, ctrlm_cont
     return(true);
 }
 
-void ctrlm_voice_t::voice_session_end(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_voice_session_end_reason_rcu_t reason, ctrlm_timestamp_t *timestamp, ctrlm_voice_session_end_stats_t *stats) {
+void ctrlm_voice_t::voice_session_end(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_voice_session_end_reason_t reason, ctrlm_timestamp_t *timestamp, ctrlm_voice_session_end_stats_t *stats) {
    ctrlm_voice_session_t *session = voice_session_from_controller(network_id, controller_id);
 
    if(session == NULL) {
@@ -1865,8 +1865,8 @@ void ctrlm_voice_t::voice_session_end(ctrlm_network_id_t network_id, ctrlm_contr
    this->voice_session_end(session, reason, timestamp, stats);
 }
 
-void ctrlm_voice_t::voice_session_end(ctrlm_voice_session_t *session, ctrlm_voice_session_end_reason_rcu_t reason, ctrlm_timestamp_t *timestamp, ctrlm_voice_session_end_stats_t *stats) {
-    XLOGD_TELEMETRY("voice session end < %s >", ctrlm_voice_session_end_reason_rcu_str(reason));
+void ctrlm_voice_t::voice_session_end(ctrlm_voice_session_t *session, ctrlm_voice_session_end_reason_t reason, ctrlm_timestamp_t *timestamp, ctrlm_voice_session_end_stats_t *stats) {
+    XLOGD_TELEMETRY("voice session end < %s >", ctrlm_voice_session_end_reason_str(reason));
     if(session->state_src != CTRLM_VOICE_STATE_SRC_STREAMING) {
         XLOGD_ERROR("No voice session in progress");
         return;
@@ -2014,9 +2014,9 @@ void ctrlm_voice_t::voice_session_notify_stats() {
 void ctrlm_voice_t::voice_session_timeout() {
    ctrlm_voice_session_t *session = &this->voice_session[VOICE_SESSION_GROUP_DEFAULT];
    session->timeout_packet_tag = 0;
-   ctrlm_voice_session_end_reason_rcu_t reason = CTRLM_VOICE_SESSION_END_REASON_RCU_TIMEOUT_INTERPACKET;
+   ctrlm_voice_session_end_reason_t reason = CTRLM_VOICE_SESSION_END_REASON_TIMEOUT_INTERPACKET;
    if(session->audio_sent_bytes == 0) {
-      reason = CTRLM_VOICE_SESSION_END_REASON_RCU_TIMEOUT_FIRST_PACKET;
+      reason = CTRLM_VOICE_SESSION_END_REASON_TIMEOUT_FIRST_PACKET;
    } else if(controller_supports_qos(session->voice_device)) {
       // Bitrate = transmitted PCM data size / elapsed time
 
@@ -2026,9 +2026,9 @@ void ctrlm_voice_t::voice_session_timeout() {
       float rx_rate = (elapsed == 0) ? 0 : (session->audio_sent_samples * 2 * 8) / elapsed;
 
       XLOGD_AUTOMATION_INFO("elapsed time <%llu> ms rx samples <%u> rate <%6.1f> kbps", elapsed, session->audio_sent_samples, rx_rate);
-      reason = CTRLM_VOICE_SESSION_END_REASON_RCU_MINIMUM_QOS;
+      reason = CTRLM_VOICE_SESSION_END_REASON_MINIMUM_QOS;
    }
-   XLOGD_AUTOMATION_INFO("%s", ctrlm_voice_session_end_reason_rcu_str(reason));
+   XLOGD_AUTOMATION_INFO("%s", ctrlm_voice_session_end_reason_str(reason));
    this->voice_session_end(session, reason);
 }
 
@@ -2522,7 +2522,7 @@ void ctrlm_voice_t::voice_session_begin_callback(ctrlm_voice_session_begin_cb_t 
     session->ipc_common_data.voice_assistant   = is_voice_assistant(session->voice_device);
     session->ipc_common_data.device_type       = session->voice_device;
     session->endpoint_current                  = session_begin->endpoint;
-    session->end_reason                        = CTRLM_VOICE_SESSION_END_REASON_RCU_DONE;
+    session->end_reason                        = CTRLM_VOICE_SESSION_END_REASON_DONE;
 
     errno_t safec_rc = memset_s(&session->status, sizeof(session->status), 0 , sizeof(session->status));
     ERR_CHK(safec_rc);
@@ -2590,7 +2590,7 @@ void ctrlm_voice_t::voice_session_begin_callback(ctrlm_voice_session_begin_cb_t 
 
     if (session->is_session_by_text) {
         XLOGD_WARN("src <%s> Ending voice session immediately because this is a text-only session", ctrlm_voice_device_str(session->voice_device));
-        this->voice_session_end(session, CTRLM_VOICE_SESSION_END_REASON_RCU_DONE);
+        this->voice_session_end(session, CTRLM_VOICE_SESSION_END_REASON_DONE);
     }
 }
 
@@ -2719,7 +2719,7 @@ void ctrlm_voice_t::voice_session_end_callback(ctrlm_voice_session_end_cb_t *ses
     if(telemetry) {
         ctrlm_telemetry_event_t<int> vs_marker(MARKER_VOICE_SESSION_TOTAL, 1);
         ctrlm_telemetry_event_t<int> vs_status_marker(session_end->success ? MARKER_VOICE_SESSION_SUCCESS : MARKER_VOICE_SESSION_FAILURE, 1);
-        ctrlm_telemetry_event_t<int> vs_end_reason_marker(MARKER_VOICE_END_REASON_PREFIX + std::string(ctrlm_voice_session_end_reason_rcu_str(session->end_reason)), 1);
+        ctrlm_telemetry_event_t<int> vs_end_reason_marker(MARKER_VOICE_END_REASON_PREFIX + std::string(ctrlm_voice_session_end_reason_str(session->end_reason)), 1);
         ctrlm_telemetry_event_t<int> vs_xrsr_end_reason_marker(MARKER_VOICE_XRSR_END_REASON_PREFIX + std::string(xrsr_session_end_reason_str(stats->reason)), 1);
 
         // Handle all VSRsp error telemetry
@@ -2763,7 +2763,7 @@ void ctrlm_voice_t::voice_session_end_callback(ctrlm_voice_session_end_cb_t *ses
 
     session->session_active_server = false;
     if(session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING) {
-        voice_session_end(session, CTRLM_VOICE_SESSION_END_REASON_RCU_OTHER_ERROR);
+        voice_session_end(session, CTRLM_VOICE_SESSION_END_REASON_OTHER_ERROR);
     } else if(!session->session_active_controller) {
         session->state_src = CTRLM_VOICE_STATE_SRC_READY;
 

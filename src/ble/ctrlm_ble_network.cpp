@@ -583,7 +583,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
 
             if (false == success) {
                XLOGD_TELEMETRY("Failed to start voice streaming, ending voice session...");
-               end_voice_session_for_controller(ieee_address, CTRLM_VOICE_SESSION_END_REASON_RCU_OTHER_ERROR);
+               end_voice_session_for_controller(ieee_address, CTRLM_VOICE_SESSION_END_REASON_OTHER_ERROR);
             } else {
                dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
             }
@@ -595,7 +595,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
    }
 }
 
-bool ctrlm_obj_network_ble_t::end_voice_session_for_controller(uint64_t ieee_address, ctrlm_voice_session_end_reason_rcu_t reason, int32_t audioDuration, int32_t startLag, rdkx_timestamp_t *keyDownTime, rdkx_timestamp_t *keyUpTime) {
+bool ctrlm_obj_network_ble_t::end_voice_session_for_controller(uint64_t ieee_address, ctrlm_voice_session_end_reason_t reason, int32_t audioDuration, int32_t startLag, rdkx_timestamp_t *keyDownTime, rdkx_timestamp_t *keyUpTime) {
    ctrlm_controller_id_t controller_id;
 
    if (!getControllerId(ieee_address, &controller_id)) {
@@ -643,7 +643,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_end(void *data, int size
          XLOGD_ERROR("Controller doesn't exist!");
          dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
       } else {
-         if (end_voice_session_for_controller(dqm->params->ieee_address, CTRLM_VOICE_SESSION_END_REASON_RCU_DONE)) {
+         if (end_voice_session_for_controller(dqm->params->ieee_address, CTRLM_VOICE_SESSION_END_REASON_DONE)) {
             dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
          }
       }
@@ -2306,7 +2306,7 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
                   audioDuration = audioDurationKeys;
                }
 
-               end_voice_session_for_controller(dqm->ieee_address, CTRLM_VOICE_SESSION_END_REASON_RCU_DONE, audioDuration, startLag, &voiceStartTimeLocal, &keyUpTimeLocal);
+               end_voice_session_for_controller(dqm->ieee_address, CTRLM_VOICE_SESSION_END_REASON_DONE, audioDuration, startLag, &voiceStartTimeLocal, &keyUpTimeLocal);
             }
          }
       }

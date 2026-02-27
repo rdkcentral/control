@@ -98,17 +98,17 @@ typedef enum {
 /// @brief Voice Session End Reasons
 /// @details An enumeration of the reasons that cause a voice session to end.
 typedef enum {
-   CTRLM_VOICE_SESSION_END_REASON_RCU_DONE                    = 0, ///< Session completed normally
-   CTRLM_VOICE_SESSION_END_REASON_RCU_TIMEOUT_FIRST_PACKET    = 1, ///< Session ended due to timeout on the first audio sample
-   CTRLM_VOICE_SESSION_END_REASON_RCU_TIMEOUT_INTERPACKET     = 2, ///< Session ended due to timeout on a subsequent audio sample
-   CTRLM_VOICE_SESSION_END_REASON_RCU_TIMEOUT_MAXIMUM         = 3, ///< Session ended due to maximum duration
-   CTRLM_VOICE_SESSION_END_REASON_RCU_ADJACENT_KEY_PRESSED    = 4, ///< Session ended due to adjacent key press
-   CTRLM_VOICE_SESSION_END_REASON_RCU_OTHER_KEY_PRESSED       = 5, ///< Session ended due to any other key press
-   CTRLM_VOICE_SESSION_END_REASON_RCU_OTHER_ERROR             = 6, ///< Session ended due to any other reason
-   CTRLM_VOICE_SESSION_END_REASON_RCU_NEW_SESSION             = 7, ///< Session ended due to a new voice session request before previous session is ended
-   CTRLM_VOICE_SESSION_END_REASON_RCU_MINIMUM_QOS             = 8, ///< Session ended due to low quality of service
-   CTRLM_VOICE_SESSION_END_REASON_RCU_MAX                     = 9  ///< Session End Reason maximum value
-} ctrlm_voice_session_end_reason_rcu_t;
+   CTRLM_VOICE_SESSION_END_REASON_DONE                    = 0, ///< Session completed normally
+   CTRLM_VOICE_SESSION_END_REASON_TIMEOUT_FIRST_PACKET    = 1, ///< Session ended due to timeout on the first audio sample
+   CTRLM_VOICE_SESSION_END_REASON_TIMEOUT_INTERPACKET     = 2, ///< Session ended due to timeout on a subsequent audio sample
+   CTRLM_VOICE_SESSION_END_REASON_TIMEOUT_MAXIMUM         = 3, ///< Session ended due to maximum duration
+   CTRLM_VOICE_SESSION_END_REASON_ADJACENT_KEY_PRESSED    = 4, ///< Session ended due to adjacent key press
+   CTRLM_VOICE_SESSION_END_REASON_OTHER_KEY_PRESSED       = 5, ///< Session ended due to any other key press
+   CTRLM_VOICE_SESSION_END_REASON_OTHER_ERROR             = 6, ///< Session ended due to any other reason
+   CTRLM_VOICE_SESSION_END_REASON_NEW_SESSION             = 7, ///< Session ended due to a new voice session request before previous session is ended
+   CTRLM_VOICE_SESSION_END_REASON_MINIMUM_QOS             = 8, ///< Session ended due to low quality of service
+   CTRLM_VOICE_SESSION_END_REASON_MAX                     = 9  ///< Session End Reason maximum value
+} ctrlm_voice_session_end_reason_t;
 
 /// @brief Voice Session Abort Reasons
 /// @details An enumeration of the reasons that cause a voice session to be aborted.
@@ -228,7 +228,7 @@ typedef struct {
    ctrlm_network_type_t                 network_type;         ///< Type of network on which the controller is bound
    ctrlm_controller_id_t                controller_id;        ///< A unique identifier of the remote
    unsigned long                        session_id;           ///< A unique id for the voice session.
-   ctrlm_voice_session_end_reason_rcu_t reason;               ///< The reason for ending session
+   ctrlm_voice_session_end_reason_t reason;               ///< The reason for ending session
    unsigned char                        is_voice_assistant;   ///< Boolean indicating if the device is a far-field device (1) as opposed to a hand-held remote (0).
 } ctrlm_voice_iarm_event_session_end_t;
 
@@ -277,7 +277,7 @@ typedef struct {
    ctrlm_network_type_t                 network_type;         ///< Type of network on which the controller is bound
    ctrlm_controller_id_t                controller_id;        ///< A unique identifier of the remote
    unsigned long                        session_id;           ///< A unique id for the voice session.
-   ctrlm_voice_session_end_reason_rcu_t reason;               ///< The reason that the voice streaming ended
+   ctrlm_voice_session_end_reason_t reason;               ///< The reason that the voice streaming ended
    long                                 return_code_internal; ///< Internally generated return code
 } ctrlm_voice_iarm_event_session_short_t;
 

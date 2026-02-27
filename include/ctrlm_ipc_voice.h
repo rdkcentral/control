@@ -223,13 +223,13 @@ typedef struct {
 } ctrlm_voice_iarm_event_session_begin_t;
 
 typedef struct {
-   unsigned char                        api_revision;         ///< The revision of this API.
-   ctrlm_network_id_t                   network_id;           ///< Identifier of network on which the controller is bound
-   ctrlm_network_type_t                 network_type;         ///< Type of network on which the controller is bound
-   ctrlm_controller_id_t                controller_id;        ///< A unique identifier of the remote
-   unsigned long                        session_id;           ///< A unique id for the voice session.
+   unsigned char                    api_revision;         ///< The revision of this API.
+   ctrlm_network_id_t               network_id;           ///< Identifier of network on which the controller is bound
+   ctrlm_network_type_t             network_type;         ///< Type of network on which the controller is bound
+   ctrlm_controller_id_t            controller_id;        ///< A unique identifier of the remote
+   unsigned long                    session_id;           ///< A unique id for the voice session.
    ctrlm_voice_session_end_reason_t reason;               ///< The reason for ending session
-   unsigned char                        is_voice_assistant;   ///< Boolean indicating if the device is a far-field device (1) as opposed to a hand-held remote (0).
+   unsigned char                    is_voice_assistant;   ///< Boolean indicating if the device is a far-field device (1) as opposed to a hand-held remote (0).
 } ctrlm_voice_iarm_event_session_end_t;
 
 typedef struct {
@@ -272,13 +272,13 @@ typedef struct {
 } ctrlm_voice_iarm_event_session_abort_t;
 
 typedef struct {
-   unsigned char                        api_revision;         ///< The revision of this API.
-   ctrlm_network_id_t                   network_id;           ///< Identifier of network on which the controller is bound
-   ctrlm_network_type_t                 network_type;         ///< Type of network on which the controller is bound
-   ctrlm_controller_id_t                controller_id;        ///< A unique identifier of the remote
-   unsigned long                        session_id;           ///< A unique id for the voice session.
+   unsigned char                    api_revision;         ///< The revision of this API.
+   ctrlm_network_id_t               network_id;           ///< Identifier of network on which the controller is bound
+   ctrlm_network_type_t             network_type;         ///< Type of network on which the controller is bound
+   ctrlm_controller_id_t            controller_id;        ///< A unique identifier of the remote
+   unsigned long                    session_id;           ///< A unique id for the voice session.
    ctrlm_voice_session_end_reason_t reason;               ///< The reason that the voice streaming ended
-   long                                 return_code_internal; ///< Internally generated return code
+   long                             return_code_internal; ///< Internally generated return code
 } ctrlm_voice_iarm_event_session_short_t;
 
 typedef struct {

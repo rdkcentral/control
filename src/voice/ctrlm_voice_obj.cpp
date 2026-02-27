@@ -2745,7 +2745,7 @@ void ctrlm_voice_t::voice_session_end_callback(ctrlm_voice_session_end_cb_t *ses
         telemetry->event(ctrlm_telemetry_report_t::VOICE, vs_xrsr_end_reason_marker);
 
         if(this->prefs.telemetry_session_stats) {
-            if(!session->telemetry_session_stats.update_on_session_end(session_end->success, session->end_reason, stats->ret_code_protocol, stats->reason, session->server_ret_code, session->server_message, session->stats_session.voice_key_held_ms)) {
+            if(!session->telemetry_session_stats.update_on_session_end(session_end->success, session->end_reason, stats->reason, stats->ret_code_protocol, session->server_ret_code, session->server_message, session->stats_session.voice_key_held_ms)) {
                 XLOGD_ERROR("failed to generate session stats event");
             }
         }

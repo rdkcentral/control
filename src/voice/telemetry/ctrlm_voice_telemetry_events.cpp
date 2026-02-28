@@ -281,7 +281,7 @@ void ctrlm_voice_telemetry_session_t::update_on_stream_end(uint32_t time_stream_
     }
 }
 
-bool ctrlm_voice_telemetry_session_t::update_on_session_end(bool result, int32_t end_reason_rcu, int32_t end_reason_session, int32_t end_reason_server, const std::string &server_message, int32_t time_stream_len_exp, int32_t ret_code_protocol) {
+bool ctrlm_voice_telemetry_session_t::update_on_session_end(bool result, int32_t end_reason_rcu, int32_t end_reason_session, int32_t end_reason_server, const std::string &server_message, int32_t time_stream_len_exp, int32_t ret_code_protocol, int32_t stream_end_reason) {
     m_result               = result;
     m_end_reason_rcu       = end_reason_rcu;
     m_end_reason_session   = end_reason_session;

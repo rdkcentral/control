@@ -76,7 +76,7 @@ public:
     void update_on_session_begin(const std::string &device_type, const std::string &device_version, const std::string &encoding, bool press_and_release, bool end_of_speech_detection);
     void update_on_key_release(int32_t time_start_lag, int32_t time_stream_len_exp, rdkx_timestamp_t *time_key_down, rdkx_timestamp_t *time_key_up);
     void update_on_stream_end(uint32_t time_stream_len_act, uint32_t packets_total, uint32_t packets_lost, uint32_t samples_total, uint32_t samples_lost, uint32_t decoder_failures, uint32_t samples_buffered_max);
-    bool update_on_session_end(bool result, int32_t end_reason_rcu, int32_t end_reason_session, int32_t server_return_code, const std::string &server_message, int32_t time_stream_len_exp, int32_t ret_code_protocol);
+    bool update_on_session_end(bool result, int32_t end_reason_rcu, int32_t end_reason_session, int32_t server_return_code, const std::string &server_message, int32_t time_stream_len_exp, int32_t ret_code_protocol, int32_t stream_end_reason);
 
 private:
    static const uint32_t  m_event_list_max_size = 4536;  // Maximum size of event list in bytes (there are limitations in the T2 implementation that restrict the maximum size of an event string.  This value should be within the limits of the T2 implementation)

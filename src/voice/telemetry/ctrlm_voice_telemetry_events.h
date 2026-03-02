@@ -109,6 +109,7 @@ private:
     std::string m_server_message;       // server message
     bool        m_result;               // flag to indicate if session was successful
     int32_t     m_ret_code_protocol;    // protocol return code
+    int32_t     m_end_reason_stream;    // reason for ending the stream as reported by speech router
 
     bool        m_has_key_release;      // flag to indicate if key release event has been received
 

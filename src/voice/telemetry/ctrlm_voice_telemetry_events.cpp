@@ -211,8 +211,8 @@ bool ctrlm_voice_telemetry_session_t::event() {
     ss << m_end_reason_server << ",";
     ss << "\"" << m_server_message << "\",";
     ss << m_result << ",";
+    ss << m_end_reason_stream << ",";
     ss << m_ret_code_protocol << "]]";
-
 
     if(m_event_list.length() + ss.str().length() > m_event_list_max_size) { // Maximum data size exceeded
         XLOGD_WARN("telemetry event exceeds max size <%s,%s>", val_marker.c_str(), ss.str().c_str());
@@ -288,6 +288,7 @@ bool ctrlm_voice_telemetry_session_t::update_on_session_end(bool result, int32_t
     m_end_reason_server    = end_reason_server;
     m_server_message       = server_message;
     m_ret_code_protocol    = ret_code_protocol;
+    m_end_reason_stream    = stream_end_reason;
     
     if(!m_has_key_release) { // if there is no key release, the start time and end time are not known
         rdkx_timestamp_get(&m_time_prev_session_end);

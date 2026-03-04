@@ -200,6 +200,12 @@ bool BleRcuControllerImpl::startPairingAutoWithTimeout(int timeoutMs)
 {
     m_ignorePairingFailure = false;
 
+    if (m_config->modelSettings().empty()) {
+        m_lastError = BleRcuError(BleRcuError::General, "No BLE RCU models configured");
+        XLOGD_WARN("cannot start BLE auto pairing - no RCU models configured");
+        return false;
+    }
+
     // check we're not currently pairing
     if (m_pairingStateMachine.isRunning()) {
         m_lastError = BleRcuError(BleRcuError::General, "currently performing pairing, cannot start new scan");

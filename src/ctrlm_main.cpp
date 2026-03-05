@@ -1986,7 +1986,6 @@ void ctrlm_global_rfc_values_retrieved(const ctrlm_rfc_attr_t &attr) {
    if(attr.get_rfc_value(JSON_ARRAY_NAME_CTRLM_GLOBAL_MASK_PII, g_ctrlm.mask_pii, ctrlm_is_production_build() ? CTRLM_JSON_ARRAY_INDEX_PRD : CTRLM_JSON_ARRAY_INDEX_DEV)) {
       g_ctrlm.voice_session->voice_stb_data_pii_mask_set(g_ctrlm.mask_pii);
    }
-   attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_AUTHSERVICE_POLL_PERIOD, g_ctrlm.authservice_poll_val);   
    attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_AUTHSERVICE_FAST_POLL_PERIOD, g_ctrlm.authservice_fast_poll_val);
    attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_AUTHSERVICE_FAST_MAX_RETRIES, g_ctrlm.authservice_fast_retries_max);   
 }

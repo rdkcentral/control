@@ -2756,6 +2756,12 @@ void ctrlm_obj_controller_rf4ce_t::controller_product_name_updated(const ctrlm_r
 void ctrlm_obj_controller_rf4ce_t::controller_irdb_status_updated(const ctrlm_rf4ce_controller_irdb_status_t& status) {
    if(controller_type_ != RF4CE_CONTROLLER_TYPE_XR19) {
       obj_network_rf4ce_->target_irdb_status_set(*controller_irdb_status_);
+      if(controller_irdb_status_->is_flag_set(ctrlm_rf4ce_controller_irdb_status_t::flag::IR_DB_CODE_TV)) {
+         irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, controller_irdb_status_->get_tv_code_str());
+      }
+      if(controller_irdb_status_->is_flag_set(ctrlm_rf4ce_controller_irdb_status_t::flag::IR_DB_CODE_AVR)) {
+         irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, controller_irdb_status_->get_avr_code_str());
+      }
    }
 }
 

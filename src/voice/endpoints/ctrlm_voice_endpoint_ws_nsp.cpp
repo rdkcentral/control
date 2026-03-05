@@ -203,7 +203,7 @@ void ctrlm_voice_endpoint_ws_nsp_t::voice_session_end_callback_ws_nsp(void *data
     }
 
     // Check if WS was successful
-    if((stats->reason != XRSR_SESSION_END_REASON_DISCONNECT_REMOTE) || (this->server_ret_code != 0 && this->server_ret_code != 200)) {
+    if((stats->session_end_reason != XRSR_SESSION_END_REASON_DISCONNECT_REMOTE) || (this->server_ret_code != 0 && this->server_ret_code != 200)) {
         success = false;
     }
 

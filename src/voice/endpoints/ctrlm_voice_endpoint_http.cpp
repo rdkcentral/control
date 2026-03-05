@@ -286,7 +286,7 @@ void ctrlm_voice_endpoint_http_t::voice_session_end_callback_http(void *data, in
     }
 
     // Check if HTTP was successful
-    if((stats->reason != XRSR_SESSION_END_REASON_EOS && stats->reason != XRSR_SESSION_END_REASON_TERMINATE && stats->reason != XRSR_SESSION_END_REASON_EOT) 
+    if((stats->session_end_reason != XRSR_SESSION_END_REASON_EOS && stats->session_end_reason != XRSR_SESSION_END_REASON_TERMINATE && stats->session_end_reason != XRSR_SESSION_END_REASON_EOT)
             || (stats->ret_code_library != 0)  || (stats->ret_code_protocol != 200) || (this->server_ret_code != 0)) {
         success = false;
     }

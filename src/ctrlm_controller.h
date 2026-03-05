@@ -63,7 +63,6 @@ public:
    std::string             device_id_get() const;
    std::string             service_account_id_get() const;
    std::string             partner_id_get() const;
-   std::string             experience_get() const;
    std::string             stb_name_get() const;
    void                    set_device_minor_id(int device_minor_id);
    int                     get_device_minor_id() const;

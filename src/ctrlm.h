@@ -458,7 +458,6 @@ gboolean                           ctrlm_main_has_device_id_get(void);
 gboolean                           ctrlm_main_has_device_type_get(void);
 gboolean                           ctrlm_main_has_service_account_id_get(void);
 gboolean                           ctrlm_main_has_partner_id_get(void);
-gboolean                           ctrlm_main_has_experience_get(void);
 gboolean                           ctrlm_main_needs_service_access_token_get(void);
 void                               ctrlm_main_invalidate_service_access_token(void);
 void                               ctrlm_main_sat_enabled_set(gboolean sat_enabled);

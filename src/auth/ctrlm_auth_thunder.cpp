@@ -48,11 +48,6 @@ bool ctrlm_auth_thunder_t::get_partner_id(std::string &partner_id) {
    return(ret);
 }
 
-bool ctrlm_auth_thunder_t::get_experience(std::string &experience) {
-   bool ret = this->plugin->get_experience(experience);
-   return(ret);
-}
-
 bool ctrlm_auth_thunder_t::get_sat(std::string &sat, time_t &expiration) {
    bool ret = this->plugin->get_sat(sat, expiration);
    return(ret);

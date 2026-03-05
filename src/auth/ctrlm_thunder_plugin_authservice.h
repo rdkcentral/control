@@ -76,13 +76,6 @@ public:
     bool get_account_id(std::string &account_id);
 
     /**
-     * Function that retrieves the Experience String from Authservice.
-     * @param experience The reference to a string which will contain the Experience String.
-     * @return True on success otherwise False.
-     */
-    bool get_experience(std::string &experience);
-
-    /**
      * Function that retrieves the SAT Token from Authservice.
      * @param sat The reference to a string which will contain the SAT Token.
      * @param expiration The reference to a time_t object containing the expiration time of the SAT token.

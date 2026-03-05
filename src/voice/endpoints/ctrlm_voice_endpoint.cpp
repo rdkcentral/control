@@ -63,7 +63,6 @@ void ctrlm_voice_endpoint_t::voice_stb_data_account_number_set(std::string &acco
 void ctrlm_voice_endpoint_t::voice_stb_data_device_id_set(std::string &device_id) {}
 void ctrlm_voice_endpoint_t::voice_stb_data_device_type_set(ctrlm_device_type_t device_type) {}
 void ctrlm_voice_endpoint_t::voice_stb_data_partner_id_set(std::string &partner_id) {}
-void ctrlm_voice_endpoint_t::voice_stb_data_experience_set(std::string &experience) {}
 void ctrlm_voice_endpoint_t::voice_stb_data_guide_language_set(const char *language) {}
 void ctrlm_voice_endpoint_t::voice_stb_data_mask_pii_set(bool enable) {}
 

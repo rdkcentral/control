@@ -118,10 +118,6 @@ string ctrlm_obj_controller_t::partner_id_get() const {
    return(obj_network_->partner_id_get());
 }
 
-string ctrlm_obj_controller_t::experience_get() const {
-   return(obj_network_->experience_get());
-}
-
 string ctrlm_obj_controller_t::stb_name_get() const {
    return(obj_network_->stb_name_get());
 }

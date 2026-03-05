@@ -234,8 +234,6 @@ if(THUNDER)
       if(AUTH_ACTIVATION_STATUS)
          add_compile_definitions(AUTH_ACTIVATION_STATUS)
       endif()
-      #By default disabled but can be enabled
-      #add_compile_definitions(AUTH_EXPERIENCE)
       target_link_libraries(controlMgr RdkCertSelector)
    endif()
 endif()

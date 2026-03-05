@@ -72,14 +72,12 @@ bool ctrlm_voice_endpoint_http_t::open() {
 
     std::string device_id      = this->voice_obj->voice_stb_data_device_id_get();
     std::string partner_id     = this->voice_obj->voice_stb_data_partner_id_get();
-    std::string experience     = this->voice_obj->voice_stb_data_experience_get();
     std::string app_id         = this->voice_obj->voice_stb_data_app_id_http_get();
     std::string language       = this->voice_obj->voice_stb_data_guide_language_get().c_str();
 
     xrsv_http_params_t    params_http = {
        .device_id        = device_id.c_str(),
        .partner_id       = partner_id.c_str(),
-       .experience       = experience.c_str(),
        .app_id           = app_id.c_str(),
        .language         = language.c_str(),
        .test_flag        = this->voice_obj->voice_stb_data_test_get(),
@@ -138,12 +136,6 @@ void ctrlm_voice_endpoint_http_t::voice_stb_data_partner_id_set(std::string &par
     }
 }
  
-void ctrlm_voice_endpoint_http_t::voice_stb_data_experience_set(std::string &experience) {
-    if(this->xrsv_obj_http) {
-        xrsv_http_update_experience(this->xrsv_obj_http, experience.c_str());
-    }
-}
-
 void ctrlm_voice_endpoint_http_t::voice_stb_data_guide_language_set(const char *language) {
    if(this->xrsv_obj_http) {
        xrsv_http_update_language(this->xrsv_obj_http, language);

@@ -86,7 +86,6 @@ bool ctrlm_voice_endpoint_ws_nextgen_t::open() {
     }
     std::string device_id      = this->voice_obj->voice_stb_data_device_id_get();
     std::string partner_id     = this->voice_obj->voice_stb_data_partner_id_get();
-    std::string experience     = this->voice_obj->voice_stb_data_experience_get();
     std::string language       = this->voice_obj->voice_stb_data_guide_language_get().c_str();
     std::string account_number = this->voice_obj->voice_stb_data_account_number_get();
     std::string device_mac     = ctrlm_device_mac_get();
@@ -96,7 +95,6 @@ bool ctrlm_voice_endpoint_ws_nextgen_t::open() {
        .device_id                 = (device_id.empty() == false ? device_id.c_str() : NULL),
        .account_id                = (account_number.empty() == false ? account_number.c_str() : NULL),
        .partner_id                = (partner_id.empty() == false ? partner_id.c_str() : NULL),
-       .experience                = (experience.empty() == false ? experience.c_str() : NULL),
        .audio_profile             = controller_name_to_audio_profile(""),
        .audio_model               = controller_name_to_audio_model(""),
        .language                  = language.c_str(),
@@ -235,12 +233,6 @@ void ctrlm_voice_endpoint_ws_nextgen_t::voice_stb_data_partner_id_set(std::strin
     }
 }
  
-void ctrlm_voice_endpoint_ws_nextgen_t::voice_stb_data_experience_set(std::string &experience) {
-    if(this->xrsv_obj_ws_nextgen) {
-        xrsv_ws_nextgen_update_experience(this->xrsv_obj_ws_nextgen, experience.c_str());
-    }
-}
-
 void ctrlm_voice_endpoint_ws_nextgen_t::voice_stb_data_guide_language_set(const char *language) {
    if(this->xrsv_obj_ws_nextgen) {
        xrsv_ws_nextgen_update_language(this->xrsv_obj_ws_nextgen, language);

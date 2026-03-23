@@ -273,41 +273,43 @@ typedef struct {
 // End Event Callback Structures
 
 typedef struct {
-   std::string                 server_url_src_ptt;
-   std::string                 server_url_src_ff;
-   std::string                 server_url_src_mic_tap;
-   std::vector<std::string>    server_hosts;
-   std::string                 aspect_ratio;
-   std::string                 guide_language;
-   std::string                 app_id_http;
-   std::string                 app_id_ws;
-   unsigned long               timeout_vrex_connect;
-   unsigned long               timeout_vrex_session;
-   unsigned long               timeout_stats;
-   unsigned long               timeout_packet_initial;
-   unsigned long               timeout_packet_subsequent;
-   guchar                      bitrate_minimum;
-   guint16                     time_threshold;
-   bool                        utterance_save;
-   bool                        utterance_use_curtail;
-   unsigned long               utterance_file_qty_max;
-   unsigned long               utterance_file_size_max;
-   std::string                 utterance_path;
-   unsigned long               utterance_duration_min;
-   unsigned long               ffv_leading_samples;
-   bool                        force_voice_settings;
-   bool                        vrex_test_flag;
-   bool                        vrex_wuw_bypass_success_flag;
-   bool                        vrex_wuw_bypass_failure_flag;
-   std::string                 opus_encoder_params_str;
-   uint8_t                     opus_encoder_params[CTRLM_RCU_RIB_ATTR_LEN_OPUS_ENCODING_PARAMS];
-   bool                        force_toggle_fallback;
-   bool                        telemetry_session_stats;
-   xrsr_dst_params_t           dst_params_standby;
-   xrsr_dst_params_t           dst_params_low_latency;
-   bool                        par_voice_enabled;
-   uint8_t                     par_voice_eos_method;
-   uint16_t                    par_voice_eos_timeout;
+   std::string                       server_url_src_ptt;
+   std::string                       server_url_src_ff;
+   std::string                       server_url_src_mic_tap;
+   std::vector<std::string>          server_hosts;
+   std::string                       aspect_ratio;
+   std::string                       guide_language;
+   std::string                       app_id_http;
+   std::string                       app_id_ws;
+   unsigned long                     timeout_vrex_connect;
+   unsigned long                     timeout_vrex_session;
+   unsigned long                     timeout_stats;
+   unsigned long                     timeout_packet_initial;
+   unsigned long                     timeout_packet_subsequent;
+   guchar                            bitrate_minimum;
+   guint16                           time_threshold;
+   bool                              utterance_save;
+   bool                              utterance_use_curtail;
+   unsigned long                     utterance_file_qty_max;
+   unsigned long                     utterance_file_size_max;
+   std::string                       utterance_path;
+   unsigned long                     utterance_duration_min;
+   unsigned long                     ffv_leading_samples;
+   xrsr_stream_voice_activity_mode_t voice_activity_detection_mode;
+   uint16_t                          voice_activity_detection_timeout;
+   bool                              force_voice_settings;
+   bool                              vrex_test_flag;
+   bool                              vrex_wuw_bypass_success_flag;
+   bool                              vrex_wuw_bypass_failure_flag;
+   std::string                       opus_encoder_params_str;
+   uint8_t                           opus_encoder_params[CTRLM_RCU_RIB_ATTR_LEN_OPUS_ENCODING_PARAMS];
+   bool                              force_toggle_fallback;
+   bool                              telemetry_session_stats;
+   xrsr_dst_params_t                 dst_params_standby;
+   xrsr_dst_params_t                 dst_params_low_latency;
+   bool                              par_voice_enabled;
+   uint8_t                           par_voice_eos_method;
+   uint16_t                          par_voice_eos_timeout;
 } voice_session_prefss_t;
 
 typedef struct {
@@ -637,6 +639,8 @@ public:
     bool                  voice_params_opus_encoder_validate(std::string &opus_encoder_params_str);
     void                  voice_params_opus_samples_per_packet_set(void);
     bool                  voice_params_hex_str_to_bytes(std::string hex_string, guchar *data, guint32 length);
+    
+    xrsr_stream_voice_activity_mode_t voice_activity_detection_mode_to_xrsr(std::string mode);
 
     bool                  voice_session_can_request(ctrlm_voice_device_t device);
     void                  voice_session_set_active(ctrlm_voice_device_t device);

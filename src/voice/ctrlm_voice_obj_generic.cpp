@@ -232,15 +232,17 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
             if(!this->obj_ws_nextgen->get_handlers(&handlers_xrsr)) {
                 XLOGD_ERROR("failed to get handlers ws");
             } else {
-                routes[i].src                     = src;
-                routes[i].dst_qty                 = 1;
-                routes[i].dsts[0].url             = urls_translated[translated_index].c_str();
-                routes[i].dsts[0].handlers        = handlers_xrsr;
-                routes[i].dsts[0].formats         = XRSR_AUDIO_FORMAT_PCM;
-                routes[i].dsts[0].stream_time_min = this->prefs.utterance_duration_min;
-                routes[i].dsts[0].stream_from     = stream_from;
-                routes[i].dsts[0].stream_offset   = stream_offset;
-                routes[i].dsts[0].stream_until    = stream_until;
+                routes[i].src                        = src;
+                routes[i].dst_qty                    = 1;
+                routes[i].dsts[0].url                = urls_translated[translated_index].c_str();
+                routes[i].dsts[0].handlers           = handlers_xrsr;
+                routes[i].dsts[0].formats            = XRSR_AUDIO_FORMAT_PCM;
+                routes[i].dsts[0].stream_time_min    = this->prefs.utterance_duration_min;
+                routes[i].dsts[0].stream_vad_mode    = this->prefs.voice_activity_detection_mode;
+                routes[i].dsts[0].stream_vad_timeout = this->prefs.voice_activity_detection_timeout;
+                routes[i].dsts[0].stream_from        = stream_from;
+                routes[i].dsts[0].stream_offset      = stream_offset;
+                routes[i].dsts[0].stream_until       = stream_until;
                 if(networked_standby_supported && (src == XRSR_SRC_MICROPHONE)) {
                     routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                 }
@@ -264,15 +266,17 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
             if(!this->obj_ws_nsp->get_handlers(&handlers_xrsr)) {
                 XLOGD_ERROR("failed to get handlers ws");
             } else {
-                routes[i].src                     = src;
-                routes[i].dst_qty                 = 1;
-                routes[i].dsts[0].url             = urls_translated[translated_index].c_str();
-                routes[i].dsts[0].handlers        = handlers_xrsr;
-                routes[i].dsts[0].formats         = XRSR_AUDIO_FORMAT_PCM | XRSR_AUDIO_FORMAT_PCM_32_BIT | XRSR_AUDIO_FORMAT_PCM_32_BIT_MULTI | XRSR_AUDIO_FORMAT_PCM_RAW;
-                routes[i].dsts[0].stream_time_min = 0;
-                routes[i].dsts[0].stream_from     = XRSR_STREAM_FROM_LIVE;
-                routes[i].dsts[0].stream_offset   = 0;
-                routes[i].dsts[0].stream_until    = XRSR_STREAM_UNTIL_END_OF_STREAM;
+                routes[i].src                        = src;
+                routes[i].dst_qty                    = 1;
+                routes[i].dsts[0].url                = urls_translated[translated_index].c_str();
+                routes[i].dsts[0].handlers           = handlers_xrsr;
+                routes[i].dsts[0].formats            = XRSR_AUDIO_FORMAT_PCM | XRSR_AUDIO_FORMAT_PCM_32_BIT | XRSR_AUDIO_FORMAT_PCM_32_BIT_MULTI | XRSR_AUDIO_FORMAT_PCM_RAW;
+                routes[i].dsts[0].stream_time_min    = 0;
+                routes[i].dsts[0].stream_vad_mode    = this->prefs.voice_activity_detection_mode;
+                routes[i].dsts[0].stream_vad_timeout = this->prefs.voice_activity_detection_timeout;
+                routes[i].dsts[0].stream_from        = XRSR_STREAM_FROM_LIVE;
+                routes[i].dsts[0].stream_offset      = 0;
+                routes[i].dsts[0].stream_until       = XRSR_STREAM_UNTIL_END_OF_STREAM;
                 if(networked_standby_supported && (src == XRSR_SRC_MICROPHONE)) {
                     routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                 }
@@ -305,19 +309,21 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                     url->append("speech?");
                 }
 
-                routes[i].src                     = src;
-                routes[i].dst_qty                 = 1;
-                routes[i].dsts[0].url             = url->c_str();
-                routes[i].dsts[0].handlers        = handlers_xrsr;
+                routes[i].src                        = src;
+                routes[i].dst_qty                    = 1;
+                routes[i].dsts[0].url                = url->c_str();
+                routes[i].dsts[0].handlers           = handlers_xrsr;
                 #ifdef AUDIO_DECODE
-                routes[i].dsts[0].formats         = XRSR_AUDIO_FORMAT_PCM;
+                routes[i].dsts[0].formats            = XRSR_AUDIO_FORMAT_PCM;
                 #else
-                routes[i].dsts[0].formats         = XRSR_AUDIO_FORMAT_PCM | XRSR_AUDIO_FORMAT_ADPCM;
+                routes[i].dsts[0].formats            = XRSR_AUDIO_FORMAT_PCM | XRSR_AUDIO_FORMAT_ADPCM;
                 #endif
-                routes[i].dsts[0].stream_time_min = this->prefs.utterance_duration_min;
-                routes[i].dsts[0].stream_from     = stream_from;
-                routes[i].dsts[0].stream_offset   = stream_offset;
-                routes[i].dsts[0].stream_until    = stream_until;
+                routes[i].dsts[0].stream_time_min    = this->prefs.utterance_duration_min;
+                routes[i].dsts[0].stream_vad_mode    = this->prefs.voice_activity_detection_mode;
+                routes[i].dsts[0].stream_vad_timeout = this->prefs.voice_activity_detection_timeout;
+                routes[i].dsts[0].stream_from        = stream_from;
+                routes[i].dsts[0].stream_offset      = stream_offset;
+                routes[i].dsts[0].stream_until       = stream_until;
                 if(networked_standby_supported && (src == XRSR_SRC_MICROPHONE)) {
                     routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                 }
@@ -334,15 +340,17 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                 XLOGD_ERROR("failed to get handlers ws");
             } else {
 
-                routes[i].src                     = src;
-                routes[i].dst_qty                 = 1;
-                routes[i].dsts[0].url             = url->c_str();
-                routes[i].dsts[0].handlers        = handlers_xrsr;
-                routes[i].dsts[0].formats         = XRSR_AUDIO_FORMAT_PCM;
-                routes[i].dsts[0].stream_time_min = this->prefs.utterance_duration_min;
-                routes[i].dsts[0].stream_from     = stream_from;
-                routes[i].dsts[0].stream_offset   = stream_offset;
-                routes[i].dsts[0].stream_until    = stream_until;
+                routes[i].src                        = src;
+                routes[i].dst_qty                    = 1;
+                routes[i].dsts[0].url                = url->c_str();
+                routes[i].dsts[0].handlers           = handlers_xrsr;
+                routes[i].dsts[0].formats            = XRSR_AUDIO_FORMAT_PCM;
+                routes[i].dsts[0].stream_time_min    = this->prefs.utterance_duration_min;
+                routes[i].dsts[0].stream_vad_mode    = this->prefs.voice_activity_detection_mode;
+                routes[i].dsts[0].stream_vad_timeout = this->prefs.voice_activity_detection_timeout;
+                routes[i].dsts[0].stream_from        = stream_from;
+                routes[i].dsts[0].stream_offset      = stream_offset;
+                routes[i].dsts[0].stream_until       = stream_until;
                 if(networked_standby_supported && (src == XRSR_SRC_MICROPHONE)) {
                     routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                 }
@@ -357,15 +365,17 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                         XLOGD_ERROR("failed to get handlers ws");
                 } else {
 
-                        routes[i].src                     = src;
-                        routes[i].dst_qty                 = 1;
-                        routes[i].dsts[0].url             = urls_translated[translated_index].c_str();
-                        routes[i].dsts[0].handlers        = handlers_xrsr;
-                        routes[i].dsts[0].formats         = XRSR_AUDIO_FORMAT_PCM;
-                        routes[i].dsts[0].stream_time_min = this->prefs.utterance_duration_min;
-                        routes[i].dsts[0].stream_from     = stream_from;
-                        routes[i].dsts[0].stream_offset   = stream_offset;
-                        routes[i].dsts[0].stream_until    = stream_until;
+                        routes[i].src                        = src;
+                        routes[i].dst_qty                    = 1;
+                        routes[i].dsts[0].url                = urls_translated[translated_index].c_str();
+                        routes[i].dsts[0].handlers           = handlers_xrsr;
+                        routes[i].dsts[0].formats            = XRSR_AUDIO_FORMAT_PCM;
+                        routes[i].dsts[0].stream_time_min    = this->prefs.utterance_duration_min;
+                        routes[i].dsts[0].stream_vad_mode    = this->prefs.voice_activity_detection_mode;
+                        routes[i].dsts[0].stream_vad_timeout = this->prefs.voice_activity_detection_timeout;
+                        routes[i].dsts[0].stream_from        = stream_from;
+                        routes[i].dsts[0].stream_offset      = stream_offset;
+                        routes[i].dsts[0].stream_until       = stream_until;
                         if(networked_standby_supported && (src == XRSR_SRC_MICROPHONE)) {
                                 routes[i].dsts[0].params[XRSR_POWER_MODE_LOW] = &this->prefs.dst_params_standby;
                         }

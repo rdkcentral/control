@@ -186,39 +186,41 @@ ctrlm_voice_t::ctrlm_voice_t() {
     #ifdef JSON_ARRAY_VAL_STR_VOICE_SERVER_HOSTS_3
     this->url_hostname_pattern_add(JSON_ARRAY_VAL_STR_VOICE_SERVER_HOSTS_3);
     #endif
-    this->prefs.aspect_ratio                 = JSON_STR_VALUE_VOICE_ASPECT_RATIO;
-    this->prefs.guide_language               = JSON_STR_VALUE_VOICE_LANGUAGE;
-    this->prefs.app_id_http                  = JSON_STR_VALUE_VOICE_APP_ID_HTTP;
-    this->prefs.app_id_ws                    = JSON_STR_VALUE_VOICE_APP_ID_WS;
-    this->prefs.timeout_vrex_connect         = JSON_INT_VALUE_VOICE_VREX_REQUEST_TIMEOUT;
-    this->prefs.timeout_vrex_session         = JSON_INT_VALUE_VOICE_VREX_RESPONSE_TIMEOUT;
-    this->prefs.timeout_stats                = JSON_INT_VALUE_VOICE_TIMEOUT_STATS;
-    this->prefs.timeout_packet_initial       = JSON_INT_VALUE_VOICE_TIMEOUT_PACKET_INITIAL;
-    this->prefs.timeout_packet_subsequent    = JSON_INT_VALUE_VOICE_TIMEOUT_PACKET_SUBSEQUENT;
-    this->prefs.bitrate_minimum              = JSON_INT_VALUE_VOICE_BITRATE_MINIMUM;
-    this->prefs.time_threshold               = JSON_INT_VALUE_VOICE_TIME_THRESHOLD;
-    this->prefs.utterance_save               = ctrlm_is_production_build() ? JSON_ARRAY_VAL_BOOL_VOICE_SAVE_LAST_UTTERANCE_0 : JSON_ARRAY_VAL_BOOL_VOICE_SAVE_LAST_UTTERANCE_1;
-    this->prefs.utterance_use_curtail        = JSON_BOOL_VALUE_VOICE_UTTERANCE_USE_CURTAIL;
-    this->prefs.utterance_file_qty_max       = JSON_INT_VALUE_VOICE_UTTERANCE_FILE_QTY_MAX;
-    this->prefs.utterance_file_size_max      = JSON_INT_VALUE_VOICE_UTTERANCE_FILE_SIZE_MAX;
-    this->prefs.utterance_path               = JSON_STR_VALUE_VOICE_UTTERANCE_PATH;
-    this->prefs.utterance_duration_min       = JSON_INT_VALUE_VOICE_MINIMUM_DURATION;
-    this->prefs.ffv_leading_samples          = JSON_INT_VALUE_VOICE_FFV_LEADING_SAMPLES;
-    this->prefs.force_voice_settings         = JSON_BOOL_VALUE_VOICE_FORCE_VOICE_SETTINGS;
-    this->prefs.vrex_test_flag               = JSON_BOOL_VALUE_VOICE_VREX_TEST_FLAG;
-    this->prefs.vrex_wuw_bypass_success_flag = JSON_BOOL_VALUE_VOICE_VREX_WUW_BYPASS_SUCCESS_FLAG;
-    this->prefs.vrex_wuw_bypass_failure_flag = JSON_BOOL_VALUE_VOICE_VREX_WUW_BYPASS_FAILURE_FLAG;
-    this->prefs.force_toggle_fallback        = JSON_BOOL_VALUE_VOICE_FORCE_TOGGLE_FALLBACK;
-    this->prefs.telemetry_session_stats      = JSON_BOOL_VALUE_VOICE_TELEMETRY_SESSION_STATS;
-    this->prefs.par_voice_enabled            = false;
-    this->prefs.par_voice_eos_method         = JSON_INT_VALUE_VOICE_PAR_VOICE_EOS_METHOD;
-    this->prefs.par_voice_eos_timeout        = JSON_INT_VALUE_VOICE_PAR_VOICE_EOS_TIMEOUT;
+    this->prefs.aspect_ratio                     = JSON_STR_VALUE_VOICE_ASPECT_RATIO;
+    this->prefs.guide_language                   = JSON_STR_VALUE_VOICE_LANGUAGE;
+    this->prefs.app_id_http                      = JSON_STR_VALUE_VOICE_APP_ID_HTTP;
+    this->prefs.app_id_ws                        = JSON_STR_VALUE_VOICE_APP_ID_WS;
+    this->prefs.timeout_vrex_connect             = JSON_INT_VALUE_VOICE_VREX_REQUEST_TIMEOUT;
+    this->prefs.timeout_vrex_session             = JSON_INT_VALUE_VOICE_VREX_RESPONSE_TIMEOUT;
+    this->prefs.timeout_stats                    = JSON_INT_VALUE_VOICE_TIMEOUT_STATS;
+    this->prefs.timeout_packet_initial           = JSON_INT_VALUE_VOICE_TIMEOUT_PACKET_INITIAL;
+    this->prefs.timeout_packet_subsequent        = JSON_INT_VALUE_VOICE_TIMEOUT_PACKET_SUBSEQUENT;
+    this->prefs.bitrate_minimum                  = JSON_INT_VALUE_VOICE_BITRATE_MINIMUM;
+    this->prefs.time_threshold                   = JSON_INT_VALUE_VOICE_TIME_THRESHOLD;
+    this->prefs.utterance_save                   = ctrlm_is_production_build() ? JSON_ARRAY_VAL_BOOL_VOICE_SAVE_LAST_UTTERANCE_0 : JSON_ARRAY_VAL_BOOL_VOICE_SAVE_LAST_UTTERANCE_1;
+    this->prefs.utterance_use_curtail            = JSON_BOOL_VALUE_VOICE_UTTERANCE_USE_CURTAIL;
+    this->prefs.utterance_file_qty_max           = JSON_INT_VALUE_VOICE_UTTERANCE_FILE_QTY_MAX;
+    this->prefs.utterance_file_size_max          = JSON_INT_VALUE_VOICE_UTTERANCE_FILE_SIZE_MAX;
+    this->prefs.utterance_path                   = JSON_STR_VALUE_VOICE_UTTERANCE_PATH;
+    this->prefs.utterance_duration_min           = JSON_INT_VALUE_VOICE_MINIMUM_DURATION;
+    this->prefs.ffv_leading_samples              = JSON_INT_VALUE_VOICE_FFV_LEADING_SAMPLES;
+    this->prefs.voice_activity_detection_mode    = this->voice_activity_detection_mode_to_xrsr(JSON_STR_VALUE_VOICE_VOICE_ACTIVITY_DETECTION_MODE);
+    this->prefs.voice_activity_detection_timeout = JSON_INT_VALUE_VOICE_VOICE_ACTIVITY_DETECTION_TIMEOUT;
+    this->prefs.force_voice_settings             = JSON_BOOL_VALUE_VOICE_FORCE_VOICE_SETTINGS;
+    this->prefs.vrex_test_flag                   = JSON_BOOL_VALUE_VOICE_VREX_TEST_FLAG;
+    this->prefs.vrex_wuw_bypass_success_flag     = JSON_BOOL_VALUE_VOICE_VREX_WUW_BYPASS_SUCCESS_FLAG;
+    this->prefs.vrex_wuw_bypass_failure_flag     = JSON_BOOL_VALUE_VOICE_VREX_WUW_BYPASS_FAILURE_FLAG;
+    this->prefs.force_toggle_fallback            = JSON_BOOL_VALUE_VOICE_FORCE_TOGGLE_FALLBACK;
+    this->prefs.telemetry_session_stats          = JSON_BOOL_VALUE_VOICE_TELEMETRY_SESSION_STATS;
+    this->prefs.par_voice_enabled                = false;
+    this->prefs.par_voice_eos_method             = JSON_INT_VALUE_VOICE_PAR_VOICE_EOS_METHOD;
+    this->prefs.par_voice_eos_timeout            = JSON_INT_VALUE_VOICE_PAR_VOICE_EOS_TIMEOUT;
     this->voice_params_opus_encoder_default();
-    this->xrsr_opened                        = false;
-    this->voice_ipc                          = NULL;
-    this->packet_loss_threshold              = JSON_INT_VALUE_VOICE_PACKET_LOSS_THRESHOLD;
-    this->vsdk_config                        = NULL;
-    this->nsm_voice_session                  = false;
+    this->xrsr_opened                            = false;
+    this->voice_ipc                              = NULL;
+    this->packet_loss_threshold                  = JSON_INT_VALUE_VOICE_PACKET_LOSS_THRESHOLD;
+    this->vsdk_config                            = NULL;
+    this->nsm_voice_session                      = false;
 
     #ifndef TELEMETRY_SUPPORT
     XLOGD_WARN("telemetry is not enabled");
@@ -425,6 +427,13 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             conf.config_value_get(JSON_STR_NAME_VOICE_URL_SRC_MIC_TAP,              this->prefs.server_url_src_mic_tap);
             conf.config_value_get(JSON_STR_NAME_VOICE_LANGUAGE,                     this->prefs.guide_language);
             conf.config_value_get(JSON_INT_NAME_VOICE_MINIMUM_DURATION,             this->prefs.utterance_duration_min);
+            
+            std::string voice_activity_detection_mode;
+            if(conf.config_value_get(JSON_STR_NAME_VOICE_VOICE_ACTIVITY_DETECTION_MODE, voice_activity_detection_mode)) {
+                this->prefs.voice_activity_detection_mode = this->voice_activity_detection_mode_to_xrsr(voice_activity_detection_mode);
+            }
+            conf.config_value_get(JSON_INT_NAME_VOICE_VOICE_ACTIVITY_DETECTION_TIMEOUT, this->prefs.voice_activity_detection_timeout, 0, 60000);
+
             if(conf.config_value_get(JSON_BOOL_NAME_VOICE_ENABLE_SAT,                  this->sat_token_required)) {
                 ctrlm_sm_voice_sat_enable_write(this->sat_token_required);
                 XLOGD_TELEMETRY("require c_SAT <%s>", this->sat_token_required ? "YES" : "NO");
@@ -1087,6 +1096,17 @@ void ctrlm_voice_t::voice_params_opus_encoder_default(void) {
    this->prefs.opus_encoder_params_str = JSON_STR_VALUE_VOICE_OPUS_ENCODER_PARAMS;
    this->voice_params_hex_str_to_bytes(this->prefs.opus_encoder_params_str, this->prefs.opus_encoder_params, sizeof(this->prefs.opus_encoder_params));
    this->voice_params_opus_samples_per_packet_set();
+}
+
+xrsr_stream_voice_activity_mode_t ctrlm_voice_t::voice_activity_detection_mode_to_xrsr(std::string mode) {
+   // Configure voice activity detection parameters based on mode
+   if(mode == "enabled") { // Voice activity detection will be used but not enforced
+       return(XRSR_STREAM_VOICE_ACTIVITY_MODE_ENABLED);
+   } else if(mode == "enforced") { // Voice session will only proceed if voice activity is detected
+       return(XRSR_STREAM_VOICE_ACTIVITY_MODE_ENFORCED);
+   }
+   // Voice activity detection is disabled (or invalid mode)
+   return(XRSR_STREAM_VOICE_ACTIVITY_MODE_DISABLED);
 }
 
 void ctrlm_voice_t::voice_params_opus_samples_per_packet_set(void) {
@@ -4046,13 +4066,13 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
 
     // All attributes that need a re-route to apply
     if(attr.get_rfc_value(JSON_INT_NAME_VOICE_MINIMUM_DURATION,                              this->prefs.utterance_duration_min) |
+       attr.get_rfc_value(JSON_INT_NAME_VOICE_VOICE_ACTIVITY_DETECTION_TIMEOUT,              this->prefs.voice_activity_detection_timeout, 0, 60000) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL,     this->prefs.dst_params_standby.connect_check_interval) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,            this->prefs.dst_params_standby.timeout_connect) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,         this->prefs.dst_params_standby.timeout_inactivity) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_SESSION,            this->prefs.dst_params_standby.timeout_session) |
        attr.get_rfc_value(JSON_BOOL_NAME_VOICE_DST_PARAMS_STANDBY_IPV4_FALLBACK,             this->prefs.dst_params_standby.ipv4_fallback) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_BACKOFF_DELAY,              this->prefs.dst_params_standby.backoff_delay) |
-    
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_CONNECT_CHECK_INTERVAL, this->prefs.dst_params_low_latency.connect_check_interval) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_CONNECT,        this->prefs.dst_params_low_latency.timeout_connect) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_INACTIVITY,     this->prefs.dst_params_low_latency.timeout_inactivity) |
@@ -4060,6 +4080,12 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
        attr.get_rfc_value(JSON_BOOL_NAME_VOICE_DST_PARAMS_LOW_LATENCY_IPV4_FALLBACK,         this->prefs.dst_params_low_latency.ipv4_fallback) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_BACKOFF_DELAY,          this->prefs.dst_params_low_latency.backoff_delay)) {
         reroute = true;
+    }
+
+    std::string voice_activity_detection_mode;
+    if(attr.get_rfc_value(JSON_STR_NAME_VOICE_VOICE_ACTIVITY_DETECTION_MODE, voice_activity_detection_mode)) {
+       this->prefs.voice_activity_detection_mode = this->voice_activity_detection_mode_to_xrsr(voice_activity_detection_mode);
+       reroute = true;
     }
 
     std::vector<std::string> obj_server_hosts;

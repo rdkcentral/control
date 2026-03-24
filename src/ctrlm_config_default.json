@@ -292,8 +292,8 @@
       "par_voice_eos_timeout"            :      2500,
       "server_hosts"                     :        [],
       "telemetry_session_stats"          :     false,
-      "voice_activity_detection_mode"    :  "enabled",
-      "voice_activity_detection_timeout" :      5000
+      "voice_activity_detection_mode"    :  "enabled"
+
    },
    "device_update" : {
       "dir_root"                         : "/srv/device_update/",

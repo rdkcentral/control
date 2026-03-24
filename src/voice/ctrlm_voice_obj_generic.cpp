@@ -239,7 +239,6 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                 routes[i].dsts[0].formats            = XRSR_AUDIO_FORMAT_PCM;
                 routes[i].dsts[0].stream_time_min    = this->prefs.utterance_duration_min;
                 routes[i].dsts[0].stream_vad_mode    = this->prefs.voice_activity_detection_mode;
-                routes[i].dsts[0].stream_vad_timeout = this->prefs.voice_activity_detection_timeout;
                 routes[i].dsts[0].stream_from        = stream_from;
                 routes[i].dsts[0].stream_offset      = stream_offset;
                 routes[i].dsts[0].stream_until       = stream_until;
@@ -273,7 +272,6 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                 routes[i].dsts[0].formats            = XRSR_AUDIO_FORMAT_PCM | XRSR_AUDIO_FORMAT_PCM_32_BIT | XRSR_AUDIO_FORMAT_PCM_32_BIT_MULTI | XRSR_AUDIO_FORMAT_PCM_RAW;
                 routes[i].dsts[0].stream_time_min    = 0;
                 routes[i].dsts[0].stream_vad_mode    = this->prefs.voice_activity_detection_mode;
-                routes[i].dsts[0].stream_vad_timeout = this->prefs.voice_activity_detection_timeout;
                 routes[i].dsts[0].stream_from        = XRSR_STREAM_FROM_LIVE;
                 routes[i].dsts[0].stream_offset      = 0;
                 routes[i].dsts[0].stream_until       = XRSR_STREAM_UNTIL_END_OF_STREAM;
@@ -320,7 +318,6 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                 #endif
                 routes[i].dsts[0].stream_time_min    = this->prefs.utterance_duration_min;
                 routes[i].dsts[0].stream_vad_mode    = this->prefs.voice_activity_detection_mode;
-                routes[i].dsts[0].stream_vad_timeout = this->prefs.voice_activity_detection_timeout;
                 routes[i].dsts[0].stream_from        = stream_from;
                 routes[i].dsts[0].stream_offset      = stream_offset;
                 routes[i].dsts[0].stream_until       = stream_until;
@@ -347,7 +344,6 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                 routes[i].dsts[0].formats            = XRSR_AUDIO_FORMAT_PCM;
                 routes[i].dsts[0].stream_time_min    = this->prefs.utterance_duration_min;
                 routes[i].dsts[0].stream_vad_mode    = this->prefs.voice_activity_detection_mode;
-                routes[i].dsts[0].stream_vad_timeout = this->prefs.voice_activity_detection_timeout;
                 routes[i].dsts[0].stream_from        = stream_from;
                 routes[i].dsts[0].stream_offset      = stream_offset;
                 routes[i].dsts[0].stream_until       = stream_until;
@@ -372,7 +368,6 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                         routes[i].dsts[0].formats            = XRSR_AUDIO_FORMAT_PCM;
                         routes[i].dsts[0].stream_time_min    = this->prefs.utterance_duration_min;
                         routes[i].dsts[0].stream_vad_mode    = this->prefs.voice_activity_detection_mode;
-                        routes[i].dsts[0].stream_vad_timeout = this->prefs.voice_activity_detection_timeout;
                         routes[i].dsts[0].stream_from        = stream_from;
                         routes[i].dsts[0].stream_offset      = stream_offset;
                         routes[i].dsts[0].stream_until       = stream_until;

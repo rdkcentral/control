@@ -205,7 +205,6 @@ ctrlm_voice_t::ctrlm_voice_t() {
     this->prefs.utterance_duration_min           = JSON_INT_VALUE_VOICE_MINIMUM_DURATION;
     this->prefs.ffv_leading_samples              = JSON_INT_VALUE_VOICE_FFV_LEADING_SAMPLES;
     this->prefs.voice_activity_detection_mode    = this->voice_activity_detection_mode_to_xrsr(JSON_STR_VALUE_VOICE_VOICE_ACTIVITY_DETECTION_MODE);
-    this->prefs.voice_activity_detection_timeout = JSON_INT_VALUE_VOICE_VOICE_ACTIVITY_DETECTION_TIMEOUT;
     this->prefs.force_voice_settings             = JSON_BOOL_VALUE_VOICE_FORCE_VOICE_SETTINGS;
     this->prefs.vrex_test_flag                   = JSON_BOOL_VALUE_VOICE_VREX_TEST_FLAG;
     this->prefs.vrex_wuw_bypass_success_flag     = JSON_BOOL_VALUE_VOICE_VREX_WUW_BYPASS_SUCCESS_FLAG;
@@ -432,7 +431,6 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             if(conf.config_value_get(JSON_STR_NAME_VOICE_VOICE_ACTIVITY_DETECTION_MODE, voice_activity_detection_mode)) {
                 this->prefs.voice_activity_detection_mode = this->voice_activity_detection_mode_to_xrsr(voice_activity_detection_mode);
             }
-            conf.config_value_get(JSON_INT_NAME_VOICE_VOICE_ACTIVITY_DETECTION_TIMEOUT, this->prefs.voice_activity_detection_timeout, 0, 60000);
 
             if(conf.config_value_get(JSON_BOOL_NAME_VOICE_ENABLE_SAT,                  this->sat_token_required)) {
                 ctrlm_sm_voice_sat_enable_write(this->sat_token_required);
@@ -4066,7 +4064,6 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
 
     // All attributes that need a re-route to apply
     if(attr.get_rfc_value(JSON_INT_NAME_VOICE_MINIMUM_DURATION,                              this->prefs.utterance_duration_min) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_VOICE_ACTIVITY_DETECTION_TIMEOUT,              this->prefs.voice_activity_detection_timeout, 0, 60000) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL,     this->prefs.dst_params_standby.connect_check_interval) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,            this->prefs.dst_params_standby.timeout_connect) |
        attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,         this->prefs.dst_params_standby.timeout_inactivity) |

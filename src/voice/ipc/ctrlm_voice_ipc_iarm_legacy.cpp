@@ -158,6 +158,18 @@ bool ctrlm_voice_ipc_iarm_legacy_t::session_end(const ctrlm_voice_ipc_event_sess
                 ret = broadcast_iarm_event_legacy(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_SHORT, &event, sizeof(event));
                 break;
             }
+            case SESSION_END_SILENT_UTTERANCE: {
+                ctrlm_voice_iarm_event_session_silent_t event = {0};
+                event.api_revision         = CTRLM_VOICE_IARM_BUS_API_REVISION;
+                event.network_id           = session_end.common.network_id;
+                event.network_type         = session_end.common.network_type;
+                event.controller_id        = session_end.common.controller_id;
+                event.session_id           = session_end.common.session_id_ctrlm;
+                event.reason               = (ctrlm_voice_session_end_reason_t)session_end.reason;
+                event.return_code_internal = session_end.return_code_internal;
+                ret = broadcast_iarm_event_legacy(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_SILENT, &event, sizeof(event));
+                break;
+            }
         }
     }
     // Reset state

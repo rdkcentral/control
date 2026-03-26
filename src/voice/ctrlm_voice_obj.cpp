@@ -2663,6 +2663,12 @@ void ctrlm_voice_t::voice_session_end_callback(ctrlm_voice_session_end_cb_t *ses
             end.result = SESSION_END_SHORT_UTTERANCE;
             end.reason = (int)session->end_reason_rcu;
             this->voice_ipc->session_end(end);
+        } else if(stats->session_end_reason == XRSR_SESSION_END_REASON_ERROR_AUDIO_SILENT) {
+            ctrlm_voice_ipc_event_session_end_t end;
+            end.common = session->ipc_common_data;
+            end.result = SESSION_END_SILENT_UTTERANCE;
+            end.reason = (int)session->end_reason_rcu;
+            this->voice_ipc->session_end(end);
         } else {
             ctrlm_voice_ipc_event_session_end_server_stats_t server_stats;
             ctrlm_voice_ipc_event_session_end_t end;

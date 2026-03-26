@@ -282,6 +282,16 @@ typedef struct {
 } ctrlm_voice_iarm_event_session_short_t;
 
 typedef struct {
+   unsigned char                    api_revision;         ///< The revision of this API.
+   ctrlm_network_id_t               network_id;           ///< Identifier of network on which the controller is bound
+   ctrlm_network_type_t             network_type;         ///< Type of network on which the controller is bound
+   ctrlm_controller_id_t            controller_id;        ///< A unique identifier of the remote
+   unsigned long                    session_id;           ///< A unique id for the voice session.
+   ctrlm_voice_session_end_reason_t reason;               ///< The reason that the voice session was silent
+   long                             return_code_internal; ///< Internally generated return code
+} ctrlm_voice_iarm_event_session_silent_t;
+
+typedef struct {
    unsigned char api_revision;            ///< The revision of this API
    char          media_service_url[2083]; ///< The url for the media service (null terminated string)
 } ctrlm_voice_iarm_event_media_service_t;
@@ -376,6 +386,7 @@ typedef struct {
 /// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_VOICE_IARM_EVENT_SESSION_STATS  | ctrlm_voice_iarm_event_session_stats_t *  | Generated when the statistics of the voice session are available |
 /// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_VOICE_IARM_EVENT_SESSION_ABORT  | ctrlm_voice_iarm_event_session_abort_t *  | Generated when a voice session is aborted (denied)               |
 /// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_VOICE_IARM_EVENT_SESSION_SHORT  | ctrlm_voice_iarm_event_session_short_t *  | Generated when a short voice session is detected                 |
+/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_VOICE_IARM_EVENT_SESSION_SILENT | ctrlm_voice_iarm_event_session_silent_t * | Generated when a silent voice session is detected                |
 /// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_VOICE_IARM_EVENT_MEDIA_SERVICE  | ctrlm_voice_iarm_event_media_service_t *  | Generated when a media service response is received              |
 ///
 /// IARM events are available on a subscription basis. In order to receive an event, a client must explicitly register to receive the event by calling

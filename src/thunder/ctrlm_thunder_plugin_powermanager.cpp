@@ -95,6 +95,10 @@ bool ctrlm_thunder_plugin_powermanager_t::get_networked_standby_mode() {
 
    sem_wait(&this->semaphore);   
    if(this->call_plugin("getNetworkStandbyMode", (void *)&params, (void *)&response)) {
+	 std::string response_string;
+         response.ToString(response_string);
+         XLOGD_ERROR(" aaaaa  getNetworkStandbyMode response : <%s>", response_string.c_str());
+
       networked_standby_mode = response["result"].Boolean();
       XLOGD_DEBUG("networked_standby_mode is %s", networked_standby_mode?"TRUE":"FALSE");
    } else {

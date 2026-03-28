@@ -272,6 +272,7 @@ bool ctrlm_thunder_plugin_t::call_plugin_boolean(std::string method, void *param
             if(thunderRet == Core::ERROR_NONE) {
                 *response = jsonResponse.Value();
                 ret = true;
+                XLOGD_ERROR("%s: Thunder call success <%s> <%u> response:%d \n", __FUNCTION__, method.c_str(), thunderRet, *response);
             } else {
                 XLOGD_ERROR("%s: Thunder call failed <%s> <%u>\n", __FUNCTION__, method.c_str(), thunderRet);
             }

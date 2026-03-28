@@ -124,6 +124,8 @@ protected:
      */
     bool call_plugin(std::string method, void *params, void *response, unsigned int retries = 0);
 
+    bool call_plugin_boolean(std::string method, void *params, bool *response);
+
     /**
      * This functions is used to call a Thunder Controller method.
      * @param method The method in which the user wants to call.

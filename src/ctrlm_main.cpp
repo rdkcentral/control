@@ -2710,10 +2710,10 @@ gpointer ctrlm_main_thread(gpointer param) {
             g_ctrlm.power_state = dqm->new_state;
 
             XLOGD_AUTOMATION_INFO("Enter power state <%s>", ctrlm_power_state_str(g_ctrlm.power_state));
-            XLOGD_ERROR("DELIA-70047 NSM is <%s>", (ctrlm_main_get_networked_standby_mode())?"ENABLED":"DISABLED");
             if(g_ctrlm.networked_standby_supported && (g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP)) {
                XLOGD_INFO("NSM is <%s>", (ctrlm_main_get_networked_standby_mode())?"ENABLED":"DISABLED");
             }
+            XLOGD_ERROR("DELIA-70047 NSM is <%s>", (ctrlm_main_get_networked_standby_mode())?"ENABLED":"DISABLED");
 
             if(dqm->new_state != CTRLM_POWER_STATE_STANDBY) {
                // Set VSDK power state

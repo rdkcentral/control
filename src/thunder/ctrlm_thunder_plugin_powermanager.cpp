@@ -98,6 +98,7 @@ bool ctrlm_thunder_plugin_powermanager_t::get_networked_standby_mode() {
       XLOGD_DEBUG("networked_standby_mode is %s", networked_standby_mode?"TRUE":"FALSE");
    } else {
      XLOGD_ERROR("getNetworkStandbyMode call failed");
+     XLOGD_WARN("NOTE: defaulting to NSM disabled. Will load sleep DSP. Wake with voice will not be available");
    }
    sem_post(&this->semaphore);
 

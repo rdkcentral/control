@@ -47,7 +47,7 @@ struct BleRcuPairingOutcome
 {
     std::string method;      // "auto_timeout" | "ir_code" | "mac_hash" | "mac_list"
     std::string result;      // "success" | failure-reason string
-    std::vector<std::pair<std::string, std::string>> discovered; // {mac_str, was_paired}
+    std::vector<std::pair<std::string, std::string>> discovered; // {mac, name}
     int         bluezRetries;
     std::string pairedMac;   // empty on failure
     std::string bluezError;

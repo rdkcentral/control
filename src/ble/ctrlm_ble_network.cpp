@@ -47,6 +47,7 @@
 #include <time.h>
 #include <unordered_map>
 #include "ctrlm_rcp_ipc_iarm_thunder.h"
+#include "ctrlm_telemetry.h"
 
 using namespace std;
 
@@ -369,6 +370,9 @@ ctrlm_hal_result_t ctrlm_obj_network_ble_t::hal_init_request(GThread *ctrlm_main
 
          ble_rcu_interface_->addRcuKeypressHandler(Slot<ctrlm_hal_ble_IndKeypress_params_t*>(is_alive_, 
                std::bind(&ctrlm_obj_network_ble_t::ind_keypress, this, std::placeholders::_1)));
+
+         ble_rcu_interface_->addRcuPairingOutcomeHandler(Slot<const BleRcuPairingOutcome&>(is_alive_,
+               std::bind(&ctrlm_obj_network_ble_t::ind_rcu_pairing_outcome, this, std::placeholders::_1)));
 
 
          ble_rcu_interface_->startKeyMonitorThread();
@@ -1672,6 +1676,74 @@ void ctrlm_obj_network_ble_t::req_process_unpair(void *data, int size) {
 // ==================================================================================================================================================================
 // BEGIN - Process Indications from HAL to the network in CTRLM Main thread context
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void ctrlm_obj_network_ble_t::ind_rcu_pairing_outcome(const BleRcuPairingOutcome &outcome) {
+   // Queue to the ctrlm main thread for duration computation and telemetry emission
+   auto copy = std::make_shared<BleRcuPairingOutcome>(outcome);
+   ctrlm_main_queue_handler_push_new<ctrlm_msg_handler_network_t, BleRcuPairingOutcome>(
+         CTRLM_HANDLER_NETWORK,
+         (ctrlm_msg_handler_network_t)&ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome,
+         copy,
+         NULL,
+         id_);
+}
+
+void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int size) {
+   THREAD_ID_VALIDATE();
+   const BleRcuPairingOutcome *outcome = static_cast<const BleRcuPairingOutcome *>(data);
+   if (!outcome) {
+      XLOGD_ERROR("pairing outcome data is NULL");
+      return;
+   }
+
+   ctrlm_ble_pair_attempt_t attempt;
+   attempt.method       = outcome->method;
+   attempt.result       = outcome->result;
+   attempt.discovered   = outcome->discovered;
+   attempt.bluez_retries = outcome->bluezRetries;
+   attempt.paired_mac   = outcome->pairedMac;
+   attempt.error_msg    = outcome->bluezError;
+
+   XLOGD_INFO("BLE pairing attempt complete: method=%s result=%s paired_mac=%s "
+              "bluez_retries=%d bluez_msg=%s discovered=%zu",
+              attempt.method.c_str(), attempt.result.c_str(), attempt.paired_mac.c_str(),
+              attempt.bluez_retries, attempt.error_msg.c_str(), attempt.discovered.size());
+
+#ifdef TELEMETRY_SUPPORT
+   // Serialize to JSON compatible with the ctrlm.ble.pairing.attempt T2 marker
+   json_t *jroot = json_object();
+   if (jroot) {
+      json_object_set_new(jroot, "version",       json_integer(MARKER_RCU_PAIRING_ATTEMPT_VERSION));
+      json_object_set_new(jroot, "method",        json_string(attempt.method.c_str()));
+      json_object_set_new(jroot, "result",        json_string(attempt.result.c_str()));
+      json_object_set_new(jroot, "paired_mac",    json_string(attempt.paired_mac.c_str()));
+      json_object_set_new(jroot, "bluez_retries", json_integer(attempt.bluez_retries));
+      json_object_set_new(jroot, "bluez_msg",     json_string(attempt.error_msg.c_str()));
+
+      json_t *jdiscovered = json_array();
+      if (jdiscovered) {
+         for (const auto &dev : attempt.discovered) {
+            json_t *jdev = json_object();
+            if (jdev) {
+               json_object_set_new(jdev, "mac",    json_string(dev.first.c_str()));
+               json_object_set_new(jdev, "name",   json_string(dev.second.c_str()));
+               json_array_append_new(jdiscovered, jdev);
+            }
+         }
+         json_object_set_new(jroot, "discovered", jdiscovered);
+      }
+
+      char *json_str = json_dumps(jroot, JSON_COMPACT);
+      XLOGD_WARN("KLU339 %s", json_str);
+      if (json_str) {
+         ctrlm_telemetry_event_t<std::string> ev(MARKER_RCU_PAIRING_ATTEMPT, std::string(json_str));
+         ctrlm_telemetry_t::get_instance()->event(ctrlm_telemetry_report_t::RCU, ev);
+         free(json_str);
+      }
+      json_decref(jroot);
+   }
+#endif // TELEMETRY_SUPPORT
+}
 
 void ctrlm_obj_network_ble_t::ind_rcu_status(ctrlm_hal_ble_RcuStatusData_t *params) {
 

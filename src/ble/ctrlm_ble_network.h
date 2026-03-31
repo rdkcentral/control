@@ -95,6 +95,22 @@ typedef struct {
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 /**
+ * @brief BLE RCU Pairing Attempt Metrics
+ *
+ * Aggregates the outcome of a single BLE pairing attempt for telemetry emission.
+ */
+struct ctrlm_ble_pair_attempt_t {
+   std::string method;       // pairing method string (auto_timeout, ir_code, mac_hash, mac_list)
+   std::string result;       // "success" or failure reason string
+   std::vector<std::pair<std::string, std::string>> discovered; // {mac_str, was_paired}
+   int         bluez_retries;
+   std::string paired_mac;   // empty on failure
+   std::string error_msg;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
+/**
  * @brief ControlMgr BLE Controller Unpair Metrics Class
  * 
  * This class is used within ControlMgr to store data from the last RCU unpair event
@@ -134,11 +150,13 @@ public:
    void                          ind_rcu_paired(ctrlm_hal_ble_IndPaired_params_t *params);
    void                          ind_rcu_unpaired(ctrlm_hal_ble_IndUnPaired_params_t *params);
    void                          ind_keypress(ctrlm_hal_ble_IndKeypress_params_t *params);
+   void                          ind_rcu_pairing_outcome(const BleRcuPairingOutcome &outcome);
 
    void                          ind_process_rcu_status(void *data, int size);
    void                          ind_process_paired(void *data, int size);
    void                          ind_process_unpaired(void *data, int size);
    void                          ind_process_keypress(void *data, int size);
+   void                          ind_process_rcu_pairing_outcome(void *data, int size);
 
    virtual void                  req_process_network_status(void *data, int size);
    virtual void                  req_process_controller_status(void *data, int size);

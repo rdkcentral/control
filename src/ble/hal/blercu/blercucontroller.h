@@ -36,9 +36,22 @@
 
 #include <set>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 
 class BleRcuDevice;
+
+struct BleRcuPairingOutcome
+{
+    std::string method;      // "auto_timeout" | "ir_code" | "mac_hash" | "mac_list"
+    std::string result;      // "success" | failure-reason string
+    std::vector<std::pair<std::string, std::string>> discovered; // {mac_str, was_paired}
+    int         bluezRetries;
+    std::string pairedMac;   // empty on failure
+    std::string bluezError;
+};
 
 
 class BleRcuController
@@ -102,12 +115,17 @@ public:
     {
         m_stateChangedSlots.addSlot(func);
     }
+    inline void addPairingOutcomeSlot(const Slot<const BleRcuPairingOutcome&> &func)
+    {
+        m_pairingOutcomeSlots.addSlot(func);
+    }
 
 protected:
     Slots<const BleAddress&> m_managedDeviceAddedSlots;
     Slots<const BleAddress&> m_managedDeviceRemovedSlots;
     Slots<bool> m_pairingStateChangedSlots;
     Slots<State> m_stateChangedSlots;
+    Slots<const BleRcuPairingOutcome&> m_pairingOutcomeSlots;
 };
 
 #endif // !defined(BLERCUCONTROLLER_H)

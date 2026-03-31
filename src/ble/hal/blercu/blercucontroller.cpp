@@ -41,6 +41,34 @@
 
 using namespace std;
 
+static const char* pairingMethodStr(BleRcuPairingStateMachine::PairingMethod m)
+{
+    switch (m) {
+        case BleRcuPairingStateMachine::AUTO_TIMEOUT: return "auto_timeout";
+        case BleRcuPairingStateMachine::MAC_LIST:     return "mac_list";
+        case BleRcuPairingStateMachine::IR_CODE:      return "ir_code";
+        case BleRcuPairingStateMachine::MAC_HASH:     return "mac_hash";
+        default:                                       return "unknown";
+    }
+}
+
+static const char* failureReasonStr(BleRcuPairingStateMachine::FailureReason r)
+{
+    switch (r) {
+        case BleRcuPairingStateMachine::SUCCESS:                    return "success";
+        case BleRcuPairingStateMachine::FAIL_DISCOVERY_TIMEOUT:     return "discovery_timeout";
+        case BleRcuPairingStateMachine::FAIL_DISCOVERY_STOPPED:     return "discovery_stopped";
+        case BleRcuPairingStateMachine::FAIL_DISCOVERY_STOP_TIMEOUT:return "discovery_stop_timeout";
+        case BleRcuPairingStateMachine::FAIL_PAIRING_TIMEOUT:       return "pairing_timeout";
+        case BleRcuPairingStateMachine::FAIL_BLUEZ_ERROR:           return "bluez_error";
+        case BleRcuPairingStateMachine::FAIL_ADAPTER_OFF:           return "adapter_off";
+        case BleRcuPairingStateMachine::FAIL_DEVICE_UNPAIRED:       return "device_unpaired";
+        case BleRcuPairingStateMachine::FAIL_DEVICE_REMOVED:        return "device_removed";
+        case BleRcuPairingStateMachine::FAIL_CANCELLED:             return "cancelled";
+        default:                                                      return "unknown";
+    }
+}
+
 
 class BleRcuController_userdata {
 public:
@@ -662,6 +690,17 @@ void BleRcuControllerImpl::onFinishedPairing()
 
     m_state = Complete;
     m_stateChangedSlots.invoke(m_state);
+
+    // emit pairing outcome telemetry
+    BleRcuPairingOutcome outcome;
+    outcome.method      = pairingMethodStr(m_pairingStateMachine.pairingMethod());
+    outcome.result      = failureReasonStr(BleRcuPairingStateMachine::SUCCESS);
+    outcome.bluezRetries = m_pairingStateMachine.bluezRetries();
+    outcome.pairedMac   = m_pairingStateMachine.pairedMac().toString();
+    for (const auto &dev : m_pairingStateMachine.discoveredDevices()) {
+        outcome.discovered.emplace_back(dev.mac.toString(), dev.name);
+    }
+    m_pairingOutcomeSlots.invoke(outcome);
 }
 
 // -----------------------------------------------------------------------------
@@ -701,6 +740,18 @@ void BleRcuControllerImpl::onFailedPairing()
 
     m_state = Failed;
     m_stateChangedSlots.invoke(m_state);
+
+    // emit pairing outcome telemetry
+    BleRcuPairingOutcome outcome;
+    outcome.method      = pairingMethodStr(m_pairingStateMachine.pairingMethod());
+    outcome.result      = failureReasonStr(m_pairingStateMachine.failureReason());
+    outcome.bluezRetries = m_pairingStateMachine.bluezRetries();
+    outcome.pairedMac   = m_pairingStateMachine.pairedMac().toString();
+    outcome.bluezError = m_pairingStateMachine.bluezError();
+    for (const auto &dev : m_pairingStateMachine.discoveredDevices()) {
+        outcome.discovered.emplace_back(dev.mac.toString(), dev.name);
+    }
+    m_pairingOutcomeSlots.invoke(outcome);
 }
 
 

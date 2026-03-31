@@ -102,10 +102,10 @@ typedef struct {
 struct ctrlm_ble_pair_attempt_t {
    std::string method;       // pairing method string (auto_timeout, ir_code, mac_hash, mac_list)
    std::string result;       // "success" or failure reason string
-   std::vector<std::pair<std::string, std::string>> discovered; // {mac_str, was_paired}
+   std::vector<std::pair<std::string, std::string>> discovered; // {mac_str, rcu_name}
    int         bluez_retries;
    std::string paired_mac;   // empty on failure
-   std::string error_msg;
+   std::vector<std::string> bluez_msgs;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////

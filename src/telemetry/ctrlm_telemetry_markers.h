@@ -137,7 +137,7 @@
 //                  "pairing_timeout" | "bluez_error" | "adapter_off" | "device_unpaired" | "device_removed" | "cancelled"
 // <paired_mac>    - MAC address string of paired device, empty string on failure
 // <bluez_retries> - number of bluez pair() retries made before success or final error
-// <error_msg>     - error message of bluez layer
+// <bluez_msg>     - array of error message of bluez layer, empty if no errors
 // <discovered>    - array of devices seen during discovery; each has "mac" and "name"
 // <version>       - Version of the marker format.
 #define MARKER_RCU_PAIRING_ATTEMPT "ctrlm.rcu.pairing.attempt"

@@ -266,15 +266,17 @@ void BleRcuDeviceBluez::onPairRequestReply(PendingReply<> *reply)
         XLOGD_ERROR("%s pairing request failed with error: <%s>", 
             m_address.toString().c_str(), reply->errorMessage().c_str());
 
+        bool resetCnt = false;
         if (m_pairingRetryCnt < m_maxPairingRetries) {
             m_pairingRetryCnt++;
             XLOGD_INFO("Retrying pairing, attempt %d out of %d ", m_pairingRetryCnt, m_maxPairingRetries);
             pair(0);
         } else {
-            m_pairingRetryCnt = 0;
+            resetCnt = true;
         }
         int retryCnt = m_pairingRetryCnt;
         m_pairingErrorSlots.invoke(reply->errorMessage(), retryCnt, m_maxPairingRetries);
+        m_pairingRetryCnt = resetCnt ? 0 : m_pairingRetryCnt;
     } else {
         XLOGD_DEBUG("%s pairing request successful", m_address.toString().c_str());
     }

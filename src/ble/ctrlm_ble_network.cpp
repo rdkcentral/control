@@ -1702,15 +1702,10 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int si
    attempt.discovered   = outcome->discovered;
    attempt.bluez_retries = outcome->bluezRetries;
    attempt.paired_mac   = outcome->pairedMac;
-   attempt.error_msg    = outcome->bluezError;
-
-   XLOGD_INFO("BLE pairing attempt complete: method=%s result=%s paired_mac=%s "
-              "bluez_retries=%d bluez_msg=%s discovered=%zu",
-              attempt.method.c_str(), attempt.result.c_str(), attempt.paired_mac.c_str(),
-              attempt.bluez_retries, attempt.error_msg.c_str(), attempt.discovered.size());
+   attempt.bluez_msgs   = outcome->bluezError;
 
 #ifdef TELEMETRY_SUPPORT
-   // Serialize to JSON compatible with the ctrlm.ble.pairing.attempt T2 marker
+   // Serialize to JSON compatible with the ctrlm.rcu.pairing.attempt T2 marker
    json_t *jroot = json_object();
    if (jroot) {
       json_object_set_new(jroot, "version",       json_integer(MARKER_RCU_PAIRING_ATTEMPT_VERSION));
@@ -1718,7 +1713,14 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int si
       json_object_set_new(jroot, "result",        json_string(attempt.result.c_str()));
       json_object_set_new(jroot, "paired_mac",    json_string(attempt.paired_mac.c_str()));
       json_object_set_new(jroot, "bluez_retries", json_integer(attempt.bluez_retries));
-      json_object_set_new(jroot, "error_msg",     json_string(attempt.error_msg.c_str()));
+
+      json_t *jbluez_errors = json_array();
+      if (jbluez_errors) {
+         for (const auto &msg : attempt.bluez_msgs) {
+           json_array_append_new(jbluez_errors, json_string(msg.c_str()));
+         }
+         json_object_set_new(jroot, "bluez_msg", jbluez_errors);
+      }
 
       json_t *jdiscovered = json_array();
       if (jdiscovered) {
@@ -1734,7 +1736,6 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int si
       }
 
       char *json_str = json_dumps(jroot, JSON_COMPACT);
-      XLOGD_DEBUG("Serialized RCU pairing attempt telemetry payload");
       if (json_str) {
          ctrlm_telemetry_event_t<std::string> ev(MARKER_RCU_PAIRING_ATTEMPT, std::string(json_str));
          ctrlm_telemetry_t::get_instance()->event(ctrlm_telemetry_report_t::RCU, ev);

@@ -50,7 +50,7 @@ struct BleRcuPairingOutcome
     std::vector<std::pair<std::string, std::string>> discovered; // {mac, name}
     int         bluezRetries;
     std::string pairedMac;   // empty on failure
-    std::string bluezError;
+    std::vector<std::string> bluezError;
 };
 
 

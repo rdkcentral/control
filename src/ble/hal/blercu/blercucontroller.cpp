@@ -747,7 +747,7 @@ void BleRcuControllerImpl::onFailedPairing()
     outcome.result      = failureReasonStr(m_pairingStateMachine.failureReason());
     outcome.bluezRetries = m_pairingStateMachine.bluezRetries();
     outcome.pairedMac   = m_pairingStateMachine.pairedMac().toString();
-    outcome.bluezError = m_pairingStateMachine.bluezError();
+    outcome.bluezError.emplace_back(m_pairingStateMachine.bluezError());
     for (const auto &dev : m_pairingStateMachine.discoveredDevices()) {
         outcome.discovered.emplace_back(dev.mac.toString(), dev.name);
     }

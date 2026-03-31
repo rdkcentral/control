@@ -1050,7 +1050,7 @@ void BleRcuPairingStateMachine::onDeviceFound(const BleAddress &address,
 
     bool alreadyRecorded = false;
     for (const auto &dev : m_discoveredDevices) {
-        if (dev.name == name) { alreadyRecorded = true; break; }
+        if (dev.mac == address) { alreadyRecorded = true; break; }
     }
     if (!alreadyRecorded) {
         DiscoveredDevice dev;
@@ -1132,7 +1132,6 @@ void BleRcuPairingStateMachine::onDevicePairingError(const BleAddress &address,
     m_failureReason = FAIL_BLUEZ_ERROR;
     m_bluezRetries = retryCnt;
     m_bluezErrorMsg = error;
-    m_pairedMac = address;
 
     if (retryCnt < maxRetryCnt) {
         // Still retrying so don't stop pairing and timers yet

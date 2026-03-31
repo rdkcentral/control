@@ -185,6 +185,12 @@ void ctrlm_ble_rcu_interface_t::initialize()
                 m_rcuUnpairedSlots.invoke(&params);
             };
         m_controller->addManagedDeviceRemovedSlot(Slot<const BleAddress &>(m_isAlive, deviceRemovedSlot));
+
+        auto pairingOutcomeSlot = [this](const BleRcuPairingOutcome &outcome)
+            {
+                m_rcuPairingOutcomeSlots.invoke(outcome);
+            };
+        m_controller->addPairingOutcomeSlot(Slot<const BleRcuPairingOutcome&>(m_isAlive, pairingOutcomeSlot));
     }
 
     voice_params_par_t params;

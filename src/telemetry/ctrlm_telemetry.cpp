@@ -60,8 +60,7 @@ ctrlm_telemetry_t::ctrlm_telemetry_t() {
     this->timeout_id = 0;
     this->set_duration(this->reporting_interval);
     this->event_reported[ctrlm_telemetry_report_t::GLOBAL] = false;
-    this->event_reported[ctrlm_telemetry_report_t::RF4CE]  = false;
-    this->event_reported[ctrlm_telemetry_report_t::BLE]    = false;
+    this->event_reported[ctrlm_telemetry_report_t::RCU] = false;
     this->event_reported[ctrlm_telemetry_report_t::IP]     = false;
     this->event_reported[ctrlm_telemetry_report_t::VOICE]  = false;
 }
@@ -112,8 +111,7 @@ void ctrlm_telemetry_t::report() {
 const char *ctrlm_telemetry_t::get_report_trigger(ctrlm_telemetry_report_t report) {
     switch(report) {
         case ctrlm_telemetry_report_t::GLOBAL: return(CTRLM_TR181_TELEMETRY_REPORT_GLOBAL);
-        case ctrlm_telemetry_report_t::RF4CE:  return(CTRLM_TR181_TELEMETRY_REPORT_RF4CE);
-        case ctrlm_telemetry_report_t::BLE:    return(CTRLM_TR181_TELEMETRY_REPORT_BLE);
+        case ctrlm_telemetry_report_t::RCU:    return(CTRLM_TR181_TELEMETRY_REPORT_RCU);
         case ctrlm_telemetry_report_t::IP:     return(CTRLM_TR181_TELEMETRY_REPORT_IP);
         case ctrlm_telemetry_report_t::VOICE:  return(CTRLM_TR181_TELEMETRY_REPORT_VOICE);
     }
@@ -123,8 +121,7 @@ const char *ctrlm_telemetry_t::get_report_trigger(ctrlm_telemetry_report_t repor
 const char *ctrlm_telemetry_t::get_report_str(ctrlm_telemetry_report_t report) {
     switch(report) {
         case ctrlm_telemetry_report_t::GLOBAL: return("GLOBAL");
-        case ctrlm_telemetry_report_t::RF4CE:  return("RF4CE");
-        case ctrlm_telemetry_report_t::BLE:    return("BLE");
+        case ctrlm_telemetry_report_t::RCU:    return("RCU");
         case ctrlm_telemetry_report_t::IP:     return("IP");
         case ctrlm_telemetry_report_t::VOICE:  return("VOICE");
     }

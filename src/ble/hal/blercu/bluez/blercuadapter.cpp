@@ -1245,8 +1245,8 @@ bool BleRcuAdapterBluez::addDevice(const BleAddress &address)
     XLOGD_INFO("requesting bluez pair %s", device->address().toString().c_str());
 
 
-    device->addPairingErrorSlot(Slot<const std::string&>(m_isAlive,
-            std::bind(&BleRcuAdapterBluez::onDevicePairingError, this, address, std::placeholders::_1)));
+    device->addPairingErrorSlot(Slot<const std::string&, int, int>(m_isAlive,
+            std::bind(&BleRcuAdapterBluez::onDevicePairingError, this, address, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)));
 
     device->pair(0);
 
@@ -1688,9 +1688,11 @@ void BleRcuAdapterBluez::onDeviceNameChanged(const BleAddress &address,
 
  */
 void BleRcuAdapterBluez::onDevicePairingError(const BleAddress &address,
-                                             const std::string &error)
+                                             const std::string &error,
+                                             int retryCnt,
+                                             int maxRetryCnt)
 {
-    m_devicePairingErrorSlots.invoke(address, error);
+    m_devicePairingErrorSlots.invoke(address, error, retryCnt, maxRetryCnt);
 }
 
 // -----------------------------------------------------------------------------

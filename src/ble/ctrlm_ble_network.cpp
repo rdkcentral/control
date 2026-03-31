@@ -1718,7 +1718,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int si
       json_object_set_new(jroot, "result",        json_string(attempt.result.c_str()));
       json_object_set_new(jroot, "paired_mac",    json_string(attempt.paired_mac.c_str()));
       json_object_set_new(jroot, "bluez_retries", json_integer(attempt.bluez_retries));
-      json_object_set_new(jroot, "bluez_msg",     json_string(attempt.error_msg.c_str()));
+      json_object_set_new(jroot, "error_msg",     json_string(attempt.error_msg.c_str()));
 
       json_t *jdiscovered = json_array();
       if (jdiscovered) {
@@ -1734,7 +1734,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int si
       }
 
       char *json_str = json_dumps(jroot, JSON_COMPACT);
-      XLOGD_WARN("KLU339 %s", json_str);
+      XLOGD_DEBUG("Serialized RCU pairing attempt telemetry payload");
       if (json_str) {
          ctrlm_telemetry_event_t<std::string> ev(MARKER_RCU_PAIRING_ATTEMPT, std::string(json_str));
          ctrlm_telemetry_t::get_instance()->event(ctrlm_telemetry_report_t::RCU, ev);

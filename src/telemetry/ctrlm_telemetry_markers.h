@@ -144,7 +144,7 @@
 #define MARKER_RCU_PAIRING_ATTEMPT_VERSION 1
 
 //
-// End BLE Markers
+// End RCU Markers
 //
 
 #endif

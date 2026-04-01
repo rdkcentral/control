@@ -1689,6 +1689,10 @@ void ctrlm_obj_network_ble_t::ind_rcu_pairing_outcome(const BleRcuPairingOutcome
 void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int size) {
    THREAD_ID_VALIDATE();
    const BleRcuPairingOutcome *outcome = static_cast<const BleRcuPairingOutcome *>(data);
+   if (sizeof(BleRcuPairingOutcome) != size) {
+      XLOGD_ERROR("Invalid size!");
+      return;
+   }
    if (!outcome) {
       XLOGD_ERROR("pairing outcome data is NULL");
       return;

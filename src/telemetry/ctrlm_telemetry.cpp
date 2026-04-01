@@ -60,7 +60,7 @@ ctrlm_telemetry_t::ctrlm_telemetry_t() {
     this->timeout_id = 0;
     this->set_duration(this->reporting_interval);
     this->event_reported[ctrlm_telemetry_report_t::GLOBAL] = false;
-    this->event_reported[ctrlm_telemetry_report_t::RCU] = false;
+    this->event_reported[ctrlm_telemetry_report_t::RCU]    = false;
     this->event_reported[ctrlm_telemetry_report_t::IP]     = false;
     this->event_reported[ctrlm_telemetry_report_t::VOICE]  = false;
 }

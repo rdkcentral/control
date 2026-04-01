@@ -104,7 +104,7 @@ public:
     std::vector<DiscoveredDevice> discoveredDevices() const;
     int bluezRetries() const;
     BleAddress pairedMac() const;
-    std::string bluezError() const;
+    std::vector<std::string> bluezError() const;
 
 // public slots:
     void start(const BleAddress &target, const std::string &name);
@@ -213,7 +213,7 @@ private:
     std::vector<DiscoveredDevice> m_discoveredDevices;
     int m_bluezRetries;
     BleAddress m_pairedMac;
-    std::string m_bluezErrorMsg;
+    std::vector<std::string> m_bluezErrorMsg;
 
     BtrMgrAdapter m_btrMgrAdapter;
     bool discoveryStartedExternally = false;

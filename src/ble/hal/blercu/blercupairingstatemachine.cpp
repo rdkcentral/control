@@ -235,7 +235,7 @@ BleAddress BleRcuPairingStateMachine::pairedMac() const
     return m_pairedMac;
 }
 
-std::string BleRcuPairingStateMachine::bluezError() const
+std::vector<std::string> BleRcuPairingStateMachine::bluezError() const
 {
     return m_bluezErrorMsg;
 }
@@ -1131,7 +1131,7 @@ void BleRcuPairingStateMachine::onDevicePairingError(const BleAddress &address,
 
     m_failureReason = FAIL_BLUEZ_ERROR;
     m_bluezRetries = retryCnt;
-    m_bluezErrorMsg = error;
+    m_bluezErrorMsg.push_back(error);
 
     if (retryCnt < maxRetryCnt) {
         // Still retrying so don't stop pairing and timers yet

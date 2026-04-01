@@ -1696,27 +1696,19 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int si
       return;
    }
 
-   ctrlm_ble_pair_attempt_t attempt;
-   attempt.method       = outcome->method;
-   attempt.result       = outcome->result;
-   attempt.discovered   = outcome->discovered;
-   attempt.bluez_retries = outcome->bluezRetries;
-   attempt.paired_mac   = outcome->pairedMac;
-   attempt.bluez_msgs   = outcome->bluezError;
-
 #ifdef TELEMETRY_SUPPORT
    // Serialize to JSON compatible with the ctrlm.rcu.pairing.attempt T2 marker
    json_t *jroot = json_object();
    if (jroot) {
       json_object_set_new(jroot, "version",       json_integer(MARKER_RCU_PAIRING_ATTEMPT_VERSION));
-      json_object_set_new(jroot, "method",        json_string(attempt.method.c_str()));
-      json_object_set_new(jroot, "result",        json_string(attempt.result.c_str()));
-      json_object_set_new(jroot, "paired_mac",    json_string(attempt.paired_mac.c_str()));
-      json_object_set_new(jroot, "bluez_retries", json_integer(attempt.bluez_retries));
+      json_object_set_new(jroot, "method",        json_string(outcome->method.c_str()));
+      json_object_set_new(jroot, "result",        json_string(outcome->result.c_str()));
+      json_object_set_new(jroot, "paired_mac",    json_string(outcome->pairedMac.c_str()));
+      json_object_set_new(jroot, "bluez_retries", json_integer(outcome->bluezRetries));
 
       json_t *jbluez_errors = json_array();
       if (jbluez_errors) {
-         for (const auto &msg : attempt.bluez_msgs) {
+         for (const auto &msg : outcome->bluezError) {
            json_array_append_new(jbluez_errors, json_string(msg.c_str()));
          }
          json_object_set_new(jroot, "bluez_msg", jbluez_errors);
@@ -1724,7 +1716,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int si
 
       json_t *jdiscovered = json_array();
       if (jdiscovered) {
-         for (const auto &dev : attempt.discovered) {
+         for (const auto &dev : outcome->discovered) {
             json_t *jdev = json_object();
             if (jdev) {
                json_object_set_new(jdev, "mac",    json_string(dev.first.c_str()));

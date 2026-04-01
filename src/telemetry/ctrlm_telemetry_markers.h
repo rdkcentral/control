@@ -131,7 +131,7 @@
 
 // BLE RCU Pairing Attempt Marker
 // Value format: JSON object string with the fields below.
-// {"method":<str>,"result":<str>,"paired_mac":<str>,"bluez_retries":<int>,"error_msg":<str>,"discovered":[{"mac":<str>,"name":<str>}...]}
+// {"method":<str>,"result":<str>,"paired_mac":<str>,"bluez_retries":<int>,"bluez_msg":<str>,"discovered":[{"mac":<str>,"name":<str>}...]}
 // <method>        - pairing method: "auto_timeout" | "ir_code" | "mac_hash" | "mac_list"
 // <result>        - "success" or failure reason: "discovery_timeout" | "discovery_stopped" | "discovery_stop_timeout" |
 //                  "pairing_timeout" | "bluez_error" | "adapter_off" | "device_unpaired" | "device_removed" | "cancelled"

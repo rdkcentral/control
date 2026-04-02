@@ -270,16 +270,16 @@ bool ctrlm_thunder_plugin_t::call_plugin_boolean(std::string method, void *param
             Core::JSON::Boolean jsonResponse;
             uint32_t thunderRet = clientObject->Invoke<JsonObject, Core::JSON::Boolean>(CALL_TIMEOUT, _T(method), *jsonParams, jsonResponse);
             if(thunderRet != Core::ERROR_NONE) {
-               XLOGD_ERROR("%s: Thunder call failed <%s> <%u>\n", __FUNCTION__, method.c_str(), thunderRet);
+               XLOGD_ERROR("Thunder call failed <%s> <%u>", method.c_str(), thunderRet);
             } else {
                 *response = jsonResponse.Value();
                 ret = true;
             }
         } else {
-            XLOGD_ERROR("%s: Invalid parameters\n", __FUNCTION__);
+            XLOGD_ERROR("Invalid parameters");
         }
     } else {
-        XLOGD_ERROR("%s: Client is NULL\n", __FUNCTION__);
+        XLOGD_ERROR("Client is NULL");
     }
     return(ret);
 }

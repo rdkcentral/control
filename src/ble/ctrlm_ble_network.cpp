@@ -740,29 +740,13 @@ void ctrlm_obj_network_ble_t::req_process_pair_with_code(void *data, int size) {
       XLOGD_FATAL("Network is not ready!");
    } else {
       if (ble_rcu_interface_) {
-         
-         if (dqm->params->key_code == KEY_BLUETOOTH) {
-            // KEY_BLUETOOTH means the pairing code is random 3 digit code embedded in the name
-            // so use pairWithCode
-            if (!ble_rcu_interface_->pairWithCode(dqm->params->pair_code)) {
-               // don't log error here, pairWithCode will handle printing the error.  We do
-               // this because there is an error that is merely a warning that we don't want
-               // logged because it only confuses those analyzing the logs.
-               // XLOGD_ERROR("failed to start pairing with code");
-            } else {
-               dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            }
+         if (!ble_rcu_interface_->pairWithCode(dqm->params->pair_code)) {
+            // don't log error here, pairWithCode will handle printing the error.  We do
+            // this because there is an error that is merely a warning that we don't want
+            // logged because it only confuses those analyzing the logs.
+            // XLOGD_ERROR("failed to start pairing with code");
          } else {
-            // if key_code is either not available or KEY_CONNECT, it means the pairing code is a 
-            // hash of the MAC, so use pairWithMacHash
-            if (!ble_rcu_interface_->pairWithMacHash(dqm->params->pair_code)) {
-               // don't log error here, pairWithMacHash will handle printing the error.  We do
-               // this because there is an error that is merely a warning that we don't want
-               // logged because it only confuses those analyzing the logs.
-               // XLOGD_ERROR("failed to start pairing with MAC hash");
-            } else {
-               dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            }
+            dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
          }
       }
    }

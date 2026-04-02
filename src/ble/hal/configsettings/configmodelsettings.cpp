@@ -137,47 +137,66 @@ ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
         }
     }
 
-    // (optional) pairingFormat field
-    obj = json_object_get(json, "pairingNameFormat");
-    if (!obj || !json_is_string(obj)) {
-        XLOGD_WARN("invalid 'pairingNameFormat' field, not fatal, continuing to parse info");
-    } else {
-        m_pairingNameFormat = json_string_value(obj);
+    // Advertising names field
+    json_t *advertisingNamesObj = json_object_get(json, "advertisingNames");
+    if (!advertisingNamesObj || !json_is_object(advertisingNamesObj)) {
+        XLOGD_ERROR("missing or invalid 'advertisingNames' field");
+        return;
     }
-
-    // scanNameFormat field
-    obj = json_object_get(json, "scanNameFormat");
+    // advertisingNames.regexPairing field
+    obj = json_object_get(advertisingNamesObj, "regexPairing");
     if (!obj || !json_is_string(obj)) {
-        XLOGD_ERROR("invalid 'scanNameFormat' field, this is required so returning...");
+        XLOGD_ERROR("invalid required 'advertisingNames.regexPairing' field, aborting...");
         return;
     }
     m_scanNameMatcher = std::regex(json_string_value(obj), std::regex_constants::ECMAScript);
-    XLOGD_INFO("Pairing name regex <%s>", json_string_value(obj));
-    
-    // (optional) connectNameFormat field
-    obj = json_object_get(json, "connectNameFormat");
-    if (!obj || !json_is_string(obj)) {
-        XLOGD_WARN("invalid 'connectNameFormat' field, not fatal, setting to scanNameFormat");
-        m_connectNameMatcher = m_scanNameMatcher;
+    m_connectNameMatcher = m_scanNameMatcher;
+    XLOGD_INFO("Pairing and reconnect advertising name regex <%s>", json_string_value(obj));
+
+
+    // advertisingNames.optional array
+    json_t *optionalNames = json_object_get(advertisingNamesObj, "optional");
+    if (!optionalNames || !json_is_object(optionalNames)) {
+        XLOGD_INFO("missing or invalid 'optionalNames' field, not fatal, continuing...");
     } else {
-        m_connectNameMatcher = std::regex(json_string_value(obj), std::regex_constants::ECMAScript);
+
+        // (optional) formatSpecifierTargetedPairing field
+        obj = json_object_get(optionalNames, "formatSpecifierTargetedPairing");
+        if (!obj || !json_is_string(obj)) {
+            XLOGD_INFO("invalid 'formatSpecifierTargetedPairing' field, not fatal, continuing...");
+        } else {
+            m_pairingNameFormat = json_string_value(obj);
+            XLOGD_INFO("Pairing name printf format specifier for targeted pairing <%s>", m_pairingNameFormat.c_str());
+        }
+    
+        // (optional) regexReconnect field
+        obj = json_object_get(optionalNames, "regexReconnect");
+        if (!obj || !json_is_string(obj)) {
+            XLOGD_INFO("invalid or missing 'regexReconnect' field, not fatal, continuing...");
+        } else {
+            m_connectNameMatcher = std::regex(json_string_value(obj), std::regex_constants::ECMAScript);
+            XLOGD_INFO("Reconnect advertising name regex overridden with <%s>", json_string_value(obj));
+        }
     }
+
 
     // (optional) otaProductName field
     obj = json_object_get(json, "otaProductName");
     if (!obj || !json_is_string(obj)) {
-        XLOGD_WARN("invalid 'otaProductName' field, not fatal, continuing to parse info");
+        XLOGD_INFO("invalid 'otaProductName' field, not fatal, continuing to parse info");
     } else {
         m_otaProductName = json_string_value(obj);
+        XLOGD_INFO("parsed 'otaProductName' field value <%s>", m_otaProductName.c_str());
     }
 
     // (optional) typeZ field
     obj = json_object_get(json, "typeZ");
     if (obj) {
         if (!json_is_boolean(obj)) {
-            XLOGD_WARN("invalid 'typeZ' field, not fatal, continuing to parse info");
+            XLOGD_INFO("invalid 'typeZ' field, not fatal, continuing to parse info");
         } else {
             m_typeZ = json_is_true(obj);
+            XLOGD_INFO("parsed 'typeZ' field value <%s>", m_typeZ ? "true" : "false");
         }
     }
 
@@ -185,9 +204,10 @@ ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
     obj = json_object_get(json, "connParamUpdateBeforeOtaVersion");
     if (obj) {
         if (!json_is_string(obj)) {
-            XLOGD_WARN("invalid 'connParamUpdateBeforeOtaVersion' field, not fatal, continuing to parse info");
+            XLOGD_INFO("invalid 'connParamUpdateBeforeOtaVersion' field, not fatal, continuing to parse info");
         } else {
             m_connParamUpdateBeforeOtaVersion = json_string_value(obj);
+            XLOGD_INFO("parsed 'connParamUpdateBeforeOtaVersion' field value <%s>", m_connParamUpdateBeforeOtaVersion.c_str());
         }
     }
 
@@ -195,9 +215,10 @@ ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
     obj = json_object_get(json, "upgradePauseVersion");
     if (obj) {
         if (!json_is_string(obj)) {
-            XLOGD_WARN("invalid 'upgradePauseVersion' field, not fatal, continuing to parse info");
+            XLOGD_INFO("invalid 'upgradePauseVersion' field, not fatal, continuing to parse info");
         } else {
             m_upgradePauseVersion = json_string_value(obj);
+            XLOGD_INFO("parsed 'upgradePauseVersion' field value <%s>", m_upgradePauseVersion.c_str());
         }
     }
 
@@ -205,18 +226,20 @@ ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
     obj = json_object_get(json, "upgradeStuckVersion");
     if (obj) {
         if (!json_is_string(obj)) {
-            XLOGD_WARN("invalid 'upgradeStuckVersion' field, not fatal, continuing to parse info");
+            XLOGD_INFO("invalid 'upgradeStuckVersion' field, not fatal, continuing to parse info");
         } else {
             m_upgradeStuckVersion = json_string_value(obj);
+            XLOGD_INFO("parsed 'upgradeStuckVersion' field value <%s>", m_upgradeStuckVersion.c_str());
         }
     }
 
     // (optional) standbyMode field
     obj = json_object_get(json, "standbyMode");
     if (!obj || !json_is_string(obj)) {
-        XLOGD_WARN("invalid or missing 'standbyMode' field, not fatal, continuing to parse info");
+        XLOGD_INFO("invalid or missing 'standbyMode' field, not fatal, continuing to parse info");
     } else {
         m_standbyMode = json_string_value(obj);
+        XLOGD_INFO("parsed 'standbyMode' field value <%s>", m_standbyMode.c_str());
     }
 
     // (optional) voiceKeyCode field
@@ -231,6 +254,7 @@ ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
             } else {
                 m_voiceKeyCode        = keyCode;
                 m_voiceKeyCodePresent = true;
+                XLOGD_INFO("parsed 'voiceKeyCode' field value <%u>", m_voiceKeyCode);
             }
         }
     }
@@ -248,6 +272,7 @@ ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
         return;
     }
     string typeStr = json_string_value(obj);
+    XLOGD_INFO("parsed 'service.type' field value <%s>", typeStr.c_str());
 
     if (typeStr.compare("gatt") == 0) {
         m_servicesType = ConfigModelSettings::GattServiceType;
@@ -285,38 +310,38 @@ ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
     }
     servicesRequiredStr = servicesRequiredStr.substr(0, servicesRequiredStr.length() - 2); // Remove the trailing comma and space
 
-    XLOGD_DEBUG("m_servicesRequired = <%s>", servicesRequiredStr.c_str());
+    XLOGD_INFO("m_servicesRequired = <%s>", servicesRequiredStr.c_str());
 
     // services.optional array
     json_t *optionalArray = json_object_get(servicesObj, "optional");
     if (!optionalArray || !json_is_array(optionalArray)) {
-        XLOGD_ERROR( "missing or invalid 'services.optional' field");
-        return;
-    }
-    array_size = json_array_size(optionalArray);
+        XLOGD_INFO( "missing or invalid 'services.optional' field, not fatal, continuing...");
+    } else {
+        array_size = json_array_size(optionalArray);
 
-    for (unsigned int i = 0; i < array_size; i++) {
-        obj = json_array_get(optionalArray, i);
-        if (!obj || !json_is_string(obj)) {
-            XLOGD_ERROR("invalid 'services.optional' array entry");
-            return;
+        for (unsigned int i = 0; i < array_size; i++) {
+            obj = json_array_get(optionalArray, i);
+            if (!obj || !json_is_string(obj)) {
+                XLOGD_ERROR("invalid 'services.optional' array entry");
+                return;
+            }
+            string serviceStr = json_string_value(obj);
+
+            if (!BleUuid().doesServiceExist(serviceStr)) {
+                XLOGD_ERROR("invalid service name <%s>", serviceStr.c_str());
+                return;
+            }
+            m_servicesOptional.insert(serviceStr);
         }
-        string serviceStr = json_string_value(obj);
 
-        if (!BleUuid().doesServiceExist(serviceStr)) {
-            XLOGD_ERROR("invalid service name <%s>", serviceStr.c_str());
-            return;
+        std::string servicesOptionalStr;
+        for (const auto& service : m_servicesOptional) {
+            servicesOptionalStr += service + ", ";
         }
-        m_servicesOptional.insert(serviceStr);
-    }
+        servicesOptionalStr = servicesOptionalStr.substr(0, servicesOptionalStr.length() - 2); // Remove the trailing comma and space
 
-    std::string servicesOptionalStr;
-    for (const auto& service : m_servicesOptional) {
-        servicesOptionalStr += service + ", ";
+        XLOGD_INFO("m_servicesOptional = <%s>\n", servicesOptionalStr.c_str());
     }
-    servicesOptionalStr = servicesOptionalStr.substr(0, servicesOptionalStr.length() - 2); // Remove the trailing comma and space
-
-    XLOGD_DEBUG("m_servicesOptional = <%s>\n", servicesOptionalStr.c_str());
 
     // (optional) connectionParams
     // if (json.contains("connectionParams")) {

@@ -273,61 +273,6 @@ bool BleRcuControllerImpl::startPairingWithCode(uint8_t pairingCode)
 
 // -----------------------------------------------------------------------------
 /*!
-    \fn bool BleRcuController::startPairingWithMacHash(uint8_t macHash)
-
-    Attempts to start the pairing procedure looking for a device that has
-    a MAC address matching the supplied MAC hash.
-    
-    The MAC hash is calculated by adding all the bytes of the MAC address
-    together, and masking with 0xFF.
-    e.g., MAC = AA:BB:CC:DD:EE:FF, hash = (AA+BB+CC+DD+EE+FF) & 0xFF
-
-    If the controller is currently in pairing mode this method will fail and
-    return \c false.  If the bluetooth adaptor is not available or not powered
-    then this function will also fail and return \c false.
-
-    If \c false is returned use BleRcuController::lastError() to get the failure
-    reason.
-
-    \note This object doesn't actually run the pairing procedure, instead it
-    just starts and stops the \l{BleRcuPairingStateMachine} object.
-
-    \see cancelPairing(), isPairing() & pairingCode()
- */
-bool BleRcuControllerImpl::startPairingWithMacHash(uint8_t macHash)
-{
-    if (m_pairingStateMachine.isRunning()) {
-        if (m_pairingStateMachine.isAutoPairing()) {
-
-            XLOGD_WARN("received targeted pairing request in auto pair mode, cancelling auto pair first...");
-            
-            m_ignorePairingFailure = true;
-            m_pairingStateMachine.stop();
-
-            m_lastError = BleRcuError(BleRcuError::Busy, "Cancelling auto pair operation, send another request.");
-        } else {
-            XLOGD_DEBUG("requested pairing while currently running a pairing operation, ignoring request");
-            m_lastError = BleRcuError(BleRcuError::Busy, "Already in pairing state");
-        }
-        return false;
-    }
-
-    // check that the manager has powered on the adapter, without this we
-    // obviously can't scan / pair / etc. The only time the adaptor should
-    // (legitimately) be unavailable is right at start-up
-    if (!m_adapter->isAvailable() || !m_adapter->isPowered()) {
-        m_lastError = BleRcuError(BleRcuError::General, "Adaptor not available or not powered");
-        return false;
-    }
-
-    // start the pairing process
-    m_pairingStateMachine.startWithMacHash(macHash);
-
-    return true;
-}
-
-// -----------------------------------------------------------------------------
-/*!
     \fn bool BleRcuController::startPairingWithList(std::vector<BleAddress> macAddrList)
 
     Attempts to start the pairing procedure looking for devices that identify

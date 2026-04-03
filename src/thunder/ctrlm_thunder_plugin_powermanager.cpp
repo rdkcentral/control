@@ -113,7 +113,7 @@ bool ctrlm_thunder_plugin_powermanager_t::get_wakeup_reason_voice() {
 
    sem_wait(&this->semaphore);   
    if(this->call_plugin("getLastWakeupReason", (void *)&params, (void *)&response)) {
-      wakeup_reason_voice = (response["result"].String() == "WAKEUP_REASON_VOICE");
+      wakeup_reason_voice = (response["wakeupReason"].String() == "WAKEUP_REASON_VOICE");
       XLOGD_DEBUG("voice_wakeup is %s", wakeup_reason_voice?"TRUE":"FALSE");
    } else {
       XLOGD_ERROR("getLastWakeupReason call failed");

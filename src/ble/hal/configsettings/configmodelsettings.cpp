@@ -78,8 +78,13 @@ ConfigModelSettingsData::ConfigModelSettingsData(const ConfigModelSettingsData &
         [
             {
                 "name": "PR3",
-                "scanNameFormat": "U-PR3 EntOS RCU",
-                "connectNameFormat": "[UP]-PR3 EntOS RCU",
+                "advertisingNames": {
+                    "regexPairing" : "U-PR3 EntOS RCU",
+                    "optional": {
+                        "formatSpecifierTargetedPairing": "",
+                        "regexReconnect" : "[UP]-PR3 EntOS RCU"
+                    }
+                },
                 "otaProductName": "PR3-10",
                 "standbyMode": "C",
                 "services": {
@@ -340,7 +345,9 @@ ConfigModelSettingsData::ConfigModelSettingsData(json_t *json)
         for (const auto& service : m_servicesOptional) {
             servicesOptionalStr += service + ", ";
         }
-        servicesOptionalStr = servicesOptionalStr.substr(0, servicesOptionalStr.length() - 2); // Remove the trailing comma and space
+        if (!m_servicesOptional.empty()) {
+            servicesOptionalStr = servicesOptionalStr.substr(0, servicesOptionalStr.length() - 2); // Remove the trailing comma and space
+        }
 
         XLOGD_INFO("Services optional = <%s>", servicesOptionalStr.c_str());
     }

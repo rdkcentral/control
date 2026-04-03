@@ -804,25 +804,22 @@ void BleRcuPairingStateMachine::processDevice(const BleAddress &address,
                 XLOGD_INFO("Device (%s, %s) MAC hash matches!", name.c_str(), address.toString().c_str());
             }
         } else if (m_pairingMacList.size() != 0) {
-            // Device not found through name match or MAC hash so let's check a mac address list
-            // Pairing via a mac address list clears supported names and the pairing mac hash
-            if (m_pairingMacList.size() != 0) {
+            // Device not found through name match or MAC hash so let's check the mac address list
+            // Pairing via a mac address list clears other pairing methods so execution should always fall here
 
-                // check if the mac address matches any of the ones in the filter list (if it exists)
-                bool found = false;
-                for (const auto &filterAddress : m_pairingMacList) {
-                    if (address == filterAddress) {
-                        found = true;
-                        break;
-                    }
+            bool found = false;
+            for (const auto &filterAddress : m_pairingMacList) {
+                if (address == filterAddress) {
+                    found = true;
+                    break;
                 }
+            }
 
-                if (!found) {
-                    XLOGD_INFO("Device (%s, %s) is not in the mac address filter list - ignoring...", name.c_str(), address.toString().c_str());
-                    return;
-                } else {
-                    XLOGD_INFO("Device (%s, %s) has a match in the MAC address filter list!", name.c_str(), address.toString().c_str());
-                }
+            if (!found) {
+                XLOGD_INFO("Device (%s, %s) is not in the mac address filter list - ignoring...", name.c_str(), address.toString().c_str());
+                return;
+            } else {
+                XLOGD_INFO("Device (%s, %s) has a match in the MAC address filter list!", name.c_str(), address.toString().c_str());
             }
         } else {
             // log an error if we don't already have a target device

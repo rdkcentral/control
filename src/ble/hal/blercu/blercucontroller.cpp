@@ -243,7 +243,7 @@ bool BleRcuControllerImpl::startPairingAutoWithTimeout(int timeoutMs)
 bool BleRcuControllerImpl::startPairingWithCode(uint8_t pairingCode)
 {
     if (m_pairingStateMachine.isRunning()) {
-        if (m_pairingStateMachine.isAutoPairing()) {
+        if (m_pairingStateMachine.isScanningForAutoPair()) {
 
             XLOGD_WARN("received targeted pairing request in auto pair mode, cancelling auto pair first...");
             
@@ -293,7 +293,7 @@ bool BleRcuControllerImpl::startPairingWithCode(uint8_t pairingCode)
 bool BleRcuControllerImpl::startPairingWithList(const std::vector<BleAddress> &macAddrList)
 {
     if (m_pairingStateMachine.isRunning()) {
-        if (m_pairingStateMachine.isAutoPairing()) {
+        if (m_pairingStateMachine.isScanningForAutoPair()) {
 
             XLOGD_WARN("received targeted pairing request in auto pair mode, cancelling auto pair first...");
             

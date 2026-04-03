@@ -677,7 +677,7 @@ void ctrlm_obj_network_ble_t::req_process_start_pairing(void *data, int size) {
                dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
             }
          } else {
-            XLOGD_INFO("Starting pairing with a list of mac addresses! Pairing with first available...");
+            XLOGD_INFO("Starting pairing with a list of MAC addresses! Pairing with first available...");
             if(!ble_rcu_interface_->pairWithMacAddrs(dqm->params->ieee_address_list)) {
                XLOGD_ERROR("failed to start BLE remote scan");
                dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());

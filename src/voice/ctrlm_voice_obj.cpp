@@ -262,6 +262,7 @@ ctrlm_voice_t::ctrlm_voice_t() {
     this->secure_url_required       = JSON_BOOL_VALUE_VOICE_REQUIRE_SECURE_URL;
 
     XLOGD_TELEMETRY("require i_SAT <%s> i_MTLS <%s> i_secure_url <%s>", this->sat_token_required ? "YES" : "NO", this->mtls_required ? "YES" : "NO", this->secure_url_required ? "YES" : "NO");
+    XLOGD_INFO("voice activity detection mode <%s>", xrsr_stream_voice_activity_mode_str(this->prefs.voice_activity_detection_mode));
 
     errno_t safec_rc = memset_s(this->sat_token, sizeof(this->sat_token), 0, sizeof(this->sat_token));
     ERR_CHK(safec_rc);
@@ -430,6 +431,7 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             std::string voice_activity_detection_mode;
             if(conf.config_value_get(JSON_STR_NAME_VOICE_VOICE_ACTIVITY_DETECTION_MODE, voice_activity_detection_mode)) {
                 this->prefs.voice_activity_detection_mode = this->voice_activity_detection_mode_to_xrsr(voice_activity_detection_mode);
+                XLOGD_INFO("voice activity detection mode <%s>", xrsr_stream_voice_activity_mode_str(this->prefs.voice_activity_detection_mode));
             }
 
             if(conf.config_value_get(JSON_BOOL_NAME_VOICE_ENABLE_SAT,                  this->sat_token_required)) {
@@ -2955,7 +2957,16 @@ void ctrlm_voice_t::voice_stream_end_callback(ctrlm_voice_stream_end_cb_t *strea
             #ifdef TELEMETRY_SUPPORT
             if(this->prefs.telemetry_session_stats) {
                 uint32_t packets_total = session->packets_lost + session->packets_processed;
-                session->telemetry_session_stats.update_on_stream_end(stream_duration, packets_total, session->packets_lost, packets_total * samples_per_packet, session->packets_lost * samples_per_packet, decoder_failures, 0);
+                int32_t  voice_detected  = -1;
+                uint32_t peak_confidence = 0;
+                int32_t  peak_rms_level  = 0;
+                if(stats->audio_stats.vad_frames_processed > 0) {
+                    voice_detected  = (stats->audio_stats.vad_voice_detected) ? 1 : 0;
+                    peak_confidence = (stats->audio_stats.vad_confidence_peak * 100);
+                    peak_rms_level  = stats->audio_stats.vad_rms_level_peak;
+                }
+
+                session->telemetry_session_stats.update_on_stream_end(stream_duration, packets_total, session->packets_lost, packets_total * samples_per_packet, session->packets_lost * samples_per_packet, decoder_failures, 0, voice_detected, peak_confidence, peak_rms_level);
             }
             #endif
         } else if(samples_processed > 0) {
@@ -2963,7 +2974,7 @@ void ctrlm_voice_t::voice_stream_end_callback(ctrlm_voice_stream_end_cb_t *strea
             XLOGD_INFO("src <%s> Samples Lost/Total <%u/%u> %.02f%% buffered max <%u> duration <%u> ms", ctrlm_voice_device_str(session->voice_device), samples_lost, samples_lost + samples_processed, 100.0 * ((double)samples_lost / (double)(samples_lost + samples_processed)), samples_buffered_max, stream_duration);
             #ifdef TELEMETRY_SUPPORT
             if(this->prefs.telemetry_session_stats) {
-                session->telemetry_session_stats.update_on_stream_end(stream_duration, 0, 0, samples_lost + samples_processed, samples_lost, decoder_failures, samples_buffered_max);
+                session->telemetry_session_stats.update_on_stream_end(stream_duration, 0, 0, samples_lost + samples_processed, samples_lost, decoder_failures, samples_buffered_max, -1, 0, 0);
             }
             #endif
         }
@@ -4088,6 +4099,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
     std::string voice_activity_detection_mode;
     if(attr.get_rfc_value(JSON_STR_NAME_VOICE_VOICE_ACTIVITY_DETECTION_MODE, voice_activity_detection_mode)) {
        this->prefs.voice_activity_detection_mode = this->voice_activity_detection_mode_to_xrsr(voice_activity_detection_mode);
+       XLOGD_INFO("voice activity detection mode <%s>", xrsr_stream_voice_activity_mode_str(this->prefs.voice_activity_detection_mode));
        reroute = true;
     }
 

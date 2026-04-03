@@ -291,7 +291,7 @@
       "par_voice_eos_method"             :         1,
       "par_voice_eos_timeout"            :      2500,
       "server_hosts"                     :        [],
-      "telemetry_session_stats"          :     false,
+      "telemetry_session_stats"          :      true,
       "voice_activity_detection_mode"    :  "enabled"
 
    },

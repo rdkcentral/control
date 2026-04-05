@@ -107,19 +107,22 @@ bool ctrlm_thunder_plugin_powermanager_t::get_networked_standby_mode() {
 /* root@pioneer-uhd:~# curl --request POST --url http://127.0.0.1:9998/jsonrpc --header 'Content-Type: application/json' --data '{ "jsonrpc": "2.0", "id": 1234567890, "method": "org.rdk.PowerManager.1.getLastWakeupReason", "params": {} }'
 {"jsonrpc":"2.0","id":1234567890,"result":"COLDBOOT"} */
 bool ctrlm_thunder_plugin_powermanager_t::get_wakeup_reason_voice() {
-   JsonObject params, response;
+   JsonObject params;
+   std::string response;
    params = {};
    bool wakeup_reason_voice = false;
 
    sem_wait(&this->semaphore);   
-   if(this->call_plugin("getLastWakeupReason", (void *)&params, (void *)&response)) {
-      XLOGD_INFO("received <%s>", response["result"].String().c_str());
-      wakeup_reason_voice = (std::string(response["result"].String()) == "VOICE");
-      XLOGD_DEBUG("voice_wakeup is %s", wakeup_reason_voice?"TRUE":"FALSE");
+   if(this->call_plugin_string("getLastWakeupReason", (void *)&params, &response)) {
+      if(response == "VOICE") {
+         wakeup_reason_voice = true;
+      }
    } else {
       XLOGD_ERROR("getLastWakeupReason call failed");
    }
    sem_post(&this->semaphore);
+
+   XLOGD_DEBUG("voice_wakeup is %s", wakeup_reason_voice?"TRUE":"FALSE");
 
    return wakeup_reason_voice;
 }

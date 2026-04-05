@@ -261,6 +261,53 @@ bool ctrlm_thunder_plugin_t::call_plugin(std::string method, void *params, void 
     return(ret);
 }
 
+bool ctrlm_thunder_plugin_t::call_plugin_boolean(std::string method, void *params, bool *response) {
+    bool ret = false;
+    auto clientObject = (JSONRPC::LinkType<Core::JSON::IElement>*)this->plugin_client;
+    JsonObject *jsonParams = (JsonObject *)params;
+    if(clientObject) {
+        if(!method.empty() && jsonParams && response) {
+            Core::JSON::Boolean jsonResponse;
+            uint32_t thunderRet = clientObject->Invoke<JsonObject, Core::JSON::Boolean>(CALL_TIMEOUT, _T(method), *jsonParams, jsonResponse);
+            if(thunderRet != Core::ERROR_NONE) {
+               XLOGD_ERROR("Thunder call failed <%s> <%u>", method.c_str(), thunderRet);
+            } else {
+                *response = jsonResponse.Value();
+                ret = true;
+            }
+        } else {
+            XLOGD_ERROR("Invalid parameters");
+        }
+    } else {
+        XLOGD_ERROR("Client is NULL");
+    }
+    return(ret);
+}
+
+bool ctrlm_thunder_plugin_t::call_plugin_string(std::string method, void *params, std::string *response) {
+    bool ret = false;
+    auto clientObject = (JSONRPC::LinkType<Core::JSON::IElement>*)this->plugin_client;
+    JsonObject *jsonParams = (JsonObject *)params;
+    if(clientObject) {
+        if(!method.empty() && jsonParams && response) {
+            Core::JSON::String jsonString;
+            uint32_t thunderRet = clientObject->Invoke<JsonObject, Core::JSON::String>(CALL_TIMEOUT, _T(method), *jsonParams, jsonString);
+            if(thunderRet != Core::ERROR_NONE) {
+               XLOGD_ERROR("%s: Thunder call failed <%s> <%u>", __FUNCTION__, method.c_str(), thunderRet);
+            } else {
+                *response = jsonString.Value();
+                ret = true;
+            }
+        } else {
+            XLOGD_ERROR("%s: Invalid parameters", __FUNCTION__);
+        }
+    } else {
+        XLOGD_ERROR("%s: Client is NULL", __FUNCTION__);
+    }
+    return(ret);
+}
+
+
 bool ctrlm_thunder_plugin_t::call_controller(std::string method, void *params, void *response) {
     bool ret = false;
     if(this->controller) {

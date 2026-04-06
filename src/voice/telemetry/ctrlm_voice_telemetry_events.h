@@ -112,7 +112,7 @@ private:
     int32_t     m_end_reason_stream;    // reason for ending the stream as reported by speech router
 
     int32_t     m_voice_detected;       // flag to indicate if voice was detected (-1 = not reported, 0 = no voice detected, 1 = voice detected)
-    int32_t     m_peak_confidence;      // peak confidence level when voice detection is reported
+    uint32_t    m_peak_confidence;      // peak confidence level when voice detection is reported
     int32_t     m_peak_rms_level;       // peak RMS level when voice detection is reported
 
     bool        m_has_key_release;      // flag to indicate if key release event has been received

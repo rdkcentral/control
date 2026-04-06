@@ -111,9 +111,9 @@
 // <samples_lost>         - lost samples.
 // <decoder_failures>     - decoder failure count.
 // <samples_buffered_max> - sample buffer high watermark.
-// <stream_ret_code>      - audio stream success/error code.
-// <protocol_ret_code>    - protocol success/error code.
-// <server_ret_code>      - server success/error code.
+// <end_reason_rcu>       - audio stream success/error code.
+// <end_reason_session>   - session success/error code.
+// <end_reason_server>    - server success/error code.
 // <server_message>       - server message.
 // <result>               - flag to indicate if session was successful.
 // <end_reason_stream>    - reason why the stream ended (if available).

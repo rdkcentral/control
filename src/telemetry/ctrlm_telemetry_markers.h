@@ -93,7 +93,7 @@
 // The Voice Session Statistics Marker reports statistics for the voice session(s). The format of the marker is a json array of arrays with each event in the format below:
 //
 // [[event1], [event2], [event3], ...]
-// [<version>,<device_type>,<device_version>,<encoding>,<interaction_mode>,<time_prev_session>,<time_start_lag>,<time_stream_len_exp>,<time_stream_len_act>,<time_stream_delta>,<packets_total>,<packets_lost>,<samples_total>,<samples_lost>,<decoder_failures>,<samples_buffered_max>,<stream_ret_code>,<protocol_ret_code>,<server_ret_code>,<server_message>,<result>,<end_reason_stream>,<ret_code_protocol>,<voice_detected>,<peak_confidence>,<peak_rms_level>]
+// [<version>,<device_type>,<device_version>,<encoding>,<interaction_mode>,<time_prev_session>,<time_start_lag>,<time_stream_len_exp>,<time_stream_len_act>,<time_stream_delta>,<packets_total>,<packets_lost>,<samples_total>,<samples_lost>,<decoder_failures>,<samples_buffered_max>,<end_reason_rcu>,<end_reason_session>,<end_reason_server>,<server_message>,<result>,<end_reason_stream>,<ret_code_protocol>,<voice_detected>,<peak_confidence>,<peak_rms_level>]
 //
 // <version>              - Version of the marker format.
 // <device_type>          - Name of the device that started the session.

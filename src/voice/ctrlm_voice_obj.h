@@ -639,7 +639,7 @@ public:
     void                  voice_params_opus_samples_per_packet_set(void);
     bool                  voice_params_hex_str_to_bytes(std::string hex_string, guchar *data, guint32 length);
     
-    xrsr_stream_voice_activity_mode_t voice_activity_detection_mode_to_xrsr(std::string mode);
+    xrsr_stream_voice_activity_mode_t voice_activity_detection_mode_to_xrsr(const std::string &mode);
 
     bool                  voice_session_can_request(ctrlm_voice_device_t device);
     void                  voice_session_set_active(ctrlm_voice_device_t device);

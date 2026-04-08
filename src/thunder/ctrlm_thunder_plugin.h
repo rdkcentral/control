@@ -136,7 +136,7 @@ protected:
      * This function is used to call a Thunder Plugin method.
      * @param method The method in which the user wants to call.
      * @param params The WPEFramework JsonObject containing the parameters for the call. (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
-     * @param response A pointer a string which will be assigned
+     * @param response A pointer a string to accept the response
      * @return True if the call succeeded, otherwise False.
      */
     bool call_plugin_string(std::string method, void *params, std::string *response);

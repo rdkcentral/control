@@ -210,7 +210,6 @@ private:
     FailureReason m_failureReason;
     std::map<BleAddress, std::string> m_discoveredDevices;
     int m_bluezRetries;
-    int m_bluezMaxRetries;
     BleAddress m_pairedMac;
     std::vector<std::string> m_bluezErrorMsg;
 

@@ -55,7 +55,6 @@ BleRcuPairingStateMachine::BleRcuPairingStateMachine(const shared_ptr<const Conf
     , m_pairingMethod(AUTO_TIMEOUT)
     , m_failureReason(SUCCESS)
     , m_bluezRetries(0)
-    , m_bluezMaxRetries(MAX_PAIRING_RETRIES)
 {
 
     // constructs a list of name printf style formats for searching for device names that match

@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <regex>
 #include <limits.h>
+#include <errno.h>
 #include <sys/sysinfo.h>
 #include "ctrlm.h"
 #include "ctrlm_log.h"
@@ -415,8 +416,17 @@ ctrlm_hal_result_t ctrlm_obj_network_rf4ce_t::hal_init_request(GThread *ctrlm_ma
    clock_gettime(CLOCK_REALTIME, &timeout);
    timeout.tv_sec += 2;  // this operation should complete in under 100 ms under normal circumstances
    
-   int sem_result = sem_timedwait(&semaphore_, &timeout);
-   
+   int sem_result = -1;
+   do {
+      errno = 0;
+      sem_result = sem_timedwait(&semaphore_, &timeout);
+      if(sem_result == -1 && errno == EINTR) {
+         XLOGD_INFO("interrupted");
+      } else {
+         break;
+      }
+   } while(1);
+
    if(sem_result == -1) {
       if(errno == ETIMEDOUT) {
          XLOGD_ERROR("Timeout waiting for %s initialization", name_get());

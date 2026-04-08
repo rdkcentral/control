@@ -55,7 +55,7 @@ BleRcuPairingStateMachine::BleRcuPairingStateMachine(const shared_ptr<const Conf
     , m_pairingMethod(AUTO_TIMEOUT)
     , m_failureReason(SUCCESS)
     , m_bluezRetries(0)
-    , m_bluezMaxRetries(0)
+    , m_bluezMaxRetries(MAX_PAIRING_RETRIES)
 {
 
     // constructs a list of name printf style formats for searching for device names that match
@@ -88,8 +88,8 @@ BleRcuPairingStateMachine::BleRcuPairingStateMachine(const shared_ptr<const Conf
             std::bind(&BleRcuPairingStateMachine::onDevicePairingChanged, this, std::placeholders::_1, std::placeholders::_2)));
     m_adapter->addPoweredChangedSlot(Slot<bool>(m_isAlive,
             std::bind(&BleRcuPairingStateMachine::onAdapterPoweredChanged, this, std::placeholders::_1)));
-    m_adapter->addDevicePairingErrorSlot(Slot<const BleAddress&, const std::string&, int, int>(m_isAlive,
-            std::bind(&BleRcuPairingStateMachine::onDevicePairingError, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+    m_adapter->addDevicePairingErrorSlot(Slot<const BleAddress&, const std::string&, int>(m_isAlive,
+            std::bind(&BleRcuPairingStateMachine::onDevicePairingError, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)));
 }
 
 BleRcuPairingStateMachine::~BleRcuPairingStateMachine()
@@ -230,11 +230,6 @@ int BleRcuPairingStateMachine::bluezRetries() const
     return m_bluezRetries;
 }
 
-int BleRcuPairingStateMachine::maxBluezRetries() const
-{
-    return m_bluezMaxRetries;
-}
-
 BleAddress BleRcuPairingStateMachine::pairedMac() const
 {
     return m_pairedMac;
@@ -289,7 +284,6 @@ void BleRcuPairingStateMachine::startAutoWithTimeout(int timeoutMs)
     m_failureReason = SUCCESS;
     m_discoveredDevices.clear();
     m_bluezRetries = 0;
-    m_bluezMaxRetries = 0;
     m_pairedMac.clear();
     m_bluezErrorMsg.clear();
 
@@ -348,7 +342,6 @@ void BleRcuPairingStateMachine::startWithCode(uint8_t pairingCode)
     m_failureReason = SUCCESS;
     m_discoveredDevices.clear();
     m_bluezRetries = 0;
-    m_bluezMaxRetries = 0;
     m_pairedMac.clear();
     m_bluezErrorMsg.clear();
 
@@ -389,7 +382,6 @@ void BleRcuPairingStateMachine::startWithMacList(const std::vector<BleAddress> &
     m_failureReason = SUCCESS;
     m_discoveredDevices.clear();
     m_bluezRetries = 0;
-    m_bluezMaxRetries = 0;
     m_pairedMac.clear();
     m_bluezErrorMsg.clear();
 
@@ -632,7 +624,7 @@ void BleRcuPairingStateMachine::onEnteredDiscoveringState()
     map<BleAddress, string>::const_iterator it = deviceNames.begin();
     for (; it != deviceNames.end(); ++it) {
         processDevice(it->first, it->second);
-        m_discoveredDevices.emplace(it->first, it->second)
+        m_discoveredDevices.emplace(it->first, it->second);
     }
 }
 
@@ -750,7 +742,7 @@ void BleRcuPairingStateMachine::onEnteredPairingState()
     m_pairingSlots.invoke();
 
     // request the manager to pair with the device
-    m_adapter->addDevice(m_targetAddress);
+    m_adapter->addDevice(m_targetAddress, MAX_PAIRING_RETRIES);
 }
 
 // -----------------------------------------------------------------------------
@@ -1040,8 +1032,7 @@ void BleRcuPairingStateMachine::onDeviceNameChanged(const BleAddress &address,
  */
 void BleRcuPairingStateMachine::onDevicePairingError(const BleAddress &address,
                                                     const string &error,
-                                                    int retryCnt,
-                                                    int maxRetryCnt)
+                                                    int retryCnt)
 {
     if (!m_stateMachine.isRunning()) {
         return;
@@ -1049,10 +1040,9 @@ void BleRcuPairingStateMachine::onDevicePairingError(const BleAddress &address,
 
     m_failureReason = FAIL_BLUEZ_ERROR;
     m_bluezRetries = retryCnt;
-    m_bluezMaxRetries = maxRetryCnt;
     m_bluezErrorMsg.push_back(error);
 
-    if (retryCnt < maxRetryCnt) {
+    if (retryCnt < MAX_PAIRING_RETRIES) {
         // Still retrying so don't stop pairing and timers yet
         return;
     }

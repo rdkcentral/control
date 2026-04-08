@@ -1216,10 +1216,10 @@ bool BleRcuAdapterBluez::isDeviceConnected(const BleAddress &address) const
 
 // -----------------------------------------------------------------------------
 /*!
-    \fn void BleRcuManager::addDevice(const BleAddress &address)
+    \fn void BleRcuManager::addDevice(const BleAddress &address, int retries)
 
     Sends a request to the bluez daemon to pair the device with the given
-    \a address.  The request is sent even if the device is already paired,
+    \a address and \a retries.  The request is sent even if the device is already paired,
     this is to handle the case where a pending unpair notification is sitting
     in the dbus queue but not yet processed.
 

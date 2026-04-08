@@ -275,7 +275,6 @@ void BleRcuDeviceBluez::onPairRequestReply(PendingReply<> *reply)
         } else {
             m_pairingErrorSlots.invoke(reply->errorMessage(), m_pairingRetryCnt);
             m_pairingRetryCnt = 0;
-            m_maxPairingRetries = 0;
         }
     } else {
         XLOGD_DEBUG("%s pairing request successful", m_address.toString().c_str());

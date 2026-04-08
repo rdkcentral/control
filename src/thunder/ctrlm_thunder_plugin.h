@@ -106,7 +106,7 @@ protected:
 
     /**
      * This function is used to get a Thunder Plugin property.
-     * @param method The method in which the user wants to call.
+     * @param property The property the user wants to get
      * @param params The WPEFramework JsonObject containing the parameters for the call. (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
      * @param response The WPEFramework JsonObject containing the response from the call.  (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
      * @param retries The number of retries if the call times out.
@@ -128,8 +128,7 @@ protected:
      * This function is used to call a Thunder Plugin method.
      * @param method The method in which the user wants to call.
      * @param params The WPEFramework JsonObject containing the parameters for the call. (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
-     * @param response The WPEFramework JsonObject containing the response from the call.  (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
-     * @param retries The number of retries if the call times out.
+     * @param response A pointer to a boolean which will be assigned true or false
      * @return True if the call succeeded, otherwise False.
      */
     bool call_plugin_boolean(std::string method, void *params, bool *response);
@@ -138,7 +137,7 @@ protected:
      * This function is used to call a Thunder Plugin method.
      * @param method The method in which the user wants to call.
      * @param params The WPEFramework JsonObject containing the parameters for the call. (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
-     * @param response The WPEFramework JsonObject containing the response from the call.  (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
+     * @param response A pointer a string which will be assigned
      * @return True if the call succeeded, otherwise False.
      */
     bool call_plugin_string(std::string method, void *params, std::string *response);

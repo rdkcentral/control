@@ -311,6 +311,13 @@ ctrlm_obj_network_ble_t::ctrlm_obj_network_ble_t(ctrlm_network_type_t type, ctrl
    if(rfc) {
       rfc->add_changed_listener(ctrlm_rfc_t::attrs::BLE, std::bind(&ctrlm_obj_network_ble_t::rfc_retrieved_handler, this, std::placeholders::_1));
    }
+
+   #ifdef TELEMETRY_SUPPORT
+   ctrlm_telemetry_t *telemetry = ctrlm_get_telemetry_obj();
+   if(telemetry) {
+       telemetry->add_listener(ctrlm_telemetry_report_t::RCU, std::bind(&ctrlm_obj_network_ble_t::telemetry_report_handler, this));
+   }
+   #endif
 }
 
 ctrlm_obj_network_ble_t::ctrlm_obj_network_ble_t() {
@@ -1702,43 +1709,34 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int si
 
 #ifdef TELEMETRY_SUPPORT
    // Serialize to JSON compatible with the ctrlm.rcu.pairing.attempt T2 marker
-   json_t *jroot = json_object();
-   if (jroot) {
-      json_object_set_new(jroot, "version",       json_integer(MARKER_RCU_PAIRING_ATTEMPT_VERSION));
-      json_object_set_new(jroot, "method",        json_string(outcome->method.c_str()));
-      json_object_set_new(jroot, "result",        json_string(outcome->result.c_str()));
-      json_object_set_new(jroot, "paired_mac",    json_string(outcome->pairedMac.c_str()));
-      json_object_set_new(jroot, "bluez_retries", json_integer(outcome->bluezRetries));
+   std::stringstream ss;
+   ss << "[";
+   ss         << MARKER_RCU_PAIRING_ATTEMPT_VERSION << ",";
+   ss << "\"" << name_get()                         << "\",";
+   ss         << outcome->method                    << ",";
+   ss         << outcome->result                    << ",";
+   ss         << outcome->discovered                << ",";
+   ss << "\"" << outcome->pairedMac                 << "\",";
+   ss << "\"" << outcome->name                      << "\",";
+   ss         << outcome->bluezRetries              << ",";
 
-      json_t *jbluez_errors = json_array();
-      if (jbluez_errors) {
-         for (const auto &msg : outcome->bluezError) {
-           json_array_append_new(jbluez_errors, json_string(msg.c_str()));
-         }
-         json_object_set_new(jroot, "bluez_msg", jbluez_errors);
+   for (uint8_t i = 0; i < outcome->maxBluezRetries; i++) {
+      if (i >= outcome->bluezRetries || i >= outcome->bluezError.size()) {
+          ss << "\"null\"";
+      } else {
+          std::string msg = outcome->bluezError.at(i);
+          auto pos = msg.rfind(": ");
+          msg = (pos != std::string::npos) ? msg.substr(pos + 2) : msg;
+          ss << "\"" << msg << "\"";
       }
-
-      json_t *jdiscovered = json_array();
-      if (jdiscovered) {
-         for (const auto &dev : outcome->discovered) {
-            json_t *jdev = json_object();
-            if (jdev) {
-               json_object_set_new(jdev, "mac",    json_string(dev.first.c_str()));
-               json_object_set_new(jdev, "name",   json_string(dev.second.c_str()));
-               json_array_append_new(jdiscovered, jdev);
-            }
-         }
-         json_object_set_new(jroot, "discovered", jdiscovered);
+      if (i != (outcome->maxBluezRetries-1)) {
+          ss << ",";
       }
-
-      char *json_str = json_dumps(jroot, JSON_COMPACT);
-      if (json_str) {
-         ctrlm_telemetry_event_t<std::string> ev(MARKER_RCU_PAIRING_ATTEMPT, std::string(json_str));
-         ctrlm_telemetry_t::get_instance()->event(ctrlm_telemetry_report_t::RCU, ev);
-         free(json_str);
-      }
-      json_decref(jroot);
    }
+   ss << "]";
+
+   ctrlm_telemetry_event_t<std::string> ev(MARKER_RCU_PAIRING_ATTEMPT, ss.str());
+   ctrlm_telemetry_t::get_instance()->event(ctrlm_telemetry_report_t::RCU, ev);
 #endif // TELEMETRY_SUPPORT
 }
 
@@ -2746,4 +2744,10 @@ void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start
 
 bool ctrlm_obj_network_ble_t::is_managed_by_network(ctrlm_controller_id_t id) {
     return (id >= BLE_RCU_ID_RANGE_MIN && id < BLE_RCU_ID_RANGE_MAX);
+}
+
+void ctrlm_obj_network_ble_t::telemetry_report_handler() {
+    #ifndef TELEMETRY_SUPPORT
+    XLOGD_WARN("telemetry is not enabled");
+    #endif
 }

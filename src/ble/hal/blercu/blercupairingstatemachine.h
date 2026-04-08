@@ -60,16 +60,12 @@ public:
         FAIL_DISCOVERY_STOPPED,
         FAIL_DISCOVERY_STOP_TIMEOUT,
         FAIL_PAIRING_TIMEOUT,
+        FAIL_TARGET_RCU_NOT_FOUND,
         FAIL_BLUEZ_ERROR,
         FAIL_ADAPTER_OFF,
         FAIL_DEVICE_UNPAIRED,
         FAIL_DEVICE_REMOVED,
         FAIL_CANCELLED
-    };
-
-    struct DiscoveredDevice {
-        BleAddress mac;
-        std::string name;
     };
 
 public:
@@ -101,9 +97,11 @@ public:
 // Pairing outcome getters (valid after the state machine stops)
     PairingMethod pairingMethod() const;
     FailureReason failureReason() const;
-    std::vector<DiscoveredDevice> discoveredDevices() const;
+    int discoveredDevices() const;
     int bluezRetries() const;
+    int maxBluezRetries() const;
     BleAddress pairedMac() const;
+    std::string pairedName() const;
     std::vector<std::string> bluezError() const;
 
 // public slots:
@@ -210,8 +208,9 @@ private:
     // Pairing outcome tracking
     PairingMethod m_pairingMethod;
     FailureReason m_failureReason;
-    std::vector<DiscoveredDevice> m_discoveredDevices;
+    std::map<BleAddress, std::string> m_discoveredDevices;
     int m_bluezRetries;
+    int m_bluezMaxRetries;
     BleAddress m_pairedMac;
     std::vector<std::string> m_bluezErrorMsg;
 

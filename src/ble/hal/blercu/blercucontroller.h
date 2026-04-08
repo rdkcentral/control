@@ -45,12 +45,14 @@ class BleRcuDevice;
 
 struct BleRcuPairingOutcome
 {
-    std::string method;      // "auto_timeout" | "ir_code" | "mac_hash" | "mac_list"
-    std::string result;      // "success" | failure-reason string
-    std::vector<std::pair<std::string, std::string>> discovered; // {mac, name}
-    int         bluezRetries;
-    std::string pairedMac;   // empty on failure
-    std::vector<std::string> bluezError;
+    int         method;          // "auto_timeout" | "ir_code" | "mac_hash" | "mac_list"
+    int         result;          // "success" | failure-reason string
+    int         discovered;      // number of discovered devices
+    int         bluezRetries;    // number of bluez retries attempted
+    int         maxBluezRetries; // max number of retries
+    std::string pairedMac;       // empty on failure
+    std::string name;            // empty on failure
+    std::vector<std::string> bluezError; // bluez error messages
 };
 
 

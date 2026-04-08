@@ -130,16 +130,18 @@
 //
 
 // BLE RCU Pairing Attempt Marker
-// Value format: JSON object string with the fields below.
-// {"method":<str>,"result":<str>,"paired_mac":<str>,"bluez_retries":<int>,"bluez_msg":<str>,"discovered":[{"mac":<str>,"name":<str>}...]}
-// <method>        - pairing method: "auto_timeout" | "ir_code" | "mac_hash" | "mac_list"
-// <result>        - "success" or failure reason: "discovery_timeout" | "discovery_stopped" | "discovery_stop_timeout" |
+// Value format: Array of comma separated integers or string with the fields below.
+// [<version>,<type>,<method>,<result>,<discovered>,<paired_mac>,<name>,<bluez_retries>,<bluez_msg1>,<bluez_msg2>,<bluez_msg3>]
+// <version>       - version of the marker format.
+// <type>          - type of network the marker is coming from
+// <method>        - enum representing pairing method: "auto_timeout" | "ir_code" | "mac_hash" | "mac_list"
+// <discovered>    - number of discovered devices from pairing attempt
+// <result>        - enum that represents "success" or failure reason: "discovery_timeout" | "discovery_stopped" | "discovery_stop_timeout" |
 //                  "pairing_timeout" | "bluez_error" | "adapter_off" | "device_unpaired" | "device_removed" | "cancelled"
 // <paired_mac>    - MAC address string of paired device, empty string on failure
+// <name>          - name of paired remote, empty string on failure
 // <bluez_retries> - number of bluez pair() retries made before success or final error
-// <bluez_msg>     - array of error message of bluez layer, empty if no errors
-// <discovered>    - array of devices seen during discovery; each has "mac" and "name"
-// <version>       - Version of the marker format.
+// <bluez_msg>     - error message of bluez layer, empty if no errors
 #define MARKER_RCU_PAIRING_ATTEMPT "ctrlm.rcu.pairing.attempt"
 #define MARKER_RCU_PAIRING_ATTEMPT_VERSION 1
 

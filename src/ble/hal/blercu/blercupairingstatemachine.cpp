@@ -55,6 +55,7 @@ BleRcuPairingStateMachine::BleRcuPairingStateMachine(const shared_ptr<const Conf
     , m_pairingMethod(AUTO_TIMEOUT)
     , m_failureReason(SUCCESS)
     , m_bluezRetries(0)
+    , m_bluezMaxRetries(0)
 {
 
     // constructs a list of name printf style formats for searching for device names that match
@@ -220,9 +221,9 @@ BleRcuPairingStateMachine::FailureReason BleRcuPairingStateMachine::failureReaso
     return m_failureReason;
 }
 
-std::vector<BleRcuPairingStateMachine::DiscoveredDevice> BleRcuPairingStateMachine::discoveredDevices() const
+int BleRcuPairingStateMachine::discoveredDevices() const
 {
-    return m_discoveredDevices;
+    return m_discoveredDevices.size();
 }
 
 int BleRcuPairingStateMachine::bluezRetries() const
@@ -230,9 +231,20 @@ int BleRcuPairingStateMachine::bluezRetries() const
     return m_bluezRetries;
 }
 
+int BleRcuPairingStateMachine::maxBluezRetries() const
+{
+    return m_bluezMaxRetries;
+}
+
 BleAddress BleRcuPairingStateMachine::pairedMac() const
 {
     return m_pairedMac;
+}
+
+std::string BleRcuPairingStateMachine::pairedName() const
+{
+    auto it = m_discoveredDevices.find(m_pairedMac);
+    return (it != m_discoveredDevices.end()) ? it->second : "";
 }
 
 std::vector<std::string> BleRcuPairingStateMachine::bluezError() const
@@ -278,6 +290,7 @@ void BleRcuPairingStateMachine::startAutoWithTimeout(int timeoutMs)
     m_failureReason = SUCCESS;
     m_discoveredDevices.clear();
     m_bluezRetries = 0;
+    m_bluezMaxRetries = 0;
     m_pairedMac.clear();
     m_bluezErrorMsg.clear();
 
@@ -337,6 +350,7 @@ void BleRcuPairingStateMachine::startWithCode(uint8_t pairingCode)
     m_failureReason = SUCCESS;
     m_discoveredDevices.clear();
     m_bluezRetries = 0;
+    m_bluezMaxRetries = 0;
     m_pairedMac.clear();
     m_bluezErrorMsg.clear();
 
@@ -385,6 +399,7 @@ void BleRcuPairingStateMachine::startWithMacHash(uint8_t macHash)
     m_failureReason = SUCCESS;
     m_discoveredDevices.clear();
     m_bluezRetries = 0;
+    m_bluezMaxRetries = 0;
     m_pairedMac.clear();
     m_bluezErrorMsg.clear();
 
@@ -432,6 +447,7 @@ void BleRcuPairingStateMachine::start(const BleAddress &target, const string &na
     m_failureReason = SUCCESS;
     m_discoveredDevices.clear();
     m_bluezRetries = 0;
+    m_bluezMaxRetries = 0;
     m_pairedMac.clear();
     m_bluezErrorMsg.clear();
 
@@ -474,6 +490,7 @@ void BleRcuPairingStateMachine::startWithMacList(const std::vector<BleAddress> &
     m_failureReason = SUCCESS;
     m_discoveredDevices.clear();
     m_bluezRetries = 0;
+    m_bluezMaxRetries = 0;
     m_pairedMac.clear();
     m_bluezErrorMsg.clear();
 
@@ -602,7 +619,7 @@ void BleRcuPairingStateMachine::onStateTransition(int oldState, int newState)
             newFailureReason = FAIL_DISCOVERY_TIMEOUT;
         } else if (oldState == DiscoveringState) {
             XLOGD_AUTOMATION_ERROR("timed-out in discovery phase (didn't find target rcu device to pair to)");
-            newFailureReason = FAIL_DISCOVERY_TIMEOUT;
+            newFailureReason = FAIL_TARGET_RCU_NOT_FOUND;
         } else if (oldState == StoppingDiscoveryState) {
             XLOGD_AUTOMATION_ERROR("timed-out waiting for discovery to stop (suggesting something has gone wrong inside bluez)");
             newFailureReason = FAIL_DISCOVERY_STOP_TIMEOUT;
@@ -716,6 +733,7 @@ void BleRcuPairingStateMachine::onEnteredDiscoveringState()
     map<BleAddress, string>::const_iterator it = deviceNames.begin();
     for (; it != deviceNames.end(); ++it) {
         processDevice(it->first, it->second);
+        m_discoveredDevices.emplace(it->first, it->second)
     }
 }
 
@@ -1054,17 +1072,7 @@ void BleRcuPairingStateMachine::onDeviceFound(const BleAddress &address,
 
     XLOGD_DEBUG("device added %s %s (target %s)", 
             address.toString().c_str(), name.c_str(), m_targetAddress.toString().c_str());
-
-    bool alreadyRecorded = false;
-    for (const auto &dev : m_discoveredDevices) {
-        if (dev.mac == address) { alreadyRecorded = true; break; }
-    }
-    if (!alreadyRecorded) {
-        DiscoveredDevice dev;
-        dev.mac = address;
-        dev.name = name;
-        m_discoveredDevices.push_back(dev);
-    }
+    m_discoveredDevices.emplace(address, name);
 
     processDevice(address, name);
 }
@@ -1114,6 +1122,7 @@ void BleRcuPairingStateMachine::onDeviceNameChanged(const BleAddress &address,
 
     XLOGD_DEBUG("device name changed %s %s (target %s)", 
             address.toString().c_str(), name.c_str(), m_targetAddress.toString().c_str());
+    m_discoveredDevices[address] = name;
 
     processDevice(address, name);
 }
@@ -1138,6 +1147,7 @@ void BleRcuPairingStateMachine::onDevicePairingError(const BleAddress &address,
 
     m_failureReason = FAIL_BLUEZ_ERROR;
     m_bluezRetries = retryCnt;
+    m_bluezMaxRetries = maxRetryCnt;
     m_bluezErrorMsg.push_back(error);
 
     if (retryCnt < maxRetryCnt) {

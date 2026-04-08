@@ -79,7 +79,7 @@ public:
     bool update_on_session_end(bool result, int32_t end_reason_rcu, int32_t end_reason_session, int32_t server_return_code, const std::string &server_message, int32_t time_stream_len_exp, int32_t ret_code_protocol, int32_t stream_end_reason);
 
 private:
-   static const uint32_t  m_event_list_max_size = 4536;  // Maximum size of event list in bytes (there are limitations in the T2 implementation that restrict the maximum size of an event string.  This value should be within the limits of the T2 implementation)
+   static const uint32_t  m_event_list_max_size = CTRLM_TELEMETRY_MAX_EVENT_SIZE_BYTES;
 
     void reset_stats();
     bool event();

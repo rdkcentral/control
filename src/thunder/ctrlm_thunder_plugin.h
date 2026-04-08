@@ -106,7 +106,7 @@ protected:
 
     /**
      * This function is used to get a Thunder Plugin property.
-     * @param method The name of the property that the user wants to get
+     * @param property The name of the property that the user wants to get
      * @param response The WPEFramework JsonObject containing the response from the call.  (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
      * @param retries The number of retries if the call times out.
      * @return True if the call succeeded, otherwise False.

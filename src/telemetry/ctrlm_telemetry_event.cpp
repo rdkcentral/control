@@ -38,7 +38,7 @@ bool ctrlm_telemetry_event_t<std::string>::event() const {
         XLOGD_ERROR("telemetry event <%s> dropped: value length <%zu> exceeds maximum <%d> bytes",
                     this->marker.c_str(),
                     this->value.length(),
-                    this->CTRLM_TELEMETRY_MAX_EVENT_SIZE_BYTES);
+                    CTRLM_TELEMETRY_MAX_EVENT_SIZE_BYTES);
         return false;
     } else {
         XLOGD_TELEMETRY("telemetry event <%s, %s>", this->marker.c_str(), this->value.c_str());

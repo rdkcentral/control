@@ -667,7 +667,7 @@ void BleRcuControllerImpl::onFinishedPairing()
     outcome.method          = m_pairingStateMachine.pairingMethod();
     outcome.result          = BleRcuPairingStateMachine::SUCCESS;
     outcome.bluezRetries    = m_pairingStateMachine.bluezRetries();
-    outcome.maxBluezRetries = m_pairingStateMachine.maxBluezRetries();
+    outcome.maxBluezRetries = MAX_PAIRING_RETRIES;
     outcome.pairedMac       = m_pairingStateMachine.pairedMac().toString();
     outcome.name            = m_pairingStateMachine.pairedName();
     outcome.discovered      = m_pairingStateMachine.discoveredDevices();
@@ -717,7 +717,7 @@ void BleRcuControllerImpl::onFailedPairing()
     outcome.method          = m_pairingStateMachine.pairingMethod();
     outcome.result          = m_pairingStateMachine.failureReason();
     outcome.bluezRetries    = m_pairingStateMachine.bluezRetries();
-    outcome.maxBluezRetries = m_pairingStateMachine.maxBluezRetries();
+    outcome.maxBluezRetries = MAX_PAIRING_RETRIES;
     outcome.pairedMac       = m_pairingStateMachine.pairedMac().toString();
     outcome.bluezError      = m_pairingStateMachine.bluezError();
     outcome.discovered      = m_pairingStateMachine.discoveredDevices();

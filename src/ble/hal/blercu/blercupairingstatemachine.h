@@ -43,6 +43,7 @@
 class BleRcuAdapter;
 class ConfigSettings;
 
+#define MAX_PAIRING_RETRIES 3
 
 class BleRcuPairingStateMachine
 {
@@ -99,7 +100,6 @@ public:
     FailureReason failureReason() const;
     int discoveredDevices() const;
     int bluezRetries() const;
-    int maxBluezRetries() const;
     BleAddress pairedMac() const;
     std::string pairedName() const;
     std::vector<std::string> bluezError() const;
@@ -147,7 +147,7 @@ private:
     void onDeviceNameChanged(const BleAddress &address, const std::string &name);
     void onDevicePairingChanged(const BleAddress &address, bool paired);
     void onDeviceReadyChanged(const BleAddress &address, bool ready);
-    void onDevicePairingError(const BleAddress &address, const std::string &error, int retryCnt, int maxRetryCnt);
+    void onDevicePairingError(const BleAddress &address, const std::string &error, int retryCnt);
 
     void onAdapterPoweredChanged(bool powered);
 

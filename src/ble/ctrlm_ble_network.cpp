@@ -1708,7 +1708,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int si
    }
 
 #ifdef TELEMETRY_SUPPORT
-   // Serialize to JSON compatible with the ctrlm.rcu.pairing.attempt T2 marker
+   // Serialize to array for ctrlm.rcu.pairing.attempt T2 marker
    std::stringstream ss;
    ss << "[";
    ss         << MARKER_RCU_PAIRING_ATTEMPT_VERSION << ",";

@@ -416,11 +416,16 @@ ctrlm_hal_result_t ctrlm_obj_network_rf4ce_t::hal_init_request(GThread *ctrlm_ma
    timeout.tv_sec += 2;  // this operation should complete in under 100 ms under normal circumstances
    
    int sem_result = sem_timedwait(&semaphore_, &timeout);
-   sem_destroy(&semaphore_);
    
    if(sem_result == -1) {
-      XLOGD_ERROR("Timeout waiting for %s initialization", name_get());
+      if(errno == ETIMEDOUT) {
+         XLOGD_ERROR("Timeout waiting for %s initialization", name_get());
+      } else {
+         XLOGD_ERROR("Error waiting for %s initialization: %s", name_get(), strerror(errno));
+      }
       init_result_ = CTRLM_HAL_RESULT_ERROR;
+   } else {
+      sem_destroy(&semaphore_);
    }
 
    ready_ = (CTRLM_HAL_RESULT_SUCCESS == init_result_);

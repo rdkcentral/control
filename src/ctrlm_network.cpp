@@ -187,16 +187,6 @@ string ctrlm_obj_network_t::partner_id_get() const {
    return(partner_id_);
 }
  
-void ctrlm_obj_network_t::experience_set(const string& experience) {
-   THREAD_ID_VALIDATE();
-   experience_ = experience;
-}
-
-string ctrlm_obj_network_t::experience_get() const {
-   THREAD_ID_VALIDATE();
-   return(experience_);
-}
-
 void ctrlm_obj_network_t::stb_name_set(const string& stb_name) {
    THREAD_ID_VALIDATE();
    XLOGD_INFO("STB Name <%s>", stb_name.c_str());

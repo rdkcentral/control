@@ -64,7 +64,7 @@
 #define CTRLM_VOICE_SESSION_TEXT_MAX_LENGTH         (512) ///< Session text string maximum length
 #define CTRLM_VOICE_SESSION_MSG_MAX_LENGTH          (128) ///< Session message string maximum length
 #define CTRLM_VOICE_QUERY_STRING_MAX_LENGTH         (128) ///< Query string maximum name or value length
-#define CTRLM_VOICE_QUERY_STRING_MAX_PAIRS           (16) ///< Query string maximum number of name/value pairs
+#define CTRLM_VOICE_QUERY_STRING_MAX_PAIRS           (24) ///< Query string maximum number of name/value pairs
 #define CTRLM_VOICE_REQUEST_IP_MAX_LENGTH            (48) ///< cURL request primary IP address string maximum length (big enough for IPv6)
 
 #define CTRLM_VOICE_MIN_UTTERANCE_DURATION_MAXIMUM  (600) ///< Maximum value of the utterance duration minimum setting (in milliseconds)

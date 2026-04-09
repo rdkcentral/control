@@ -192,8 +192,6 @@ public:
    std::string          service_account_id_get()  const;
    void                 partner_id_set(const std::string& partner_id);
    std::string          partner_id_get()  const;
-   void                 experience_set(const std::string& experience);
-   std::string          experience_get()  const;
    void                 mask_key_codes_set(gboolean mask_key_codes);
    gboolean             mask_key_codes_get()  const;
    void                 stb_name_set(const std::string& stb_name);
@@ -325,7 +323,6 @@ private:
    std::string                   device_id_;
    std::string                   service_account_id_;
    std::string                   partner_id_;
-   std::string                   experience_;
    std::string                   stb_name_;
    ctrlm_rcu_validation_result_t validation_result_ = CTRLM_RCU_VALIDATION_RESULT_MAX;
    ctrlm_key_code_t              validation_key_    = CTRLM_KEY_CODE_INVALID;

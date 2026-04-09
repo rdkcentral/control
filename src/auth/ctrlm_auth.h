@@ -34,7 +34,6 @@ public:
    virtual bool get_device_id(std::string &device_id)         = 0;
    virtual bool get_account_id(std::string &account_id)       = 0;
    virtual bool get_partner_id(std::string &partner_id)       = 0;
-   virtual bool get_experience(std::string &experience)       = 0;
    virtual bool get_sat(std::string &sat, time_t &expiration) = 0;
    virtual bool supports_sat_expiration() const               = 0;
 

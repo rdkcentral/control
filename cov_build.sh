@@ -73,7 +73,6 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -include ${MOCK_DIR}/Telemetry.h \
 -include ${MOCK_DIR}/secure_wrappermock.h \
 -Wall -Wno-error \
--Wl,--unresolved-symbols=ignore-all \
 -DSAFEC_DUMMY_API \
 -DDISABLE_SECURITY_TOKEN \
 -DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4" \

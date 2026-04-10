@@ -2,7 +2,7 @@ name: Build Control Manager in Native Environment
 
 on:
   push:
-    branches: [ main, 'sprint/**', 'release/**', 'feature/**', develop ]
+    branches: [ main, 'sprint/**', 'release/**', develop ]
   pull_request:
     branches: [ main, 'sprint/**', 'release/**', topic/RDK*, 'feature/**', develop ]
 

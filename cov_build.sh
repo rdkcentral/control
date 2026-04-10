@@ -93,7 +93,7 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 
 # control's CMakeLists.txt adds -Werror via target_compile_options, which appends
 # after CMAKE_CXX_FLAGS and overrides our -Wno-error. Strip it from generated build files.
-find "${GITHUB_WORKSPACE}/build/control" \( -name "*.ninja" -o -name "flags.make" \) -exec sed -i 's/ -Werror\b//g' {} \;
+find "${GITHUB_WORKSPACE}/build/control" \( -name "*.ninja" -o -name "flags.make" \) -exec sed -i 's/\(^\|[[:space:]]\)-Werror\([[:space:]]\|$\)/\1\2/g' {} \;
 
 cmake --build build/control -j$(nproc) 2>&1
 echo "======================================================================================"

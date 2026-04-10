@@ -1,0 +1,359 @@
+#!/bin/bash
+set -x
+set -e
+##############################
+GITHUB_WORKSPACE="${PWD}"
+ls -la ${GITHUB_WORKSPACE}
+cd ${GITHUB_WORKSPACE}
+
+git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+
+# #############################
+# 1. Install Dependencies and packages
+
+apt update
+apt install -y \
+    libsqlite3-dev \
+    libcurl4-openssl-dev \
+    libsystemd-dev \
+    libboost-all-dev \
+    libglib2.0-dev \
+    libgio2.0-cil-dev \
+    libjansson-dev \
+    libarchive-dev \
+    libssl-dev \
+    zlib1g-dev \
+    libdbus-1-dev \
+    uuid-dev \
+    libevdev-dev \
+    libdrm-dev \
+    gperf \
+    meson \
+    valgrind \
+    lcov \
+    clang
+pip install jsonref
+
+###########################################
+# 2. Clone the required repositories
+
+git clone --depth 1 --branch R4.4.3 https://github.com/rdkcentral/ThunderTools.git
+
+git clone --depth 1 --branch R4.4.1 https://github.com/rdkcentral/Thunder.git
+
+git clone --depth 1 --branch feature/RDKEMW-10727 https://github.com/rdkcentral/entservices-apis.git
+
+git clone --depth 1 --branch feature/RDKEMW-14537 https://$GITHUB_TOKEN@github.com/rdkcentral/entservices-testframework.git
+
+git clone --depth 1 https://github.com/rdkcentral/xr-voice-sdk.git
+
+############################
+# 3. Build Thunder-Tools
+echo "======================================================================================"
+echo "building thunderTools"
+cd ThunderTools
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/00010-R4.4-Add-support-for-project-dir.patch
+cd -
+
+cmake -G Ninja -S ThunderTools -B build/ThunderTools \
+    -DEXCEPTIONS_ENABLE=ON \
+    -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
+
+cmake --build build/ThunderTools --target install
+
+############################
+# 4. Build Thunder
+echo "======================================================================================"
+echo "building thunder"
+
+cd Thunder
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/error_code_R4_4.patch
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/1004-Add-support-for-project-dir.patch
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/RDKEMW-733-Add-ENTOS-IDS.patch
+cd -
+
+cmake -G Ninja -S Thunder -B build/Thunder \
+    -DMESSAGING=ON \
+    -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DBUILD_TYPE=Debug \
+    -DBINDING=127.0.0.1 \
+    -DPORT=55555 \
+    -DEXCEPTIONS_ENABLE=ON
+
+cmake --build build/Thunder --target install
+
+############################
+# 5. Build entservices-apis
+echo "======================================================================================"
+echo "building entservices-apis"
+cd entservices-apis
+rm -rf jsonrpc/DTV.json
+cd ..
+
+cmake -G Ninja -S entservices-apis -B build/entservices-apis \
+    -DEXCEPTIONS_ENABLE=ON \
+    -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
+
+cmake --build build/entservices-apis --target install
+
+############################
+# 6. Create stub/empty headers for external dependencies
+echo "======================================================================================"
+echo "Creating stub headers"
+
+HEADERS_DIR="$GITHUB_WORKSPACE/entservices-testframework/Tests/headers"
+mkdir -p "${HEADERS_DIR}"
+mkdir -p "${HEADERS_DIR}/rdk/iarmbus"
+mkdir -p "${HEADERS_DIR}/rdk/ds"
+mkdir -p "${HEADERS_DIR}/rdk/ds-rpc"
+mkdir -p "${HEADERS_DIR}/rdk/ds-hal"
+mkdir -p "${HEADERS_DIR}/rdk/halif/ds-hal"
+mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
+mkdir -p "${HEADERS_DIR}/websocket"
+mkdir -p "${HEADERS_DIR}/proc"
+mkdir -p "${HEADERS_DIR}/audiocapturemgr"
+mkdir -p "${HEADERS_DIR}/ccec/drivers"
+mkdir -p "${HEADERS_DIR}/network"
+mkdir -p "${HEADERS_DIR}/nopoll"
+
+cd "${HEADERS_DIR}"
+
+# IARM headers (types provided via -include Iarm.h)
+touch rdk/iarmbus/libIARM.h
+touch rdk/iarmbus/libIBus.h
+touch rdk/iarmbus/libIBusDaemon.h
+
+# IARM managers (types provided via -include Iarm.h for sysMgr, or in control stubs)
+touch rdk/iarmmgrs-hal/sysMgr.h
+touch rdk/iarmmgrs-hal/irMgr.h
+touch rdk/iarmmgrs-hal/deepSleepMgr.h
+touch rdk/iarmmgrs-hal/mfrMgr.h
+touch rdk/iarmmgrs-hal/pwrMgr.h
+touch rdk/iarmmgrs-hal/plat_ir.h
+
+# Device settings headers (types provided via -include devicesettings.h)
+touch rdk/ds/audioOutputPort.hpp
+touch rdk/ds/compositeIn.hpp
+touch rdk/ds/dsDisplay.h
+touch rdk/ds/dsError.h
+touch rdk/ds/dsMgr.h
+touch rdk/ds/dsRpc.h
+touch rdk/ds/dsTypes.h
+touch rdk/ds/dsUtl.h
+touch rdk/ds/exception.hpp
+touch rdk/ds/hdmiIn.hpp
+touch rdk/ds/host.hpp
+touch rdk/ds/list.hpp
+# manager.hpp is empty — device::Manager is provided by the force-included devicesettings.h
+touch rdk/ds/manager.hpp
+touch rdk/ds/sleepMode.hpp
+touch rdk/ds/videoDevice.hpp
+touch rdk/ds/videoOutputPort.hpp
+touch rdk/ds/videoOutputPortConfig.hpp
+touch rdk/ds/videoOutputPortType.hpp
+touch rdk/ds/videoResolution.hpp
+touch rdk/ds/frontPanelIndicator.hpp
+touch rdk/ds/frontPanelConfig.hpp
+touch rdk/ds/frontPanelTextDisplay.hpp
+
+# Other stubs
+touch audiocapturemgr/audiocapturemgr_iarm.h
+touch rdk_logger_milestone.h
+touch btmgr.h
+touch proc/readproc.h
+touch nopoll/nopoll.h
+
+# rfcapi.h (types provided via -include Rfc.h)
+touch rfcapi.h
+
+# telemetry (types provided via -include Telemetry.h)
+touch telemetry_busmessage_sender.h
+touch telemetry2_0.h
+
+# secure_wrapper (types provided via -include secure_wrappermock.h)
+touch secure_wrapper.h
+
+# edid / drm
+touch edid-parser.hpp
+touch dsFPD.h
+
+# safec - needs actual dummy API content
+cat > safec_lib.h << 'SAFEC_EOF'
+#ifndef _SAFEC_LIB_H_
+#define _SAFEC_LIB_H_
+#include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
+#ifdef SAFEC_DUMMY_API
+typedef int errno_t;
+#define EOK 0
+
+static inline errno_t strcpy_s(char *dest, size_t dmax, const char *src) {
+    (void)dmax;
+    if(dest == NULL || src == NULL) {
+        return -1;
+    }
+    strcpy(dest, src);
+    return EOK;
+}
+
+static inline errno_t strncpy_s(char *dest, size_t dmax, const char *src, size_t count) {
+    (void)dmax;
+    if(dest == NULL || src == NULL) {
+        return -1;
+    }
+    strncpy(dest, src, count);
+    return EOK;
+}
+
+static inline errno_t strcat_s(char *dest, size_t dmax, const char *src) {
+    (void)dmax;
+    if(dest == NULL || src == NULL) {
+        return -1;
+    }
+    strcat(dest, src);
+    return EOK;
+}
+
+static inline errno_t strncat_s(char *dest, size_t dmax, const char *src, size_t count) {
+    (void)dmax;
+    if(dest == NULL || src == NULL) {
+        return -1;
+    }
+    strncat(dest, src, count);
+    return EOK;
+}
+
+static inline errno_t sprintf_s(char *dest, size_t dmax, const char *format, ...) {
+    va_list args;
+    int ret;
+    if(dest == NULL || format == NULL) {
+        return -1;
+    }
+    va_start(args, format);
+    ret = vsnprintf(dest, dmax, format, args);
+    va_end(args);
+    return (ret < 0) ? -1 : EOK;
+}
+
+static inline errno_t snprintf_s(char *dest, size_t dmax, size_t count, const char *format, ...) {
+    va_list args;
+    int ret;
+    size_t max_len = count < dmax ? count : dmax;
+    if(dest == NULL || format == NULL) {
+        return -1;
+    }
+    va_start(args, format);
+    ret = vsnprintf(dest, max_len, format, args);
+    va_end(args);
+    return (ret < 0) ? -1 : EOK;
+}
+
+static inline errno_t strcmp_s(const char *dest, size_t dmax, const char *src, int *indicator) {
+    (void)dmax;
+    if(dest == NULL || src == NULL || indicator == NULL) {
+        return -1;
+    }
+    *indicator = strcmp(dest, src);
+    return EOK;
+}
+
+static inline errno_t strncmp_s(const char *dest, size_t dmax, const char *src, size_t count, int *indicator) {
+    (void)dmax;
+    if(dest == NULL || src == NULL || indicator == NULL) {
+        return -1;
+    }
+    *indicator = strncmp(dest, src, count);
+    return EOK;
+}
+
+static inline char *strtok_s(char *str, size_t *strmax, const char *delim, char **context) {
+    char *token;
+    (void)strmax;
+    if(delim == NULL || context == NULL) {
+        return NULL;
+    }
+    token = strtok_r(str, delim, context);
+    return token;
+}
+
+static inline errno_t memcpy_s(void *dest, size_t dmax, const void *src, size_t count) {
+    (void)dmax;
+    if(dest == NULL || src == NULL) {
+        return -1;
+    }
+    memcpy(dest, src, count);
+    return EOK;
+}
+
+static inline errno_t memset_s(void *dest, size_t dmax, int value, size_t count) {
+    (void)dmax;
+    if(dest == NULL) {
+        return -1;
+    }
+    memset(dest, value, count);
+    return EOK;
+}
+
+static inline errno_t memmove_s(void *dest, size_t dmax, const void *src, size_t count) {
+    (void)dmax;
+    if(dest == NULL || src == NULL) {
+        return -1;
+    }
+    memmove(dest, src, count);
+    return EOK;
+}
+
+static inline errno_t memcmp_s(const void *dest, size_t dmax, const void *src, size_t count, int *indicator) {
+    (void)dmax;
+    if(dest == NULL || src == NULL || indicator == NULL) {
+        return -1;
+    }
+    *indicator = memcmp(dest, src, count);
+    return EOK;
+}
+
+#define ERR_CHK(rc) do { (void)(rc); } while(0)
+#endif
+#endif
+SAFEC_EOF
+
+echo "Stub headers created successfully"
+
+cd ${GITHUB_WORKSPACE}
+
+mkdir -p "${GITHUB_WORKSPACE}/install/usr/include"
+printf '{}\n' > "${GITHUB_WORKSPACE}/install/usr/include/ctrlm_config_empty.json"
+
+# Copy system headers for compatibility
+cp -r /usr/include/glib-2.0/* /usr/lib/x86_64-linux-gnu/glib-2.0/include/* "${HEADERS_DIR}/" 2>/dev/null || true
+
+############################
+# 7. Create stub shared libraries for linking
+echo "======================================================================================"
+echo "Creating stub libraries"
+
+STUB_LIB_DIR="$GITHUB_WORKSPACE/install/usr/lib"
+mkdir -p "${STUB_LIB_DIR}"
+
+# Create a minimal C stub source
+cat > /tmp/stub.c << 'STUB_EOF'
+void __stub_placeholder(void) {}
+STUB_EOF
+
+# Build stub .so for each missing library
+for lib in xr-voice-sdk rdkversion IARMBus ds dshalcli nopoll rfcapi secure_wrapper evdev; do
+    gcc -shared -fPIC -o "${STUB_LIB_DIR}/lib${lib}.so" /tmp/stub.c
+done
+
+rm /tmp/stub.c
+
+echo "Stub libraries created in ${STUB_LIB_DIR}"
+echo "======================================================================================"
+echo "build_dependencies.sh complete"

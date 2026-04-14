@@ -28,8 +28,10 @@
 /* Minimal opaque placeholders to avoid requiring OpenSSL dev headers in mocks. */
 typedef struct xrsr_x509_stub X509;
 typedef struct xrsr_evp_pkey_stub EVP_PKEY;
-typedef struct xrsr_x509_stack_stub X509_STACK;
-#define STACK_OF(type) type##_STACK
+typedef struct stack_st_X509 X509_STACK;
+#ifndef STACK_OF
+#define STACK_OF(type) struct stack_st_##type
+#endif
 #ifdef __cplusplus
 extern "C" {
 #endif

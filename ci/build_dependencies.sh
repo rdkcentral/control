@@ -61,6 +61,7 @@ git clone --depth 1 --branch R4.4.1 https://github.com/rdkcentral/Thunder.git
 
 git clone --depth 1 --branch develop https://github.com/rdkcentral/entservices-apis.git
 
+# 1.0.13
 git clone https://github.com/rdkcentral/xr-voice-sdk.git
 git -C xr-voice-sdk checkout e55c99a0ec947b0ad3efc308bf8e3de0a42140d5
 
@@ -141,11 +142,15 @@ mkdir -p "${HEADERS_DIR}/network"
 mkdir -p "${HEADERS_DIR}/nopoll"
 mkdir -p "${XRSDK_HEADERS_DIR}"
 
-# xr_fdc.h and xrsv.h are compatible with control's usage; copy them from xr-voice-sdk source.
+# Copy real xr-voice-sdk headers where control's source matches the real API.
 # xr_voice_sdk.h is NOT copied: it requires rdkx_logger.h installed types unavailable in source form.
-# xr_timestamp.h is NOT copied: control's source uses the pointer-form API in the ci/mocks/control/ stub.
+# xr_timestamp.h is NOT copied: control's source uses a pointer-form API that differs from the real by-value API.
 cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-fdc/xr_fdc.h" "${XRSDK_HEADERS_DIR}/"
 cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv.h" "${XRSDK_HEADERS_DIR}/"
+cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-router/xrsr.h" "${XRSDK_HEADERS_DIR}/"
+cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-mq/xr_mq.h" "${XRSDK_HEADERS_DIR}/"
+cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv_http/xrsv_http.h" "${XRSDK_HEADERS_DIR}/"
+cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv_ws_nextgen/xrsv_ws_nextgen.h" "${XRSDK_HEADERS_DIR}/"
 
 cd "${HEADERS_DIR}"
 

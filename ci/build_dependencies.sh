@@ -141,10 +141,11 @@ mkdir -p "${HEADERS_DIR}/network"
 mkdir -p "${HEADERS_DIR}/nopoll"
 mkdir -p "${XRSDK_HEADERS_DIR}"
 
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr_voice_sdk.h" "${XRSDK_HEADERS_DIR}/"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv.h" "${XRSDK_HEADERS_DIR}/"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-timestamp/xr_timestamp.h" "${XRSDK_HEADERS_DIR}/"
+# xr_fdc.h and xrsv.h are compatible with control's usage; copy them from xr-voice-sdk source.
+# xr_voice_sdk.h is NOT copied: it requires rdkx_logger.h installed types unavailable in source form.
+# xr_timestamp.h is NOT copied: control's source uses the pointer-form API in the ci/mocks/control/ stub.
 cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-fdc/xr_fdc.h" "${XRSDK_HEADERS_DIR}/"
+cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv.h" "${XRSDK_HEADERS_DIR}/"
 
 cd "${HEADERS_DIR}"
 

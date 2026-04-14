@@ -22,12 +22,8 @@ jobs:
 
       - name: build dependencies
         run: |
-          sh -x build_dependencies.sh
-        env:
-          GITHUB_TOKEN: ${{ secrets.RDKCM_RDKE }}
+          sh -x ci/build_dependencies.sh
 
       - name: cov build
         run: |
-          sh -x cov_build.sh
-        env:
-          GITHUB_TOKEN: ${{ secrets.RDKCM_RDKE }}
+          sh -x ci/cov_build.sh

@@ -9,9 +9,9 @@ ls -la ${GITHUB_WORKSPACE}
 # Build control (ctrlm-main)
 echo "building control (ctrlm-main)"
 
-CTRL_STUBS="$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/control"
-MOCK_DIR="$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks"
-HEADERS_DIR="$GITHUB_WORKSPACE/entservices-testframework/Tests/headers"
+CTRL_STUBS="$GITHUB_WORKSPACE/ci/mocks/control"
+MOCK_DIR="$GITHUB_WORKSPACE/ci/mocks"
+HEADERS_DIR="$GITHUB_WORKSPACE/ci/headers"
 EMPTY_JSON="$GITHUB_WORKSPACE/install/usr/include/ctrlm_config_empty.json"
 
 cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \

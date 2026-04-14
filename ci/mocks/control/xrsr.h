@@ -26,9 +26,17 @@
 #include "xr_timestamp.h"
 
 /* Minimal opaque placeholders to avoid requiring OpenSSL dev headers in mocks. */
+#if defined(__has_include)
+#if __has_include(<openssl/types.h>)
+#include <openssl/types.h>
+#endif
+#endif
+
+#ifndef OPENSSL_TYPES_H
 typedef struct xrsr_x509_stub X509;
 typedef struct xrsr_evp_pkey_stub EVP_PKEY;
 typedef struct stack_st_X509 X509_STACK;
+#endif
 #ifndef STACK_OF
 #define STACK_OF(type) struct stack_st_##type
 #endif

@@ -27,6 +27,7 @@ ls -la ${GITHUB_WORKSPACE}
 # Build control (ctrlm-main)
 echo "building control (ctrlm-main)"
 
+XRSDK_REAL_HEADERS="$GITHUB_WORKSPACE/ci/headers/xr-voice-sdk"
 CTRL_STUBS="$GITHUB_WORKSPACE/ci/mocks/control"
 MOCK_DIR="$GITHUB_WORKSPACE/ci/mocks"
 HEADERS_DIR="$GITHUB_WORKSPACE/ci/headers"
@@ -65,6 +66,7 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -DCTRLM_CONFIG_JSON_MAIN_SUB="${EMPTY_JSON}" \
 -DCTRLM_CONFIG_JSON_MAIN_ADD="${EMPTY_JSON}" \
 -DCMAKE_CXX_FLAGS=" \
+-I ${XRSDK_REAL_HEADERS} \
 -I ${CTRL_STUBS} \
 -I ${MOCK_DIR} \
 -I ${MOCK_DIR}/thunder \
@@ -95,6 +97,7 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -DDISABLE_SECURITY_TOKEN \
 -DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4" \
 -DCMAKE_C_FLAGS=" \
+-I ${XRSDK_REAL_HEADERS} \
 -I ${CTRL_STUBS} \
 -I ${MOCK_DIR} \
 -I ${HEADERS_DIR} \

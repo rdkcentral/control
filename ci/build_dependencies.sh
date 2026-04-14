@@ -61,7 +61,8 @@ git clone --depth 1 --branch R4.4.1 https://github.com/rdkcentral/Thunder.git
 
 git clone --depth 1 --branch develop https://github.com/rdkcentral/entservices-apis.git
 
-git clone --depth 1 https://github.com/rdkcentral/xr-voice-sdk.git
+git clone https://github.com/rdkcentral/xr-voice-sdk.git
+git -C xr-voice-sdk checkout e55c99a0ec947b0ad3efc308bf8e3de0a42140d5
 
 ############################
 # 3. Build Thunder-Tools
@@ -124,6 +125,7 @@ echo "==========================================================================
 echo "Creating stub headers"
 
 HEADERS_DIR="$GITHUB_WORKSPACE/ci/headers"
+XRSDK_HEADERS_DIR="$HEADERS_DIR/xr-voice-sdk"
 mkdir -p "${HEADERS_DIR}"
 mkdir -p "${HEADERS_DIR}/rdk/iarmbus"
 mkdir -p "${HEADERS_DIR}/rdk/ds"
@@ -137,6 +139,12 @@ mkdir -p "${HEADERS_DIR}/audiocapturemgr"
 mkdir -p "${HEADERS_DIR}/ccec/drivers"
 mkdir -p "${HEADERS_DIR}/network"
 mkdir -p "${HEADERS_DIR}/nopoll"
+mkdir -p "${XRSDK_HEADERS_DIR}"
+
+cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr_voice_sdk.h" "${XRSDK_HEADERS_DIR}/"
+cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv.h" "${XRSDK_HEADERS_DIR}/"
+cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-timestamp/xr_timestamp.h" "${XRSDK_HEADERS_DIR}/"
+cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-fdc/xr_fdc.h" "${XRSDK_HEADERS_DIR}/"
 
 cd "${HEADERS_DIR}"
 

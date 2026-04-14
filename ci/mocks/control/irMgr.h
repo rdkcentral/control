@@ -1,7 +1,7 @@
 /*
  * Stub for irMgr.h - IR Manager types
  *
- * Copyright 2024 RDK Management
+ * Copyright 2026 RDK Management
  * Licensed under the Apache License, Version 2.0
  */
 #ifndef _IR_MGR_H_

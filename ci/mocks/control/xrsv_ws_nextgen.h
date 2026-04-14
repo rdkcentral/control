@@ -1,7 +1,7 @@
 /*
  * Stub for xrsv_ws_nextgen.h - Voice WebSocket NextGen endpoint types
  *
- * Copyright 2024 RDK Management
+ * Copyright 2026 RDK Management
  * Licensed under the Apache License, Version 2.0
  */
 #ifndef _XRSV_WS_NEXTGEN_H_

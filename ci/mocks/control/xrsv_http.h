@@ -1,7 +1,7 @@
 /*
  * Stub for xrsv_http.h - Voice HTTP endpoint types
  *
- * Copyright 2024 RDK Management
+ * Copyright 2026 RDK Management
  * Licensed under the Apache License, Version 2.0
  */
 #ifndef _XRSV_HTTP_H_

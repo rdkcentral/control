@@ -1,7 +1,7 @@
 /*
  * Stub for xr_fdc.h - File Descriptor Check
  *
- * Copyright 2024 RDK Management
+ * Copyright 2026 RDK Management
  * Licensed under the Apache License, Version 2.0
  */
 #ifndef _XR_FDC_H_

@@ -1,3 +1,5 @@
+Source: Copied from entservices-testframework/patches/00010-R4.4-Add-support-for-project-dir.patch
+
 diff --git a/JsonGenerator/source/class_emitter.py b/JsonGenerator/source/class_emitter.py
 index 7f2fb01..67a6469 100644
 --- a/JsonGenerator/source/class_emitter.py

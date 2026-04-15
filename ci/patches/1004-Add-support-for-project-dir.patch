@@ -1,3 +1,5 @@
+Source: Copied from entservices-testframework/patches/1004-Add-support-for-project-dir.patch
+
 diff --git a/Source/plugins/CMakeLists.txt b/Source/plugins/CMakeLists.txt
 index 4d362d545..9357c647c 100644
 --- a/Source/plugins/CMakeLists.txt

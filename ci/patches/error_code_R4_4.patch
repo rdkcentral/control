@@ -1,3 +1,5 @@
+Source: Copied from entservices-testframework/patches/error_code_R4_4.patch
+
 diff --git a/Source/WPEFramework/PluginServer.h b/Source/WPEFramework/PluginServer.h
 index e87933d9a..591385222 100644
 --- a/Source/WPEFramework/PluginServer.h

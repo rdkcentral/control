@@ -18,3 +18,13 @@ Some files in this repository were originally generated from XML using qdbusxml2
 
 Copyright 2024 Comcast Cable Communications Management, LLC
 Licensed under the Apache License, Version 2.0
+
+Copyright (c) 2007 Dave Airlie <airlied@linux.ie>
+Copyright (c) 2007 Jakob Bornecrantz <wallbraker@gmail.com>
+Copyright (c) 2008 Red Hat Inc.
+Copyright (c) 2007-2008 Tungsten Graphics, Inc., Cedar Park, TX., USA
+Copyright (c) 2007-2008 Intel Corporation
+Licensed under the MIT License
+
+Based on pxCore, Copyright 2015-2018 John Robinson
+Licensed under the Apache License, Version 2.0

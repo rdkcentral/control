@@ -1,6 +1,7 @@
 From: Sitaram, Soundaryaa <Soundaryaa_Sitaram@comcast.com>
 Date: 05 Feb 2025 17:24:43 +0000
 Subject: [PATCH] ENTOS IDs offset to be adjusted in rdkservices-apis
+Source: Author email patch from Soundaryaa_Sitaram@comcast.com, copied from entservices-testframework/patches/RDKEMW-733-Add-ENTOS-IDS.patch
 
 Upstream-Status: None
 Signed-off-by: ssitar583 <Soundaryaa_Sitaram@comcast.com>

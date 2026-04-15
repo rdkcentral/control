@@ -69,9 +69,29 @@ git clone https://github.com/rdkcentral/entservices-testframework.git
 git -C entservices-testframework checkout 584e3ec70fd5e044982910b4eb15c465808bb6d1
 
 # Patch testframework mocks with declarations ctrlm needs that are not yet upstream.
-# device::Manager::IsInitialized (static bool member)
 # We should remove as it is cleaner to just make changes to entservices-testframework directly
+# device::Manager::IsInitialized (static bool member)
 sed -i '/static void Initialize();/i\    inline static bool IsInitialized = false;' \
+    entservices-testframework/Tests/mocks/devicesettings.h
+# dsAudioDucking enums (after dsAudioPortType_t)
+sed -i '/^} dsAudioPortType_t;/a\
+typedef enum _dsAudioDuckingAction_t {\
+    dsAUDIO_DUCKINGACTION_START = 0,\
+    dsAUDIO_DUCKINGACTION_STOP  = 1\
+} dsAudioDuckingAction_t;\
+\
+typedef enum _dsAudioDuckingType_t {\
+    dsAUDIO_DUCKINGTYPE_ABSOLUTE = 0,\
+    dsAUDIO_DUCKINGTYPE_RELATIVE = 1\
+} dsAudioDuckingType_t;' \
+    entservices-testframework/Tests/mocks/devicesettings.h
+# AudioOutputPort::setAudioDucking (after reInitializeAudioOutputPort)
+sed -i '/void reInitializeAudioOutputPort();/a\
+    void setAudioDucking(dsAudioDuckingAction_t action, dsAudioDuckingType_t type, float level) {\
+        (void)action;\
+        (void)type;\
+        (void)level;\
+    }' \
     entservices-testframework/Tests/mocks/devicesettings.h
 
 ############################

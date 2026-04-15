@@ -30,6 +30,7 @@ echo "building control (ctrlm-main)"
 XRSDK_REAL_HEADERS="$GITHUB_WORKSPACE/ci/headers/xr-voice-sdk"
 CTRL_STUBS="$GITHUB_WORKSPACE/ci/mocks/control"
 MOCK_DIR="$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks"
+MOCK_OVERRIDES="$GITHUB_WORKSPACE/ci/mocks/testframework_overrides.h"
 HEADERS_DIR="$GITHUB_WORKSPACE/ci/headers"
 EMPTY_JSON="$GITHUB_WORKSPACE/install/usr/include/ctrlm_config_empty.json"
 
@@ -88,6 +89,7 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -I /usr/lib/x86_64-linux-gnu/glib-2.0/include \
 -I /usr/include/libdrm \
 -include ${MOCK_DIR}/Iarm.h \
+-include ${MOCK_OVERRIDES} \
 -include ${MOCK_DIR}/devicesettings.h \
 -include ${MOCK_DIR}/Rfc.h \
 -include ${MOCK_DIR}/Telemetry.h \

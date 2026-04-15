@@ -28,7 +28,7 @@ ls -la ${GITHUB_WORKSPACE}
 echo "building control (ctrlm-main)"
 
 XRSDK_REAL_HEADERS="$GITHUB_WORKSPACE/ci/headers/xr-voice-sdk"
-CTRL_STUBS="$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/control"
+CTRL_STUBS="$GITHUB_WORKSPACE/ci/mocks/control"
 MOCK_DIR="$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks"
 HEADERS_DIR="$GITHUB_WORKSPACE/ci/headers"
 EMPTY_JSON="$GITHUB_WORKSPACE/install/usr/include/ctrlm_config_empty.json"

@@ -8,9 +8,9 @@ The `ci/` directory contains **native CI build support files only**. It is not p
 
 - `ci/build_dependencies.sh` / `ci/cov_build.sh` — scripts that build the plugin in a CI container without a full RDK target image
 - `ci/mocks/control/` — control-specific stub headers (rdkx_logger, xraudio, xr_voice_sdk, irMgr, comcastIrKeyCodes, rdkversion) that are not available upstream
-- `ci/patches/` — temporary patches applied to Thunder/ThunderTools during CI builds only
+- `ci/mocks/testframework_overrides.h` — supplements testframework mocks with declarations ctrlm needs that are not yet upstream
 - `ci/headers/` — empty stub headers and real xr-voice-sdk headers generated/copied at CI build time; not committed to source
 
-Mock/stub headers for platform libraries (IARM, DeviceSettings, RFC, Telemetry, Thunder, etc.) are sourced from `entservices-testframework/Tests/mocks/` at CI build time. Control-specific mocks remain in `ci/mocks/control/`. Real xr-voice-sdk headers are copied into `ci/headers/xr-voice-sdk/` and placed first on the include path to override testframework mocks where the real API matches.
+Mock/stub headers for platform libraries (IARM, DeviceSettings, RFC, Telemetry, Thunder, etc.) and Thunder/ThunderTools patches are sourced from `entservices-testframework/` at CI build time. Control-specific mocks remain in `ci/mocks/control/`. Real xr-voice-sdk headers are copied into `ci/headers/xr-voice-sdk/` and placed first on the include path to override testframework mocks where the real API matches.
 
 When suggesting code or answering questions, treat CI mocks as scaffolding, not as authoritative API definitions. For real API shapes refer to the installed headers under `install/usr/include/` or the upstream repositories (Thunder, entservices-apis, xr-voice-sdk).

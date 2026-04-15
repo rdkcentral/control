@@ -99,7 +99,7 @@ sed -i '/void reInitializeAudioOutputPort();/a\
 echo "======================================================================================"
 echo "building thunderTools"
 cd ThunderTools
-patch -p1 < $GITHUB_WORKSPACE/ci/patches/00010-R4.4-Add-support-for-project-dir.patch
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/00010-R4.4-Add-support-for-project-dir.patch
 cd -
 
 cmake -G Ninja -S ThunderTools -B build/ThunderTools \
@@ -116,10 +116,10 @@ echo "==========================================================================
 echo "building thunder"
 
 cd Thunder
-patch -p1 < $GITHUB_WORKSPACE/ci/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
-patch -p1 < $GITHUB_WORKSPACE/ci/patches/error_code_R4_4.patch
-patch -p1 < $GITHUB_WORKSPACE/ci/patches/1004-Add-support-for-project-dir.patch
-patch -p1 < $GITHUB_WORKSPACE/ci/patches/RDKEMW-733-Add-ENTOS-IDS.patch
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/error_code_R4_4.patch
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/1004-Add-support-for-project-dir.patch
+patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/RDKEMW-733-Add-ENTOS-IDS.patch
 cd -
 
 cmake -G Ninja -S Thunder -B build/Thunder \

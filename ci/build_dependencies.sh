@@ -243,20 +243,9 @@ touch secure_wrapper.h
 touch edid-parser.hpp
 touch dsFPD.h
 
-# safec compatibility header - maps ctrlm's include name to the real libsafec headers.
-cat > safec_lib.h << 'SAFEC_EOF'
-#ifndef _SAFEC_LIB_H_
-#define _SAFEC_LIB_H_
-#include <safeclib/safe_lib.h>
-#include <safeclib/safe_str_lib.h>
-#include <safeclib/safe_mem_lib.h>
-
-#ifndef ERR_CHK
-#define ERR_CHK(rc) do { (void)(rc); } while(0)
-#endif
-
-#endif
-SAFEC_EOF
+# safec compatibility header - committed in ci/mocks, copied here so it is
+# resolved on the generated-headers include path.
+cp "$GITHUB_WORKSPACE/ci/mocks/safec_lib.h" safec_lib.h
 
 echo "Stub headers created successfully"
 

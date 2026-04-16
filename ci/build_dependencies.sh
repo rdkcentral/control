@@ -49,6 +49,7 @@ apt install -y \
     meson \
     valgrind \
     lcov \
+    libsafec-dev \
     clang
 pip install jsonref
 
@@ -242,144 +243,18 @@ touch secure_wrapper.h
 touch edid-parser.hpp
 touch dsFPD.h
 
-# safec - needs actual dummy API content
+# safec compatibility header - maps ctrlm's include name to the real libsafec headers.
 cat > safec_lib.h << 'SAFEC_EOF'
 #ifndef _SAFEC_LIB_H_
 #define _SAFEC_LIB_H_
-#include <string.h>
-#include <stdio.h>
-#include <stdarg.h>
-#ifdef SAFEC_DUMMY_API
-typedef int errno_t;
-#define EOK 0
+#include <safeclib/safe_lib.h>
+#include <safeclib/safe_str_lib.h>
+#include <safeclib/safe_mem_lib.h>
 
-static inline errno_t strcpy_s(char *dest, size_t dmax, const char *src) {
-    (void)dmax;
-    if(dest == NULL || src == NULL) {
-        return -1;
-    }
-    strcpy(dest, src);
-    return EOK;
-}
-
-static inline errno_t strncpy_s(char *dest, size_t dmax, const char *src, size_t count) {
-    (void)dmax;
-    if(dest == NULL || src == NULL) {
-        return -1;
-    }
-    strncpy(dest, src, count);
-    return EOK;
-}
-
-static inline errno_t strcat_s(char *dest, size_t dmax, const char *src) {
-    (void)dmax;
-    if(dest == NULL || src == NULL) {
-        return -1;
-    }
-    strcat(dest, src);
-    return EOK;
-}
-
-static inline errno_t strncat_s(char *dest, size_t dmax, const char *src, size_t count) {
-    (void)dmax;
-    if(dest == NULL || src == NULL) {
-        return -1;
-    }
-    strncat(dest, src, count);
-    return EOK;
-}
-
-static inline errno_t sprintf_s(char *dest, size_t dmax, const char *format, ...) {
-    va_list args;
-    int ret;
-    if(dest == NULL || format == NULL) {
-        return -1;
-    }
-    va_start(args, format);
-    ret = vsnprintf(dest, dmax, format, args);
-    va_end(args);
-    return (ret < 0) ? -1 : EOK;
-}
-
-static inline errno_t snprintf_s(char *dest, size_t dmax, size_t count, const char *format, ...) {
-    va_list args;
-    int ret;
-    size_t max_len = count < dmax ? count : dmax;
-    if(dest == NULL || format == NULL) {
-        return -1;
-    }
-    va_start(args, format);
-    ret = vsnprintf(dest, max_len, format, args);
-    va_end(args);
-    return (ret < 0) ? -1 : EOK;
-}
-
-static inline errno_t strcmp_s(const char *dest, size_t dmax, const char *src, int *indicator) {
-    (void)dmax;
-    if(dest == NULL || src == NULL || indicator == NULL) {
-        return -1;
-    }
-    *indicator = strcmp(dest, src);
-    return EOK;
-}
-
-static inline errno_t strncmp_s(const char *dest, size_t dmax, const char *src, size_t count, int *indicator) {
-    (void)dmax;
-    if(dest == NULL || src == NULL || indicator == NULL) {
-        return -1;
-    }
-    *indicator = strncmp(dest, src, count);
-    return EOK;
-}
-
-static inline char *strtok_s(char *str, size_t *strmax, const char *delim, char **context) {
-    char *token;
-    (void)strmax;
-    if(delim == NULL || context == NULL) {
-        return NULL;
-    }
-    token = strtok_r(str, delim, context);
-    return token;
-}
-
-static inline errno_t memcpy_s(void *dest, size_t dmax, const void *src, size_t count) {
-    (void)dmax;
-    if(dest == NULL || src == NULL) {
-        return -1;
-    }
-    memcpy(dest, src, count);
-    return EOK;
-}
-
-static inline errno_t memset_s(void *dest, size_t dmax, int value, size_t count) {
-    (void)dmax;
-    if(dest == NULL) {
-        return -1;
-    }
-    memset(dest, value, count);
-    return EOK;
-}
-
-static inline errno_t memmove_s(void *dest, size_t dmax, const void *src, size_t count) {
-    (void)dmax;
-    if(dest == NULL || src == NULL) {
-        return -1;
-    }
-    memmove(dest, src, count);
-    return EOK;
-}
-
-static inline errno_t memcmp_s(const void *dest, size_t dmax, const void *src, size_t count, int *indicator) {
-    (void)dmax;
-    if(dest == NULL || src == NULL || indicator == NULL) {
-        return -1;
-    }
-    *indicator = memcmp(dest, src, count);
-    return EOK;
-}
-
+#ifndef ERR_CHK
 #define ERR_CHK(rc) do { (void)(rc); } while(0)
 #endif
+
 #endif
 SAFEC_EOF
 

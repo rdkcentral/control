@@ -30,7 +30,6 @@ echo "building control (ctrlm-main)"
 XRSDK_REAL_HEADERS="$GITHUB_WORKSPACE/ci/headers/xr-voice-sdk"
 CTRL_STUBS="$GITHUB_WORKSPACE/ci/mocks/control"
 MOCK_DIR="$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks"
-MOCK_OVERRIDES="$GITHUB_WORKSPACE/ci/mocks/testframework_overrides.h"
 HEADERS_DIR="$GITHUB_WORKSPACE/ci/headers"
 EMPTY_JSON="$GITHUB_WORKSPACE/install/usr/include/ctrlm_config_empty.json"
 
@@ -40,11 +39,10 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -DCMAKE_MODULE_PATH="${GITHUB_WORKSPACE}/install/tools/cmake" \
 -DCMAKE_VERBOSE_MAKEFILE=ON \
 -DCMAKE_PROJECT_VERSION="1.0.0" \
--DUSE_THUNDER_R4=ON \
--DTHUNDER=ON \
+-DTHUNDER=OFF \
 -DTHUNDER_SECURITY=OFF \
 -DBLE_ENABLED=OFF \
--DRF4CE_ENABLED=ON \
+-DRF4CE_ENABLED=OFF \
 -DIP_ENABLED=OFF \
 -DTELEMETRY_SUPPORT=OFF \
 -DAUTH_ENABLED=OFF \
@@ -53,7 +51,7 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -DBUILD_CTRLM_FACTORY=OFF \
 -DBUILD_FACTORY_TEST=OFF \
 -DUSE_SAFEC=OFF \
--DUSE_IARM_POWER_MANAGER=OFF \
+-DUSE_IARM_POWER_MANAGER=ON \
 -DBREAKPAD=OFF \
 -DFDC_ENABLED=OFF \
 -DENABLE_ASYNC_SRVR_MSG=OFF \
@@ -70,7 +68,6 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -I ${XRSDK_REAL_HEADERS} \
 -I ${CTRL_STUBS} \
 -I ${MOCK_DIR} \
--I ${MOCK_DIR}/thunder \
 -I ${MOCK_DIR}/devicesettings \
 -I ${HEADERS_DIR} \
 -I ${HEADERS_DIR}/rdk/iarmbus \
@@ -79,25 +76,16 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -I ${HEADERS_DIR}/rdk/ds-hal \
 -I ${HEADERS_DIR}/rdk/halif/ds-hal \
 -I ${HEADERS_DIR}/rdk/iarmmgrs-hal \
--I ${HEADERS_DIR}/audiocapturemgr \
--I ${HEADERS_DIR}/ccec/drivers \
--I ${HEADERS_DIR}/network \
--I ${HEADERS_DIR}/nopoll \
 -I ${GITHUB_WORKSPACE}/install/usr/include \
--I ${GITHUB_WORKSPACE}/install/usr/include/WPEFramework \
 -I /usr/include/glib-2.0 \
 -I /usr/lib/x86_64-linux-gnu/glib-2.0/include \
 -I /usr/include/libdrm \
 -include ${MOCK_DIR}/Iarm.h \
--include ${MOCK_OVERRIDES} \
 -include ${MOCK_DIR}/devicesettings.h \
 -include ${MOCK_DIR}/Rfc.h \
--include ${MOCK_DIR}/Telemetry.h \
--include ${MOCK_DIR}/secure_wrappermock.h \
 -Wall -Wno-error \
 -DSAFEC_DUMMY_API \
--DDISABLE_SECURITY_TOKEN \
--DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4" \
+-DDISABLE_SECURITY_TOKEN" \
 -DCMAKE_C_FLAGS=" \
 -I ${XRSDK_REAL_HEADERS} \
 -I ${CTRL_STUBS} \
@@ -107,7 +95,6 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -I ${HEADERS_DIR}/rdk/ds \
 -I ${HEADERS_DIR}/rdk/iarmmgrs-hal \
 -I ${GITHUB_WORKSPACE}/install/usr/include \
--I ${GITHUB_WORKSPACE}/install/usr/include/WPEFramework \
 -Wall -Wno-error \
 -DSAFEC_DUMMY_API \
 -DDISABLE_SECURITY_TOKEN" \

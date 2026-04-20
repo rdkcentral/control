@@ -26,4 +26,9 @@
 /* ctrlm-main calls IARM_Bus_RegisterEvent as a plain function (defined in stubs_iarm.cpp) */
 extern IARM_Result_t IARM_Bus_RegisterEvent(IARM_EventId_t maxEventId);
 
+/* IARM common API string not present in the pinned testframework mock */
+#ifndef IARM_BUS_COMMON_API_PowerPreChange
+#define IARM_BUS_COMMON_API_PowerPreChange "PowerPreChange"
+#endif
+
 #endif /* _CONTROL_TESTFRAMEWORK_OVERRIDES_H_ */

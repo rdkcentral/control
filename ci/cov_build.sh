@@ -29,6 +29,7 @@ echo "building control (ctrlm-main)"
 
 XRSDK_REAL_HEADERS="$GITHUB_WORKSPACE/ci/headers/xr-voice-sdk"
 CTRL_STUBS="$GITHUB_WORKSPACE/ci/mocks/control"
+LOCAL_TESTFRAMEWORK_MOCKS="$GITHUB_WORKSPACE/ci/mocks/testframework"
 MOCK_DIR="$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks"
 MOCK_OVERRIDES="$GITHUB_WORKSPACE/ci/mocks/testframework_overrides.h"
 HEADERS_DIR="$GITHUB_WORKSPACE/ci/headers"
@@ -68,6 +69,7 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -DCMAKE_CXX_FLAGS=" \
 -I ${XRSDK_REAL_HEADERS} \
 -I ${CTRL_STUBS} \
+-I ${LOCAL_TESTFRAMEWORK_MOCKS} \
 -I ${MOCK_DIR} \
 -I ${MOCK_DIR}/devicesettings \
 -I ${HEADERS_DIR} \
@@ -83,7 +85,7 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -I /usr/include/libdrm \
 -include ${MOCK_DIR}/Iarm.h \
 -include ${MOCK_OVERRIDES} \
--include ${MOCK_DIR}/devicesettings.h \
+-include ${LOCAL_TESTFRAMEWORK_MOCKS}/devicesettings.h \
 -include ${MOCK_DIR}/Rfc.h \
 -Wall -Wno-error \
 -DSAFEC_DUMMY_API \
@@ -91,6 +93,7 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -DCMAKE_C_FLAGS=" \
 -I ${XRSDK_REAL_HEADERS} \
 -I ${CTRL_STUBS} \
+-I ${LOCAL_TESTFRAMEWORK_MOCKS} \
 -I ${MOCK_DIR} \
 -I ${HEADERS_DIR} \
 -I ${HEADERS_DIR}/rdk/iarmbus \

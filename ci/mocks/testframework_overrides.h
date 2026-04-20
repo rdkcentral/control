@@ -26,6 +26,11 @@
 /* ctrlm-main calls IARM_Bus_RegisterEvent as a plain function (defined in stubs_iarm.cpp) */
 extern IARM_Result_t IARM_Bus_RegisterEvent(IARM_EventId_t maxEventId);
 
+/* Pinned testframework Iarm.h stops at UNKNOWN; ctrlm also references MAX. */
+#ifndef DEEPSLEEP_WAKEUPREASON_MAX
+#define DEEPSLEEP_WAKEUPREASON_MAX (DEEPSLEEP_WAKEUPREASON_UNKNOWN + 1)
+#endif
+
 /* IARM common API string not present in the pinned testframework mock */
 #ifndef IARM_BUS_COMMON_API_PowerPreChange
 #define IARM_BUS_COMMON_API_PowerPreChange "PowerPreChange"

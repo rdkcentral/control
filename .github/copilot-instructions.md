@@ -8,6 +8,7 @@ The `ci/` directory contains **native CI build support files only**. It is not p
 
 - `ci/build_dependencies.sh` / `ci/cov_build.sh` — scripts that build the plugin in a CI container without a full RDK target image
 - `ci/mocks/control/` — control-specific stub headers (rdkx_logger, xr_voice_sdk, rdkversion) that are not available upstream
+- `ci/mocks/testframework/` — repo-owned replacements for pinned testframework mocks when ctrlm needs local changes without mutating the clone in CI
 - `ci/mocks/testframework_overrides.h` — supplements testframework mocks with declarations ctrlm needs that are not yet upstream
 - `ci/headers/` — empty stub headers and real xr-voice-sdk headers generated/copied at CI build time; not committed to source
 

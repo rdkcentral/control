@@ -72,44 +72,9 @@ git -C rdk-halif-deepsleep_manager sparse-checkout set include
 git clone --depth 1 --filter=blob:none --sparse https://github.com/rdkcentral/rdk-halif-power_manager.git
 git -C rdk-halif-power_manager sparse-checkout set include
 
-TESTFRAMEWORK_DIR="$GITHUB_WORKSPACE/entservices-testframework"
-if [ ! -d "$TESTFRAMEWORK_DIR" ] && [ -d "$(dirname "$GITHUB_WORKSPACE")/entservices-testframework" ]; then
-    TESTFRAMEWORK_DIR="$(dirname "$GITHUB_WORKSPACE")/entservices-testframework"
-fi
-
 IARMMGRS_DIR="$GITHUB_WORKSPACE/iarmmgrs"
 DEEPSLEEP_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-deepsleep_manager"
 POWER_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-power_manager"
-
-# TODO: Remove this in a future Commit, testing things now that should be fixed in entservices-testframework directly.
-# Patch testframework mocks with declarations ctrlm needs that are not yet upstream.
-# We should remove as it is cleaner to just make changes to entservices-testframework directly
-# device::Manager::IsInitialized (static bool member)
-sed -i '/static void Initialize();/i\    inline static bool IsInitialized = false;' \
-    "$TESTFRAMEWORK_DIR/Tests/mocks/devicesettings.h"
-# dsAudioDucking enums (after dsAudioPortType_t)
-sed -i '/^} dsAudioPortType_t;/a\
-typedef enum _dsAudioDuckingAction_t {\
-    dsAUDIO_DUCKINGACTION_START = 0,\
-    dsAUDIO_DUCKINGACTION_STOP  = 1\
-} dsAudioDuckingAction_t;\
-\
-typedef enum _dsAudioDuckingType_t {\
-    dsAUDIO_DUCKINGTYPE_ABSOLUTE = 0,\
-    dsAUDIO_DUCKINGTYPE_RELATIVE = 1\
-} dsAudioDuckingType_t;' \
-    "$TESTFRAMEWORK_DIR/Tests/mocks/devicesettings.h"
-# AudioOutputPort::setAudioDucking (after reInitializeAudioOutputPort)
-sed -i '/void reInitializeAudioOutputPort();/a\
-    void setAudioDucking(dsAudioDuckingAction_t action, dsAudioDuckingType_t type, float level) {\
-        (void)action;\
-        (void)type;\
-        (void)level;\
-    }' \
-    "$TESTFRAMEWORK_DIR/Tests/mocks/devicesettings.h"
-# DEEPSLEEP_WAKEUPREASON_MAX (after DEEPSLEEP_WAKEUPREASON_UNKNOWN)
-sed -i 's/DEEPSLEEP_WAKEUPREASON_UNKNOWN$/DEEPSLEEP_WAKEUPREASON_UNKNOWN,\n    DEEPSLEEP_WAKEUPREASON_MAX/' \
-    "$TESTFRAMEWORK_DIR/Tests/mocks/Iarm.h"
 
 ############################
 # 3. Create stub/empty headers for external dependencies

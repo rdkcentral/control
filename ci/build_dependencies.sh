@@ -165,7 +165,7 @@ touch rdk/ds/frontPanelTextDisplay.hpp
 touch rfcapi.h
 
 # comcastIrKeyCodes.h (unconditionally included by ctrlm_main.cpp)
-cp "$TESTFRAMEWORK_DIR/Tests/mocks/control/comcastIrKeyCodes.h" comcastIrKeyCodes.h
+cp "$GITHUB_WORKSPACE/ci/mocks/control/comcastIrKeyCodes.h" comcastIrKeyCodes.h
 
 # secure_wrapper (types provided via empty stub — no v_secure_* calls in core)
 touch secure_wrapper.h

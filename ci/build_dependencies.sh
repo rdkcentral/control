@@ -64,7 +64,13 @@ git clone https://github.com/rdkcentral/entservices-testframework.git
 git -C entservices-testframework checkout 584e3ec70fd5e044982910b4eb15c465808bb6d1
 
 git clone --depth 1 --filter=blob:none --sparse --branch develop https://github.com/rdkcentral/iarmmgrs.git
-git -C iarmmgrs sparse-checkout set hal sysmgr deepsleepmgr pwrmgr pwrMgr
+git -C iarmmgrs sparse-checkout set hal sysmgr
+
+git clone --depth 1 --filter=blob:none --sparse https://github.com/rdkcentral/rdk-halif-deepsleep_manager.git
+git -C rdk-halif-deepsleep_manager sparse-checkout set include
+
+git clone --depth 1 --filter=blob:none --sparse https://github.com/rdkcentral/rdk-halif-power_manager.git
+git -C rdk-halif-power_manager sparse-checkout set include
 
 TESTFRAMEWORK_DIR="$GITHUB_WORKSPACE/entservices-testframework"
 if [ ! -d "$TESTFRAMEWORK_DIR" ] && [ -d "$(dirname "$GITHUB_WORKSPACE")/entservices-testframework" ]; then
@@ -72,6 +78,8 @@ if [ ! -d "$TESTFRAMEWORK_DIR" ] && [ -d "$(dirname "$GITHUB_WORKSPACE")/entserv
 fi
 
 IARMMGRS_DIR="$GITHUB_WORKSPACE/iarmmgrs"
+DEEPSLEEP_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-deepsleep_manager"
+POWER_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-power_manager"
 
 # TODO: Remove this in a future Commit, testing things now that should be fixed in entservices-testframework directly.
 # Patch testframework mocks with declarations ctrlm needs that are not yet upstream.
@@ -138,8 +146,8 @@ touch rdk/iarmbus/libIBusDaemon.h
 
 # IARM managers
 find "$IARMMGRS_DIR" -name sysMgr.h -print -quit | xargs -r -I{} cp "{}" rdk/iarmmgrs-hal/sysMgr.h
-find "$IARMMGRS_DIR" -name deepSleepMgr.h -print -quit | xargs -r -I{} cp "{}" rdk/iarmmgrs-hal/deepSleepMgr.h
-find "$IARMMGRS_DIR" -name pwrMgr.h -print -quit | xargs -r -I{} cp "{}" rdk/iarmmgrs-hal/pwrMgr.h
+cp "$DEEPSLEEP_HAL_DIR/include/deepSleepMgr.h" rdk/iarmmgrs-hal/deepSleepMgr.h
+cp "$POWER_HAL_DIR/include/plat_power.h" rdk/iarmmgrs-hal/pwrMgr.h
 [ -f rdk/iarmmgrs-hal/sysMgr.h ]
 [ -f rdk/iarmmgrs-hal/deepSleepMgr.h ]
 [ -f rdk/iarmmgrs-hal/pwrMgr.h ]

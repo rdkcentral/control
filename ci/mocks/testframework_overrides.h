@@ -31,4 +31,13 @@ extern IARM_Result_t IARM_Bus_RegisterEvent(IARM_EventId_t maxEventId);
 #define IARM_BUS_COMMON_API_PowerPreChange "PowerPreChange"
 #endif
 
+/* Struct not present in the pinned testframework mock */
+#ifndef IARM_BUS_COMMON_API_PowerPreChange_Param_t
+typedef struct {
+    IARM_Bus_PWRMgr_PowerState_t newState;
+    IARM_Bus_PWRMgr_PowerState_t curState;
+} IARM_Bus_CommonAPI_PowerPreChange_Param_t;
+#define IARM_BUS_COMMON_API_PowerPreChange_Param_t IARM_Bus_CommonAPI_PowerPreChange_Param_t
+#endif
+
 #endif /* _CONTROL_TESTFRAMEWORK_OVERRIDES_H_ */

@@ -63,10 +63,15 @@ git -C xr-voice-sdk checkout e55c99a0ec947b0ad3efc308bf8e3de0a42140d5
 git clone https://github.com/rdkcentral/entservices-testframework.git
 git -C entservices-testframework checkout 584e3ec70fd5e044982910b4eb15c465808bb6d1
 
+git clone --depth 1 --filter=blob:none --sparse --branch develop https://github.com/rdkcentral/iarmmgrs.git
+git -C iarmmgrs sparse-checkout set hal sysmgr deepsleepmgr pwrmgr pwrMgr
+
 TESTFRAMEWORK_DIR="$GITHUB_WORKSPACE/entservices-testframework"
 if [ ! -d "$TESTFRAMEWORK_DIR" ] && [ -d "$(dirname "$GITHUB_WORKSPACE")/entservices-testframework" ]; then
     TESTFRAMEWORK_DIR="$(dirname "$GITHUB_WORKSPACE")/entservices-testframework"
 fi
+
+IARMMGRS_DIR="$GITHUB_WORKSPACE/iarmmgrs"
 
 # TODO: Remove this in a future Commit, testing things now that should be fixed in entservices-testframework directly.
 # Patch testframework mocks with declarations ctrlm needs that are not yet upstream.
@@ -131,10 +136,13 @@ touch rdk/iarmbus/libIARM.h
 touch rdk/iarmbus/libIBus.h
 touch rdk/iarmbus/libIBusDaemon.h
 
-# IARM managers (types provided via -include Iarm.h for sysMgr, or in control stubs)
-touch rdk/iarmmgrs-hal/sysMgr.h
-touch rdk/iarmmgrs-hal/deepSleepMgr.h
-touch rdk/iarmmgrs-hal/pwrMgr.h
+# IARM managers
+find "$IARMMGRS_DIR" -name sysMgr.h -print -quit | xargs -r -I{} cp "{}" rdk/iarmmgrs-hal/sysMgr.h
+find "$IARMMGRS_DIR" -name deepSleepMgr.h -print -quit | xargs -r -I{} cp "{}" rdk/iarmmgrs-hal/deepSleepMgr.h
+find "$IARMMGRS_DIR" -name pwrMgr.h -print -quit | xargs -r -I{} cp "{}" rdk/iarmmgrs-hal/pwrMgr.h
+[ -f rdk/iarmmgrs-hal/sysMgr.h ]
+[ -f rdk/iarmmgrs-hal/deepSleepMgr.h ]
+[ -f rdk/iarmmgrs-hal/pwrMgr.h ]
 
 # Device settings headers (types provided via -include devicesettings.h)
 touch rdk/ds/audioOutputPort.hpp
@@ -165,7 +173,8 @@ touch rdk/ds/frontPanelTextDisplay.hpp
 touch rfcapi.h
 
 # comcastIrKeyCodes.h (unconditionally included by ctrlm_main.cpp)
-cp "$GITHUB_WORKSPACE/ci/mocks/control/comcastIrKeyCodes.h" comcastIrKeyCodes.h
+find "$IARMMGRS_DIR" -name comcastIrKeyCodes.h -print -quit | xargs -r -I{} cp "{}" comcastIrKeyCodes.h
+[ -f comcastIrKeyCodes.h ]
 
 # secure_wrapper (types provided via empty stub — no v_secure_* calls in core)
 touch secure_wrapper.h

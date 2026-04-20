@@ -63,6 +63,7 @@ git -C xr-voice-sdk checkout e55c99a0ec947b0ad3efc308bf8e3de0a42140d5
 git clone https://github.com/rdkcentral/entservices-testframework.git
 git -C entservices-testframework checkout 584e3ec70fd5e044982910b4eb15c465808bb6d1
 
+# TODO: Remove this in a future Commit, testing things now that should be fixed in entservices-testframework directly.
 # Patch testframework mocks with declarations ctrlm needs that are not yet upstream.
 # We should remove as it is cleaner to just make changes to entservices-testframework directly
 # device::Manager::IsInitialized (static bool member)
@@ -88,6 +89,9 @@ sed -i '/void reInitializeAudioOutputPort();/a\
         (void)level;\
     }' \
     entservices-testframework/Tests/mocks/devicesettings.h
+# DEEPSLEEP_WAKEUPREASON_MAX (after DEEPSLEEP_WAKEUPREASON_UNKNOWN)
+sed -i 's/DEEPSLEEP_WAKEUPREASON_UNKNOWN$/DEEPSLEEP_WAKEUPREASON_UNKNOWN,\n    DEEPSLEEP_WAKEUPREASON_MAX/' \
+    entservices-testframework/Tests/mocks/Iarm.h
 
 ############################
 # 3. Create stub/empty headers for external dependencies
@@ -155,7 +159,10 @@ touch rdk/ds/frontPanelTextDisplay.hpp
 # rfcapi.h (types provided via -include Rfc.h)
 touch rfcapi.h
 
-# secure_wrapper (types provided via -include secure_wrappermock.h)
+# comcastIrKeyCodes.h (unconditionally included by ctrlm_main.cpp)
+cp "$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/control/comcastIrKeyCodes.h" comcastIrKeyCodes.h
+
+# secure_wrapper (types provided via empty stub — no v_secure_* calls in core)
 touch secure_wrapper.h
 
 # safec compatibility header - committed in ci/mocks, copied here so it is

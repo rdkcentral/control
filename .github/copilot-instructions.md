@@ -7,7 +7,7 @@ This is the **ctrlm-main** (Control Manager) plugin — a Thunder/WPEFramework p
 The `ci/` directory contains **native CI build support files only**. It is not part of the application.
 
 - `ci/build_dependencies.sh` / `ci/cov_build.sh` — scripts that build the plugin in a CI container without a full RDK target image
-- `ci/mocks/control/` — control-specific stub headers (rdkx_logger, xraudio, xr_voice_sdk, irMgr, comcastIrKeyCodes, rdkversion) that are not available upstream
+- `ci/mocks/control/` — control-specific stub headers (rdkx_logger, xr_voice_sdk, rdkversion) that are not available upstream
 - `ci/mocks/testframework_overrides.h` — supplements testframework mocks with declarations ctrlm needs that are not yet upstream
 - `ci/headers/` — empty stub headers and real xr-voice-sdk headers generated/copied at CI build time; not committed to source
 

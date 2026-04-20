@@ -64,7 +64,7 @@ git clone https://github.com/rdkcentral/entservices-testframework.git
 git -C entservices-testframework checkout 584e3ec70fd5e044982910b4eb15c465808bb6d1
 
 git clone --depth 1 --filter=blob:none --sparse --branch develop https://github.com/rdkcentral/iarmmgrs.git
-git -C iarmmgrs sparse-checkout set hal sysmgr
+git -C iarmmgrs sparse-checkout set hal
 
 git clone --depth 1 --filter=blob:none --sparse https://github.com/rdkcentral/rdk-halif-deepsleep_manager.git
 git -C rdk-halif-deepsleep_manager sparse-checkout set include
@@ -144,8 +144,17 @@ touch rdk/iarmbus/libIARM.h
 touch rdk/iarmbus/libIBus.h
 touch rdk/iarmbus/libIBusDaemon.h
 
-# IARM managers
-find "$IARMMGRS_DIR" -name sysMgr.h -print -quit | xargs -r -I{} cp "{}" rdk/iarmmgrs-hal/sysMgr.h
+# IARM manager headers
+# sysMgr.h is included by ctrlm, but the required SYSMgr types already come from the forced
+# Iarm.h mock. Using the real header here causes duplicate typedefs, so provide a shim only.
+cat > rdk/iarmmgrs-hal/sysMgr.h <<'EOF'
+#ifndef CTRLM_CI_SYSMGR_SHIM_H
+#define CTRLM_CI_SYSMGR_SHIM_H
+
+/* SYSMgr declarations are provided by the forced Iarm.h mock in CI. */
+
+#endif
+EOF
 cp "$DEEPSLEEP_HAL_DIR/include/deepSleepMgr.h" rdk/iarmmgrs-hal/deepSleepMgr.h
 cp "$POWER_HAL_DIR/include/plat_power.h" rdk/iarmmgrs-hal/pwrMgr.h
 [ -f rdk/iarmmgrs-hal/sysMgr.h ]

@@ -13,6 +13,6 @@ The `ci/` directory contains **native CI build support files only**. It is not p
 - `ci/mocks/safec_lib.h` — compatibility shim mapping `safec_lib.h` to system libsafec headers
 - `ci/headers/` — empty stub headers and real xr-voice-sdk headers generated/copied at CI build time; not committed to source
 
-Real xr-voice-sdk headers (including `rdkx_logger.h`, `xr_voice_sdk.h`, and generated `rdkx_logger_modules.h`) are produced by `build_dependencies.sh` and placed in `ci/headers/xr-voice-sdk/`. Mock/stub headers for platform libraries (IARM, DeviceSettings, RFC, etc.) are sourced from `entservices-testframework/` at CI build time.
+CI currently pins `xr-voice-sdk` to tag `1.0.13` in `build_dependencies.sh`. Real xr-voice-sdk headers (including `rdkx_logger.h`, `xr_voice_sdk.h`, and generated `rdkx_logger_modules.h`) are produced by `build_dependencies.sh` and placed in `ci/headers/xr-voice-sdk/`. Mock/stub headers for platform libraries (IARM, DeviceSettings, RFC, etc.) are sourced from `entservices-testframework/` at CI build time.
 
 When suggesting code or answering questions, treat CI mocks as scaffolding, not as authoritative API definitions. For real API shapes refer to the installed headers under `install/usr/include/` or the upstream repositories (Thunder, entservices-apis, xr-voice-sdk).

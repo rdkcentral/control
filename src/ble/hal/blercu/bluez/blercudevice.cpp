@@ -270,10 +270,10 @@ void BleRcuDeviceBluez::onPairRequestReply(PendingReply<> *reply)
         if (m_pairingRetryCnt < m_maxPairingRetries) {
             m_pairingRetryCnt++;
             XLOGD_INFO("Retrying pairing, attempt %d out of %d ", m_pairingRetryCnt, m_maxPairingRetries);
-            m_pairingErrorSlots.invoke(reply->errorMessage(), m_pairingRetryCnt);
+            m_pairingErrorSlots.invoke(reply->errorMessage(), m_pairingRetryCnt, false);
             pair(0, m_maxPairingRetries);
         } else {
-            m_pairingErrorSlots.invoke(reply->errorMessage(), m_pairingRetryCnt);
+            m_pairingErrorSlots.invoke(reply->errorMessage(), m_pairingRetryCnt, true);
             m_pairingRetryCnt = 0;
         }
     } else {

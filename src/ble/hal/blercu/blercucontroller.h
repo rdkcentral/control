@@ -45,15 +45,14 @@ class BleRcuDevice;
 
 struct BleRcuPairingOutcome
 {
-    int         method;          // "auto_timeout" | "ir_code" | "mac_hash" | "mac_list"
-    int         result;          // "success" | failure-reason string
+    int         method;          // numeric enum value for PairingMethod
+    int         result;          // numeric enum value for FailureReason
     int         discovered;      // number of discovered devices
     int         bluezRetries;    // number of bluez retries attempted
     int         maxBluezRetries; // max number of retries
     std::string name;            // empty on failure
     std::vector<std::string> bluezError; // bluez error messages
 };
-
 
 class BleRcuController
 {

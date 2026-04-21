@@ -21,7 +21,6 @@ set -x
 set -e
 ##############################
 GITHUB_WORKSPACE="${PWD}"
-ls -la ${GITHUB_WORKSPACE}
 cd ${GITHUB_WORKSPACE}
 
 git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -34,9 +33,7 @@ apt install -y \
     libsqlite3-dev \
     libcurl4-openssl-dev \
     libsystemd-dev \
-    libboost-all-dev \
     libglib2.0-dev \
-    libgio2.0-cil-dev \
     libjansson-dev \
     libarchive-dev \
     libssl-dev \
@@ -45,12 +42,7 @@ apt install -y \
     uuid-dev \
     libevdev-dev \
     libdrm-dev \
-    gperf \
-    meson \
-    valgrind \
-    lcov \
-    libsafec-dev \
-    clang
+    libsafec-dev
 pip install jsonref
 
 ###########################################
@@ -86,9 +78,6 @@ XRSDK_HEADERS_DIR="$HEADERS_DIR/xr-voice-sdk"
 mkdir -p "${HEADERS_DIR}"
 mkdir -p "${HEADERS_DIR}/rdk/iarmbus"
 mkdir -p "${HEADERS_DIR}/rdk/ds"
-mkdir -p "${HEADERS_DIR}/rdk/ds-rpc"
-mkdir -p "${HEADERS_DIR}/rdk/ds-hal"
-mkdir -p "${HEADERS_DIR}/rdk/halif/ds-hal"
 mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
 mkdir -p "${XRSDK_HEADERS_DIR}"
 
@@ -126,9 +115,8 @@ cp "$POWER_HAL_DIR/include/plat_power.h" rdk/iarmmgrs-hal/pwrMgr.h
 [ -f rdk/iarmmgrs-hal/deepSleepMgr.h ]
 [ -f rdk/iarmmgrs-hal/pwrMgr.h ]
 
-# Device settings headers (types provided via -include devicesettings.h)
+# Device settings headers (types provided via force-included devicesettings.h mock)
 touch rdk/ds/audioOutputPort.hpp
-touch rdk/ds/compositeIn.hpp
 touch rdk/ds/dsDisplay.h
 touch rdk/ds/dsError.h
 touch rdk/ds/dsMgr.h
@@ -136,20 +124,14 @@ touch rdk/ds/dsRpc.h
 touch rdk/ds/dsTypes.h
 touch rdk/ds/dsUtl.h
 touch rdk/ds/exception.hpp
-touch rdk/ds/hdmiIn.hpp
 touch rdk/ds/host.hpp
-touch rdk/ds/list.hpp
-# manager.hpp is empty — device::Manager is provided by the force-included devicesettings.h
 touch rdk/ds/manager.hpp
-touch rdk/ds/sleepMode.hpp
-touch rdk/ds/videoDevice.hpp
 touch rdk/ds/videoOutputPort.hpp
 touch rdk/ds/videoOutputPortConfig.hpp
 touch rdk/ds/videoOutputPortType.hpp
 touch rdk/ds/videoResolution.hpp
 touch rdk/ds/frontPanelIndicator.hpp
 touch rdk/ds/frontPanelConfig.hpp
-touch rdk/ds/frontPanelTextDisplay.hpp
 
 # rfcapi.h (types provided via -include Rfc.h)
 touch rfcapi.h
@@ -172,9 +154,6 @@ cd ${GITHUB_WORKSPACE}
 mkdir -p "${GITHUB_WORKSPACE}/install/usr/include"
 printf '{}\n' > "${GITHUB_WORKSPACE}/install/usr/include/ctrlm_config_empty.json"
 
-# Copy system headers for compatibility
-cp -r /usr/include/glib-2.0/* /usr/lib/x86_64-linux-gnu/glib-2.0/include/* "${HEADERS_DIR}/" 2>/dev/null || true
-
 ############################
 # 4. Create stub shared libraries for linking
 echo "======================================================================================"
@@ -189,7 +168,7 @@ void __stub_placeholder(void) {}
 STUB_EOF
 
 # Build stub .so for each missing library
-for lib in xr-voice-sdk rdkversion IARMBus ds dshalcli nopoll rfcapi secure_wrapper evdev; do
+for lib in xr-voice-sdk rdkversion IARMBus ds rfcapi secure_wrapper evdev; do
     gcc -shared -fPIC -o "${STUB_LIB_DIR}/lib${lib}.so" /tmp/stub.c
 done
 

@@ -75,9 +75,6 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -I ${HEADERS_DIR} \
 -I ${HEADERS_DIR}/rdk/iarmbus \
 -I ${HEADERS_DIR}/rdk/ds \
--I ${HEADERS_DIR}/rdk/ds-rpc \
--I ${HEADERS_DIR}/rdk/ds-hal \
--I ${HEADERS_DIR}/rdk/halif/ds-hal \
 -I ${HEADERS_DIR}/rdk/iarmmgrs-hal \
 -I ${GITHUB_WORKSPACE}/install/usr/include \
 -I /usr/include/glib-2.0 \

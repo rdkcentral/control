@@ -48,16 +48,9 @@ pip install jsonref
 ###########################################
 # 2. Clone the required repositories
 
-# 1.0.13
-git init xr-voice-sdk
-git -C xr-voice-sdk remote add origin https://github.com/rdkcentral/xr-voice-sdk.git
-git -C xr-voice-sdk fetch --depth 1 --filter=blob:none origin e55c99a0ec947b0ad3efc308bf8e3de0a42140d5
-git -C xr-voice-sdk checkout FETCH_HEAD
+git clone --depth 1 --filter=blob:none --branch develop https://github.com/rdkcentral/xr-voice-sdk.git
 
-git init entservices-testframework
-git -C entservices-testframework remote add origin https://github.com/rdkcentral/entservices-testframework.git
-git -C entservices-testframework fetch --depth 1 --filter=blob:none origin 584e3ec70fd5e044982910b4eb15c465808bb6d1
-git -C entservices-testframework checkout FETCH_HEAD
+git clone --depth 1 --filter=blob:none --branch develop https://github.com/rdkcentral/entservices-testframework.git
 
 git clone --depth 1 --filter=blob:none --sparse --branch develop https://github.com/rdkcentral/iarmmgrs.git
 git -C iarmmgrs sparse-checkout set hal

@@ -64,9 +64,13 @@ git -C rdk-halif-deepsleep_manager sparse-checkout set include
 git clone --depth 1 --filter=blob:none --sparse https://github.com/rdkcentral/rdk-halif-power_manager.git
 git -C rdk-halif-power_manager sparse-checkout set include
 
+git clone --depth 1 --filter=blob:none --sparse --branch develop https://github.com/rdkcentral/rdkversion.git
+git -C rdkversion sparse-checkout set src
+
 IARMMGRS_DIR="$GITHUB_WORKSPACE/iarmmgrs"
 DEEPSLEEP_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-deepsleep_manager"
 POWER_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-power_manager"
+RDKVERSION_DIR="$GITHUB_WORKSPACE/rdkversion"
 
 ############################
 # 3. Create stub/empty headers for external dependencies
@@ -139,6 +143,10 @@ touch rfcapi.h
 # comcastIrKeyCodes.h (unconditionally included by ctrlm_main.cpp)
 find "$IARMMGRS_DIR" -name comcastIrKeyCodes.h -print -quit | xargs -r -I{} cp "{}" comcastIrKeyCodes.h
 [ -f comcastIrKeyCodes.h ]
+
+# rdkversion.h (used by ctrlm_main.cpp)
+cp "$RDKVERSION_DIR/src/rdkversion.h" rdkversion.h
+[ -f rdkversion.h ]
 
 # secure_wrapper (types provided via empty stub — no v_secure_* calls in core)
 touch secure_wrapper.h

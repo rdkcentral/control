@@ -25,8 +25,8 @@
  * source header in this reduced native build. This file provides only the
  * compile-time surface ctrlm needs and keeps logging as a no-op in CI.
  */
-#ifndef _RDKX_LOGGER_H_
-#define _RDKX_LOGGER_H_
+#ifndef CTRLM_CI_RDKX_LOGGER_H_
+#define CTRLM_CI_RDKX_LOGGER_H_
 
 #ifdef __cplusplus
 #include <string>

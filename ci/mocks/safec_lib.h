@@ -30,8 +30,8 @@
  * project-local wrapper.
  */
 
-#ifndef _SAFEC_LIB_H_
-#define _SAFEC_LIB_H_
+#ifndef CTRLM_CI_SAFEC_LIB_H_
+#define CTRLM_CI_SAFEC_LIB_H_
 
 #include <safeclib/safe_lib.h>
 #include <safeclib/safe_str_lib.h>
@@ -41,4 +41,4 @@
 #define ERR_CHK(rc) do { (void)(rc); } while(0)
 #endif
 
-#endif /* _SAFEC_LIB_H_ */
+#endif /* CTRLM_CI_SAFEC_LIB_H_ */

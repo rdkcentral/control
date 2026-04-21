@@ -12,8 +12,8 @@
  * the installed rdkx_logger surface, which are not self-contained in this
  * reduced native build. This mock keeps only the declarations ctrlm uses.
  */
-#ifndef _XR_VOICE_SDK_H_
-#define _XR_VOICE_SDK_H_
+#ifndef CTRLM_CI_XR_VOICE_SDK_H_
+#define CTRLM_CI_XR_VOICE_SDK_H_
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -47,4 +47,4 @@ void vsdk_thread_poll(vsdk_thread_poll_response_t response, void *data);
 }
 #endif
 
-#endif /* _XR_VOICE_SDK_H_ */
+#endif /* CTRLM_CI_XR_VOICE_SDK_H_ */

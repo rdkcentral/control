@@ -23,8 +23,8 @@
  * headers used by this reduced build. This file adds only those missing pieces
  * and can be removed once they exist upstream.
  */
-#ifndef _CONTROL_TESTFRAMEWORK_OVERRIDES_H_
-#define _CONTROL_TESTFRAMEWORK_OVERRIDES_H_
+#ifndef CTRLM_CI_TESTFRAMEWORK_OVERRIDES_H_
+#define CTRLM_CI_TESTFRAMEWORK_OVERRIDES_H_
 
 /* ctrlm-main calls IARM_Bus_RegisterEvent as a plain function (defined in stubs_iarm.cpp) */
 extern IARM_Result_t IARM_Bus_RegisterEvent(IARM_EventId_t maxEventId);
@@ -48,4 +48,4 @@ typedef struct {
 #define IARM_BUS_COMMON_API_PowerPreChange_Param_t IARM_Bus_CommonAPI_PowerPreChange_Param_t
 #endif
 
-#endif /* _CONTROL_TESTFRAMEWORK_OVERRIDES_H_ */
+#endif /* CTRLM_CI_TESTFRAMEWORK_OVERRIDES_H_ */

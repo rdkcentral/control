@@ -30,6 +30,7 @@ git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
 apt update
 apt install -y \
+    pkg-config \
     libsqlite3-dev \
     libcurl4-openssl-dev \
     libsystemd-dev \
@@ -53,7 +54,7 @@ git clone --depth 1 --filter=blob:none --branch develop https://github.com/rdkce
 git clone --depth 1 --filter=blob:none --branch develop https://github.com/rdkcentral/entservices-testframework.git
 
 # Patch the upstream testframework devicesettings.h with ctrlm-specific
-# additions (ducking types, setAudioDucking, Host::IsInitialized).
+# additions (ducking types, setAudioDucking, Manager::IsInitialized).
 # We can remove this if added to upstream testframework
 git -C entservices-testframework apply "$GITHUB_WORKSPACE/ci/mocks/devicesettings_ctrlm.patch"
 

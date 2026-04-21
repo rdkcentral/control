@@ -33,6 +33,7 @@ MOCK_DIR="$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks"
 MOCK_OVERRIDES="$GITHUB_WORKSPACE/ci/mocks/testframework_overrides.h"
 HEADERS_DIR="$GITHUB_WORKSPACE/ci/headers"
 EMPTY_JSON="$GITHUB_WORKSPACE/install/usr/include/ctrlm_config_empty.json"
+GLIB_CFLAGS="$(pkg-config --cflags glib-2.0)"
 
 cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -DCMAKE_INSTALL_PREFIX="${GITHUB_WORKSPACE}/install/usr" \
@@ -74,9 +75,8 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -I ${HEADERS_DIR}/rdk/ds \
 -I ${HEADERS_DIR}/rdk/iarmmgrs-hal \
 -I ${GITHUB_WORKSPACE}/install/usr/include \
--I /usr/include/glib-2.0 \
--I /usr/lib/x86_64-linux-gnu/glib-2.0/include \
 -I /usr/include/libdrm \
+${GLIB_CFLAGS} \
 -include ${XLOG_COMPAT} \
 -include ${MOCK_DIR}/Iarm.h \
 -include ${MOCK_OVERRIDES} \
@@ -93,6 +93,8 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -I ${HEADERS_DIR}/rdk/ds \
 -I ${HEADERS_DIR}/rdk/iarmmgrs-hal \
 -I ${GITHUB_WORKSPACE}/install/usr/include \
+-I /usr/include/libdrm \
+${GLIB_CFLAGS} \
 -Wall -Wno-error \
 -DSAFEC_DUMMY_API \
 -DDISABLE_SECURITY_TOKEN" \

@@ -9,7 +9,7 @@ The `ci/` directory contains **native CI build support files only**. It is not p
 - `ci/build_dependencies.sh` / `ci/cov_build.sh` — scripts that build the plugin in a CI container without a full RDK target image
 - `ci/mocks/xlog_ci_compat.h` — minimal shim that pulls `std::string`, `std::map`, `std::tuple`, `std::get` into the global namespace (mirrors the transitive effect of the real rdkx_logger.h in the Yocto build)
 - `ci/mocks/testframework_overrides.h` — supplements testframework mocks with declarations ctrlm needs that are not yet upstream
-- `ci/mocks/devicesettings_ctrlm.patch` — patch applied to the testframework `devicesettings.h` at CI time for ctrlm-specific additions (ducking types, `setAudioDucking`, `Host::IsInitialized`). Remove once these land in testframework develop.
+- `ci/mocks/devicesettings_ctrlm.patch` — patch applied to the testframework `devicesettings.h` at CI time for ctrlm-specific additions (ducking types, `setAudioDucking`, `Manager::IsInitialized`). Remove once these land in testframework develop.
 - `ci/mocks/safec_lib.h` — compatibility shim mapping `safec_lib.h` to system libsafec headers
 - `ci/headers/` — empty stub headers and real xr-voice-sdk headers generated/copied at CI build time; not committed to source
 

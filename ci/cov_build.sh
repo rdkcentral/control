@@ -29,7 +29,6 @@ echo "building control (ctrlm-main)"
 
 XRSDK_REAL_HEADERS="$GITHUB_WORKSPACE/ci/headers/xr-voice-sdk"
 XLOG_COMPAT="$GITHUB_WORKSPACE/ci/mocks/xlog_ci_compat.h"
-LOCAL_TESTFRAMEWORK_MOCKS="$GITHUB_WORKSPACE/ci/mocks/testframework"
 MOCK_DIR="$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks"
 MOCK_OVERRIDES="$GITHUB_WORKSPACE/ci/mocks/testframework_overrides.h"
 HEADERS_DIR="$GITHUB_WORKSPACE/ci/headers"
@@ -68,7 +67,6 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -DCTRLM_CONFIG_JSON_MAIN_ADD="${EMPTY_JSON}" \
 -DCMAKE_CXX_FLAGS=" \
 -I ${XRSDK_REAL_HEADERS} \
--I ${LOCAL_TESTFRAMEWORK_MOCKS} \
 -I ${MOCK_DIR} \
 -I ${MOCK_DIR}/devicesettings \
 -I ${HEADERS_DIR} \
@@ -82,14 +80,13 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -include ${XLOG_COMPAT} \
 -include ${MOCK_DIR}/Iarm.h \
 -include ${MOCK_OVERRIDES} \
--include ${LOCAL_TESTFRAMEWORK_MOCKS}/devicesettings.h \
+-include ${MOCK_DIR}/devicesettings.h \
 -include ${MOCK_DIR}/Rfc.h \
 -Wall -Wno-error \
 -DSAFEC_DUMMY_API \
 -DDISABLE_SECURITY_TOKEN" \
 -DCMAKE_C_FLAGS=" \
 -I ${XRSDK_REAL_HEADERS} \
--I ${LOCAL_TESTFRAMEWORK_MOCKS} \
 -I ${MOCK_DIR} \
 -I ${HEADERS_DIR} \
 -I ${HEADERS_DIR}/rdk/iarmbus \

@@ -69,7 +69,6 @@ typedef unsigned int drm_drawable_t;
 #include <xf86drmMode.h>
 #include <drm_mode.h>
 #include <xf86drm.h>
-#include <xf86drmMode.h>
 
 typedef enum _dsAudioPortType_t {
     dsAUDIOPORT_TYPE_ID_LR, /**< RCA audio output.                  */

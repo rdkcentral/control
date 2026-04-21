@@ -671,12 +671,12 @@ class Exception : public std::exception {
     std::string _msg;
 
 public:
-    Exception(const char* msg = "No Message for this exception") throw()
+    Exception(const char* msg = "No Message for this exception") noexcept
         : _msg(msg)
     {
     }
 
-    Exception(int err, const char* msg = "No Message for this Exception") throw()
+    Exception(int err, const char* msg = "No Message for this Exception") noexcept
         : _err(err)
         , _msg(msg){};
 
@@ -690,12 +690,12 @@ public:
         return _err;
     }
 
-    virtual const char* what() const throw()
+    virtual const char* what() const noexcept
     {
         return _msg.c_str();
     }
 
-    virtual ~Exception() throw(){};
+    virtual ~Exception() noexcept{};
 };
 
 }

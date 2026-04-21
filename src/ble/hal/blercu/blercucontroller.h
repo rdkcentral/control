@@ -50,7 +50,6 @@ struct BleRcuPairingOutcome
     int         discovered;      // number of discovered devices
     int         bluezRetries;    // number of bluez retries attempted
     int         maxBluezRetries; // max number of retries
-    std::string pairedMac;       // empty on failure
     std::string name;            // empty on failure
     std::vector<std::string> bluezError; // bluez error messages
 };

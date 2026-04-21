@@ -100,7 +100,6 @@ public:
     FailureReason failureReason() const;
     int discoveredDevices() const;
     int bluezRetries() const;
-    BleAddress pairedMac() const;
     std::string pairedName() const;
     std::vector<std::string> bluezError() const;
 

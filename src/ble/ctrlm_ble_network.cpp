@@ -1716,7 +1716,6 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int si
    ss         << outcome->method                    << ",";
    ss         << outcome->result                    << ",";
    ss         << outcome->discovered                << ",";
-   ss << "\"" << outcome->pairedMac                 << "\",";
    ss << "\"" << outcome->name                      << "\",";
    ss         << outcome->bluezRetries              << ",";
 

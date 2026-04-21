@@ -230,11 +230,6 @@ int BleRcuPairingStateMachine::bluezRetries() const
     return m_bluezRetries;
 }
 
-BleAddress BleRcuPairingStateMachine::pairedMac() const
-{
-    return m_pairedMac;
-}
-
 std::string BleRcuPairingStateMachine::pairedName() const
 {
     auto it = m_discoveredDevices.find(m_pairedMac);

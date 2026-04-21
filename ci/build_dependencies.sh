@@ -107,8 +107,10 @@ touch rdk/iarmbus/libIBus.h
 touch rdk/iarmbus/libIBusDaemon.h
 
 # IARM manager headers
-# sysMgr.h is included by ctrlm, but the required SYSMgr types already come from the forced
-# Iarm.h mock. Using the real header here causes duplicate typedefs, so provide a shim only.
+# sysMgr.h conflicts with the forced Iarm.h mock, which already provides the
+# needed SYSMgr types. Use a shim here. To remove it later, either stop
+# force-including those overlapping Iarm.h declarations or drop sysMgr.h from
+# ctrlm source.
 cat > rdk/iarmmgrs-hal/sysMgr.h <<'EOF'
 #ifndef CTRLM_CI_SYSMGR_SHIM_H
 #define CTRLM_CI_SYSMGR_SHIM_H

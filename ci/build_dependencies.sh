@@ -21,7 +21,7 @@ set -x
 set -e
 ##############################
 GITHUB_WORKSPACE="${PWD}"
-cd ${GITHUB_WORKSPACE}
+cd "${GITHUB_WORKSPACE}"
 
 git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 

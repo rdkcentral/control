@@ -172,7 +172,7 @@ typedef struct {
 #endif
 /* XLOGD_OUTPUT is used as an output-handle VALUE (second arg to xlog_fprintf), not a logging macro */
 #ifndef XLOGD_OUTPUT
-#define XLOGD_OUTPUT NULL
+#define XLOGD_OUTPUT 0
 #endif
 
 #ifndef XLOGD_AUTOMATION_INFO

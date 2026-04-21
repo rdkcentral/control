@@ -43,8 +43,9 @@ apt install -y \
     uuid-dev \
     libevdev-dev \
     libdrm-dev \
-    libsafec-dev
-pip install jsonref
+    libsafec-dev \
+    python3-pip
+python3 -m pip install jsonref
 
 ###########################################
 # 2. Clone the required repositories

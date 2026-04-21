@@ -29,11 +29,11 @@
  
  
  
-@@ -1444,6 +1459,7 @@
- class Host {
+@@ -1418,6 +1433,7 @@
+ class Manager {
  protected:
-     static HostImpl* impl;
+     static ManagerImpl* impl;
 +    inline static bool IsInitialized = false;
  
  public:
-     static void setImpl(HostImpl* newImpl);
+     Manager();

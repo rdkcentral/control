@@ -27,7 +27,13 @@
 #define CTRLM_CI_TESTFRAMEWORK_OVERRIDES_H_
 
 /* ctrlm-main calls IARM_Bus_RegisterEvent as a plain function (defined in stubs_iarm.cpp) */
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern IARM_Result_t IARM_Bus_RegisterEvent(IARM_EventId_t maxEventId);
+#ifdef __cplusplus
+}
+#endif
 
 /* Pinned testframework Iarm.h stops at UNKNOWN; ctrlm also references MAX. */
 #ifndef DEEPSLEEP_WAKEUPREASON_MAX

@@ -649,7 +649,7 @@ typedef enum _dsDisplayQuantizationRange_t
 } dsDisplayQuantizationRange_t;
 
 typedef uint32_t dsFPDColor_t;
-#define dsFPDColor_Make(R8,G8,B8) (((R8)<< 8)|((G8)<<8)|((B8) ))
+#define dsFPDColor_Make(R8,G8,B8) (((R8)<<16)|((G8)<<8)|((B8)))
 #define dsFPD_COLOR_WHITE dsFPDColor_Make(0xFF, 0xFF, 0xFF)
 
 typedef struct _dsFPDColorConfig_t{

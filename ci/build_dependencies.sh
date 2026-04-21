@@ -168,7 +168,9 @@ void __stub_placeholder(void) {}
 STUB_EOF
 
 # Build stub .so for each missing library
-for lib in xr-voice-sdk rdkversion IARMBus ds rfcapi secure_wrapper evdev; do
+# nopoll and dshalcli are unused (factory-only) but unconditionally linked by CMakeLists.txt
+# We can remove them from the link list in the future if desired, but for now just provide stubs to satisfy the linker.
+for lib in xr-voice-sdk rdkversion IARMBus ds nopoll dshalcli rfcapi secure_wrapper evdev; do
     gcc -shared -fPIC -o "${STUB_LIB_DIR}/lib${lib}.so" /tmp/stub.c
 done
 

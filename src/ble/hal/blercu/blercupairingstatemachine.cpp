@@ -87,8 +87,8 @@ BleRcuPairingStateMachine::BleRcuPairingStateMachine(const shared_ptr<const Conf
             std::bind(&BleRcuPairingStateMachine::onDevicePairingChanged, this, std::placeholders::_1, std::placeholders::_2)));
     m_adapter->addPoweredChangedSlot(Slot<bool>(m_isAlive,
             std::bind(&BleRcuPairingStateMachine::onAdapterPoweredChanged, this, std::placeholders::_1)));
-    m_adapter->addDevicePairingErrorSlot(Slot<const BleAddress&, const std::string&, int>(m_isAlive,
-            std::bind(&BleRcuPairingStateMachine::onDevicePairingError, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)));
+    m_adapter->addDevicePairingErrorSlot(Slot<const BleAddress&, const std::string&, int, bool>(m_isAlive,
+            std::bind(&BleRcuPairingStateMachine::onDevicePairingError, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 }
 
 BleRcuPairingStateMachine::~BleRcuPairingStateMachine()
@@ -1122,7 +1122,8 @@ void BleRcuPairingStateMachine::onDeviceNameChanged(const BleAddress &address,
  */
 void BleRcuPairingStateMachine::onDevicePairingError(const BleAddress &address,
                                                     const string &error,
-                                                    int retryCnt)
+                                                    int retryCnt,
+                                                    bool finalRetry)
 {
     if (!m_stateMachine.isRunning()) {
         return;
@@ -1132,7 +1133,7 @@ void BleRcuPairingStateMachine::onDevicePairingError(const BleAddress &address,
     m_bluezRetries = retryCnt;
     m_bluezErrorMsg.push_back(error);
 
-    if (retryCnt < MAX_PAIRING_RETRIES) {
+    if (!finalRetry) {
         // Still retrying so don't stop pairing and timers yet
         return;
     }

@@ -146,7 +146,7 @@ private:
     void onDeviceNameChanged(const BleAddress &address, const std::string &name);
     void onDevicePairingChanged(const BleAddress &address, bool paired);
     void onDeviceReadyChanged(const BleAddress &address, bool ready);
-    void onDevicePairingError(const BleAddress &address, const std::string &error, int retryCnt);
+    void onDevicePairingError(const BleAddress &address, const std::string &error, int retryCnt, bool finalRetry);
 
     void onAdapterPoweredChanged(bool powered);
 

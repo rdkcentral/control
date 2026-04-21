@@ -82,8 +82,7 @@ mkdir -p "${HEADERS_DIR}/rdk/ds"
 mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
 mkdir -p "${XRSDK_HEADERS_DIR}"
 
-# Copy real xr-voice-sdk headers where control's source matches the real API.
-# xr_voice_sdk.h is NOT copied: it requires rdkx_logger.h installed types unavailable in source form.
+# Copy real xr-voice-sdk headers.
 # xr_fdc.h is NOT copied: only needed when FDC_ENABLED=ON
 cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv.h" "${XRSDK_HEADERS_DIR}/"
 cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-router/xrsr.h" "${XRSDK_HEADERS_DIR}/"
@@ -91,6 +90,15 @@ cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-mq/xr_mq.h" "${XRSDK_HEADERS_DIR}/"
 cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv_http/xrsv_http.h" "${XRSDK_HEADERS_DIR}/"
 cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv_ws_nextgen/xrsv_ws_nextgen.h" "${XRSDK_HEADERS_DIR}/"
 cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-timestamp/xr_timestamp.h" "${XRSDK_HEADERS_DIR}/"
+
+# Generate rdkx_logger_modules.h from xr-voice-sdk's module configuration,
+# then copy the real rdkx_logger and xr_voice_sdk headers.
+# This replaces the hand-written ci/mocks/control/ stubs.
+python3 "$GITHUB_WORKSPACE/xr-voice-sdk/scripts/rdkx_logger_modules_to_c.py" \
+    "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-logger/rdkv/rdkx_logger_modules.json" \
+    "${XRSDK_HEADERS_DIR}/rdkx_logger_modules" "mw"
+cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-logger/rdkx_logger_mw.h" "${XRSDK_HEADERS_DIR}/rdkx_logger.h"
+cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr_voice_sdk.h" "${XRSDK_HEADERS_DIR}/xr_voice_sdk.h"
 
 cd "${HEADERS_DIR}"
 

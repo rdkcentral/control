@@ -210,4 +210,4 @@ typedef struct {
 #define XLOG_FLUSH()           do { } while(0)
 #endif
 
-#endif /* _RDKX_LOGGER_H_ */
+#endif /* CTRLM_CI_RDKX_LOGGER_H_ */

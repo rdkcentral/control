@@ -21,7 +21,7 @@ set -x
 set -e
 ##############################
 GITHUB_WORKSPACE="${PWD}"
-ls -la ${GITHUB_WORKSPACE}
+ls -la "${GITHUB_WORKSPACE}"
 ############################
 
 # Build control (ctrlm-main)

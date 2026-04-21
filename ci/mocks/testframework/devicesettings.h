@@ -20,6 +20,15 @@
 
 #pragma once
 
+/*
+ * CI aggregate of the device-settings type surface ctrlm needs.
+ *
+ * The reduced native build does not bring in the full device-settings header
+ * stack, and ctrlm relies on these types across many translation units. This
+ * file is force-included in CI to provide those declarations without pulling in
+ * the full runtime dependency set.
+ */
+
 #include <exception>
 #include <stdint.h>
 #include <string>

@@ -17,8 +17,11 @@
  * limitations under the License.
  */
 /*
- * Supplements the entservices-testframework mocks with declarations ctrlm needs
- * that are not (yet) in the upstream testframework develop branch.  We can remove this file once the necessary declarations are merged upstream.
+ * CI patch layer for gaps in the entservices-testframework mock headers.
+ *
+ * ctrlm needs a few IARM declarations that are missing from the testframework
+ * headers used by this reduced build. This file adds only those missing pieces
+ * and can be removed once they exist upstream.
  */
 #ifndef _CONTROL_TESTFRAMEWORK_OVERRIDES_H_
 #define _CONTROL_TESTFRAMEWORK_OVERRIDES_H_

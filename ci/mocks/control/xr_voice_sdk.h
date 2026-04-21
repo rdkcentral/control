@@ -4,6 +4,14 @@
  * Copyright 2026 RDK Management
  * Licensed under the Apache License, Version 2.0
  */
+
+/*
+ * CI compatibility header for the small portion of the VSDK API used by ctrlm.
+ *
+ * The real xr_voice_sdk.h pulls in additional SDK and logger headers, including
+ * the installed rdkx_logger surface, which are not self-contained in this
+ * reduced native build. This mock keeps only the declarations ctrlm uses.
+ */
 #ifndef _XR_VOICE_SDK_H_
 #define _XR_VOICE_SDK_H_
 

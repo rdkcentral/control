@@ -24,6 +24,10 @@
  * In CI this file is copied from ci/mocks/ into ci/headers/ by
  * build_dependencies.sh so it is resolved on the generated-headers include
  * path used by cov_build.sh.
+ *
+ * This exists because ctrlm includes safec_lib.h directly, while the native CI
+ * environment provides the underlying libsafec package headers instead of that
+ * project-local wrapper.
  */
 
 #ifndef _SAFEC_LIB_H_

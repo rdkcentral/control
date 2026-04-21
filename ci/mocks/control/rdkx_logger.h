@@ -16,6 +16,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/*
+ * CI mock for the installed rdkx logger surface.
+ *
+ * ctrlm and xr_voice_sdk.h expect logger types, macros, and some std:: names
+ * from rdkx_logger.h, but that installed header is not available as a simple
+ * source header in this reduced native build. This file provides only the
+ * compile-time surface ctrlm needs and keeps logging as a no-op in CI.
+ */
 #ifndef _RDKX_LOGGER_H_
 #define _RDKX_LOGGER_H_
 

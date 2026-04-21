@@ -100,13 +100,9 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -Wall -Wno-error \
 -DSAFEC_DUMMY_API \
 -DDISABLE_SECURITY_TOKEN" \
--DCMAKE_EXE_LINKER_FLAGS="-L${GITHUB_WORKSPACE}/install/usr/lib -Wl,--unresolved-symbols=ignore-all"
-
-
-# control's CMakeLists.txt adds -Werror via target_compile_options, which appends
-# after CMAKE_CXX_FLAGS and overrides our -Wno-error. Strip it from generated build files.
-find "${GITHUB_WORKSPACE}/build/control" \( -name "*.ninja" -o -name "flags.make" \) -exec sed -i 's/\(^\|[[:space:]]\)-Werror\([[:space:]]\|$\)/\1\2/g' {} \;
-
+-DCMAKE_EXE_LINKER_FLAGS="-L${GITHUB_WORKSPACE}/install/usr/lib -Wl,--unresolved-symbols=ignore-all" \
+-DCMAKE_COMPILE_WARNING_AS_ERROR=OFF \
+-DCTRLM_WERROR=OFF
 cmake --build build/control -j$(nproc) 2>&1
 echo "======================================================================================"
 echo "control build complete"

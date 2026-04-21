@@ -1,5 +1,5 @@
---- a/Tests/mocks/devicesettings.h	2026-04-21 19:00:22.239951643 +0000
-+++ b/Tests/mocks/devicesettings.h	2026-04-21 19:02:02.376352344 +0000
+--- a/Tests/mocks/devicesettings.h	2026-04-21 19:12:58.154981897 +0000
++++ b/Tests/mocks/devicesettings.h	2026-04-21 19:13:50.591192520 +0000
 @@ -72,6 +72,16 @@
      dsAUDIOPORT_TYPE_MAX /**< Maximum index for audio port type. */
  } dsAudioPortType_t;
@@ -29,11 +29,12 @@
  
  
  
-@@ -1418,6 +1433,7 @@
- class Manager {
- protected:
+@@ -1420,6 +1435,8 @@
      static ManagerImpl* impl;
-+    inline static bool IsInitialized = false;
  
  public:
++    inline static bool IsInitialized = false;
++
      Manager();
+ 
+     static void setImpl(ManagerImpl* newImpl);

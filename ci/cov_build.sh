@@ -100,9 +100,10 @@ ${GLIB_CFLAGS} \
 -DDISABLE_SECURITY_TOKEN" \
 -DCMAKE_EXE_LINKER_FLAGS="-L${GITHUB_WORKSPACE}/install/usr/lib -Wl,--unresolved-symbols=ignore-all"
 
-# CMakeLists.txt unconditionally adds -Werror via target_compile_options, which
-# appends after CMAKE_CXX_FLAGS and overrides our -Wno-error. Strip it from
-# the generated build files after cmake configure.
+# CMakeLists.txt unconditionally appends -Werror via target_compile_options, which
+# comes after CMAKE_CXX_FLAGS and overrides -Wno-error. Strip it from the generated
+# build files after cmake configure. To remove this, add an ENABLE_WERROR option to
+# CMakeLists.txt that appends -Wno-error when OFF, and pass -DENABLE_WERROR=OFF here.
 find "${GITHUB_WORKSPACE}/build/control" \( -name "*.ninja" -o -name "flags.make" \) -exec sed -i 's/\(^\|[[:space:]]\)-Werror\([[:space:]]\|$\)/\1\2/g' {} \;
 
 cmake --build build/control -j$(nproc) 2>&1

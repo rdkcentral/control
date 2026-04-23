@@ -428,17 +428,17 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             conf.config_value_get(JSON_STR_NAME_VOICE_LANGUAGE,                     this->prefs.guide_language);
             conf.config_value_get(JSON_INT_NAME_VOICE_MINIMUM_DURATION,             this->prefs.utterance_duration_min);
             
-            std::string voice_activity_detection_mode;
-            if(conf.config_value_get(JSON_STR_NAME_VOICE_VOICE_ACTIVITY_DETECTION_MODE, voice_activity_detection_mode)) {
-                this->prefs.voice_activity_detection_mode = this->voice_activity_detection_mode_to_xrsr(voice_activity_detection_mode);
-                XLOGD_INFO("voice activity detection mode <%s>", xrsr_stream_voice_activity_mode_str(this->prefs.voice_activity_detection_mode));
-            }
-
             if(conf.config_value_get(JSON_BOOL_NAME_VOICE_ENABLE_SAT,                  this->sat_token_required)) {
                 ctrlm_sm_voice_sat_enable_write(this->sat_token_required);
                 XLOGD_TELEMETRY("require c_SAT <%s>", this->sat_token_required ? "YES" : "NO");
             }
             conf.config_value_get(JSON_STR_NAME_VOICE_ASPECT_RATIO,                 this->prefs.aspect_ratio);
+        }
+
+        std::string voice_activity_detection_mode;
+        if(conf.config_value_get(JSON_STR_NAME_VOICE_VOICE_ACTIVITY_DETECTION_MODE, voice_activity_detection_mode)) {
+            this->prefs.voice_activity_detection_mode = this->voice_activity_detection_mode_to_xrsr(voice_activity_detection_mode);
+            XLOGD_INFO("voice activity detection mode <%s>", xrsr_stream_voice_activity_mode_str(this->prefs.voice_activity_detection_mode));
         }
 
         std::vector<std::string> obj_server_hosts;

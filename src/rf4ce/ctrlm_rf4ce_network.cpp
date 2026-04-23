@@ -413,11 +413,20 @@ ctrlm_hal_result_t ctrlm_obj_network_rf4ce_t::hal_init_request(GThread *ctrlm_ma
    // Block until initialization is complete or a timeout occurs
    XLOGD_INFO("Waiting for %s initialization...", name_get());
    struct timespec timeout;
-   clock_gettime(CLOCK_REALTIME, &timeout);
-   timeout.tv_sec += 60;  // this operation should complete in under 10 seconds under normal circumstances
-   
-   errno = 0;
-   int sem_result = sem_timedwait(&semaphore_, &timeout);
+
+   int sem_result = 0;
+   int rc = clock_gettime(CLOCK_REALTIME, &timeout);
+   if(rc != 0) {
+      // If we fail to get the current time, we should still wait on the semaphore, but we will wait indefinitely instead of timing out
+      XLOGD_ERROR("Failed to get current time <%s>. wait indefinitely", strerror(errno));
+      errno = 0;
+      sem_result = sem_wait(&semaphore_);
+   } else {
+      timeout.tv_sec += 60;  // this operation should complete in under 10 seconds under normal circumstances
+      
+      errno = 0;
+      sem_result = sem_timedwait(&semaphore_, &timeout);
+   }
 
    if(sem_result == -1) {
       if(errno == ETIMEDOUT) {

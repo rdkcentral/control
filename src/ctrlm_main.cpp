@@ -1122,23 +1122,23 @@ void ctrlm_signal_handler(int signal) {
    switch(signal) {
       case SIGTERM:
       case SIGINT: {
-         XLOGD_INFO("Received %s", signal == SIGINT ? "SIGINT" : "SIGTERM");
+         XLOGD_SAFE_INFO("Received %s", signal == SIGINT ? "SIGINT" : "SIGTERM");
          ctrlm_quit_main_loop();
          break;
       }
       case SIGQUIT: {
-         XLOGD_INFO("Received SIGQUIT");
+         XLOGD_SAFE_INFO("Received SIGQUIT");
 #ifdef BREAKPAD_SUPPORT
          ctrlm_crash();
 #endif
          break;
       }
       case SIGPIPE: {
-         XLOGD_ERROR("Received SIGPIPE. Pipe is broken");
+         XLOGD_SAFE_ERROR("Received SIGPIPE. Pipe is broken");
          break;
       }
       default:
-         XLOGD_ERROR("Received unhandled signal %d", signal);
+         XLOGD_SAFE_ERROR("Received unhandled signal %d", signal);
          break;
    }
 }
@@ -1235,9 +1235,11 @@ void ctrlm_on_network_assert(ctrlm_network_id_t network_id) {
    }
    // g_main_loop_quit() will be called in ctrlm_signal_handler(SIGTERM)
    g_ctrlm.return_code = -1;
+
+   errno = 0;
    int rc = kill(getpid(), SIGTERM);
    if(rc != 0) {
-      XLOGD_ERROR("Failed to send SIGTERM to self. Error code: %d", rc);
+      XLOGD_ERROR("Failed to send SIGTERM to self <%s>", strerror(errno));
    }
    
    // give main() time to clean up

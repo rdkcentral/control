@@ -1235,7 +1235,11 @@ void ctrlm_on_network_assert(ctrlm_network_id_t network_id) {
    }
    // g_main_loop_quit() will be called in ctrlm_signal_handler(SIGTERM)
    g_ctrlm.return_code = -1;
-   ctrlm_signal_handler(SIGTERM);
+   int rc = kill(getpid(), SIGTERM);
+   if(rc != 0) {
+      XLOGD_ERROR("Failed to send SIGTERM to self. Error code: %d", rc);
+   }
+   
    // give main() time to clean up
    sleep(5);
    // Exit here in case main fails to exit

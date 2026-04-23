@@ -415,14 +415,16 @@ ctrlm_hal_result_t ctrlm_obj_network_rf4ce_t::hal_init_request(GThread *ctrlm_ma
    struct timespec timeout;
 
    int sem_result = 0;
+   errno = 0;
    int rc = clock_gettime(CLOCK_REALTIME, &timeout);
    if(rc != 0) {
+      int errsv = errno;
       // If we fail to get the current time, we should still wait on the semaphore, but we will wait indefinitely instead of timing out
-      XLOGD_ERROR("Failed to get current time <%s>. wait indefinitely", strerror(errno));
+      XLOGD_ERROR("Failed to get current time <%s>. wait indefinitely", strerror(errsv));
       errno = 0;
       sem_result = sem_wait(&semaphore_);
    } else {
-      timeout.tv_sec += 60;  // this operation should complete in under 10 seconds under normal circumstances
+      timeout.tv_sec += 60;  // this operation has been tested to complete in about 6 seconds in worst case scenario (set the timeout to 10x)
       
       errno = 0;
       sem_result = sem_timedwait(&semaphore_, &timeout);
@@ -434,7 +436,8 @@ ctrlm_hal_result_t ctrlm_obj_network_rf4ce_t::hal_init_request(GThread *ctrlm_ma
       } else if(errno == EINTR) {
          XLOGD_ERROR("Interrupted while waiting for %s initialization", name_get());
       } else {
-         XLOGD_ERROR("Error waiting for %s initialization: %s", name_get(), strerror(errno));
+         int errsv = errno;
+         XLOGD_ERROR("Error waiting for %s initialization <%s>", name_get(), strerror(errsv));
       }
       init_result_ = CTRLM_HAL_RESULT_ERROR;
    } else {

@@ -1137,7 +1137,11 @@ void ctrlm_signals_register(void) {
    }
    // Ignore SIGPIPE — broken-pipe errors are handled at the call site via errno.
    XLOGD_INFO("Ignoring SIGPIPE...");
-   signal(SIGPIPE, SIG_IGN);
+   errno = 0;
+   if(SIG_ERR == signal(SIGPIPE, SIG_IGN)) {
+      int errsv = errno;
+      XLOGD_ERROR("Unable to ignore SIGPIPE <%s>", strerror(errsv));
+   }
 }
 
 // Direct-call fallback only (e.g. from ctrlm_on_network_assert when kill() fails).
@@ -1264,7 +1268,8 @@ void ctrlm_on_network_assert(ctrlm_network_id_t network_id) {
    errno = 0;
    int rc = kill(getpid(), SIGTERM);
    if(rc != 0) {
-      XLOGD_ERROR("Failed to send SIGTERM to self <%s> - invoking shutdown handler directly", strerror(errno));
+      int errsv = errno;
+      XLOGD_ERROR("Failed to send SIGTERM to self <%s> - invoking shutdown handler directly", strerror(errsv));
       ctrlm_signal_handler(SIGTERM);
    }
    

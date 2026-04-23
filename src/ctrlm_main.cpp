@@ -1124,11 +1124,17 @@ void ctrlm_signals_register(void) {
    // rather than from an async signal handler, avoiding undefined behavior from
    // calling non-async-signal-safe functions (e.g. g_main_loop_quit).
    XLOGD_INFO("Registering SIGINT...");
-   g_unix_signal_add(SIGINT,  ctrlm_unix_signal_terminate, GINT_TO_POINTER(SIGINT));
+   if(0 == g_unix_signal_add(SIGINT,  ctrlm_unix_signal_terminate, GINT_TO_POINTER(SIGINT))) {
+      XLOGD_ERROR("Unable to register for SIGINT.");
+   }
    XLOGD_INFO("Registering SIGTERM...");
-   g_unix_signal_add(SIGTERM, ctrlm_unix_signal_terminate, GINT_TO_POINTER(SIGTERM));
+   if(0 == g_unix_signal_add(SIGTERM, ctrlm_unix_signal_terminate, GINT_TO_POINTER(SIGTERM))) {
+      XLOGD_ERROR("Unable to register for SIGTERM.");
+   }
    XLOGD_INFO("Registering SIGQUIT...");
-   g_unix_signal_add(SIGQUIT, ctrlm_unix_signal_quit, NULL);
+   if(0 == g_unix_signal_add(SIGQUIT, ctrlm_unix_signal_quit, NULL)) {
+      XLOGD_ERROR("Unable to register for SIGQUIT.");
+   }
    // Ignore SIGPIPE — broken-pipe errors are handled at the call site via errno.
    XLOGD_INFO("Ignoring SIGPIPE...");
    signal(SIGPIPE, SIG_IGN);
@@ -1136,7 +1142,7 @@ void ctrlm_signals_register(void) {
 
 // Direct-call fallback only (e.g. from ctrlm_on_network_assert when kill() fails).
 // No longer registered as an OS signal handler, so non-async-signal-safe calls are safe.
-void ctrlm_signal_handler(int signal) {
+static void ctrlm_signal_handler(int signal) {
    switch(signal) {
       case SIGTERM:
       case SIGINT: {

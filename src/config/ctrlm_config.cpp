@@ -75,7 +75,7 @@ bool ctrlm_config_t::load_config(const std::string &file_path, bool local_config
             if(verbose) {
                XLOGD_INFO("config loaded successfully as JSON for <%s>", file_path.c_str());
             }
-            this->local_config |= local_config;
+            this->local_config = local_config;
             ret = true;
         } else {
             XLOGD_ERROR("JSON ERROR: Line <%u> Column <%u> Text <%s> Contents <%s>", json_error.line, json_error.column, json_error.text, contents.c_str());

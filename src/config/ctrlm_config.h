@@ -60,7 +60,7 @@ public:
      * Function to check if local config exists
      * @return True if the local config exists, else False
      */
-    bool has_local_config(void);
+    bool has_local_config() const;
     /**
      * Function to check if object exists from a path
      * @param path A period seperated string used to navigate a JSON object i.e. "network_rf4ce.polling.enabled"

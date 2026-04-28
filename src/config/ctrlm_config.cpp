@@ -125,7 +125,7 @@ bool ctrlm_config_t::path_exists(const std::string &path) {
     return(ctrlm_utils_json_from_path(this->root, path, false) != NULL ? true : false);
 }
 
-bool ctrlm_config_t::has_local_config(void) {
+bool ctrlm_config_t::has_local_config() const {
     return(this->local_config);
 }
 

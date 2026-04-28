@@ -98,7 +98,7 @@ BleRcuDeviceBluez::BleRcuDeviceBluez(const BleAddress &bdaddr,
     , m_lastServicesResolvedState(false)
     , m_isPairing(false)
     , m_pairingRetryCnt(0)
-    , m_maxPairingRetries(3)
+    , m_maxPairingRetries(0)
     , m_timeSinceReady(0)
     , m_recoveryAttempts(0)
     , m_maxRecoveryAttempts(100)
@@ -242,8 +242,9 @@ static gboolean getInitialDeviceProperties(gpointer user_data)
     request then the \a pairingError signal will be emitted.
 
  */
-void BleRcuDeviceBluez::pair(int timeout)
+void BleRcuDeviceBluez::pair(int timeout, int retries)
 {
+    m_maxPairingRetries = retries;
     m_deviceProxy->Pair(
             PendingReply<>(m_isAlive, std::bind(&BleRcuDeviceBluez::onPairRequestReply, this, std::placeholders::_1)));
 
@@ -269,10 +270,11 @@ void BleRcuDeviceBluez::onPairRequestReply(PendingReply<> *reply)
         if (m_pairingRetryCnt < m_maxPairingRetries) {
             m_pairingRetryCnt++;
             XLOGD_INFO("Retrying pairing, attempt %d out of %d ", m_pairingRetryCnt, m_maxPairingRetries);
-            pair(0);
+            m_pairingErrorSlots.invoke(reply->errorMessage(), m_pairingRetryCnt, false);
+            pair(0, m_maxPairingRetries);
         } else {
+            m_pairingErrorSlots.invoke(reply->errorMessage(), m_pairingRetryCnt, true);
             m_pairingRetryCnt = 0;
-            m_pairingErrorSlots.invoke(reply->errorMessage());
         }
     } else {
         XLOGD_DEBUG("%s pairing request successful", m_address.toString().c_str());

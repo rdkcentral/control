@@ -146,12 +146,17 @@ public:
     {
         m_rcuKeypressSlots.addSlot(func);
     }
+    inline void addRcuPairingOutcomeHandler(const Slot<const BleRcuPairingOutcome&> &func)
+    {
+        m_rcuPairingOutcomeSlots.addSlot(func);
+    }
 
     
     Slots<ctrlm_hal_ble_RcuStatusData_t*> m_rcuStatusChangedSlots;
     Slots<ctrlm_hal_ble_IndPaired_params_t*> m_rcuPairedSlots;
     Slots<ctrlm_hal_ble_IndUnPaired_params_t*> m_rcuUnpairedSlots;
     Slots<ctrlm_hal_ble_IndKeypress_params_t*> m_rcuKeypressSlots;
+    Slots<const BleRcuPairingOutcome&> m_rcuPairingOutcomeSlots;
 
 private:
     std::shared_ptr<bool> m_isAlive;

@@ -125,4 +125,26 @@
 // End Voice Markers
 //
 
+//
+// RCU Markers
+//
+
+// BLE RCU Pairing Attempt Marker
+// Value format: Array of comma separated integers or string with the fields below.
+// [<version>,<type>,<method>,<result>,<discovered>,<name>,<bluez_retries>,<bluez_msg1>,<bluez_msg2>,<bluez_msg3>]
+// <version>       - version of the marker format.
+// <type>          - type of network the marker is coming from
+// <method>        - enum representing pairing method (see PairingMethod)
+// <discovered>    - number of discovered devices from pairing attempt
+// <result>        - enum that represents "success" or failure reason (see FailureReason)
+// <name>          - name of paired remote, empty string on failure
+// <bluez_retries> - number of bluez pair() retries made before success or final error
+// <bluez_msg>     - error message of bluez layer, empty if no errors
+#define MARKER_RCU_PAIRING_ATTEMPT "ctrlm.rcu.pairing.attempt"
+#define MARKER_RCU_PAIRING_ATTEMPT_VERSION 1
+
+//
+// End RCU Markers
+//
+
 #endif

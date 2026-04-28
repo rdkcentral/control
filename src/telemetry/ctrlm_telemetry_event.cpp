@@ -34,6 +34,14 @@ bool ctrlm_telemetry_event_t<double>::event() const {
 
 template <>
 bool ctrlm_telemetry_event_t<std::string>::event() const {
-    XLOGD_TELEMETRY("telemetry event <%s, %s>", this->marker.c_str(), this->value.c_str());
-    return(t2_event_s((char *)this->marker.c_str(), (char *)this->value.c_str()) == T2ERROR_SUCCESS);
+    if (value.length() > CTRLM_TELEMETRY_MAX_EVENT_SIZE_BYTES) {
+        XLOGD_ERROR("telemetry event <%s> dropped: value length <%zu> exceeds maximum <%d> bytes",
+                    this->marker.c_str(),
+                    this->value.length(),
+                    CTRLM_TELEMETRY_MAX_EVENT_SIZE_BYTES);
+        return false;
+    } else {
+        XLOGD_TELEMETRY("telemetry event <%s, %s>", this->marker.c_str(), this->value.c_str());
+        return(t2_event_s((char *)this->marker.c_str(), (char *)this->value.c_str()) == T2ERROR_SUCCESS);
+    }
 }

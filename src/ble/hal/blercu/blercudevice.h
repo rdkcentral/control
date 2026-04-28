@@ -187,17 +187,18 @@ public:
     {
         m_readyChangedSlots.addSlot(func);
     }
-    inline void addPairingErrorSlot(const Slot<const std::string&> &func)
+    inline void addPairingErrorSlot(const Slot<const std::string&, int, bool> &func)
     {
         m_pairingErrorSlots.addSlot(func);
     }
+
 
 protected:
     Slots<bool>                  m_connectedChangedSlots;
     Slots<bool>                  m_pairedChangedSlots;
     Slots<const std::string&>    m_nameChangedSlots;
     Slots<bool>                  m_readyChangedSlots;
-    Slots<const std::string&>    m_pairingErrorSlots;
+    Slots<const std::string&, int, bool> m_pairingErrorSlots;
 };
 
 

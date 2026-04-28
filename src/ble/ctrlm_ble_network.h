@@ -134,11 +134,13 @@ public:
    void                          ind_rcu_paired(ctrlm_hal_ble_IndPaired_params_t *params);
    void                          ind_rcu_unpaired(ctrlm_hal_ble_IndUnPaired_params_t *params);
    void                          ind_keypress(ctrlm_hal_ble_IndKeypress_params_t *params);
+   void                          ind_rcu_pairing_outcome(const BleRcuPairingOutcome &outcome);
 
    void                          ind_process_rcu_status(void *data, int size);
    void                          ind_process_paired(void *data, int size);
    void                          ind_process_unpaired(void *data, int size);
    void                          ind_process_keypress(void *data, int size);
+   void                          ind_process_rcu_pairing_outcome(void *data, int size);
 
    virtual void                  req_process_network_status(void *data, int size);
    virtual void                  req_process_controller_status(void *data, int size);
@@ -195,6 +197,7 @@ public:
    std::shared_ptr<ConfigSettings> getConfigSettings();
 
    virtual void                  start_controller_audio_streaming(ctrlm_voice_start_audio_params_t *params);
+   void                          telemetry_report_handler();
 
 protected:
    virtual bool                  is_managed_by_network(ctrlm_controller_id_t id);

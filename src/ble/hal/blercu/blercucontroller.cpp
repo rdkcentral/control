@@ -41,7 +41,6 @@
 
 using namespace std;
 
-
 class BleRcuController_userdata {
 public:
     BleRcuController_userdata(shared_ptr<bool> isAlive_, BleRcuControllerImpl* controller_)
@@ -662,6 +661,16 @@ void BleRcuControllerImpl::onFinishedPairing()
 
     m_state = Complete;
     m_stateChangedSlots.invoke(m_state);
+
+    // emit pairing outcome telemetry
+    BleRcuPairingOutcome outcome;
+    outcome.method          = m_pairingStateMachine.pairingMethod();
+    outcome.result          = BleRcuPairingStateMachine::SUCCESS;
+    outcome.bluezRetries    = m_pairingStateMachine.bluezRetries();
+    outcome.maxBluezRetries = MAX_PAIRING_RETRIES;
+    outcome.name            = m_pairingStateMachine.pairedName();
+    outcome.discovered      = m_pairingStateMachine.discoveredDevices();
+    m_pairingOutcomeSlots.invoke(outcome);
 }
 
 // -----------------------------------------------------------------------------
@@ -701,6 +710,17 @@ void BleRcuControllerImpl::onFailedPairing()
 
     m_state = Failed;
     m_stateChangedSlots.invoke(m_state);
+
+    // emit pairing outcome telemetry
+    BleRcuPairingOutcome outcome;
+    outcome.method          = m_pairingStateMachine.pairingMethod();
+    outcome.result          = m_pairingStateMachine.failureReason();
+    outcome.bluezRetries    = m_pairingStateMachine.bluezRetries();
+    outcome.maxBluezRetries = MAX_PAIRING_RETRIES;
+    outcome.bluezError      = m_pairingStateMachine.bluezError();
+    outcome.discovered      = m_pairingStateMachine.discoveredDevices();
+    outcome.name            = "";
+    m_pairingOutcomeSlots.invoke(outcome);
 }
 
 

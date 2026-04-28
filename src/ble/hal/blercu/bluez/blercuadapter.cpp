@@ -1216,10 +1216,10 @@ bool BleRcuAdapterBluez::isDeviceConnected(const BleAddress &address) const
 
 // -----------------------------------------------------------------------------
 /*!
-    \fn void BleRcuManager::addDevice(const BleAddress &address)
+    \fn void BleRcuManager::addDevice(const BleAddress &address, int retries)
 
     Sends a request to the bluez daemon to pair the device with the given
-    \a address.  The request is sent even if the device is already paired,
+    \a address and \a retries.  The request is sent even if the device is already paired,
     this is to handle the case where a pending unpair notification is sitting
     in the dbus queue but not yet processed.
 
@@ -1227,7 +1227,7 @@ bool BleRcuAdapterBluez::isDeviceConnected(const BleAddress &address) const
 
     \sa isDevicePaired(), removeDevice()
  */
-bool BleRcuAdapterBluez::addDevice(const BleAddress &address)
+bool BleRcuAdapterBluez::addDevice(const BleAddress &address, int retries)
 {
     if (!m_stateMachine.inState(AdapterPoweredOnState)) {
         return false;
@@ -1245,10 +1245,10 @@ bool BleRcuAdapterBluez::addDevice(const BleAddress &address)
     XLOGD_INFO("requesting bluez pair %s", device->address().toString().c_str());
 
 
-    device->addPairingErrorSlot(Slot<const std::string&>(m_isAlive,
-            std::bind(&BleRcuAdapterBluez::onDevicePairingError, this, address, std::placeholders::_1)));
+    device->addPairingErrorSlot(Slot<const std::string&, int, bool>(m_isAlive,
+            std::bind(&BleRcuAdapterBluez::onDevicePairingError, this, address, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)));
 
-    device->pair(0);
+    device->pair(0, retries);
 
     return true;
 }
@@ -1688,9 +1688,11 @@ void BleRcuAdapterBluez::onDeviceNameChanged(const BleAddress &address,
 
  */
 void BleRcuAdapterBluez::onDevicePairingError(const BleAddress &address,
-                                             const std::string &error)
+                                             const std::string &error,
+                                             int retryCnt,
+                                             bool finalRetry)
 {
-    m_devicePairingErrorSlots.invoke(address, error);
+    m_devicePairingErrorSlots.invoke(address, error, retryCnt, finalRetry);
 }
 
 // -----------------------------------------------------------------------------

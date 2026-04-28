@@ -40,13 +40,35 @@
 #include <regex>
 #include <vector>
 
-
 class BleRcuAdapter;
 class ConfigSettings;
 
+#define MAX_PAIRING_RETRIES 3
 
 class BleRcuPairingStateMachine
 {
+public:
+    enum PairingMethod {
+        AUTO_TIMEOUT,
+        MAC_LIST,
+        IR_CODE,
+        MAC_HASH
+    };
+
+    enum FailureReason {
+        SUCCESS = 0,
+        FAIL_DISCOVERY_TIMEOUT,
+        FAIL_DISCOVERY_STOPPED,
+        FAIL_DISCOVERY_STOP_TIMEOUT,
+        FAIL_PAIRING_TIMEOUT,
+        FAIL_TARGET_RCU_NOT_FOUND,
+        FAIL_BLUEZ_ERROR,
+        FAIL_ADAPTER_OFF,
+        FAIL_DEVICE_UNPAIRED,
+        FAIL_DEVICE_REMOVED,
+        FAIL_CANCELLED
+    };
+
 public:
     enum State {
         RunningSuperState,
@@ -72,6 +94,14 @@ public:
     bool isRunning() const;
     bool isAutoPairing() const;
     int pairingCode() const;
+
+// Pairing outcome getters (valid after the state machine stops)
+    PairingMethod pairingMethod() const;
+    FailureReason failureReason() const;
+    int discoveredDevices() const;
+    int bluezRetries() const;
+    std::string pairedName() const;
+    std::vector<std::string> bluezError() const;
 
 // public slots:
     void start(const BleAddress &target, const std::string &name);
@@ -116,7 +146,7 @@ private:
     void onDeviceNameChanged(const BleAddress &address, const std::string &name);
     void onDevicePairingChanged(const BleAddress &address, bool paired);
     void onDeviceReadyChanged(const BleAddress &address, bool ready);
-    void onDevicePairingError(const BleAddress &address, const std::string &error);
+    void onDevicePairingError(const BleAddress &address, const std::string &error, int retryCnt, bool finalRetry);
 
     void onAdapterPoweredChanged(bool powered);
 
@@ -173,6 +203,14 @@ private:
     int m_pairingAttempts;
     int m_pairingSuccesses;
     bool m_pairingSucceeded;
+
+    // Pairing outcome tracking
+    PairingMethod m_pairingMethod;
+    FailureReason m_failureReason;
+    std::map<BleAddress, std::string> m_discoveredDevices;
+    int m_bluezRetries;
+    BleAddress m_pairedMac;
+    std::vector<std::string> m_bluezErrorMsg;
 
     BtrMgrAdapter m_btrMgrAdapter;
     bool discoveryStartedExternally = false;

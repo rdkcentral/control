@@ -47,12 +47,16 @@ public:
     /**
      * Function which loads a configuration file into the configuration object.
      * @param file_path The path to the configuration file
+     * @param local_config True if the configuration file is a local config, else False
+     * @param verbose True to enable verbose logging, else False
      * @return True on success, otherwise False
      */
     bool load_config(const std::string &file_path, bool local_config = false, bool verbose = false);
     /**
      * Function which appends a configuration file into the configuration object.
      * @param file_path The path to the configuration file
+     * @param local_config True if the configuration file is a local config, else False
+     * @param verbose True to enable verbose logging, else False
      * @return True on success, otherwise False
      */
     bool append_config(const std::string &file_path, bool local_config = false, bool verbose = false);

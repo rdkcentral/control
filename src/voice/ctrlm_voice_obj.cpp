@@ -4016,8 +4016,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
     audio_mode_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_AUDIO_DUCKING_TYPE, this->audio_ducking_type, CTRLM_VOICE_AUDIO_DUCKING_TYPE_ABSOLUTE, CTRLM_VOICE_AUDIO_DUCKING_TYPE_RELATIVE);
     audio_mode_updated |= attr.get_rfc_value(JSON_FLOAT_NAME_VOICE_AUDIO_DUCKING_LEVEL, this->audio_ducking_level, 0.0, 1.0);
     
-    // audio ducking beep is updated via Voice Control plugin so it cannot be overridden via RFC
-    //audio_mode_updated |= attr.get_rfc_value(JSON_BOOL_NAME_VOICE_AUDIO_DUCKING_BEEP, this->audio_ducking_beep_enabled);
+    // JSON_BOOL_NAME_VOICE_AUDIO_DUCKING_BEEP is updated via Voice Control plugin so it cannot be overridden via RFC
 
     XLOGD_INFO("audio mode updated <%s>", audio_mode_updated ? "YES" : "NO");
 

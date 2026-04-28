@@ -49,13 +49,18 @@ public:
      * @param file_path The path to the configuration file
      * @return True on success, otherwise False
      */
-    bool load_config(const std::string &file_path, bool verbose = false);
+    bool load_config(const std::string &file_path, bool local_config = false, bool verbose = false);
     /**
      * Function which appends a configuration file into the configuration object.
      * @param file_path The path to the configuration file
      * @return True on success, otherwise False
      */
-    bool append_config(const std::string &file_path, bool verbose = false);
+    bool append_config(const std::string &file_path, bool local_config = false, bool verbose = false);
+    /**
+     * Function to check if local config exists
+     * @return True if the local config exists, else False
+     */
+    bool has_local_config(void);
     /**
      * Function to check if object exists from a path
      * @param path A period seperated string used to navigate a JSON object i.e. "network_rf4ce.polling.enabled"
@@ -83,6 +88,7 @@ private:
 
 private:
     json_t     *root;
+    bool        local_config;
 };
 
 #endif

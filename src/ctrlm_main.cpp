@@ -1586,16 +1586,17 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
 
    // Check for OPT config file override
    if(opt_append) {
+      bool local_config = true;
       if(!oem_append) {
          XLOGD_INFO("Loading OPT configuration from <%s>", config_fn_opt.c_str());
-         if(!ctrlm_config->load_config(config_fn_opt)) {
+         if(!ctrlm_config->load_config(config_fn_opt, local_config)) {
             XLOGD_ERROR("Failed to load OPT configuration from <%s>", config_fn_opt.c_str());
             return(false);
          }
       } else {
          XLOGD_INFO("Appending OPT configuration from <%s>", config_fn_opt.c_str());
       
-         if(!ctrlm_config->append_config(config_fn_opt)) {
+         if(!ctrlm_config->append_config(config_fn_opt, local_config)) {
             XLOGD_ERROR("Failed to append OPT configuration from <%s>", config_fn_opt.c_str());
             return(false);
          }

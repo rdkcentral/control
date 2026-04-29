@@ -92,7 +92,6 @@ public:
     void handleDeepsleep(bool wakingUp);
 
     bool pairWithCode(unsigned int code);
-    bool pairWithMacHash(unsigned int code);
     bool pairWithMacAddrs(const std::vector<uint64_t> &macAddrList);
     bool pairAutoWithTimeout(int timeoutMs);
     bool pairCancel();

@@ -73,7 +73,6 @@ public:
 
     virtual bool startPairingAutoWithTimeout(int timeoutMs) = 0;
     virtual bool startPairingWithCode(uint8_t pairingCode) = 0;
-    virtual bool startPairingWithMacHash(uint8_t macHash) = 0;
     virtual bool startPairingWithList(const std::vector<BleAddress> &macAddrList) = 0;
     virtual bool cancelPairing() = 0;
 

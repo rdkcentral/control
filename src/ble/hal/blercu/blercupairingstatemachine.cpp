@@ -198,13 +198,12 @@ bool BleRcuPairingStateMachine::isRunning() const
     This special state is needed because auto pairing consists of running a scan for
     an undeterminate amount of time until one of the supported devices listed in the 
     config file is found.  We want to be able to cancel this operation if another 
-    pair request comes in that targets a specific device (like pairWithCode or
-    pairWithMacHash)
+    pair request comes in that targets a specific device (like pairWithCode)
 
  */
-bool BleRcuPairingStateMachine::isAutoPairing() const
+bool BleRcuPairingStateMachine::isScanningForAutoPair() const
 {
-    return isRunning() && m_isAutoPairing;
+    return isRunning() && m_isAutoPairing && m_stateMachine.inState(DiscoverySuperState);
 }
 
 
@@ -228,13 +227,13 @@ void BleRcuPairingStateMachine::startAutoWithTimeout(int timeoutMs)
     // clear the target device
     m_targetAddress.clear();
 
-    // clear the pairing code and mac hash
+    // clear data for other pairing methods
     m_pairingCode = -1;
     m_pairingMacHash = -1;
+    m_pairingMacList.clear();
 
     // create list of supported remotes regex to match to the name of the device
     m_targetedPairingNames.clear();
-
     for (const auto &name : m_supportedPairingNames) {
         // add to the list to use for compare when a device is found
         m_targetedPairingNames.push_back(name);
@@ -269,23 +268,22 @@ void BleRcuPairingStateMachine::startWithCode(uint8_t pairingCode)
     // clear the target device
     m_targetAddress.clear();
 
-    // clear the list of addresses to filter for
+    // clear data for other pairing methods
     m_pairingMacList.clear();
 
-    // store the pairing code
+    // the pairing could be either the mac hash or the code embedded in the name, 
+    // so store both for use when processing found devices
     m_pairingCode = pairingCode;
-    m_pairingMacHash = -1;
+    m_pairingMacHash = pairingCode;
 
     // create list of supported remotes regex to match to the name of the device
     m_targetedPairingNames.clear();
-
     char nameWithCode[100];
-
     for (const auto &pairingFormat : m_pairingPrefixFormats) {
         // construct the wildcard match
         snprintf(nameWithCode, sizeof(nameWithCode), pairingFormat.c_str(), pairingCode);
 
-        XLOGD_INFO("added pairing regex for supported remote '%s'", nameWithCode);
+        XLOGD_INFO("added pairing name '%s' to targeted names list ", nameWithCode);
 
         // add to the list to use for compare when a device is found
         m_targetedPairingNames.push_back(std::regex(nameWithCode, std::regex_constants::ECMAScript));
@@ -296,86 +294,7 @@ void BleRcuPairingStateMachine::startWithCode(uint8_t pairingCode)
 
     m_pairingAttempts++;
     m_pairingSucceeded = false;
-    XLOGD_INFO("started pairing using name prefix code %03d", m_pairingCode);
-}
-
-// -----------------------------------------------------------------------------
-/*!
-    Starts the state machine using the supplied \a pairingCode and
-    \a namePrefixes.
-
- */
-void BleRcuPairingStateMachine::startWithMacHash(uint8_t macHash)
-{
-    // sanity check the statemachine is not already running
-    if (m_stateMachine.isRunning()) {
-        XLOGD_WARN("state machine already running");
-        return;
-    }
-
-    m_discoveryTimeout = m_discoveryTimeoutDefault;
-    m_isAutoPairing = false;
-
-    // clear the target device
-    m_targetAddress.clear();
-
-    // clear the pairing code
-    m_pairingCode = -1;
-
-    // clear the list of addresses to filter for
-    m_pairingMacList.clear();
-
-    // store the MAC hash
-    m_pairingMacHash = macHash;
-
-    // clear the maps, we are trying to pair to a specific device using a hash of the MAC address
-    m_targetedPairingNames.clear();
-
-    // start the state machine
-    m_stateMachine.start();
-
-    m_pairingAttempts++;
-    m_pairingSucceeded = false;
-    XLOGD_INFO("started pairing, searching for device with MAC hash 0x%02X", m_pairingMacHash);
-}
-
-// -----------------------------------------------------------------------------
-/*!
-    Starts the pairing state machine, but skips the discovery phase as we
-    already have a \a target device.
-
- */
-void BleRcuPairingStateMachine::start(const BleAddress &target, const string &name)
-{
-    // sanity check the state machine is not already running
-    if (m_stateMachine.isRunning()) {
-        XLOGD_WARN("state machine already running");
-        return;
-    }
-
-    m_discoveryTimeout = m_discoveryTimeoutDefault;
-    m_isAutoPairing = false;
-
-    // set the target device
-    m_targetAddress = target;
-
-    // clear the pairing code
-    m_pairingCode = -1;
-    m_pairingMacHash = -1;
-
-    // clear the list of addresses to filter for
-    m_pairingMacList.clear();
-
-    // set the pairing prefix map to contain just the one name match
-    m_targetedPairingNames.clear();
-    m_targetedPairingNames.push_back(std::regex(name, std::regex_constants::ECMAScript));
-
-    // start the state machine
-    m_stateMachine.start();
-
-    m_pairingAttempts++;
-    m_pairingSucceeded = false;
-    XLOGD_INFO("started pairing targeting %s", target.toString().c_str());
+    XLOGD_INFO("started pairing, searching for device with prefix code %03d or MAC hash 0x%02X", m_pairingCode, m_pairingMacHash);
 }
 
 // -----------------------------------------------------------------------------
@@ -394,12 +313,10 @@ void BleRcuPairingStateMachine::startWithMacList(const std::vector<BleAddress> &
     // clear the target device
     m_targetAddress.clear();
 
-    // store the pairing code
+    // clear data for other pairing methods, this method is for MAC address match only
     m_pairingCode = -1;
     m_pairingMacHash = -1;
-
-    // create list of supported remotes regex to match to the name of the device
-    m_supportedPairingNames.clear();
+    m_targetedPairingNames.clear();
 
     // set the list of addresses to filter for
     m_pairingMacList = macList;
@@ -862,44 +779,47 @@ void BleRcuPairingStateMachine::processDevice(const BleAddress &address,
     vector<regex>::const_iterator it_name = m_targetedPairingNames.begin();
     for (; it_name != m_targetedPairingNames.end(); ++it_name) {
         if (std::regex_match(name.c_str(), *it_name)) {
-            XLOGD_INFO("Device (%s, %s) has a name targeted for pairing!", 
+            XLOGD_INFO("Device (%s, %s) name has a match in the pairing name target list!", 
                     name.c_str(), address.toString().c_str());
             break;
         }
     }
 
     if (it_name == m_targetedPairingNames.end()) {
-        // Device not found through conventional means, see if we are pairing based on MAC hash
-        // Because if we are pairing based on MAC hash, m_targetedPairingNames is first cleared
+        XLOGD_INFO("Device (%s, %s) name not in name target list, checking other pairing methods...", name.c_str(), address.toString().c_str());
+
         if (m_pairingMacHash != -1) {
+            // Device not found through name match, see if there is a MAC hash match
             // Check if MAC hash matches
             int macHash = 0;
             for (int i = 0; i < 6; ++i) {
                 macHash += (int)address[i];
             }
             macHash &= 0xFF;
-            XLOGD_INFO("Pairing based on MAC hash, requested MAC hash = 0x%02X, this device = 0x%02X (%s, %s)", 
-                    m_pairingMacHash, macHash, name.c_str(), address.toString().c_str());
             if (m_pairingMacHash != macHash) {
+                XLOGD_INFO("Device (%s, %s) MAC hash (0x%02X) does not match requested MAC hash (0x%02X), ignoring... ", 
+                        name.c_str(), address.toString().c_str(), macHash, m_pairingMacHash);
                 return;
+            } else {
+                XLOGD_INFO("Device (%s, %s) MAC hash matches!", name.c_str(), address.toString().c_str());
             }
-        // Device not found through conventional means or MAC hash so let's check a mac address list
-        // Pairing via a mac address list clears supported names and the pairing mac hash
         } else if (m_pairingMacList.size() != 0) {
-            if (m_pairingMacList.size() != 0) {
-                // check if the mac address matches any of the ones in the filter list (if it exists)
-                bool found = false;
-                for (const auto &filterAddress : m_pairingMacList) {
-                    if (address == filterAddress) {
-                        found = true;
-                        break;
-                    }
-                }
+            // Device not found through name match or MAC hash so let's check the mac address list
+            // Pairing via a mac address list clears other pairing methods so execution should always fall here
 
-                if (!found) {
-                    XLOGD_DEBUG("device with address %s is not in the mac address filter list - ignoring", address.toString().c_str());
-                    return;
+            bool found = false;
+            for (const auto &filterAddress : m_pairingMacList) {
+                if (address == filterAddress) {
+                    found = true;
+                    break;
                 }
+            }
+
+            if (!found) {
+                XLOGD_INFO("Device (%s, %s) is not in the mac address filter list - ignoring...", name.c_str(), address.toString().c_str());
+                return;
+            } else {
+                XLOGD_INFO("Device (%s, %s) has a match in the MAC address filter list!", name.c_str(), address.toString().c_str());
             }
         } else {
             // log an error if we don't already have a target device
@@ -924,7 +844,7 @@ void BleRcuPairingStateMachine::processDevice(const BleAddress &address,
             return;
         }
 
-        XLOGD_INFO("Found target device (%s, %s)", name.c_str(), address.toString().c_str());
+        XLOGD_INFO("Device (%s, %s) is targeted for pairing!", name.c_str(), address.toString().c_str());
 
         // store the target address
         m_targetAddress = address;

@@ -2645,7 +2645,7 @@ void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start
     ctrlm_hal_ble_VoiceStreamEnd_t streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_KEY_UP;
     auto rcu = controllers_.at(id);
 
-    if (rcu->getPressAndHoldSupport()) {
+    if (!rcu->getPressAndHoldSupport()) { // if the voice session is "Press and Release" then end stream on audio duration instead of key up event
        streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION;
     }
 

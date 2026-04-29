@@ -105,9 +105,8 @@ protected:
     std::string callsign_with_api();
 
     /**
-     * This functions is used to get a Thunder Plugin property.
-     * @param method The method in which the user wants to call.
-     * @param params The WPEFramework JsonObject containing the parameters for the call. (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
+     * This function is used to get a Thunder Plugin property.
+     * @param property The name of the property that the user wants to get
      * @param response The WPEFramework JsonObject containing the response from the call.  (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
      * @param retries The number of retries if the call times out.
      * @return True if the call succeeded, otherwise False.
@@ -115,7 +114,7 @@ protected:
     bool property_get(std::string property, void *response, unsigned int retries = 0);
 
     /**
-     * This functions is used to call a Thunder Plugin method.
+     * This function is used to call a Thunder Plugin method.
      * @param method The method in which the user wants to call.
      * @param params The WPEFramework JsonObject containing the parameters for the call. (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
      * @param response The WPEFramework JsonObject containing the response from the call.  (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
@@ -125,7 +124,25 @@ protected:
     bool call_plugin(std::string method, void *params, void *response, unsigned int retries = 0);
 
     /**
-     * This functions is used to call a Thunder Controller method.
+     * This function is used to call a Thunder Plugin method.
+     * @param method The method in which the user wants to call.
+     * @param params The WPEFramework JsonObject containing the parameters for the call. (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
+     * @param response The boolean pointer which will be assigned the response from the call
+     * @return True if the call succeeded, otherwise False.
+     */
+    bool call_plugin_boolean(std::string method, void *params, bool *response);
+
+    /**
+     * This function is used to call a Thunder Plugin method.
+     * @param method The method in which the user wants to call.
+     * @param params The WPEFramework JsonObject containing the parameters for the call. (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
+     * @param response The string pointer which will be assigned containing the response from the call.
+     * @return True if the call succeeded, otherwise False.
+     */
+    bool call_plugin_string(std::string method, void *params, std::string *response);
+
+    /**
+     * This function is used to call a Thunder Controller method.
      * @param method The method in which the user wants to call.
      * @param params The WPEFramework JsonObject containing the parameters for the call. (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
      * @param params The WPEFramework JsonObject containing the response from the call.  (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)

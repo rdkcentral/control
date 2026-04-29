@@ -125,24 +125,6 @@ bool ctrlm_thunder_plugin_authservice_t::get_account_id(std::string &account_id)
     return(ret);
 }
 
-bool ctrlm_thunder_plugin_authservice_t::get_experience(std::string &experience) {
-    bool ret = false;
-    JsonObject params, response;
-    if(this->call_plugin("getExperience", (void *)&params, (void *)&response)) {
-        if(response["success"].Boolean()) { // If success doesn't exist, it defaults to false which is fine.
-            experience = response["experience"].String();
-            if(!experience.empty()) {
-                ret = true;
-            }
-        } else {
-            XLOGD_WARN("Success for getExperience was false");
-        }
-    } else {
-        XLOGD_WARN("Call for getExperience failed");
-    }
-    return(ret);
-}
-
 bool ctrlm_thunder_plugin_authservice_t::get_sat(std::string &sat, time_t &expiration) {
     bool ret = false;
     JsonObject params, response;

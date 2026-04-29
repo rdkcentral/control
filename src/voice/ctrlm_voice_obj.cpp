@@ -2252,18 +2252,6 @@ std::string ctrlm_voice_t::voice_stb_data_partner_id_get() const {
     return(this->partner_id);
 }
  
-void ctrlm_voice_t::voice_stb_data_experience_set(std::string &experience) {
-    XLOGD_DEBUG("Experience Tag set to %s", experience.c_str());
-    this->experience = experience;
-    for(const auto &itr : this->endpoints) {
-        itr->voice_stb_data_experience_set(experience);
-    }
-}
-
-std::string ctrlm_voice_t::voice_stb_data_experience_get() const {
-    return(this->experience);
-}
-
 std::string ctrlm_voice_t::voice_stb_data_app_id_http_get() const {
     return(this->prefs.app_id_http);
 }
@@ -2424,12 +2412,6 @@ bool ctrlm_voice_t::voice_session_has_stb_data() {
 #ifdef AUTH_PARTNER_ID
     if(this->partner_id == "") {
         XLOGD_INFO("No partner id");
-        return(false);
-    }
-#endif
-#ifdef AUTH_EXPERIENCE
-    if(this->experience == "") {
-        XLOGD_INFO("No experience tag");
         return(false);
     }
 #endif

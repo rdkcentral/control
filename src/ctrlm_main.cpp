@@ -302,10 +302,6 @@ static void     ctrlm_main_has_service_account_id_set(gboolean has_id);
 static gboolean ctrlm_load_partner_id(void);
 static void     ctrlm_main_has_partner_id_set(gboolean has_id);
 #endif
-#ifdef AUTH_EXPERIENCE
-static gboolean ctrlm_load_experience(void);
-static void     ctrlm_main_has_experience_set(gboolean has_experience);
-#endif
 #ifdef AUTH_SAT_TOKEN
 static gboolean ctrlm_load_service_access_token(void);
 static void     ctrlm_main_has_service_access_token_set(gboolean has_token);
@@ -1421,30 +1417,6 @@ gboolean ctrlm_load_partner_id(void) {
 }
 #endif
 
-#ifdef AUTH_EXPERIENCE
-gboolean ctrlm_main_has_experience_get(void) {
-   return(g_ctrlm.has_experience);
-}
-
-void ctrlm_main_has_experience_set(gboolean has_experience) {
-   g_ctrlm.has_experience = has_experience;
-}
-
-gboolean ctrlm_load_experience(void) {
-   if(!g_ctrlm.authservice->get_experience(g_ctrlm.experience)) {
-      ctrlm_main_has_experience_set(false);
-      return(false);
-   }
-   g_ctrlm.voice_session->voice_stb_data_experience_set(g_ctrlm.experience);
-
-   for(auto const &itr : g_ctrlm.networks) {
-      itr.second->experience_set(g_ctrlm.experience);
-   }
-   ctrlm_main_has_experience_set(true);
-   return(true);
-}
-#endif
-
 #ifdef AUTH_SAT_TOKEN
 gboolean ctrlm_main_needs_service_access_token_get(void) {
    gboolean ret = false;
@@ -1510,12 +1482,6 @@ gboolean ctrlm_has_authservice_data(void) {
    }
 #endif
 
-#ifdef AUTH_EXPERIENCE
-   if(!ctrlm_main_has_experience_get()) {
-      ret = FALSE;
-   }
-#endif
-
 #ifdef AUTH_SAT_TOKEN
    if(ctrlm_main_needs_service_access_token_get()) {
       ret = FALSE;
@@ -1562,18 +1528,6 @@ gboolean ctrlm_load_authservice_data(void) {
          ret = FALSE;
       } else {
          XLOGD_INFO("load partner id successfully <%s>", ctrlm_is_pii_mask_enabled() ? "***" : g_ctrlm.partner_id.c_str());
-      }
-   }
-#endif
-
-#ifdef AUTH_EXPERIENCE
-   if(!ctrlm_main_has_experience_get()) {
-      XLOGD_INFO("load experience");
-      if(!ctrlm_load_experience()) {
-         XLOGD_TELEMETRY("failed to load experience");
-         ret = FALSE;
-      } else {
-         XLOGD_INFO("load experience successfully <%s>", ctrlm_is_pii_mask_enabled() ? "***" : g_ctrlm.experience.c_str());
       }
    }
 #endif
@@ -1984,7 +1938,15 @@ void ctrlm_global_rfc_values_retrieved(const ctrlm_rfc_attr_t &attr) {
    attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_TIMEOUT_ONE_TOUCH_AUTOBIND, g_ctrlm.one_touch_autobind_timeout_val, 0);
    attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_CRASH_RECOVERY_THRESHOLD, g_ctrlm.crash_recovery_threshold, 0);
    if(attr.get_rfc_value(JSON_ARRAY_NAME_CTRLM_GLOBAL_MASK_PII, g_ctrlm.mask_pii, ctrlm_is_production_build() ? CTRLM_JSON_ARRAY_INDEX_PRD : CTRLM_JSON_ARRAY_INDEX_DEV)) {
-      g_ctrlm.voice_session->voice_stb_data_pii_mask_set(g_ctrlm.mask_pii);
+      if(g_ctrlm.voice_session != NULL) {
+         g_ctrlm.voice_session->voice_stb_data_pii_mask_set(g_ctrlm.mask_pii);
+      }
+      if(g_ctrlm.ir_controller != NULL) {
+         g_ctrlm.ir_controller->mask_key_codes_set(g_ctrlm.mask_pii);
+      }
+      for(auto const &itr : g_ctrlm.networks) {
+         itr.second->mask_key_codes_set(g_ctrlm.mask_pii);
+      }
    }
    attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_AUTHSERVICE_FAST_POLL_PERIOD, g_ctrlm.authservice_fast_poll_val);
    attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_AUTHSERVICE_FAST_MAX_RETRIES, g_ctrlm.authservice_fast_retries_max);   

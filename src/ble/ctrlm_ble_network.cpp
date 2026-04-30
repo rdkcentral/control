@@ -2580,7 +2580,51 @@ void ctrlm_obj_network_ble_t::power_state_change(gboolean waking_up) {
 }
 
 void ctrlm_obj_network_ble_t::rfc_retrieved_handler(const ctrlm_rfc_attr_t &attr) {
-   // TODO - No RFC parameters as of now
+   // Process timeout object
+   int timeout = -1;
+   attr.get_rfc_value(JSON_INT_NAME_NETWORK_BLE_TIMEOUTS_DISCOVERY,   timeout, 0, 600000);
+   if(timeout > 0) {
+      XLOGD_INFO("discovery timeout set to <%d>", timeout);
+      //setTimeoutDiscovery(timeout);
+   }
+   
+   timeout = -1;
+   attr.get_rfc_value(JSON_INT_NAME_NETWORK_BLE_TIMEOUTS_PAIR,        timeout, 0, 600000);
+   if(timeout > 0) {
+      XLOGD_INFO("pair timeout set to <%d>", timeout);
+      //setTimeoutPair(timeout);
+   }
+   
+   timeout = -1;
+   attr.get_rfc_value(JSON_INT_NAME_NETWORK_BLE_TIMEOUTS_SETUP,       timeout, 0, 600000);
+   if(timeout > 0) {
+      XLOGD_INFO("setup timeout set to <%d>", timeout);
+      //setTimeoutSetup(timeout);
+   }
+
+   timeout = -1;
+   attr.get_rfc_value(JSON_INT_NAME_NETWORK_BLE_TIMEOUTS_UNPAIR,      timeout, 0, 600000);
+   if(timeout > 0) {
+      XLOGD_INFO("unpair timeout set to <%d>", timeout);
+      //setTimeoutUnpair(timeout);
+   }
+   
+   /* DO WE EVEN NEED THESE TIMEOUTS?
+   timeout = -1;
+   attr.get_rfc_value(JSON_INT_NAME_NETWORK_BLE_TIMEOUTS_HIDRAWPOLL,  timeout, 0, 600000);
+   if(timeout > 0) {
+      XLOGD_INFO("hidrawpoll timeout set to <%d>", timeout);
+      setTimeoutHidrawpoll(timeout);
+   }
+   
+   timeout = -1;
+   attr.get_rfc_value(JSON_INT_NAME_NETWORK_BLE_TIMEOUTS_HIDRAWLIMIT, timeout, 0, 600000);
+   if(timeout > 0) {
+      XLOGD_INFO("hidrawlimit timeout set to <%d>", timeout);
+      setTimeoutHidrawlimit(timeout);
+   }*/
+
+   //attr.get_rfc_value(JSON_INT_NAME_NETWORK_BLE_MODELS,class_inc_line_of_sight_,0,15);
 }
 
 std::vector<ctrlm_obj_controller_t *> ctrlm_obj_network_ble_t::get_controller_obj_list() const {

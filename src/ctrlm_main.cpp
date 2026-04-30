@@ -23,8 +23,10 @@
 #include <sys/sysinfo.h>
 #include <poll.h>
 #include <glib.h>
+#include <glib-unix.h>
 #include <string.h>
 #include <semaphore.h>
+#include <errno.h>
 #include <dlfcn.h>
 #include <memory>
 #include <algorithm>
@@ -347,6 +349,8 @@ static gboolean ctrlm_authservice_expired(gpointer user_data);
 static gboolean ctrlm_ntp_check(gpointer user_data);
 static void     ctrlm_signals_register(void);
 static void     ctrlm_signal_handler(int signal);
+static gboolean ctrlm_unix_signal_terminate(gpointer user_data);
+static gboolean ctrlm_unix_signal_quit(gpointer user_data);
 
 static void     ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *status);
 static void     ctrlm_main_iarm_call_property_get_(ctrlm_main_iarm_call_property_t *property);
@@ -1098,27 +1102,51 @@ gboolean ctrlm_authservice_poll(gpointer user_data) {
 }
 #endif
 
+// GLib main-loop callbacks for Unix signals — run in the main loop context so
+// they are safe to call g_main_loop_quit() and other non-async-signal-safe APIs.
+static gboolean ctrlm_unix_signal_terminate(gpointer user_data) {
+   int sig = GPOINTER_TO_INT(user_data);
+   XLOGD_INFO("Received %s", sig == SIGINT ? "SIGINT" : "SIGTERM");
+   ctrlm_quit_main_loop();
+   return G_SOURCE_CONTINUE;
+}
+
+static gboolean ctrlm_unix_signal_quit(gpointer user_data) {
+   XLOGD_INFO("Received SIGQUIT");
+#ifdef BREAKPAD_SUPPORT
+   ctrlm_crash();
+#endif
+   return G_SOURCE_CONTINUE;
+}
+
 void ctrlm_signals_register(void) {
-   // Handle these signals
+   // Use g_unix_signal_add() so callbacks run inside the GLib main loop context
+   // rather than from an async signal handler, avoiding undefined behavior from
+   // calling non-async-signal-safe functions (e.g. g_main_loop_quit).
    XLOGD_INFO("Registering SIGINT...");
-   if(signal(SIGINT, ctrlm_signal_handler) == SIG_ERR) {
+   if(0 == g_unix_signal_add(SIGINT,  ctrlm_unix_signal_terminate, GINT_TO_POINTER(SIGINT))) {
       XLOGD_ERROR("Unable to register for SIGINT.");
    }
    XLOGD_INFO("Registering SIGTERM...");
-   if(signal(SIGTERM, ctrlm_signal_handler) == SIG_ERR) {
+   if(0 == g_unix_signal_add(SIGTERM, ctrlm_unix_signal_terminate, GINT_TO_POINTER(SIGTERM))) {
       XLOGD_ERROR("Unable to register for SIGTERM.");
    }
    XLOGD_INFO("Registering SIGQUIT...");
-   if(signal(SIGQUIT, ctrlm_signal_handler) == SIG_ERR) {
+   if(0 == g_unix_signal_add(SIGQUIT, ctrlm_unix_signal_quit, NULL)) {
       XLOGD_ERROR("Unable to register for SIGQUIT.");
    }
-   XLOGD_INFO("Registering SIGPIPE...");
-   if(signal(SIGPIPE, ctrlm_signal_handler) == SIG_ERR) {
-      XLOGD_ERROR("Unable to register for SIGPIPE.");
+   // Ignore SIGPIPE — broken-pipe errors are handled at the call site via errno.
+   XLOGD_INFO("Ignoring SIGPIPE...");
+   errno = 0;
+   if(SIG_ERR == signal(SIGPIPE, SIG_IGN)) {
+      int errsv = errno;
+      XLOGD_ERROR("Unable to ignore SIGPIPE <%s>", strerror(errsv));
    }
 }
 
-void ctrlm_signal_handler(int signal) {
+// Direct-call fallback only (e.g. from ctrlm_on_network_assert when kill() fails).
+// No longer registered as an OS signal handler, so non-async-signal-safe calls are safe.
+static void ctrlm_signal_handler(int signal) {
    switch(signal) {
       case SIGTERM:
       case SIGINT: {
@@ -1233,9 +1261,18 @@ void ctrlm_on_network_assert(ctrlm_network_id_t network_id) {
        // Invalidate main thread so terminate does not attempt to terminate it
        g_ctrlm.main_thread = NULL;
    }
-   // g_main_loop_quit() will be called in ctrlm_signal_handler(SIGTERM)
+   // g_main_loop_quit() will be called when the SIGTERM GLib source fires,
+   // or directly via ctrlm_signal_handler() in the kill() fallback below.
    g_ctrlm.return_code = -1;
-   ctrlm_signal_handler(SIGTERM);
+
+   errno = 0;
+   int rc = kill(getpid(), SIGTERM);
+   if(rc != 0) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to send SIGTERM to self <%s> - invoking shutdown handler directly", strerror(errsv));
+      ctrlm_signal_handler(SIGTERM);
+   }
+   
    // give main() time to clean up
    sleep(5);
    // Exit here in case main fails to exit

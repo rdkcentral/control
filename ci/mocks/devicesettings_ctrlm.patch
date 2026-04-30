@@ -1,0 +1,40 @@
+--- a/Tests/mocks/devicesettings.h	2026-04-21 19:12:58.154981897 +0000
++++ b/Tests/mocks/devicesettings.h	2026-04-21 19:13:50.591192520 +0000
+@@ -72,6 +72,16 @@
+     dsAUDIOPORT_TYPE_MAX /**< Maximum index for audio port type. */
+ } dsAudioPortType_t;
+ 
++typedef enum _dsAudioDuckingAction_t {
++    dsAUDIO_DUCKINGACTION_START = 0,
++    dsAUDIO_DUCKINGACTION_STOP  = 1
++} dsAudioDuckingAction_t;
++
++typedef enum _dsAudioDuckingType_t {
++    dsAUDIO_DUCKINGTYPE_ABSOLUTE = 0,
++    dsAUDIO_DUCKINGTYPE_RELATIVE = 1
++} dsAudioDuckingType_t;
++
+ typedef enum _dsVideoPortType_t {
+     dsVIDEOPORT_TYPE_RF = 0,      ///< RF modulator (channel 3/4) video output          
+     dsVIDEOPORT_TYPE_BB,          ///< Baseband (composite, RCA) video output            
+@@ -934,6 +944,11 @@
+     void enableARC(dsAudioARCTypes_t type, bool enable);
+     uint32_t getDolbyVolumeMode() const;
+     void setStereoMode(const std::string &mode, bool persist);
++    void setAudioDucking(dsAudioDuckingAction_t action, dsAudioDuckingType_t type, float level) {
++        (void)action;
++        (void)type;
++        (void)level;
++    }
+ 
+ 
+ 
+@@ -1420,6 +1435,8 @@
+     static ManagerImpl* impl;
+ 
+ public:
++    inline static bool IsInitialized = false;
++
+     Manager();
+ 
+     static void setImpl(ManagerImpl* newImpl);

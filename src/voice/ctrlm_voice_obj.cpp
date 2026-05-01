@@ -2955,17 +2955,19 @@ void ctrlm_voice_t::voice_stream_end_callback(ctrlm_voice_stream_end_cb_t *strea
             }
             XLOGD_AUTOMATION_TELEMETRY("src <%s> Packets Lost/Total <%u/%u> %.02f%% duration <%u> ms", ctrlm_voice_device_str(session->voice_device), session->packets_lost, session->packets_lost + session->packets_processed, 100.0 * ((double)session->packets_lost / (double)(session->packets_lost + session->packets_processed)), stream_duration);
             #ifdef TELEMETRY_SUPPORT
-            if(this->prefs.telemetry_session_stats) {
-                uint32_t packets_total = session->packets_lost + session->packets_processed;
-                int32_t  voice_detected  = -1;
-                uint32_t peak_confidence = 0;
-                int32_t  peak_rms_level  = 0;
-                if(stats->audio_stats.vad_frames_processed > 0) {
-                    voice_detected  = (stats->audio_stats.vad_voice_detected) ? 1 : 0;
-                    peak_confidence = (stats->audio_stats.vad_confidence_peak * 100);
-                    peak_rms_level  = stats->audio_stats.vad_rms_level_peak;
-                }
+            uint32_t packets_total = session->packets_lost + session->packets_processed;
+            int32_t  voice_detected  = -1;
+            uint32_t peak_confidence = 0;
+            int32_t  peak_rms_level  = 0;
+            if(stats->audio_stats.vad_frames_processed > 0) {
+                voice_detected  = (stats->audio_stats.vad_voice_detected) ? 1 : 0;
+                peak_confidence = (stats->audio_stats.vad_confidence_peak * 100);
+                peak_rms_level  = stats->audio_stats.vad_rms_level_peak;
 
+                XLOGD_INFO("VAD frames <%u> voice detected <%s> confidence peak <%u%%> rms level peak <%d dB>", stats->audio_stats.vad_frames_processed, voice_detected == 1 ? "YES" : "NO", peak_confidence, peak_rms_level);
+            }
+
+            if(this->prefs.telemetry_session_stats) {
                 session->telemetry_session_stats.update_on_stream_end(stream_duration, packets_total, session->packets_lost, packets_total * samples_per_packet, session->packets_lost * samples_per_packet, decoder_failures, 0, voice_detected, peak_confidence, peak_rms_level);
             }
             #endif

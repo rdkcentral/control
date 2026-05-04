@@ -1371,7 +1371,9 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
 
     xrsr_session_request_t request_params;
     request_params.type = XRSR_SESSION_REQUEST_TYPE_INVALID;
-    
+
+    uint8_t dst_index = 0;
+
     if(is_session_by_text) {
         XLOGD_INFO("Requesting the speech router start a text-only session with transcription = <%s>", l_transcription_in);
         if(session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING || session->state_dst != CTRLM_VOICE_STATE_DST_READY) {
@@ -1382,7 +1384,9 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
         request_params.value.text.text = l_transcription_in;
 
         xrsr_audio_format_t xrsr_format = { .type = XRSR_AUDIO_FORMAT_NONE};
-        if (false == xrsr_session_request(voice_device_to_xrsr(device_type), xrsr_format, request_params, uuid, false, false)) {
+
+
+        if (false == xrsr_session_request(voice_device_to_xrsr(device_type), dst_index, xrsr_format, request_params, uuid, false, false)) {
             XLOGD_ERROR("Failed to acquire the text-only session from the speech router.");
             return VOICE_SESSION_RESPONSE_BUSY;
         }
@@ -1402,7 +1406,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
             xrsr_format.type = XRSR_AUDIO_FORMAT_PCM;
         }
 
-        if (false == xrsr_session_request(voice_device_to_xrsr(device_type), xrsr_format, request_params, uuid, false, false)) {
+        if (false == xrsr_session_request(voice_device_to_xrsr(device_type), dst_index, xrsr_format, request_params, uuid, false, false)) {
             XLOGD_ERROR("Failed to acquire the audio file session from the speech router.");
             return VOICE_SESSION_RESPONSE_BUSY;
         }
@@ -1419,7 +1423,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
        request_params.type = XRSR_SESSION_REQUEST_TYPE_AUDIO_MIC;
        request_params.value.audio_mic.stream_params_required = this->nsm_voice_session;
 
-       if(false == xrsr_session_request(voice_device_to_xrsr(device_type), xrsr_format, request_params, uuid, low_latency, low_cpu_util)) {
+       if(false == xrsr_session_request(voice_device_to_xrsr(device_type), dst_index, xrsr_format, request_params, uuid, low_latency, low_cpu_util)) {
            XLOGD_ERROR("Failed to acquire the microphone session from the speech router.");
            return VOICE_SESSION_RESPONSE_BUSY;
        }
@@ -1448,7 +1452,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
             request_params.value.audio_fd.callback     = (create_pipe) ? NULL : ctrlm_voice_data_post_processing_cb; // RF4CE does not use pipe read callback
             request_params.value.audio_fd.user_data    = (create_pipe) ? NULL : (void *)this;
 
-            if(false == xrsr_session_request(voice_device_to_xrsr(device_type), voice_format_to_xrsr(format), request_params, uuid, false, false)) {
+            if(false == xrsr_session_request(voice_device_to_xrsr(device_type), dst_index, voice_format_to_xrsr(format), request_params, uuid, false, false)) {
                 XLOGD_TELEMETRY("Failed to acquire voice session");
                 this->voice_session_notify_abort(network_id, controller_id, 0, CTRLM_VOICE_SESSION_ABORT_REASON_BUSY);
                 if(create_pipe) {

@@ -535,13 +535,30 @@ void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmas
    this->irdbs_supported_ = vendor_support_bitmask;
 
    ctrlm_irdb_interface_t *irdb = ctrlm_main_irdb_get();
-   ctrlm_irdb_vendor_info_t vendor_info;
-   if (irdb && irdb->get_vendor_info(vendor_info)) {
-      XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>, which %s support the loaded IRDB plugin vendor <%s>", 
-            ieee_address_get().to_string().c_str(), vendor_support_bitmask, 
-            isSupportedIrdb(vendor_info) ? "DOES" : "does NOT", vendor_info.name.c_str());
+
+   if (irdb == NULL) {
+      XLOGD_ERROR("IRDB interface is NULL!!!");
+      return;
+   }
+
+   ctrlm_irdb_vendor_info_t rcu_vendor_info{};
+   rcu_vendor_info.rcu_support_bitmask = vendor_support_bitmask;
+   if (!irdb->set_vendor(rcu_vendor_info)) {
+      XLOGD_ERROR("Failed to set IRDB vendor info for controller <%s> with bitmask <0x%X>.", 
+            ieee_address_get().to_string().c_str(), vendor_support_bitmask);
+   }
+
+   ctrlm_irdb_vendor_info_t vendor_info{};
+   if (irdb->get_vendor_info(vendor_info)) {
+      if (isSupportedIrdb(vendor_info)) {
+         XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>, which DOES support the loaded IRDB plugin vendor <%s>", 
+               ieee_address_get().to_string().c_str(), vendor_support_bitmask, vendor_info.name.c_str());
+      } else {
+         XLOGD_ERROR("Controller <%s> IRDBs supported bitmask = <0x%X>, which does NOT support the loaded IRDB plugin vendor <%s>", 
+               ieee_address_get().to_string().c_str(), vendor_support_bitmask, vendor_info.name.c_str());
+      }
    } else {
-      XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>, couldn't retrieve IRDB plugin vendor info.", 
+      XLOGD_WARN("Controller <%s> IRDBs supported bitmask = <0x%X>, couldn't retrieve IRDB plugin vendor info.", 
             ieee_address_get().to_string().c_str(), vendor_support_bitmask);
    }
 }
@@ -619,13 +636,13 @@ void ctrlm_obj_controller_ble_t::print_status() {
    XLOGD_INFO("Model                        : %s", model_->to_string().c_str());
    XLOGD_INFO("MAC Address                  : %s", ieee_address_->to_string().c_str());
    XLOGD_INFO("Device Minor ID              : %d", device_minor_id_);
-   XLOGD_INFO("Battery Level                : %u%%", get_battery_percent());
+   XLOGD_AUTOMATION_INFO("Battery Level                : %u%%", get_battery_percent());
    XLOGD_INFO("HW Revision                  : %s", hw_revision_->to_string().c_str());
    XLOGD_INFO("FW Revision                  : %s", fw_revision_->to_string().c_str());
-   XLOGD_INFO("SW Revision                  : %s", sw_revision_->to_string().c_str());
+   XLOGD_AUTOMATION_INFO("SW Revision                  : %s", sw_revision_->to_string().c_str());
    XLOGD_INFO("Serial Number                : %s", serial_number_->to_string().c_str());
    XLOGD_INFO("");
-   XLOGD_INFO("Connected                    : %s", (connected_==true) ? "true" : "false");
+   XLOGD_AUTOMATION_INFO("Connected                    : %s", (connected_==true) ? "true" : "false");
    XLOGD_INFO("Last Activity Time           : %s", ctrlm_utils_time_as_string(this->last_activity_time_get()).c_str());
    XLOGD_INFO("Bound Time                   : %s", ctrlm_utils_time_as_string(this->time_binding_get()).c_str());
    XLOGD_INFO("");
@@ -656,6 +673,23 @@ void ctrlm_obj_controller_ble_t::print_status() {
    XLOGD_INFO("");
    voice_metrics_->print(__FUNCTION__);
    XLOGD_WARN("------------------------------------------------------------");
+}
+
+void ctrlm_obj_controller_ble_t::update_controller_id_and_db_entry(std::string db_name, ctrlm_network_id_t network_id, ctrlm_controller_id_t new_id) {
+    ctrlm_obj_controller_t::update_controller_id_and_db_entry(db_name, network_id, new_id);
+
+    std::stringstream new_controller_db_table;
+    new_controller_db_table << db_name << "_" << COUT_HEX_MODIFIER << (int)network_id << "_controller_" << COUT_HEX_MODIFIER << (int)new_id;
+    std::string new_table = new_controller_db_table.str();
+
+    product_name_->set_table(new_table);
+    serial_number_->set_table(new_table);
+    manufacturer_->set_table(new_table);
+    model_->set_table(new_table);
+    fw_revision_->set_table(new_table);
+    sw_revision_->set_table(new_table);
+    hw_revision_->set_table(new_table);
+    battery_percent_->set_table(new_table);
 }
 
 // End Function Implementations

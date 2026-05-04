@@ -47,11 +47,9 @@ public:
     virtual void voice_stb_data_stb_sw_version_set(std::string &sw_version);
     virtual void voice_stb_data_stb_name_set(std::string &stb_name);
     virtual void voice_stb_data_account_number_set(std::string &account_number);
-    virtual void voice_stb_data_receiver_id_set(std::string &receiver_id);
     virtual void voice_stb_data_device_id_set(std::string &device_id);
     virtual void voice_stb_data_device_type_set(ctrlm_device_type_t device_type);
     virtual void voice_stb_data_partner_id_set(std::string &partner_id);
-    virtual void voice_stb_data_experience_set(std::string &experience);
     virtual void voice_stb_data_guide_language_set(const char *language);
     virtual void voice_stb_data_mask_pii_set(bool enable);
     // End Data Setters

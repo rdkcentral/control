@@ -206,7 +206,6 @@ void ctrlm_ir_controller_t::process_event_key(uint16_t key_code) {
       XLOGD_INFO("received IR key for BLE pairing (scan code 0x%06x : pairCode=%hhu)", scan_code_, commandCode);
 
       ctrlm_iarm_call_StartPairWithCode_params_t params;
-      params.key_code = key_code;
       params.pair_code = commandCode;
 
       ctrlm_main_queue_msg_pair_with_code_t msg;
@@ -215,6 +214,35 @@ void ctrlm_ir_controller_t::process_event_key(uint16_t key_code) {
       msg.params = &params;
 
       ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_pair_with_code, &msg, sizeof(msg), NULL, CTRLM_MAIN_NETWORK_ID_ALL, true);
+   } else if(key_code == KEY_SETUP) {
+      XLOGD_INFO("received IR key for Line of Sight");
+
+      // Allocate a message and send it to Control Manager's queue
+      ctrlm_main_queue_msg_header_t *msg = (ctrlm_main_queue_msg_header_t *)g_malloc(sizeof(ctrlm_main_queue_msg_header_t));
+
+      if(NULL == msg) {
+         XLOGD_FATAL("Out of memory");
+         g_assert(0);
+      } else {
+         msg->type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_IR_LINE_OF_SIGHT;
+         msg->network_id = CTRLM_MAIN_NETWORK_ID_ALL;
+
+         ctrlm_main_queue_msg_push(msg);
+      }
+   } else if(key_code == KEY_FN_B) {
+      XLOGD_INFO("received IR key for Autobind");
+      // Allocate a message and send it to Control Manager's queue
+      ctrlm_main_queue_msg_header_t *msg = (ctrlm_main_queue_msg_header_t *)g_malloc(sizeof(ctrlm_main_queue_msg_header_t));
+
+      if(NULL == msg) {
+         XLOGD_FATAL("Out of memory");
+         g_assert(0);
+      } else {
+         msg->type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_IR_AUTOBIND;
+         msg->network_id = CTRLM_MAIN_NETWORK_ID_ALL;
+
+         ctrlm_main_queue_msg_push(msg);
+      }
    }
 }
 
@@ -460,7 +488,7 @@ void* ctrlm_ir_key_monitor_thread(void *data) {
                         case 2: { key_status = CTRLM_KEY_STATUS_REPEAT; break; }
                         default: break;
                      }
-                     XLOGD_TELEMETRY("%s - code = <%d> (%s key), status = <%s>", ir_controller->name_get().c_str(),
+                     XLOGD_AUTOMATION_TELEMETRY("%s - code = <%d> (%s key), status = <%s>", ir_controller->name_get().c_str(),
                            ir_controller->mask_key_codes_get() ? -1 : event.code, 
                            ctrlm_linux_key_code_str(event.code, ir_controller->mask_key_codes_get()), ctrlm_key_status_str(key_status));
 

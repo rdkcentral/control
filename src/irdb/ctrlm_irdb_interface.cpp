@@ -29,15 +29,19 @@
 // STB Platforms
 #include "ctrlm_thunder_controller.h"
 #include "ctrlm_thunder_plugin_display_settings.h"
-#include "ctrlm_thunder_plugin_cec.h"
 #include "ctrlm_thunder_plugin_cec_source.h"
 // TV Platforms
+#ifdef USE_DEPRECATED_HDMI_INPUT_PLUGIN
+#include "ctrlm_thunder_plugin_hdmi_input.h"
+#else
 #include "ctrlm_thunder_plugin_av_input.h"
+#endif
 #include "ctrlm_thunder_plugin_cec_sink.h"
 #endif
 
 #include <chrono>
 #include <dlfcn.h>
+#include <memory>
 
 using namespace std;
 
@@ -65,6 +69,8 @@ typedef struct {
     std::string (*pluginVersion)() = NULL;
     bool (*pluginInitialize)() = NULL;
     bool (*pluginGetVendorInfo)(ctrlm_irdb_vendor_info_t &info) = NULL;
+    bool (*pluginGetSupportedVendors)(std::vector<ctrlm_irdb_vendor_info_t> &info) = NULL;
+    bool (*pluginSetPreferredVendor)(const ctrlm_irdb_vendor_info_t &vendor) = NULL;
     bool (*pluginGetManufacturers)(ctrlm_irdb_manufacturer_list_t &manufacturers, ctrlm_irdb_dev_type_t type, const std::string &prefix) = NULL;
     bool (*pluginGetModels)(ctrlm_irdb_model_list_t &models, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &prefix) = NULL;
     bool (*pluginGetEntryIds)(ctrlm_irdb_entry_id_list_t &codes, ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model) = NULL;
@@ -76,9 +82,13 @@ typedef struct {
     ctrlm_ipc_iarm_t                                                    *irdb_ipc;
     #ifdef CTRLM_THUNDER
     Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t   *display_settings;
-    Thunder::CEC::ctrlm_thunder_plugin_cec_t                            *cec;
-    Thunder::AVInput::ctrlm_thunder_plugin_av_input_t                   *av_input;
+    Thunder::CEC::ctrlm_thunder_plugin_cec_source_t                     *cec_source;
     Thunder::CECSink::ctrlm_thunder_plugin_cec_sink_t                   *cec_sink;
+    #ifdef USE_DEPRECATED_HDMI_INPUT_PLUGIN
+    Thunder::HDMIInput::ctrlm_thunder_plugin_hdmi_input_t               *av_input;
+    #else
+    Thunder::AVInput::ctrlm_thunder_plugin_av_input_t                   *av_input;
+    #endif
    #endif
 } ctrlm_irdb_global_t;
 
@@ -110,7 +120,14 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
     m_platform_tv = platform_tv;
     m_irdbPluginHandle = NULL;
 
-    m_irdbPluginHandle = dlopen ("libctrlm-irdb-plugin.so", RTLD_NOW);
+    m_irdbPluginHandle = dlopen ("/vendor/lib/libuniversal_remote.so", RTLD_NOW);
+    if (!m_irdbPluginHandle) {
+        XLOGD_ERROR("Failed to load IR database plugin libuniversal_remote.so <%s>, trying deprecated libctrlm-irdb-plugin.so.", dlerror());
+        m_irdbPluginHandle = dlopen ("libctrlm-irdb-plugin.so", RTLD_NOW);
+    } else {
+        XLOGD_INFO("IR database plugin <libuniversal_remote.so> loaded successfully");
+    }
+    
     if (!m_irdbPluginHandle) {
         XLOGD_ERROR("Failed to load IR database plugin <%s>, using stub implementation.", dlerror());
         g_irdb.pluginOpen = STUB_ctrlm_irdb_open;
@@ -118,6 +135,8 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
         g_irdb.pluginVersion = STUB_irdb_version;
         g_irdb.pluginInitialize = STUB_ctrlm_irdb_initialize;
         g_irdb.pluginGetVendorInfo = STUB_ctrlm_irdb_get_vendor_info;
+        g_irdb.pluginSetPreferredVendor = STUB_ctrlm_irdb_set_preferred_vendor;
+        g_irdb.pluginGetSupportedVendors = STUB_ctrlm_irdb_get_supported_vendor_info;
         g_irdb.pluginGetManufacturers = STUB_ctrlm_irdb_get_manufacturers;
         g_irdb.pluginGetModels = STUB_ctrlm_irdb_get_models;
         g_irdb.pluginGetEntryIds = STUB_ctrlm_irdb_get_entry_ids;
@@ -165,6 +184,20 @@ ctrlm_irdb_interface_t::ctrlm_irdb_interface_t(bool platform_tv) {
         if ((error = dlerror()) != NULL)  {
             XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_get_vendor_info), error <%s>, Using STUB implementation", error);
             g_irdb.pluginGetVendorInfo = STUB_ctrlm_irdb_get_vendor_info;
+        }
+        dlerror();  // Clear any existing error
+
+        *(void **) (&g_irdb.pluginGetSupportedVendors) = dlsym(m_irdbPluginHandle, "ctrlm_irdb_get_supported_vendor_info");
+        if ((error = dlerror()) != NULL)  {
+            XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_get_supported_vendor_info), error <%s>, Using STUB implementation", error);
+            g_irdb.pluginGetSupportedVendors = STUB_ctrlm_irdb_get_supported_vendor_info;
+        }
+        dlerror();  // Clear any existing error
+
+        *(void **) (&g_irdb.pluginSetPreferredVendor) = dlsym(m_irdbPluginHandle, "ctrlm_irdb_set_preferred_vendor");
+        if ((error = dlerror()) != NULL)  {
+            XLOGD_ERROR("Failed to find plugin method (ctrlm_irdb_set_preferred_vendor), error <%s>, Using STUB implementation", error);
+            g_irdb.pluginSetPreferredVendor = STUB_ctrlm_irdb_set_preferred_vendor;
         }
         dlerror();  // Clear any existing error
 
@@ -264,6 +297,17 @@ bool ctrlm_irdb_interface_t::open_plugin() {
         }
     }
     XLOGD_INFO("IRDB plugin opened, ret = <%s>", ret ? "SUCCESS" : "ERROR");
+
+    if (g_irdb.pluginGetSupportedVendors) {
+        std::vector<ctrlm_irdb_vendor_info_t> supported_vendors;
+        if ((*g_irdb.pluginGetSupportedVendors)(supported_vendors) == true) {
+            for (const auto &it : supported_vendors) {
+                XLOGD_INFO("Found supported IRDB Vendor <%s, 0x%X>", it.name.c_str(), it.rcu_support_bitmask);
+            }
+        } else {
+            XLOGD_WARN("Unable to query IRDB plugin for list of supported vendors, check version of the plugin...");
+        }
+    }
     return ret;
 }
 
@@ -285,26 +329,38 @@ bool ctrlm_irdb_interface_t::get_vendor_info(ctrlm_irdb_vendor_info_t &info) {
     return false;
 }
 
+bool ctrlm_irdb_interface_t::set_vendor(const ctrlm_irdb_vendor_info_t &info) {
+    std::unique_lock<std::mutex> guard(m_mutex);
+    if (g_irdb.pluginSetPreferredVendor) {
+        return (*g_irdb.pluginSetPreferredVendor)(info);
+    }
+    return false;
+}
+
 void ctrlm_irdb_interface_t::on_thunder_ready() {
     #if defined(CTRLM_THUNDER)
 
     if(m_platform_tv == false) {
         g_irdb.display_settings = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
-        g_irdb.cec = Thunder::CEC::ctrlm_thunder_plugin_cec_t::getInstance();
-        if(!g_irdb.cec->is_activated()) {
-            XLOGD_INFO("CEC Thunder Plugin not activated.. Activating..");
-            if(g_irdb.cec->activate()) {
-                if(g_irdb.cec->enable(true)) {
+        g_irdb.cec_source = Thunder::CEC::ctrlm_thunder_plugin_cec_source_t::getInstance();
+        if(!g_irdb.cec_source->is_activated()) {
+            XLOGD_INFO("CEC Source Thunder Plugin not activated.. Activating..");
+            if(g_irdb.cec_source->activate()) {
+                if(g_irdb.cec_source->enable(true)) {
                     XLOGD_INFO("CEC enabled");
                 } else {
                     XLOGD_WARN("CEC failed to enable");
                 }
             } else {
-                XLOGD_TELEMETRY("failed to activate CEC Plugin");
+                XLOGD_TELEMETRY("failed to activate CEC Source Plugin");
             }
         }
     } else {
+        #ifdef USE_DEPRECATED_HDMI_INPUT_PLUGIN
+        g_irdb.av_input = Thunder::HDMIInput::ctrlm_thunder_plugin_hdmi_input_t::getInstance();
+        #else
         g_irdb.av_input = Thunder::AVInput::ctrlm_thunder_plugin_av_input_t::getInstance();
+        #endif
         g_irdb.cec_sink = Thunder::CECSink::ctrlm_thunder_plugin_cec_sink_t::getInstance();
     }
     #endif
@@ -379,26 +435,26 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                     if(ir_codes.size() > 0) {
                         if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                             codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
+                            ret = true;
                         } else {
                             XLOGD_ERROR("edid dev type invalid");
                         }
                     } else {
-                        XLOGD_WARN("no codes for edid data");
+                        XLOGD_ERROR("no codes for edid data");
                     }
-                    ret = true;
                 } else {
                     XLOGD_ERROR("Failed getting codes by edid");
                 }
             } else {
-                XLOGD_INFO("No EDID data");
+                XLOGD_ERROR("No EDID data");
             }
         } else {
             XLOGD_ERROR("display_settings is NULL");
         }
-        if(g_irdb.cec) {
+        if(g_irdb.cec_source) {
             // Check CEC data
             std::vector<Thunder::CEC::cec_device_t> cec_devices;
-            g_irdb.cec->get_cec_devices(cec_devices);
+            g_irdb.cec_source->get_cec_devices(cec_devices);
             if(cec_devices.size() > 0) {
                 for(auto &itr : cec_devices) {
                     ctrlm_irdb_dev_type_t type = CTRLM_IRDB_DEV_TYPE_INVALID;
@@ -408,19 +464,19 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                         if(ir_codes.size() > 0) {
                             if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                                 codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
+                                ret = true;
                             } else {
                                 XLOGD_ERROR("cec dev type invalid");
                             }
                         } else {
                             XLOGD_WARN("no code for cec device <%s>", itr.osd.c_str());
                         }
-                        ret = true;
                     } else {
                         XLOGD_WARN("Failed to get codes for cec device <%s>", itr.osd.c_str());
                     }
                 }
             } else {
-                XLOGD_INFO("No CEC device data");
+                XLOGD_ERROR("No CEC device data");
             }
         } else {
             XLOGD_ERROR("cec is NULL");
@@ -438,18 +494,18 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                         if(ir_codes.size() > 0) {
                             if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                                 codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
+                                ret = true;
                             } else {
-                                XLOGD_WARN("port %d infoframe dev type invalid", itr.first);
+                                XLOGD_ERROR("port %d infoframe dev type invalid", itr.first);
                             }
                         } else {
                             XLOGD_WARN("no code for port %d infoframe", itr.first);
                         }
-                        ret = true;
                     } else {
                         XLOGD_WARN("Failed to get codes for port %d infoframe", itr.first);
                     }
                 } else {
-                    XLOGD_INFO("no infoframe for port %d", itr.first);
+                    XLOGD_WARN("no infoframe for port %d", itr.first);
                 }
             }
         } else {
@@ -467,19 +523,19 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                         if(ir_codes.size() > 0) {
                             if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                                 codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
+                                ret = true;
                             } else {
-                                XLOGD_WARN("cec dev type invalid");
+                                XLOGD_ERROR("cec dev type invalid");
                             }
                         } else {
                             XLOGD_WARN("no code for cec device <%s>", itr.osd.c_str());
                         }
-                        ret = true;
                     } else {
                         XLOGD_WARN("Failed to get codes for cec device <%s>", itr.osd.c_str());
                     }
                 }
             } else {
-                XLOGD_INFO("No CEC device data");
+                XLOGD_ERROR("No CEC device data");
             }
         } else {
             XLOGD_ERROR("cec_sink is NULL");
@@ -525,17 +581,34 @@ bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctr
 
 bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes) {
     bool ret = false;
+    vector<char> success_vec;
 
-    ctrlm_main_queue_msg_program_ir_codes_t msg = {0};
-    msg.network_id         = network_id;
-    msg.controller_id      = controller_id;
-    msg.ir_codes           = ir_codes;
-    msg.success            = &ret;
+    std::shared_ptr<ctrlm_main_queue_msg_program_ir_codes_t> msg = std::make_shared<ctrlm_main_queue_msg_program_ir_codes_t>();
+    msg->network_id         = network_id;
+    msg->controller_id      = controller_id;
+    msg->ir_codes           = ir_codes;
+    msg->success            = &success_vec;
 
-    if (false == get_vendor_info(msg.vendor_info)) {
-        msg.vendor_info.rcu_support_bitmask = 0;
+    if (false == get_vendor_info(msg->vendor_info)) {
+        msg->vendor_info.rcu_support_bitmask = 0;
     }
-    ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_program_ir_codes, &msg, sizeof(msg), NULL, network_id, true);
+    ctrlm_main_queue_handler_push_new<ctrlm_msg_handler_network_t,
+                                     ctrlm_main_queue_msg_program_ir_codes_t>
+                                     (CTRLM_HANDLER_NETWORK,
+                                     (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_program_ir_codes,
+                                     std::move(msg),
+                                     NULL,
+                                     network_id,
+                                     true);
+
+    for (char success : success_vec) {
+        if (success) {
+            ret = true;
+            break;
+        } else {
+            ret = false;
+        }
+    }
 
     return(ret);
 }
@@ -548,14 +621,30 @@ bool ctrlm_irdb_interface_t::clear_ir_codes(ctrlm_network_id_t network_id, ctrlm
 
 bool ctrlm_irdb_interface_t::_clear_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id) {
     bool ret = false;
+    vector<char> success_vec;
 
-    ctrlm_main_queue_msg_ir_clear_t msg = {0};
+    std::shared_ptr<ctrlm_main_queue_msg_ir_clear_t> msg = std::make_shared<ctrlm_main_queue_msg_ir_clear_t>();
 
-    msg.network_id    = network_id;
-    msg.controller_id = controller_id;
-    msg.success       = &ret;
+    msg->network_id    = network_id;
+    msg->controller_id = controller_id;
+    msg->success       = &success_vec;
 
-    ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_ir_clear_codes, &msg, sizeof(msg), NULL, network_id, true);
-    
+    ctrlm_main_queue_handler_push_new<ctrlm_msg_handler_network_t,
+                                     ctrlm_main_queue_msg_ir_clear_t>
+                                     (CTRLM_HANDLER_NETWORK,
+                                     (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_ir_clear_codes,
+                                     std::move(msg),
+                                     NULL,
+                                     network_id,
+                                     true);
+
+    for (char success : success_vec) {
+        if (success) {
+            ret = true;
+            break;
+        } else {
+            ret = false;
+        }
+    }
     return(ret);
 }

@@ -31,47 +31,28 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_NO_SYSTEM_FROM_IMPORTED ON)
 
 # PROJECT
-project(ctrlm-main)
+project(ctrlm-main VERSION ${CMAKE_PROJECT_VERSION})
 
 # OPTIONS
-option(A5000_ENABLE "ES1 A5000 use libse051" OFF)
-option(ANSI_CODES_DISABLED "Disable ANSI code logging" OFF)
-option(ASSERT_ON_WRONG_THREAD "Assert on wrong thread" OFF)
-option(ASB "Enable ASB" OFF)
 option(AUTH_ENABLED "Enable AUTH" OFF)
-option(BLE_ENABLED "Enable BLE" OFF)
+option(BLE_ENABLED "Enable BLE" ON)
 option(BLE_SERVICES "Enable BLE Services" OFF)
 option(BREAKPAD "Enable BREAKPAD" OFF)
 option(BUILD_CTRLM_FACTORY "Build Control Factory Test" OFF)
 option(BUILD_CTRLM_SERVER "Build Control Server Daemon" ON)
-option(CPC "Enable CPC" OFF)
-option(DISABLE_BLE_VOICE "Disable BLE voice" OFF)
-option(DEEPSLEEP_CLOSE_DB "Deep Sleep Close DB" OFF)
-option(DUNFELL_BUILD_SUPPORT "Enable DUNFELL_BUILD_SUPPORT" OFF)
-option(ENABLE_DEEP_SLEEP "Enable deep sleep (different from deep sleep close DB)" OFF)
-option(FACTORY_AUDIO_PLAYBACK "Factory test audio playback" OFF)
-option(FACTORY_CUSTOM_AUDIO_ANALYSIS "Factory custom audio analysis" OFF)
 option(FDC_ENABLED "Enable FDC" OFF)
-option(GIT_BRANCH, "Repository Branch" OFF)
 option(IP_ENABLED "Enable IP" OFF)
-option(LOCAL_MIC "Local Microphone" OFF)
-option(LOCAL_MIC_DISABLE_VIA_PRIVACY "Use Privacy to disable microphone" OFF)
-option(MAC_POLLING "MAC polling" OFF)
-option(MEM_DEBUG "Enable memory debugging" OFF)
-option(MEMORY_LOCK "Memory Lock" OFF)
-option(MIC_TAP "Enable MIC_TAP" OFF)
 option(RF4CE_ENABLED "Enable RF4CE" ON)
-option(RF4CE_PACKET_ANALYSIS "Enable RF4CE_PACKET_ANALYSIS" OFF)
 option(TELEMETRY_SUPPORT "Enable TELEMETRY_SUPPORT" OFF)
-option(THUNDER "Enable THUNDER" OFF)
+option(THUNDER "Enable THUNDER" ON)
 option(THUNDER_SECURITY "Enable THUNDER_SECURITY" OFF)
 option(USE_SAFEC "Use safec" OFF)
-option(VOICE_KEYWORD_BEEP "Enable VOICE_KEYWORD_BEEP" OFF)
-option(VOICE_NEXTGEN_MAC "Enable VOICE_NEXTGEN_MAC" OFF)
+option(USE_IARM_POWER_MANAGER "Use IARM Power Manager" OFF)
 option(XRSR_HTTP "Enable XRSR_HTTP" OFF)
 option(XRSR_SDT "Enable XRSR_SDT" OFF)
 option(ENABLE_ASYNC_SRVR_MSG "Enable Asynchronous Server Messaging Feature" OFF)
 option(ENABLE_AVS_WITH_SDT "Enable SDT Based AVS Support" OFF)
+option(USE_DEPRECATED_HDMI_INPUT_PLUGIN "Use deprecated HDMI Input plugin instead of AV Input plugin" OFF)
 
 # BUILD SYSTEM
 set(STAGING_BINDIR_NATIVE, "invalid" CACHE PATH "staging bin dir native")
@@ -86,7 +67,7 @@ set(BEEP_ON_KWD_FILE "NONE" CACHE STRING "Keyword Beep file name")
 set(CMAKE_ENABLE_EXPORTS ON)
 
 # EXECUTABLE(S)
-add_executable(controlMgr src/ctrlm_config_default.json ctrlm_version_build.h ctrlm_config_default.h ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.c ${CMAKE_CURRENT_SOURCE_DIR}/src/voice/ipc/ctrlm_voice_ipc_request_type.c)
+add_executable(controlMgr src/ctrlm_config_default.json ctrlm_version_build.h ctrlm_config_default.h ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.c)
 
 if(BUILD_CTRLM_FACTORY)
     add_library(ctrlm-fta)
@@ -148,7 +129,7 @@ add_subdirectory(src)
 
 # COMPILER OPTIONS
 target_compile_options(controlMgr PUBLIC -fPIC -rdynamic -Wall -Werror)
-add_compile_definitions(PUBLIC _REENTRANT _POSIX_C_SOURCE=200809L _GNU_SOURCE SYSTEMD_NOTIFY XR15_704 _REENTRANT)
+add_compile_definitions(_REENTRANT _POSIX_C_SOURCE=200809L _GNU_SOURCE _REENTRANT)
 
 target_link_libraries(
       controlMgr
@@ -185,49 +166,14 @@ target_link_libraries(
 
 install(TARGETS controlMgr RUNTIME DESTINATION bin)
 
-install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json.template DESTINATION ${CMAKE_INSTALL_SYSCONFDIR} COMPONENT config )
+install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json DESTINATION ${CMAKE_INSTALL_SYSCONFDIR} COMPONENT config )
 
 # DEFINES FROM OPTIONS
-if(A5000_ENABLE)
-   find_library( SE_HAL_PATH SE_HAL ${CMAKE_SYSROOT}/usr/lib/se051)
-   target_link_libraries(controlMgr ${SE_HAL_PATH})
-endif()
-
 if(ANSI_CODES_DISABLED)
    add_compile_definitions(ANSI_CODES_DISABLED)
 endif()
 
-if(ASB)
-   add_compile_definitions(ASB)
-   target_link_libraries(controlMgr ${ASB_LIBS})
-endif()
-
-if(ASSERT_ON_WRONG_THREAD)
-   add_comile_definitions(ASSERT_ON_WRONG_THREAD)
-endif()
-
-if(AUTH_ENABLED)
-   if(EXISTS ${CMAKE_SYSROOT}/usr/lib/libctrlm-hal-certificate.so)
-      add_compile_definitions(AUTH_ENABLED)
-      add_compile_definitions(AUTH_ACCOUNT_ID)
-      add_compile_definitions(AUTH_DEVICE_ID)
-      add_compile_definitions(AUTH_PARTNER_ID)
-      add_compile_definitions(AUTH_SAT_TOKEN)
-      if(AUTH_ACTIVATION_STATUS)
-         add_compile_definitions(AUTH_ACTIVATION_STATUS)
-      endif()
-      #By default disabled but can be enabled
-      #add_compile_definitions(AUTH_RECEIVER_ID)
-      #add_compile_definitions(AUTH_EXPERIENCE)
-      target_link_libraries(controlMgr ctrlm-hal-certificate)
-   else()
-      message(WARNING "ctrlm-hal-certificate library is not provided, disabling authentication")
-      unset(AUTH_ENABLED)
-   endif()
-endif()
-
 if(BLE_ENABLED)
-   add_compile_definitions(CTRLM_NETWORK_BLE)
    target_link_libraries(controlMgr BTMgr)
    if(BLE_SERVICES)
       add_compile_definitions(CTRLM_BLE_SERVICES)
@@ -240,18 +186,6 @@ if(BREAKPAD)
    add_compile_definitions(BREAKPAD_SUPPORT)
 endif()
 
-if(CPC_ENABLED)
-   target_link_libraries(controlMgr ${CTRLM_CPC_LIBRARY})
-endif()
-
-if(DEEPSLEEP_CLOSE_DB)
-   add_compile_definitions(DEEPSLEEP_CLOSE_DB)
-endif()
-
-if(DISABLE_BLE_VOICE)
-   add_compile_definitions(DISABLE_BLE_VOICE)
-endif()
-
 if(ENABLE_ASYNC_SRVR_MSG)
    add_compile_definitions(SUPPORT_ASYNC_SRVR_MSG)
 endif()
@@ -260,43 +194,12 @@ if(ENABLE_AVS_WITH_SDT)
     add_compile_definitions(SUPPORT_VOICE_DEST_ALSA SUPPORT_ASYNC_SRVR_MSG)
 endif()
 
-if(ENABLE_DEEP_SLEEP)
-   add_compile_definitions(DEEP_SLEEP_ENABLED)
-endif()
-
 if(FDC_ENABLED)
-   add_compile_definitions(PUBLIC FDC_ENABLED)
+   add_compile_definitions(FDC_ENABLED)
 endif()
 
 if(IP_ENABLED)
    add_compile_definitions(CTRLM_NETWORK_IP CTRLM_IP_HAL_LOG_ENABLED)
-endif()
-
-if(THUNDER)
-   add_compile_definitions(CTRLM_THUNDER)
-endif()
-
-if(LOCAL_MIC)
-   add_compile_definitions(CTRLM_LOCAL_MIC)
-   if(MIC_TAP)
-      add_compile_definitions(CTRLM_LOCAL_MIC_TAP)
-   endif()
-   if(LOCAL_MIC_DISABLE_VIA_PRIVACY)
-      add_compile_definitions(CTRLM_LOCAL_MIC_DISABLE_VIA_PRIVACY)
-   endif()
-endif()
-
-if(MAC_POLLING)
-   add_compile_definitions(MAC_POLLING)
-endif()
-
-if(MEM_DEBUG)
-   add_compile_definitions(MEM_DEBUG)
-endif()
-
-if(MEMORY_LOCK)
-   add_compile_definitions(MEMORY_LOCK)
-   target_link_libraries(controLMgr clnl)
 endif()
 
 # RF4CE options
@@ -311,7 +214,7 @@ if(TELEMETRY_SUPPORT)
 endif()
 
 if(THUNDER)
-   add_compile_definitions(PUBLIC CTRLM_THUNDER)
+   add_compile_definitions(CTRLM_THUNDER)
    target_link_libraries(controlMgr WPEFrameworkCore WPEFrameworkPlugins)
    if(WPE_FRAMEWORK_COM_SOCKET)
       target_link_libraries(controlMgr WPEFrameworkCOM WPEFrameworkWebSocket)
@@ -319,11 +222,25 @@ if(THUNDER)
    if(WPE_FRAMEWORK_PROTO_TRACING)
       target_link_libraries(controlMgr WPEFrameworkProtocols WPEFrameworkTracing)
    endif()
+   if(THUNDER_SECURITY)
+      add_compile_definitions(THUNDER_SECURITY)
+      target_link_libraries(controlMgr WPEFrameworkSecurityUtil)
+   endif()
+   if(AUTH_ENABLED)
+      add_compile_definitions(AUTH_ENABLED)
+      add_compile_definitions(AUTH_ACCOUNT_ID)
+      add_compile_definitions(AUTH_DEVICE_ID)
+      add_compile_definitions(AUTH_PARTNER_ID)
+      add_compile_definitions(AUTH_SAT_TOKEN)
+      if(AUTH_ACTIVATION_STATUS)
+         add_compile_definitions(AUTH_ACTIVATION_STATUS)
+      endif()
+      target_link_libraries(controlMgr RdkCertSelector)
+   endif()
 endif()
 
-if(THUNDER_SECURITY)
-   add_compile_definitions(PUBLIC THUNDER_SECURITY)
-   target_link_libraries(controlMgr WPEFrameworkSecurityUtil)
+if(USE_IARM_POWER_MANAGER)
+   add_compile_definitions(USE_IARM_POWER_MANAGER)
 endif()
 
 if(USE_SAFEC)
@@ -333,48 +250,41 @@ if(USE_SAFEC)
       target_link_libraries(controlMgr ${SAFEC_LIBRARIES})
    endif()
 else()
-   add_compile_definitions(PUBLIC SAFEC_DUMMY_API)
+   add_compile_definitions(SAFEC_DUMMY_API)
 endif()
 
-if(VOICE_KEYWORD_BEEP)
-   add_compile_definitions(BEEP_ON_KWD_ENABLED)
-   add_definitions(-DBEEP_ON_KWD_FILE=\"${CMAKE_DATADIR}/${BEEP_ON_KWD_FILE}\")
-   install(FILES ${CMAKE_SOURCE_DIR}/../${BEEP_ON_KWD_FILE} DESTINATION share )
-endif()
-
-if(VOICE_NEXTGEN_MAC)
-   add_compile_definitions(VOICE_NEXTGEN_MAC)
+if(USE_DEPRECATED_HDMI_INPUT_PLUGIN)
+   add_compile_definitions(USE_DEPRECATED_HDMI_INPUT_PLUGIN)
 endif()
 
 install(TARGETS  controlMgr RUNTIME DESTINATION bin)
 
-install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json.template DESTINATION ${CMAKE_INSTALL_SYSCONFDIR} COMPONENT config )
+install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json DESTINATION ${CMAKE_INSTALL_SYSCONFDIR} COMPONENT config )
 
 # GENERATED FILES
 add_custom_command( OUTPUT ctrlm_version_build.h
-   COMMAND echo "#define CTRLM_MAIN_VER_MAJOR \"1\"" > ctrlm_version_build.h
-   COMMAND echo -n "#define CTRLM_MAIN_VER_MINOR \"" >> ctrlm_version_build.h
-   COMMAND bash -c "echo -n $(git -C ${CMAKE_CURRENT_SOURCE_DIR} rev-list --count 4b825dc642cb6eb9a060e54bf8d69288fbee4904..HEAD) >> ctrlm_version_build.h"
-   COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} diff --quiet || echo -n "++" >> ctrlm_version_build.h
+   COMMAND echo -n "#define CTRLM_MAIN_BRANCH    \"" >> ctrlm_version_build.h
+   COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} branch --all --contains | sed -n -e "s/^\\s*remotes\\/origin\\///" -e "2p" | tr -d "\\n" >> ctrlm_version_build.h
    COMMAND echo "\"" >> ctrlm_version_build.h
-   COMMAND echo "#define CTRLM_MAIN_BRANCH    \"${GIT_BRANCH}\"" >> ctrlm_version_build.h
    COMMAND echo -n "#define CTRLM_MAIN_COMMIT_ID " >> ctrlm_version_build.h
    COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} log --format=\"%H\" -n 1 >> ctrlm_version_build.h
-   COMMAND echo "#define CTRLM_MAIN_VERSION (CTRLM_MAIN_VER_MAJOR \".\" CTRLM_MAIN_VER_MINOR)" >> ctrlm_version_build.h
+   COMMAND echo -n "#define CTRLM_MAIN_VERSION   \"${CMAKE_PROJECT_VERSION}" >> ctrlm_version_build.h
+   COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} diff --quiet || echo -n "++" >> ctrlm_version_build.h
+   COMMAND echo "\"" >> ctrlm_version_build.h
    VERBATIM
 )
 
 add_custom_command(
-   OUTPUT ${CMAKE_BINARY_DIR}/ctrlm_config.json.template
-   COMMAND python3 ${CTRLM_UTILS_JSON_COMBINE} -i ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.json -a ${CTRLM_CONFIG_JSON_VSDK}:vsdk -a ${CTRLM_CONFIG_JSON_CPC} -s ${CTRLM_CONFIG_JSON_CPC_SUB} -a ${CTRLM_CONFIG_JSON_CPC_ADD} -s ${CTRLM_CONFIG_JSON_OEM_SUB} -a ${CTRLM_CONFIG_JSON_OEM_ADD} -s ${CTRLM_CONFIG_JSON_MAIN_SUB} -a ${CTRLM_CONFIG_JSON_MAIN_ADD} -o ${CMAKE_BINARY_DIR}/ctrlm_config.json.template
+   OUTPUT ${CMAKE_BINARY_DIR}/ctrlm_config.json
+   COMMAND python3 ${CTRLM_UTILS_JSON_COMBINE} -i ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.json -a ${CTRLM_CONFIG_JSON_CPC} -s ${CTRLM_CONFIG_JSON_CPC_SUB} -a ${CTRLM_CONFIG_JSON_CPC_ADD} -s ${CTRLM_CONFIG_JSON_MAIN_SUB} -a ${CTRLM_CONFIG_JSON_MAIN_ADD} -o ${CMAKE_BINARY_DIR}/ctrlm_config.json
    DEPENDS src/ctrlm_config_default.json
    VERBATIM
    )
 
 add_custom_command(
    OUTPUT ctrlm_config_default.h ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.c
-   COMMAND python3 ${CTRLM_UTILS_JSON_TO_HEADER} -i ${CMAKE_BINARY_DIR}/ctrlm_config.json.template -o ctrlm_config_default.h -c ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.c -v "ctrlm_global,network_rf4ce,network_ip,network_ble,ir,voice,device_update" -d "network_ble"
-   DEPENDS ${CMAKE_BINARY_DIR}/ctrlm_config.json.template
+   COMMAND python3 ${CTRLM_UTILS_JSON_TO_HEADER} -i ${CMAKE_BINARY_DIR}/ctrlm_config.json -o ctrlm_config_default.h -c ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.c -v "ctrlm_global,network_rf4ce,network_ip,network_ble,ir,voice,device_update" -d "network_ble"
+   DEPENDS ${CMAKE_BINARY_DIR}/ctrlm_config.json
    VERBATIM
    )
 
@@ -385,5 +295,5 @@ add_custom_command(
    )
 
 add_custom_target( ctrlm_config
-   DEPENDS ${CMAKE_BINARY_DIR}/ctrlm_config.json.template
+   DEPENDS ${CMAKE_BINARY_DIR}/ctrlm_config.json
    )

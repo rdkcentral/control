@@ -131,7 +131,6 @@ gboolean ctrlm_rcu_init_iarm(void);
 void     ctrlm_rcu_terminate(void);
 void     ctrlm_rcu_terminate_iarm(void);
 void     ctrlm_rcu_iarm_event_key_press(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_key_status_t key_status, ctrlm_key_code_t key_code);
-void     ctrlm_rcu_iarm_event_key_press_validation(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_controller_type_t controller_type, ctrlm_rcu_binding_type_t binding_type, ctrlm_key_status_t key_status, ctrlm_key_code_t key_code);
 void     ctrlm_rcu_iarm_event_function(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_function_t function, unsigned long value);
 void     ctrlm_rcu_iarm_event_key_ghost(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_remote_keypad_config remote_keypad_config, ctrlm_rcu_ghost_code_t ghost_code);
 void     ctrlm_rcu_iarm_event_control(int controller_id, const char *event_source, const char *event_type, const char *event_data, int event_value, int spare_value);

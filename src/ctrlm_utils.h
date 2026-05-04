@@ -36,7 +36,7 @@
 #include "libIBus.h"
 #include "libIBusDaemon.h"
 #include <jansson.h>
-#ifdef DEEP_SLEEP_ENABLED
+#ifdef USE_IARM_POWER_MANAGER
 #include "deepSleepMgr.h"
 #endif
 #ifdef TELEMETRY_SUPPORT
@@ -162,7 +162,7 @@ void ctrlm_print_controller_status(const char *prefix, ctrlm_controller_status_t
 const char *ctrlm_main_queue_msg_type_str(ctrlm_main_queue_msg_type_t type);
 const char *ctrlm_controller_status_cmd_result_str(ctrlm_controller_status_cmd_result_t result);
 
-
+uint16_t ctrlm_key_code_to_linux_key(ctrlm_key_code_t code);
 const char *ctrlm_key_status_str(ctrlm_key_status_t key_status);
 const char *ctrlm_key_code_str(ctrlm_key_code_t key_code);
 const char *ctrlm_linux_key_code_str(uint16_t code, bool mask);
@@ -205,7 +205,7 @@ const char *ctrlm_ir_state_str(ctrlm_ir_state_t state);
 const char *ctrlm_power_state_str(ctrlm_power_state_t state);
 const char *ctrlm_device_type_str(ctrlm_device_type_t device_type);
 
-#ifdef DEEP_SLEEP_ENABLED
+#ifdef USE_IARM_POWER_MANAGER
 const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason);
 #endif
 const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config);
@@ -250,8 +250,6 @@ void        ctrlm_archive_extract_tmp_dir_make(const std::string &tmp_dir_path);
 void        ctrlm_archive_extract_ble_tmp_dir_make(const std::string &tmp_dir_path);
 bool        ctrlm_archive_extract_ble_check_dir_exists(const std::string &path);
 std::string ctrlm_xml_tag_text_get(const std::string &xml, const std::string &tag);
-
-ctrlm_power_state_t ctrlm_iarm_power_state_map(IARM_Bus_PowerState_t iarm_power_state);
 
 bool ctrlm_utils_calc_crc32( const char *filename, uLong *crc_ret );
 bool ctrlm_utils_move_file_to_secure_nvm(const char *path);

@@ -63,10 +63,8 @@ void ctrlm_db_last_key_info_write(guchar *data, guint32 length);
 void ctrlm_db_last_key_info_read(guchar **data, guint32 *length);
 void ctrlm_db_shutdown_time_write(guchar *data, guint32 length);
 void ctrlm_db_shutdown_time_read(guchar **data, guint32 *length);
-#ifdef ASB
 void ctrlm_db_asb_enabled_write(guchar *data, guint32 length);
 void ctrlm_db_asb_enabled_read(guchar **data, guint32 *length);
-#endif
 void ctrlm_db_open_chime_enabled_write(guchar *data, guint32 length);
 void ctrlm_db_open_chime_enabled_read(guchar **data, guint32 *length);
 void ctrlm_db_close_chime_enabled_write(guchar *data, guint32 length);
@@ -113,9 +111,7 @@ void ctrlm_db_rf4ce_read_controller_capabilities(ctrlm_network_id_t network_id, 
 void ctrlm_db_rf4ce_read_far_field_metrics(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, guchar **data, guint32 *length);
 void ctrlm_db_rf4ce_read_dsp_metrics(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, guchar **data, guint32 *length);
 void ctrlm_db_rf4ce_read_time_metrics(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, time_t *time_metrics);
-#ifdef ASB
 void ctrlm_db_rf4ce_read_asb_key_derivation_method(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, unsigned char *method);
-#endif
 void ctrlm_db_rf4ce_read_device_update_session_state(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, guchar **data, guint32 *length);
 void ctrlm_db_rf4ce_read_ota_failures_type_z_count(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, guchar **data, guint32 *length);
 
@@ -140,9 +136,7 @@ void ctrlm_db_rf4ce_write_dsp_metrics(ctrlm_network_id_t network_id, ctrlm_contr
 void ctrlm_db_rf4ce_write_time_metrics(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, time_t time_metrics);
 void ctrlm_db_rf4ce_read_uptime_privacy_info(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, guchar **data, guint32 *length);
 void ctrlm_db_rf4ce_write_uptime_privacy_info(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, guchar *data, guint32 length);
-#ifdef ASB
 void ctrlm_db_rf4ce_write_asb_key_derivation_method(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, unsigned char method);
-#endif
 void ctrlm_db_rf4ce_write_device_update_session_state(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, guchar *data, guint32 length);
 void ctrlm_db_rf4ce_write_file(const char *path, guchar *data, guint32 length);
 void ctrlm_db_rf4ce_read_mfg_test_result(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, guchar **data, guint32 *length);

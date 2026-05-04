@@ -147,6 +147,8 @@ public:
    ctrlm_timestamp_t                getVoiceStartTimeKey() const;
    ctrlm_timestamp_t                getVoiceStartTimeLocal() const;
 
+   void                             update_controller_id_and_db_entry(std::string name, ctrlm_network_id_t network_id, ctrlm_controller_id_t new_id);
+
 private:
    ctrlm_obj_network_ble_t                *obj_network_ble_ = NULL;
 

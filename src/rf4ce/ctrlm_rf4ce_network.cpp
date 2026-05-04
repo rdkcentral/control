@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <regex>
 #include <limits.h>
+#include <errno.h>
 #include <sys/sysinfo.h>
 #include "ctrlm.h"
 #include "ctrlm_log.h"
@@ -48,9 +49,7 @@
 #include "ctrlm_config_default.h"
 #include "ctrlm_tr181.h"
 #include "ctrlm_rcu.h"
-#ifdef ASB
 #include "ctrlm_asb.h"
-#endif
 #include <zlib.h>
 #include "ctrlm_voice_obj.h"
 #include "comcastIrKeyCodes.h"
@@ -124,6 +123,12 @@ ctrlm_obj_network_rf4ce_t::ctrlm_obj_network_rf4ce_t(ctrlm_network_type_t type, 
    hal_api_data_            = NULL;
    hal_api_rib_data_import_ = NULL;
    hal_api_rib_data_export_ = NULL;
+
+   hal_api_asb_init_        = NULL; 
+   hal_api_asb_methods_get_ = NULL;
+   hal_api_asb_key_derive_  = NULL;
+   hal_api_asb_destroy_     = NULL;
+
    errno_t safec_rc = -1;
 
    discovery_config_normal_.enabled               = JSON_BOOL_VALUE_NETWORK_RF4CE_DISCOVERY_CONFIG_ENABLE;
@@ -197,7 +202,6 @@ ctrlm_obj_network_rf4ce_t::ctrlm_obj_network_rf4ce_t(ctrlm_network_type_t type, 
 
    default_polling_configuration();
 
-#ifdef ASB
    // ASB Config
    asb_enabled_                  = JSON_BOOL_VALUE_NETWORK_RF4CE_ASB_ENABLE; // DEFAULT FALSE
    asb_key_derivation_methods_   = JSON_INT_VALUE_NETWORK_RF4CE_ASB_DERIVATION_METHODS;
@@ -205,7 +209,6 @@ ctrlm_obj_network_rf4ce_t::ctrlm_obj_network_rf4ce_t(ctrlm_network_type_t type, 
    asb_fallback_count_threshold_ = JSON_INT_VALUE_NETWORK_RF4CE_ASB_FALLBACK_THRESHOLD;
    asb_force_settings_           = JSON_BOOL_VALUE_NETWORK_RF4CE_ASB_FORCE_SETTINGS; // DEFAULT FALSE
    // End ASB Config
-#endif
 
    voice_session_rsp_confirm_ = NULL;
    voice_session_rsp_confirm_param_ = NULL;
@@ -333,6 +336,17 @@ void ctrlm_obj_network_rf4ce_t::hal_api_main_set(ctrlm_hal_rf4ce_network_main_t 
    hal_api_main_ = main;
 }
 
+void ctrlm_obj_network_rf4ce_t::hal_api_asb_set(ctrlm_hal_rf4ce_asb_init_t init, 
+                                                ctrlm_hal_rf4ce_asb_methods_get_t methods_get,
+                                                ctrlm_hal_rf4ce_asb_key_derive_t key_derive,
+                                                ctrlm_hal_rf4ce_asb_destroy_t destroy) {
+   THREAD_ID_VALIDATE();
+   hal_api_asb_init_           = init;
+   hal_api_asb_methods_get_    = methods_get;
+   hal_api_asb_key_derive_     = key_derive;
+   hal_api_asb_destroy_        = destroy;
+}
+
 ctrlm_hal_result_t ctrlm_obj_network_rf4ce_t::hal_init_request(GThread *ctrlm_main_thread) {
    ctrlm_hal_rf4ce_main_init_t main_init;
    ctrlm_main_thread_ = ctrlm_main_thread;
@@ -398,8 +412,37 @@ ctrlm_hal_result_t ctrlm_obj_network_rf4ce_t::hal_init_request(GThread *ctrlm_ma
 
    // Block until initialization is complete or a timeout occurs
    XLOGD_INFO("Waiting for %s initialization...", name_get());
-   sem_wait(&semaphore_);
-   sem_destroy(&semaphore_);
+   struct timespec timeout;
+
+   int sem_result = 0;
+   errno = 0;
+   int rc = clock_gettime(CLOCK_REALTIME, &timeout);
+   if(rc != 0) {
+      int errsv = errno;
+      // If we fail to get the current time, we should still wait on the semaphore, but we will wait indefinitely instead of timing out
+      XLOGD_ERROR("Failed to get current time <%s>. wait indefinitely", strerror(errsv));
+      errno = 0;
+      sem_result = sem_wait(&semaphore_);
+   } else {
+      timeout.tv_sec += 60;  // this operation has been tested to complete in about 6 seconds in worst case scenario (set the timeout to 10x)
+      
+      errno = 0;
+      sem_result = sem_timedwait(&semaphore_, &timeout);
+   }
+
+   if(sem_result == -1) {
+      if(errno == ETIMEDOUT) {
+         XLOGD_ERROR("Timeout waiting for %s initialization", name_get());
+      } else if(errno == EINTR) {
+         XLOGD_ERROR("Interrupted while waiting for %s initialization", name_get());
+      } else {
+         int errsv = errno;
+         XLOGD_ERROR("Error waiting for %s initialization <%s>", name_get(), strerror(errsv));
+      }
+      init_result_ = CTRLM_HAL_RESULT_ERROR;
+   } else {
+      sem_destroy(&semaphore_);
+   }
 
    ready_ = (CTRLM_HAL_RESULT_SUCCESS == init_result_);
 
@@ -650,13 +693,11 @@ gboolean ctrlm_obj_network_rf4ce_t::load_config(json_t *json_obj_net_rf4ce) {
          polling_config_read(&sub_conf);
       }
 
-#ifdef ASB
       if(conf.config_object_get(JSON_OBJ_NAME_NETWORK_RF4CE_ASB, sub_conf)) {
          asb_configuration(&sub_conf);
       } else {
          asb_configuration(NULL);
       }
-#endif
 
       if(conf.config_object_get(JSON_OBJ_NAME_NETWORK_RF4CE_VOICE, sub_conf)) {
         sub_conf.config_value_get(JSON_INT_NAME_NETWORK_RF4CE_VOICE_STREAM_BEGIN, stream_begin_, 0);
@@ -737,10 +778,10 @@ gboolean ctrlm_obj_network_rf4ce_t::load_config(json_t *json_obj_net_rf4ce) {
 #if (CTRLM_HAL_RF4CE_API_VERSION >= 11)
    XLOGD_INFO("DPI Pattern List              %u", dpi_pattern_list);
 #endif
-#ifdef ASB
+   if(ctrlm_is_rf4ce_asb_supported()) {
    XLOGD_INFO("ASB Force Settings            <%s>", (asb_force_settings_ ? "YES" : "NO"));
    XLOGD_INFO("ASB Enabled                   <%s>", (asb_enabled_ ? "YES" : "NO"));
-#endif
+   }
    XLOGD_INFO("FF Voice Stream Begin         %d", (int)stream_begin_);
    XLOGD_INFO("FF Voice Stream Offset        %d", stream_offset_);
 
@@ -1168,7 +1209,7 @@ void ctrlm_obj_network_rf4ce_t::controllers_load() {
 
 ctrlm_controller_id_t ctrlm_obj_network_rf4ce_t::controller_id_assign(void) {
    // Get the next available controller id
-   for(ctrlm_controller_id_t index = 1; index < 255; index++) {
+   for(ctrlm_controller_id_t index = RF4CE_RCU_ID_RANGE_MIN; index < RF4CE_RCU_ID_RANGE_MAX; index++) {
       if(!controller_exists(index)) {
          XLOGD_INFO("controller id %u", index);
          return(index);
@@ -1194,9 +1235,7 @@ void ctrlm_obj_network_rf4ce_t::controller_insert(ctrlm_controller_id_t controll
    } else {
       controllers_[controller_id] = new ctrlm_obj_controller_rf4ce_t(controller_id, *this, ieee_address, CTRLM_RF4CE_RESULT_VALIDATION_SUCCESS, CTRLM_RCU_CONFIGURATION_RESULT_SUCCESS);
       controllers_[controller_id]->db_load();
-#ifdef XR15_704
       controllers_[controller_id]->set_reset();
-#endif
       controllers_[controller_id]->update_polling_configurations();
    }
 }
@@ -1436,6 +1475,13 @@ void ctrlm_obj_network_rf4ce_t::factory_reset(void) {
    // Delete control manager persistent data
    // TODO
 
+   ctrlm_main_queue_msg_header_t *msg = (ctrlm_main_queue_msg_header_t *)g_malloc(sizeof(ctrlm_main_queue_msg_header_t));
+   if(msg == NULL) {
+      XLOGD_ERROR("Out of memory");
+   } else {
+      msg->type = CTRLM_MAIN_QUEUE_MSG_TYPE_EXPORT_CONTROLLER_LIST;
+      ctrlm_main_queue_msg_push((gpointer)msg);
+   }
 }
 
 bool ctrlm_obj_network_rf4ce_t::controller_exists(ctrlm_controller_id_t controller_id) {
@@ -2903,7 +2949,6 @@ void ctrlm_obj_network_rf4ce_t::polling_config_tr181_read() {
 
    bool b_has_default_mac_config = false;
 
-#ifdef MAC_POLLING
    bool mac_polling_enabled = false;
    if(CTRLM_TR181_RESULT_SUCCESS == ctrlm_tr181_bool_get(CTRLM_RF4CE_TR181_MAC_POLLING_CONFIGURATION_ENABLE, &mac_polling_enabled)) {
       XLOGD_INFO("Default Mac Polling Configuration from TR181");
@@ -2917,7 +2962,6 @@ void ctrlm_obj_network_rf4ce_t::polling_config_tr181_read() {
       }
 
    }
-#endif
    for(int i = 0; i < RF4CE_CONTROLLER_TYPE_INVALID; i++) {
      XLOGD_INFO("Polling Configuration Remote Type <%s>", ctrlm_rf4ce_controller_type_str((ctrlm_rf4ce_controller_type_t)i));
      const char *controller_tr181_str = 0;
@@ -3002,10 +3046,8 @@ void ctrlm_obj_network_rf4ce_t::polling_config_read(json_config *conf) {
 
    json_config target_obj;
    if(conf->config_object_get(JSON_OBJ_NAME_NETWORK_RF4CE_POLLING_TARGET, target_obj)) { // has target object
-      #ifdef MAC_POLLING
       target_obj.config_value_get(JSON_INT_NAME_NETWORK_RF4CE_POLLING_TARGET_METHODS, polling_methods_);
       target_obj.config_value_get(JSON_INT_NAME_NETWORK_RF4CE_POLLING_TARGET_FMR_CONTROLLERS_MAX, max_fmr_controllers_);
-      #endif
    }
 
    json_config generic_polling_obj;
@@ -3400,13 +3442,13 @@ void ctrlm_obj_network_rf4ce_t::process_xconf() {
 }
 
 // ASB Functions
-#ifdef ASB
 bool ctrlm_obj_network_rf4ce_t::rf4ce_asb_init(void *data, int size) {
-   if(asb_init()) {
+
+   if(hal_api_asb_init_ == NULL || (*hal_api_asb_init_)()) {
       XLOGD_ERROR("Failed to init ASB");
       return false;
    }
-   return true;   
+   return true;
 }
 
 bool ctrlm_obj_network_rf4ce_t::is_asb_force_settings() {
@@ -3422,7 +3464,11 @@ void ctrlm_obj_network_rf4ce_t::asb_enable_set(bool asb_enabled) {
 }
 
 asb_key_derivation_method_t ctrlm_obj_network_rf4ce_t::key_derivation_method_get(asb_key_derivation_bitmask_t bitmask_controller) {
-   asb_key_derivation_bitmask_t supported_methods = bitmask_controller & asb_key_derivation_methods_ & asb_key_derivation_methods_get();
+   if(hal_api_asb_methods_get_ == NULL) {
+      XLOGD_ERROR("Failed to get ASB key derivation method");
+      return(ASB_KEY_DERIVATION_NONE);
+   }
+   asb_key_derivation_bitmask_t supported_methods = bitmask_controller & asb_key_derivation_methods_ & (*hal_api_asb_methods_get_)();
    asb_key_derivation_method_t  ret = ASB_KEY_DERIVATION_NONE;
    if(ASB_KEY_DERIVATION_NONE != supported_methods) {
       // Get greatest support key derivation method.. Stored in least sig bit
@@ -3501,9 +3547,23 @@ void ctrlm_obj_network_rf4ce_t::asb_configuration(json_config *conf) {
 }
 
 void ctrlm_obj_network_rf4ce_t::rf4ce_asb_destroy(void *data, int size) {
-   asb_destroy();
+   if(hal_api_asb_destroy_ != NULL) {
+      (*hal_api_asb_destroy_)();
+   }
 }
-#endif
+
+int  ctrlm_obj_network_rf4ce_t::hal_asb_key_derive(uint8_t *input, uint8_t *output, asb_key_derivation_method_t method) {
+   if(hal_api_asb_key_derive_ != NULL) {
+      return (*hal_api_asb_key_derive_)(input, output, method);
+   }
+   return(-1);
+}
+
+void ctrlm_obj_network_rf4ce_t::hal_asb_destroy(void) {
+   if(hal_api_asb_destroy_ != NULL) {
+      (*hal_api_asb_destroy_)();
+   }
+}
 // End ASB Functions
 
 void ctrlm_obj_network_rf4ce_t::open_chime_enable_set(bool open_chime_enabled) {
@@ -3637,6 +3697,11 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
       device_type = CTRLM_VOICE_DEVICE_FF;
    }
 
+   if(device_type == CTRLM_VOICE_DEVICE_PTT) {
+      // Send voice key down event since the session was requested
+      process_event_key(dqm->controller_id, CTRLM_KEY_STATUS_DOWN, CTRLM_KEY_CODE_PUSH_TO_TALK);
+   }
+
    bool command_status = (controller_type == RF4CE_CONTROLLER_TYPE_XR11 ||
                           controller_type == RF4CE_CONTROLLER_TYPE_XR19) ? true : false;
 
@@ -3723,10 +3788,18 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
       XLOGD_INFO("processing session request - type <%s> voice format <%s>", ctrlm_voice_device_str(device_type), ctrlm_voice_format_str(voice_format));
    }
 
-   std::string controller_name =     controllers_[dqm->controller_id]->product_name_get();
-   ctrlm_hal_rf4ce_cfm_data_t        cb_confirm_rf4ce     = NULL;
-   void *                            cb_confirm_param     = NULL;
+   std::string controller_name  = controllers_[dqm->controller_id]->product_name_get();
+   void * cb_confirm_param = NULL;
    ctrlm_voice_session_rsp_confirm_t cb_confirm_voice_obj = NULL;
+
+   ctrlm_voice_start_audio_params_t start_audio_params;
+   start_audio_params.m_controller_id     = dqm->controller_id;
+   start_audio_params.m_use_stream_params = use_stream_params;
+   start_audio_params.m_offset            = offset;
+   start_audio_params.m_started           = false;
+   start_audio_params.m_timestamp         = dqm->timestamp;
+   start_audio_params.m_device_type       = device_type;
+   auto audio_start_cb = std::bind(&ctrlm_obj_network_rf4ce_t::start_controller_audio_streaming, this, std::placeholders::_1);
 
    session = ctrlm_get_voice_obj()->voice_session_req(network_id_get(),         dqm->controller_id,
                                                           device_type,              voice_format,
@@ -3734,82 +3807,15 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
                                                           controller_name.c_str(), 
                                                           sw_version.to_string().c_str(), hw_version.to_string().c_str(), 
                                                           (((double)battery_status.get_voltage_loaded()) *  4.0 / 255), command_status,
-                                                          &dqm->timestamp, &cb_confirm_voice_obj, &cb_confirm_param);
-   if(session == VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
-      if(controllers_[dqm->controller_id]->get_capabilities().has_capability(ctrlm_controller_capabilities_t::capability::PAR)) {
-         session = VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE;
-      } else {
-         session = VOICE_SESSION_RESPONSE_AVAILABLE;
-      }
+                                                          &dqm->timestamp, &cb_confirm_voice_obj, &cb_confirm_param,
+                                                          false, false, audio_start_cb, &start_audio_params);
+
+   if(!start_audio_params.m_started) {
+       start_audio_params.m_cb_confirm_voice_obj = cb_confirm_voice_obj;
+       start_audio_params.m_cb_confirm_param     = cb_confirm_param;
+       start_audio_params.m_status               = session;
+       start_controller_audio_streaming(&start_audio_params);
    }
-   if(session == VOICE_SESSION_RESPONSE_AVAILABLE) {
-      session = VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK;
-   }
-
-   XLOGD_INFO("Voice Session Response Status <%#x>", session);
-
-   // Send the response back to the HAL device
-   guchar response[5];
-   guchar response_len = 2;
-
-   response[0] = MSO_VOICE_CMD_ID_VOICE_SESSION_RESPONSE;
-   response[1] = session;
-   if(use_stream_params && session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK) { // Add stream params in the response
-      response[1] |= 0x80;
-      response[2] = (guchar) stream_begin_;
-      response[3] = (offset & 0xFF);
-      response[4] = (offset >> 8);
-      response_len = 5;
-   }
-
-   if(session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE) {
-      voice_params_par_t params;
-      ctrlm_get_voice_obj()->voice_params_par_get(&params);
-
-      XLOGD_INFO("PAR Voice EOS data bytes timeout <%d> method <%d>", params.par_voice_eos_timeout, params.par_voice_eos_method);
-      response[2] = params.par_voice_eos_method;
-      response[3] = (params.par_voice_eos_timeout & 0xFF);
-      response[4] = (params.par_voice_eos_timeout >> 8);
-      response_len = 5;
-   }
-
-   ctrlm_timestamp_t hal_timestamp = dqm->timestamp;
-
-   // Determine when to send the response (50 ms after receipt)
-   if(controller_type_get(dqm->controller_id) == RF4CE_CONTROLLER_TYPE_XR19) {
-      ctrlm_timestamp_add_ms(&dqm->timestamp, response_idle_time_ff_);
-   } else {
-      ctrlm_timestamp_add_ms(&dqm->timestamp, CTRLM_RF4CE_CONST_RESPONSE_IDLE_TIME);
-   }
-   
-
-   if(cb_confirm_voice_obj != NULL && (session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK ||
-                                       session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE)) { // Only confirm response for accepted session so there is only ever one response stored
-      voice_session_rsp_confirm_       = cb_confirm_voice_obj;
-      voice_session_rsp_confirm_param_ = cb_confirm_param;
-
-      timestamp_voice_session_request_ = hal_timestamp;
-      timestamp_voice_first_packet_    = hal_timestamp;
-
-      cb_confirm_rf4ce = ctrlm_network_rf4ce_cfm_voice_session_rsp;
-      cb_confirm_param = voice_session_rsp_params_.network_id;
-
-      // Store controller id, packet and timestamp for retransmission in case of send error
-      voice_session_rsp_params_.controller_id   = dqm->controller_id;
-      voice_session_rsp_params_.response_len    = response_len;
-      voice_session_rsp_params_.timestamp_hal   = hal_timestamp;
-      voice_session_rsp_params_.timestamp_begin = dqm->timestamp;
-      voice_session_rsp_params_.timestamp_end   = dqm->timestamp;
-      voice_session_rsp_params_.retries         = 0;
-      ctrlm_timestamp_add_ms(&voice_session_rsp_params_.timestamp_end, CTRLM_RF4CE_CONST_RESPONSE_WAIT_TIME);
-      errno_t safec_rc = memcpy_s(&voice_session_rsp_params_.response, sizeof(voice_session_rsp_params_.response),response, response_len);
-      ERR_CHK(safec_rc);
-      ctrlm_timestamp_get(&voice_session_rsp_params_.timestamp_rsp_req);
-   }
-
-   req_data(CTRLM_RF4CE_PROFILE_ID_VOICE, dqm->controller_id, dqm->timestamp, response_len, response, NULL, NULL, false, single_channel_rsp_, cb_confirm_rf4ce, cb_confirm_param);
-
-   XLOGD_INFO("session response delivered");
 
    if(session != VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK           && session != VOICE_SESSION_RESPONSE_AVAILABLE &&
       session != VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE && session != VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
@@ -3823,17 +3829,6 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
 
    if(dqm->status != VOICE_SESSION_RESPONSE_AVAILABLE && dqm->status != VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK) { // Session was aborted
       XLOGD_INFO("voice session abort");
-
-      // // Broadcast the event over the iarm bus
-      // ctrlm_voice_iarm_event_session_abort_t event;
-      // event.api_revision  = CTRLM_VOICE_IARM_BUS_API_REVISION;
-      // event.network_id    = dqm->header.network_id;
-      // event.network_type  = ctrlm_network_type_get(dqm->header.network_id);
-      // event.controller_id = dqm->controller_id;
-      // event.session_id    = ctrlm_voice_session_id_get_next();
-      // event.reason        = dqm->reason;
-
-      // ctrlm_voice_iarm_event_session_abort(&event);
    }
 }
 
@@ -3868,7 +3863,6 @@ void ctrlm_obj_network_rf4ce_t::cfm_voice_session_rsp(void *data, int size) {
        }
        ctrlm_timestamp_t now;
        ctrlm_timestamp_get(&now);
-
        double loadavg[3] = { -1, -1, -1 };
        getloadavg(loadavg, 3);
        struct sysinfo s_info;
@@ -3913,6 +3907,17 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_stop(void *data, int s
 
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_voice_session_stop_t));
+
+   if(!controller_exists(dqm->controller_id)) {
+      XLOGD_INFO("invalid controller id (%u)", dqm->controller_id);
+      return;
+   }
+   
+   ctrlm_rf4ce_controller_type_t controller_type = controllers_[dqm->controller_id]->controller_type_get();
+   if(!ctrlm_is_voice_assistant((ctrlm_rcu_controller_type_t) controller_type)) {
+      // Send voice key up event since the session stop was received
+      process_event_key(dqm->controller_id, CTRLM_KEY_STATUS_UP, CTRLM_KEY_CODE_PUSH_TO_TALK);
+   }
 
    // Check adjacent key press
    if(CTRLM_VOICE_SESSION_END_REASON_OTHER_KEY_PRESSED == dqm->session_end_reason && true == is_key_adjacent(dqm->controller_id, dqm->key_code)) {
@@ -4361,13 +4366,13 @@ void ctrlm_obj_network_rf4ce_t::cs_values_set(const ctrlm_cs_values_t *values, b
    }
 
    // ASB
-#ifdef ASB
-   if(!is_asb_force_settings()) {
-      asb_enabled_ = values->asb_enable;
-   } else {
-      XLOGD_WARN("%s network not using ASB cs_value due to force settings set to TRUE", name_get());
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      if(!is_asb_force_settings()) {
+         asb_enabled_ = values->asb_enable;
+      } else {
+         XLOGD_WARN("%s network not using ASB cs_value due to force settings set to TRUE", name_get());
+      }
    }
-#endif
 
    // Far Field Configuration
    far_field_configuration_t temp = ff_configuration_;
@@ -4425,7 +4430,11 @@ void ctrlm_obj_network_rf4ce_t::req_process_program_ir_codes(void *data, int siz
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_program_ir_codes_t));
 
-   if(controller_exists(dqm->controller_id)) {
+   bool success = false;
+
+   if(!is_managed_by_network(dqm->controller_id)) {
+      XLOGD_ERROR("controller %d is not managed by the %s network", dqm->controller_id, name_get());
+   } else if(controller_exists(dqm->controller_id)) {
       if(dqm->ir_codes) {
          XLOGD_INFO("Setting IR Codes on Controller %u", dqm->controller_id);
          unsigned char status[1] = {IR_RF_DATABASE_STATUS_DB_DOWNLOAD_YES | IR_RF_DATABASE_STATUS_FORCE_DOWNLOAD};
@@ -4435,16 +4444,15 @@ void ctrlm_obj_network_rf4ce_t::req_process_program_ir_codes(void *data, int siz
          controllers_[dqm->controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, ir_rf_database_.get_tv_ir_code_id());
          controllers_[dqm->controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, ir_rf_database_.get_avr_ir_code_id());
          this->ir_rf_database_.store_db();
-         if(dqm->success) *dqm->success = true;
+         success = true;
       } else {
          XLOGD_ERROR("Invalid IR Codes");
-         if(dqm->success) *dqm->success = false;
       }
    } else {
       XLOGD_ERROR("Controller %u doesn't exist", dqm->controller_id);
-      if(dqm->success) *dqm->success = false;
    }
 
+   if(dqm->success) dqm->success->push_back(success);
    // post the semaphore
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
@@ -4456,7 +4464,11 @@ void ctrlm_obj_network_rf4ce_t::req_process_ir_clear_codes(void *data, int size)
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_ir_clear_t));
 
-   if(controller_exists(dqm->controller_id)) {
+   bool success = false;
+
+   if(!is_managed_by_network(dqm->controller_id)) {
+      XLOGD_ERROR("controller %d is not managed by the %s network", dqm->controller_id, name_get());
+   } else if(controller_exists(dqm->controller_id)) {
       XLOGD_INFO("Clearing IR Codes on Controller %u", dqm->controller_id);
       unsigned char status[1] = {IR_RF_DATABASE_STATUS_DB_DOWNLOAD_YES | IR_RF_DATABASE_STATUS_FORCE_DOWNLOAD};
       this->ir_rf_database_.clear_ir_codes();
@@ -4465,12 +4477,12 @@ void ctrlm_obj_network_rf4ce_t::req_process_ir_clear_codes(void *data, int size)
       controllers_[dqm->controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, "0");
       controllers_[dqm->controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, "0");
       controllers_[dqm->controller_id]->rf4ce_rib_set_target(CTRLM_RF4CE_RIB_ATTR_ID_IR_RF_DATABASE_STATUS, CTRLM_RF4CE_RIB_ATTR_INDEX_GENERAL, CTRLM_RF4CE_RIB_ATTR_LEN_IR_RF_DATABASE_STATUS, status);
-      if(dqm->success) *dqm->success = true;
+      success = true;
    } else {
       XLOGD_ERROR("Controller %u doesn't exist", dqm->controller_id);
-      if(dqm->success) *dqm->success = false;
    }
 
+   if(dqm->success) dqm->success->push_back(success);
    // post the semaphore
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
@@ -4755,19 +4767,11 @@ void ctrlm_obj_network_rf4ce_t::rfc_retrieved_handler(const ctrlm_rfc_attr_t& at
 
    // Polling
    if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_POLLING JSON_PATH_SEPERATOR JSON_OBJ_NAME_NETWORK_RF4CE_POLLING_TARGET JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_POLLING_TARGET_METHODS, polling_methods_)) {
-      #ifndef MAC_POLLING
-      if(polling_methods_ & POLLING_METHODS_FLAG_MAC) {
-         XLOGD_ERROR("mac polling is disabled");
-         polling_methods_ &= ~POLLING_METHODS_FLAG_MAC;
-      }
-      #endif
       XLOGD_INFO("target polling methods <%s>", ctrlm_rf4ce_controller_polling_methods_str(polling_methods_));
    }
-   #ifdef MAC_POLLING
    if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_POLLING JSON_PATH_SEPERATOR JSON_OBJ_NAME_NETWORK_RF4CE_POLLING_TARGET JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_POLLING_TARGET_FMR_CONTROLLERS_MAX, max_fmr_controllers_)) {
       XLOGD_INFO("target fmr controllers max <%u>", max_fmr_controllers_);
    }
-   #endif
    if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_POLLING JSON_PATH_SEPERATOR JSON_OBJ_NAME_NETWORK_RF4CE_POLLING_HB_GENERIC_CONFIG JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_POLLING_HB_GENERIC_CONFIG_UPTIME_MULTIPLIER, controller_generic_polling_configuration_.uptime_multiplier)) {
       XLOGD_INFO("polling hb generic config - uptime multiplier <%u>", controller_generic_polling_configuration_.uptime_multiplier);
    }
@@ -4839,22 +4843,22 @@ void ctrlm_obj_network_rf4ce_t::rfc_retrieved_handler(const ctrlm_rfc_attr_t& at
    ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, &ctrlm_obj_network_rf4ce_t::notify_controllers_polling_configuration, NULL, 0, (void*)this);
 
    // ASB
-#ifdef ASB
-   if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_BOOL_NAME_NETWORK_RF4CE_ASB_ENABLE, asb_enabled_)) {
-      XLOGD_INFO("TR181 ASB Enable set to %s", (asb_enabled_ ? "TRUE" : "FALSE"));
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_BOOL_NAME_NETWORK_RF4CE_ASB_ENABLE, asb_enabled_)) {
+         XLOGD_INFO("TR181 ASB Enable set to %s", (asb_enabled_ ? "TRUE" : "FALSE"));
+      }
+      if(asb_enabled_) {
+         if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_ASB_DERIVATION_METHODS, asb_key_derivation_methods_, 0x01, 0xFF)) {
+            XLOGD_INFO("TR181 ASB Key Derivation Method set to %d", asb_key_derivation_methods_);
+         }
+         if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_ASB_FALLBACK_THRESHOLD, asb_fallback_count_threshold_, 0x01, 0xFF)) {
+            XLOGD_INFO("TR181 ASB Fallback Threshold set to %d", asb_fallback_count_threshold_);
+         }
+         if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_BOOL_NAME_NETWORK_RF4CE_ASB_FORCE_SETTINGS, asb_force_settings_)) {
+            XLOGD_INFO("TR181 ASB Force Settings set to %s", (asb_force_settings_ ? "TRUE" : "FALSE"));
+         }
+      }
    }
-   if(asb_enabled_) {
-      if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_ASB_DERIVATION_METHODS, asb_key_derivation_methods_, 0x01, 0xFF)) {
-         XLOGD_INFO("TR181 ASB Key Derivation Method set to %d", asb_key_derivation_methods_);
-      }
-      if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_INT_NAME_NETWORK_RF4CE_ASB_FALLBACK_THRESHOLD, asb_fallback_count_threshold_, 0x01, 0xFF)) {
-         XLOGD_INFO("TR181 ASB Fallback Threshold set to %d", asb_fallback_count_threshold_);
-      }
-      if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_RF4CE_ASB JSON_PATH_SEPERATOR JSON_BOOL_NAME_NETWORK_RF4CE_ASB_FORCE_SETTINGS, asb_force_settings_)) {
-         XLOGD_INFO("TR181 ASB Force Settings set to %s", (asb_force_settings_ ? "TRUE" : "FALSE"));
-      }
-   }
-#endif
    // End ASB
 
    // Voice
@@ -4904,48 +4908,85 @@ void ctrlm_obj_network_rf4ce_t::req_process_start_pairing(void *data, int size) 
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_start_pairing_t));
 
-   dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+   if(!dqm->params->screen_bind_enable) {
+      XLOGD_INFO("screen bind enable is not requested");
+      dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+   } else {
+      if(dqm->params->timeout != 0) { // use a timeout
+         ctrlm_main_iarm_call_property_t property = {};
+         property.api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION;
+         property.result       = CTRLM_IARM_CALL_RESULT_INVALID;
+         property.network_id   = CTRLM_MAIN_NETWORK_ID_ALL;
+         property.name         = CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND;
+         property.value        = dqm->params->timeout * 1000;
 
-   ctrlm_main_iarm_call_property_t property = {};
-   property.api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION;
-   property.result       = CTRLM_IARM_CALL_RESULT_INVALID;
-   property.network_id   = CTRLM_MAIN_NETWORK_ID_ALL;
-   property.name         = CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND;
-   property.value        = dqm->params->timeout * 1000;
+         ctrlm_main_iarm_call_property_set_(&property);
+         if (property.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
+            XLOGD_ERROR("Failed to set ACTIVE PERIOD SCREENBIND property");
+            set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+            dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
 
-   ctrlm_main_iarm_call_property_set_(&property);
-   if (property.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
-       XLOGD_ERROR("Failed to set ACTIVE PERIOD SCREENBIND property");
-       set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
-       dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
+            if (dqm->semaphore) {
+               sem_post(dqm->semaphore);
+            }
+            return;
+         }
+      }
 
-       if (dqm->semaphore) {
-           sem_post(dqm->semaphore);
-       }
-       return ;
+      ctrlm_main_iarm_call_control_service_pairing_mode_t pairing = {};
+      pairing.api_revision       = CTRLM_MAIN_IARM_BUS_API_REVISION;
+      pairing.network_id         = network_id_get();
+      pairing.pairing_mode       = 1;
+      pairing.restrict_by_remote = 0;
+      pairing.use_timeout        = (dqm->params->timeout == 0) ? 0 : 1;
+      pairing.result             = CTRLM_IARM_CALL_RESULT_INVALID;
+
+      ctrlm_main_iarm_call_control_service_start_pairing_mode_(&pairing);
+      if (pairing.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
+         XLOGD_ERROR("Failed to start pairing mode timer");
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
+      } else {
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_SEARCHING);
+         iarm_event_rcu_status();
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+      }
    }
-
-   ctrlm_main_iarm_call_control_service_pairing_mode_t pairing = {};
-   pairing.api_revision       = CTRLM_MAIN_IARM_BUS_API_REVISION;
-   pairing.network_id         = network_id_get();
-   pairing.pairing_mode       = 1;
-   pairing.restrict_by_remote = 0;
-   pairing.result             = CTRLM_IARM_CALL_RESULT_INVALID;
-
-   ctrlm_main_iarm_call_control_service_start_pairing_mode_(&pairing);
-   if (pairing.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
-       XLOGD_ERROR("Failed to start pairing mode timer");
-       set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
-       dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
-
-       if (dqm->semaphore) {
-           sem_post(dqm->semaphore);
-       }
-       return ;
+   if (dqm->semaphore) {
+       sem_post(dqm->semaphore);
    }
+}
 
-   set_rf_pair_state(CTRLM_RF_PAIR_STATE_SEARCHING);
-   iarm_event_rcu_status();
+void ctrlm_obj_network_rf4ce_t::req_process_stop_pairing(void *data, int size) {
+   THREAD_ID_VALIDATE();
+   ctrlm_main_queue_msg_stop_pairing_t *dqm = (ctrlm_main_queue_msg_stop_pairing_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_stop_pairing_t));
+
+   if(!dqm->params->screen_bind_disable) {
+      XLOGD_INFO("screen bind disable is not requested");
+      dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+   } else {
+      ctrlm_main_iarm_call_control_service_pairing_mode_t pairing = {};
+      pairing.api_revision       = CTRLM_MAIN_IARM_BUS_API_REVISION;
+      pairing.network_id         = network_id_get();
+      pairing.pairing_mode       = 1;
+      pairing.restrict_by_remote = 0;
+      pairing.use_timeout        = 0;
+      pairing.result             = CTRLM_IARM_CALL_RESULT_INVALID;
+
+      ctrlm_main_iarm_call_control_service_end_pairing_mode_(&pairing);
+      if (pairing.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
+         XLOGD_ERROR("Failed to end pairing mode");
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());
+      } else {
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_SEARCHING);
+         iarm_event_rcu_status();
+         dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
+      }
+   }
    if (dqm->semaphore) {
        sem_post(dqm->semaphore);
    }
@@ -5019,4 +5060,122 @@ void ctrlm_obj_network_rf4ce_t::controller_init_uinput(ctrlm_controller_id_t con
       XLOGD_ERROR("Failed to initialize a uinput device for controller %d", controller_id);
       return;
    }
+}
+
+void ctrlm_obj_network_rf4ce_t::start_controller_audio_streaming(ctrlm_voice_start_audio_params_t *params) {
+   THREAD_ID_VALIDATE();
+   params->m_started = false;
+   ctrlm_controller_id_t controller_id = params->m_controller_id;
+   ctrlm_voice_device_t  device_type   = params->m_device_type;
+
+   if(!ready_) {
+      XLOGD_FATAL("Network is not ready!");
+      return;
+   }
+
+   if(!controller_exists(controller_id)) {
+      XLOGD_WARN("Controller %u doesn't exist.", controller_id);
+      return;
+   }
+
+   ctrlm_voice_session_response_status_t session = params->m_status;
+
+   if(session == VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
+      if(controllers_[controller_id]->get_capabilities().has_capability(ctrlm_controller_capabilities_t::capability::PAR)) {
+         session = VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE;
+      } else {
+         session = VOICE_SESSION_RESPONSE_AVAILABLE;
+      }
+   }
+   if(session == VOICE_SESSION_RESPONSE_AVAILABLE) {
+      session = VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK;
+   }
+
+   XLOGD_INFO("Voice Session Response Status <%#x>", session);
+
+   // Send the response back to the HAL device
+   guchar response[5];
+   guchar response_len = 2;
+   gint16 offset = params->m_offset;
+
+   response[0] = MSO_VOICE_CMD_ID_VOICE_SESSION_RESPONSE;
+   response[1] = session;
+   if(params->m_use_stream_params && session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK) { // Add stream params in the response
+      response[1] |= 0x80;
+      response[2] = (guchar) stream_begin_;
+      response[3] = (offset & 0xFF);
+      response[4] = (offset >> 8);
+      response_len = 5;
+   }
+
+   if(session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE) {
+      voice_params_par_t voice_params;
+      ctrlm_get_voice_obj()->voice_params_par_get(&voice_params);
+
+      XLOGD_INFO("PAR Voice EOS data bytes timeout <%d> method <%d>", voice_params.par_voice_eos_timeout, voice_params.par_voice_eos_method);
+      response[2] = voice_params.par_voice_eos_method;
+      response[3] = (voice_params.par_voice_eos_timeout & 0xFF);
+      response[4] = (voice_params.par_voice_eos_timeout >> 8);
+      response_len = 5;
+   }
+
+   ctrlm_timestamp_t hal_timestamp = params->m_timestamp;
+
+   // Determine when to send the response (50 ms after receipt)
+   if(controller_type_get(controller_id) == RF4CE_CONTROLLER_TYPE_XR19) {
+      ctrlm_timestamp_add_ms(&params->m_timestamp, response_idle_time_ff_);
+   } else {
+      ctrlm_timestamp_add_ms(&params->m_timestamp, CTRLM_RF4CE_CONST_RESPONSE_IDLE_TIME);
+   }
+   
+   ctrlm_hal_rf4ce_cfm_data_t cb_confirm_rf4ce = NULL;
+
+   if(params->m_cb_confirm_voice_obj != NULL && (session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK ||
+                                                session == VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE)) { // Only confirm response for accepted session so there is only ever one response stored
+      voice_session_rsp_confirm_       = params->m_cb_confirm_voice_obj;
+      voice_session_rsp_confirm_param_ = params->m_cb_confirm_param;
+
+      timestamp_voice_session_request_ = hal_timestamp;
+      timestamp_voice_first_packet_    = hal_timestamp;
+
+      cb_confirm_rf4ce = ctrlm_network_rf4ce_cfm_voice_session_rsp;
+      params->m_cb_confirm_param = voice_session_rsp_params_.network_id;
+
+      // Store controller id, packet and timestamp for retransmission in case of send error
+      voice_session_rsp_params_.controller_id   = controller_id;
+      voice_session_rsp_params_.response_len    = response_len;
+      voice_session_rsp_params_.timestamp_hal   = hal_timestamp;
+      voice_session_rsp_params_.timestamp_begin = params->m_timestamp;
+      voice_session_rsp_params_.timestamp_end   = params->m_timestamp;
+      voice_session_rsp_params_.retries         = 0;
+      ctrlm_timestamp_add_ms(&voice_session_rsp_params_.timestamp_end, CTRLM_RF4CE_CONST_RESPONSE_WAIT_TIME);
+      errno_t safec_rc = memcpy_s(&voice_session_rsp_params_.response, sizeof(voice_session_rsp_params_.response),response, response_len);
+      ERR_CHK(safec_rc);
+      ctrlm_timestamp_get(&voice_session_rsp_params_.timestamp_rsp_req);
+   }
+
+   req_data(CTRLM_RF4CE_PROFILE_ID_VOICE, controller_id, params->m_timestamp, response_len, response, NULL, NULL, false, single_channel_rsp_, cb_confirm_rf4ce, params->m_cb_confirm_param);
+
+   XLOGD_INFO("session response delivered");
+
+   if(session != VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK           && session != VOICE_SESSION_RESPONSE_AVAILABLE &&
+      session != VOICE_SESSION_RESPONSE_AVAILABLE_SKIP_CHAN_CHECK_PAR_VOICE && session != VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
+      voice_session_active_count_--;
+      if(voice_session_active_count_ == 0) { // Re-enable frequency agility if the no other active RF4CE voice sessions
+         ctrlm_hal_network_property_frequency_agility_t property;
+         property.state = CTRLM_HAL_FREQUENCY_AGILITY_ENABLE;
+         ctrlm_network_property_set(network_id_get(), CTRLM_HAL_NETWORK_PROPERTY_FREQUENCY_AGILITY, (void *)&property, sizeof(property));
+      }
+
+      if(device_type == CTRLM_VOICE_DEVICE_PTT) {
+         // Send voice key up event since the session was not accepted
+         process_event_key(controller_id, CTRLM_KEY_STATUS_UP, CTRLM_KEY_CODE_PUSH_TO_TALK);
+      }
+   }
+
+   params->m_started = true;
+}
+
+bool ctrlm_obj_network_rf4ce_t::is_managed_by_network(ctrlm_controller_id_t id) {
+   return (id >= RF4CE_RCU_ID_RANGE_MIN && id < RF4CE_RCU_ID_RANGE_MAX);
 }

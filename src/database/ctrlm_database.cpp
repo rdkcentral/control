@@ -62,9 +62,7 @@ using namespace std;
 #define CTRLM_DB_PAIRING_METRICS                  "pairing_metrics"
 #define CTRLM_DB_LAST_KEY_INFO                    "last_key_info"
 #define CTRLM_DB_SHUTDOWN_TIME                    "shutdown_time"
-#ifdef ASB
 #define CTRLM_DB_ASB_ENABLED                      "asb_enabled"
-#endif
 #define CTRLM_DB_OPEN_CHIME_ENABLED               "open_chime_enabled"
 #define CTRLM_DB_CLOSE_CHIME_ENABLED              "close_chime_enabled"
 #define CTRLM_DB_PRIVACY_CHIME_ENABLED            "privacy_chime_enabled"
@@ -93,9 +91,7 @@ typedef enum {
    CTRLM_DB_QUEUE_MSG_TYPE_CONTROLLER_DESTROY = 5,
    CTRLM_DB_QUEUE_MSG_TYPE_CONTROLLER_CREATE  = 6,
    CTRLM_DB_QUEUE_MSG_TYPE_BACKUP             = 7,
-#ifdef DEEPSLEEP_CLOSE_DB
    CTRLM_DB_QUEUE_MSG_TYPE_POWER_STATE_CHANGE = 8,
-#endif
    CTRLM_DB_QUEUE_MSG_TYPE_WRITE_ATTR         = 9,
    CTRLM_DB_QUEUE_MSG_TYPE_TICKLE             = CTRLM_MAIN_QUEUE_MSG_TYPE_TICKLE
 } ctrlm_db_queue_msg_type_t;
@@ -149,12 +145,10 @@ typedef struct {
    bool *                      ret;
 } ctrlm_db_queue_msg_backup_t;
 
-#ifdef DEEPSLEEP_CLOSE_DB
 typedef struct {
    ctrlm_db_queue_msg_header_t header;
    gboolean                    waking_up;
 } ctrlm_db_queue_msg_power_state_change_t;
-#endif
 
 typedef struct {
    sqlite3 *                  handle;
@@ -164,10 +158,9 @@ typedef struct {
    GAsyncQueue *              queue;
    sem_t                      semaphore;
 
-#ifdef DEEPSLEEP_CLOSE_DB
+   bool                       deepsleep_close_db;
    char                       path[PATH_MAX];
    sem_t                      ds_signal;
-#endif
 
    vector<ctrlm_network_id_t> rf4ce_network_list;
    vector<ctrlm_network_id_t> ip_network_list;
@@ -218,9 +211,7 @@ static void ctrlm_db_write_blob (const char *table, const char *key, const gucha
 static void ctrlm_db_write_blob_(const char *table, const char *key, const guchar *value, guint32 length);
 static void ctrlm_db_write_file_(const char *path, const guchar *data, guint32 length);
 
-#ifdef DEEPSLEEP_CLOSE_DB
 static void ctrlm_db_power_state_change_(gboolean waking_up);
-#endif
 static int  ctrlm_db_insert_or_update(const char *table, const char *key, const int *value_int, const sqlite3_int64 *value_int64, const guchar *value_str, guint32 blob_length);
 #if 0
 static int  ctrlm_db_insert(const char *table, const char *key, const int *value_int, const char *value_str, guint32 blob_length);
@@ -286,11 +277,13 @@ void ctrlm_db_close() {
 
 gboolean ctrlm_db_init(const char *db_path) {
    g_ctrlm_db.created_default_db = false;
-#ifdef DEEPSLEEP_CLOSE_DB
-   errno_t safec_rc = strcpy_s(g_ctrlm_db.path, sizeof(g_ctrlm_db.path), db_path);
-   ERR_CHK(safec_rc);
-   sem_init(&g_ctrlm_db.ds_signal, 0, 0);
-#endif
+   g_ctrlm_db.deepsleep_close_db = true; // Default to true.  This can be overridden by vendor layer config as required in the future.
+
+   if(g_ctrlm_db.deepsleep_close_db) {
+      errno_t safec_rc = strcpy_s(g_ctrlm_db.path, sizeof(g_ctrlm_db.path), db_path);
+      ERR_CHK(safec_rc);
+      sem_init(&g_ctrlm_db.ds_signal, 0, 0);
+   }
 
    // check for presence of database file and if not present, create it
    if(false == ctrlm_db_open(db_path)) {
@@ -362,9 +355,9 @@ void ctrlm_db_terminate(void) {
          }
       }
    }
-#ifdef DEEPSLEEP_CLOSE_DB
-   sem_destroy(&g_ctrlm_db.ds_signal);
-#endif
+   if(g_ctrlm_db.deepsleep_close_db) {
+      sem_destroy(&g_ctrlm_db.ds_signal);
+   }
    sem_destroy(&g_ctrlm_db.semaphore);
 
    ctrlm_db_close();
@@ -401,29 +394,28 @@ bool ctrlm_db_backup() {
 } 
 
 void ctrlm_db_power_state_change(gboolean waking_up) {
-#ifdef DEEPSLEEP_CLOSE_DB
-   ctrlm_db_queue_msg_power_state_change_t *msg = (ctrlm_db_queue_msg_power_state_change_t *)g_malloc(sizeof(ctrlm_db_queue_msg_power_state_change_t));
-   if(NULL == msg) {
-      XLOGD_ERROR("Failed to allocate memory");
-      g_assert(0);
-      return;
-   }
+   if(g_ctrlm_db.deepsleep_close_db) {
+      ctrlm_db_queue_msg_power_state_change_t *msg = (ctrlm_db_queue_msg_power_state_change_t *)g_malloc(sizeof(ctrlm_db_queue_msg_power_state_change_t));
+      if(NULL == msg) {
+         XLOGD_ERROR("Failed to allocate memory");
+         g_assert(0);
+         return;
+      }
 
-   msg->header.type = CTRLM_DB_QUEUE_MSG_TYPE_POWER_STATE_CHANGE;
-   msg->waking_up   = waking_up;
+      msg->header.type = CTRLM_DB_QUEUE_MSG_TYPE_POWER_STATE_CHANGE;
+      msg->waking_up   = waking_up;
 
-   if(waking_up) {
-      ctrlm_db_queue_msg_push_front(msg);
-      sem_post(&g_ctrlm_db.ds_signal);
+      if(waking_up) {
+         ctrlm_db_queue_msg_push_front(msg);
+         sem_post(&g_ctrlm_db.ds_signal);
+      } else {
+         ctrlm_db_queue_msg_push(msg);
+      }
    } else {
-      ctrlm_db_queue_msg_push(msg);
+      XLOGD_INFO("No action for DB");
    }
-#else
-   XLOGD_INFO("No action for DB");
-#endif
 }
 
-#ifdef DEEPSLEEP_CLOSE_DB
 void ctrlm_db_power_state_change_(gboolean waking_up) {
 
    if(waking_up == true ) {
@@ -434,13 +426,10 @@ void ctrlm_db_power_state_change_(gboolean waking_up) {
       ctrlm_db_close();
    }
 }
-#endif
 
 gpointer ctrlm_db_thread(gpointer param) {
    bool running = true;
-#ifdef DEEPSLEEP_CLOSE_DB
    bool ds_sem_wait = false;
-#endif
    XLOGD_INFO("Started");
 
    // Unblock the caller that launched this thread
@@ -533,26 +522,24 @@ gpointer ctrlm_db_thread(gpointer param) {
             sem_post(&g_ctrlm_db.semaphore);
             break;
          }
-#ifdef DEEPSLEEP_CLOSE_DB
          case CTRLM_DB_QUEUE_MSG_TYPE_POWER_STATE_CHANGE: {
-            XLOGD_DEBUG("POWER STATE CHANGE");
-            ctrlm_db_queue_msg_power_state_change_t *power_state_change = (ctrlm_db_queue_msg_power_state_change_t *)msg;
-            ds_sem_wait = power_state_change->waking_up ? false : true;
-            ctrlm_db_power_state_change_(power_state_change->waking_up);
+            if(g_ctrlm_db.deepsleep_close_db) {
+               XLOGD_DEBUG("POWER STATE CHANGE");
+               ctrlm_db_queue_msg_power_state_change_t *power_state_change = (ctrlm_db_queue_msg_power_state_change_t *)msg;
+               ds_sem_wait = power_state_change->waking_up ? false : true;
+               ctrlm_db_power_state_change_(power_state_change->waking_up);
+            }
             break;
          }
-#endif
          default: {
             break;
          }
       }
       ctrlm_db_queue_msg_destroy(msg);
 
-#ifdef DEEPSLEEP_CLOSE_DB
       if(ds_sem_wait == true) {
          sem_wait(&g_ctrlm_db.ds_signal);
       }
-#endif
    } while(running);
    return(NULL);
 }
@@ -663,7 +650,6 @@ void ctrlm_db_shutdown_time_read(guchar **data, guint32 *length) {
    ctrlm_db_read_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_SHUTDOWN_TIME, data, length);
 }
 
-#ifdef ASB
 void ctrlm_db_asb_enabled_write(guchar *data, guint32 length) {
    ctrlm_db_write_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_ASB_ENABLED, data, length);
 }
@@ -671,7 +657,6 @@ void ctrlm_db_asb_enabled_write(guchar *data, guint32 length) {
 void ctrlm_db_asb_enabled_read(guchar **data, guint32 *length) {
    ctrlm_db_read_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_ASB_ENABLED, data, length);
 }
-#endif
 
 void ctrlm_db_open_chime_enabled_write(guchar *data, guint32 length) {
    ctrlm_db_write_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_OPEN_CHIME_ENABLED, data, length);
@@ -1930,7 +1915,6 @@ void ctrlm_db_rf4ce_write_binding_security_type(ctrlm_network_id_t network_id, c
    ctrlm_db_write_uint64(table, "binding_security_type", type);
 }
 
-#ifdef ASB
 void ctrlm_db_rf4ce_read_asb_key_derivation_method(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, unsigned char *method) {
    char table[CONTROLLER_TABLE_NAME_MAX_LEN];
    ctrlm_db_rf4ce_controller_entry_table_name(network_id, controller_id, table);
@@ -1945,7 +1929,6 @@ void ctrlm_db_rf4ce_write_asb_key_derivation_method(ctrlm_network_id_t network_i
 
    ctrlm_db_write_uint64(table, "asb_key_derivation_method", method);
 }
-#endif
 
 void ctrlm_db_rf4ce_read_privacy(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, guchar **data, guint32 *length) {
    char table[CONTROLLER_TABLE_NAME_MAX_LEN];

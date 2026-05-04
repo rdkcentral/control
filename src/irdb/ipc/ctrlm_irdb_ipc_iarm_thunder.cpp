@@ -390,7 +390,6 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::program_ir_codes(void *arg) {
     bool success                            = false;
     ctrlm_irdb_dev_type_t dev_type          = CTRLM_IRDB_DEV_TYPE_INVALID;
     ctrlm_ir_device_type_t ir_dev_type      = CTRLM_IR_DEVICE_UNKNOWN;
-    int network_type_val                    = CTRLM_NETWORK_TYPE_INVALID;
     int remote_id                           = 0;
     std::string av_dev_str, code;
     json_config conf;
@@ -404,10 +403,6 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::program_ir_codes(void *arg) {
     if(payload == NULL || !conf.config_object_set(payload)) {
         XLOGD_ERROR("Invalid payload from parameters");
         return(IARM_RESULT_INVALID_PARAM);
-    }
-
-    if(!conf.config_value_get(NET_TYPE, network_type_val)) {
-        XLOGD_INFO("Missing %s parameter - defaulting to all networks", NET_TYPE);
     }
 
     if(!conf.config_value_get(AV_DEV_TYPE, av_dev_str)) {
@@ -425,9 +420,7 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::program_ir_codes(void *arg) {
         return(IARM_RESULT_INVALID_PARAM);
     }
 
-    ctrlm_network_id_t network_id       = (network_type_val == CTRLM_NETWORK_TYPE_INVALID) ?
-                                          CTRLM_MAIN_NETWORK_ID_ALL :
-                                          ctrlm_network_id_get(static_cast<ctrlm_network_type_t>(network_type_val));
+    ctrlm_network_id_t network_id       = CTRLM_MAIN_NETWORK_ID_ALL;
     ctrlm_controller_id_t controller_id = static_cast<ctrlm_controller_id_t>(remote_id);
 
     if(!ctrlm_irdb_dev_type_is_valid(av_dev_str, ir_dev_type)) {
@@ -460,7 +453,6 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::clear_ir_codes(void *arg) {
     json_t *payload                         = NULL;
     ctrlm_irdb_interface_t *irdb            = ctrlm_main_irdb_get();
     bool success                            = false;
-    int network_type_val                    = CTRLM_NETWORK_TYPE_INVALID;
     int remote_id                           = 0;
     json_config conf;
 
@@ -475,18 +467,12 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::clear_ir_codes(void *arg) {
         return(IARM_RESULT_INVALID_PARAM);
     }
 
-    if(!conf.config_value_get(NET_TYPE, network_type_val)) {
-        XLOGD_INFO("Missing %s parameter - defaulting to all networks", NET_TYPE);
-    }
-
     if(!conf.config_value_get(REMOTE_ID, remote_id)){
         XLOGD_ERROR("Missing %s parameter", REMOTE_ID);
         return(IARM_RESULT_INVALID_PARAM);
     }
 
-    ctrlm_network_id_t network_id       = (network_type_val == CTRLM_NETWORK_TYPE_INVALID) ?
-                                          CTRLM_MAIN_NETWORK_ID_ALL :
-                                          ctrlm_network_id_get(static_cast<ctrlm_network_type_t>(network_type_val));
+    ctrlm_network_id_t network_id       = CTRLM_MAIN_NETWORK_ID_ALL;
     ctrlm_controller_id_t controller_id = static_cast<ctrlm_controller_id_t>(remote_id);
 
     if(irdb) {

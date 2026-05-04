@@ -47,6 +47,7 @@ const BleUuid GattRemoteControlService::m_lastKeypressCharUuid(BleUuid::LastKeyp
 const BleUuid GattRemoteControlService::m_advConfigCharUuid(BleUuid::AdvertisingConfig);
 const BleUuid GattRemoteControlService::m_advConfigCustomListCharUuid(BleUuid::AdvertisingConfigCustomList);
 const BleUuid GattRemoteControlService::m_assertReportCharUuid(BleUuid::AssertReport);
+const BleUuid GattRemoteControlService::m_rawBatteryVoltageCharUuid(BleUuid::RawBatteryVoltage);
 
 using namespace std;
 
@@ -182,6 +183,12 @@ bool GattRemoteControlService::start(const shared_ptr<const BleGattService> &gat
             XLOGD_WARN("failed to get optional Assert Reporting characteristic, continuing anyway...");
         }
     }
+    if (!m_rawBatteryVoltageCharacteristic || !m_rawBatteryVoltageCharacteristic->isValid()) {
+        m_rawBatteryVoltageCharacteristic = gattService->characteristic(m_rawBatteryVoltageCharUuid);
+        if (!m_rawBatteryVoltageCharacteristic || !m_rawBatteryVoltageCharacteristic->isValid()) {
+            XLOGD_WARN("failed to get Raw Battery Voltage characteristic, continuing anyway...");
+        }
+    }
 
     // check we're not already started
     if (m_stateMachine.state() != IdleState) {
@@ -228,6 +235,7 @@ void GattRemoteControlService::onEnteredState(int state)
         m_rebootReasonCharacteristic.reset();
         m_rcuActionCharacteristic.reset();
         m_assertReportCharacteristic.reset();
+        m_rawBatteryVoltageCharacteristic.reset();
 
 
     } else if (state == RetrieveInitialValuesState) {
@@ -237,12 +245,14 @@ void GattRemoteControlService::onEnteredState(int state)
         requestAdvConfigCustomList();
         requestUnpairReason();
         requestRebootReason();
+        requestRawBatteryVoltage();
 
         m_readySlots.invoke();
 
     } else if (state == EnableNotificationsState) {
         requestStartUnpairNotify();
         requestStartRebootNotify();
+        requestRawBatteryVoltageChangedNotify();
     }
 }
 
@@ -300,6 +310,35 @@ void GattRemoteControlService::requestStartRebootNotify()
     m_rebootReasonCharacteristic->enableNotifications(
             Slot<const std::vector<uint8_t> &>(m_isAlive,
                 std::bind(&GattRemoteControlService::onRebootReasonChanged, this, std::placeholders::_1)), 
+            PendingReply<>(m_isAlive, replyHandler));
+}
+
+void GattRemoteControlService::requestRawBatteryVoltageChangedNotify()
+{
+    if (!m_rawBatteryVoltageCharacteristic || !m_rawBatteryVoltageCharacteristic->isValid()) {
+        XLOGD_WARN("Invalid raw battery voltage characteristic, skipping notification setup");
+        return;
+    }
+
+    auto replyHandler = [this](PendingReply<> *reply)
+        {
+            // check for errors
+            if (reply->isError()) {
+                // this is bad if this happens as we won't get updates, so we install a timer to
+                // retry enabling notifications in a couple of seconds time
+                XLOGD_ERROR("failed to enable raw battery voltage characteristic notifications due to <%s>",
+                        reply->errorMessage().c_str());
+
+                m_stateMachine.cancelDelayedEvents(RetryStartNotifyEvent);
+                m_stateMachine.postDelayedEvent(RetryStartNotifyEvent, 2000);
+            } else {
+                XLOGD_INFO("request to start notifications on Raw Battery Voltage characteristic succeeded");
+            }
+        };
+
+    m_rawBatteryVoltageCharacteristic->enableNotifications(
+            Slot<const std::vector<uint8_t> &>(m_isAlive,
+                std::bind(&GattRemoteControlService::onRawBatteryVoltageChanged, this, std::placeholders::_1)),
             PendingReply<>(m_isAlive, replyHandler));
 }
 
@@ -530,6 +569,45 @@ void GattRemoteControlService::requestLastKeypress()
     \internal
 
     Sends a request to org.bluez.GattCharacteristic1.Value() to get the value
+    property of the characteristic which contains the raw battery voltage.
+
+ */
+void GattRemoteControlService::requestRawBatteryVoltage()
+{
+    // lambda invoked when the request returns
+    auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
+    {
+        // check for errors
+        if (reply->isError()) {
+            XLOGD_ERROR("Failed to read raw battery voltage due to <%s>", reply->errorMessage().c_str());
+        } else {
+            std::vector<uint8_t> value;
+            value = reply->result();
+
+            if (value.size() == 3) {
+                onRawBatteryVoltageChanged(value);
+            } else {
+                XLOGD_ERROR("Raw battery voltage received has invalid length (%d bytes)", value.size());
+            }
+        }
+    };
+
+
+    if (m_rawBatteryVoltageCharacteristic && m_rawBatteryVoltageCharacteristic->isValid()) {
+
+        // send a request to the bluez daemon to read the characteristic
+        m_rawBatteryVoltageCharacteristic->readValue(PendingReply<std::vector<uint8_t>>(m_isAlive, replyHandler));
+
+    } else {
+        XLOGD_WARN("Raw battery voltage characteristic is not valid, check that the remote firmware version supports this feature.");
+    }
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    \internal
+
+    Sends a request to org.bluez.GattCharacteristic1.Value() to get the value
     propery of the characteristic which contains the advertising config.
 
  */
@@ -601,7 +679,38 @@ void GattRemoteControlService::requestAdvConfigCustomList()
     }
 }
 
+// -----------------------------------------------------------------------------
+/*!
+    \internal
 
+    Internal slot called when a notification from the remote device is sent
+    due to raw battery voltage changing.
+ */
+void GattRemoteControlService::onRawBatteryVoltageChanged(const std::vector<uint8_t> &newValue) {
+    m_unloadedVoltage = newValue[0];
+    m_loadedVoltage = newValue[1];
+    m_voltagePercentage = std::clamp(newValue[2], uint8_t(0), uint8_t(100)); // Clamp percentage between 0 - 100
+
+    // Formats an 8-bit unsigned integer as a voltage string.
+    // Upper 2 bits = whole voltage (0-3v), lower 6 bits = 1/64v increments.
+    //     Example: 137 (0x89 = 0b10001001)
+    //      - Upper 2 bits: 0b10 = 2v
+    //      - Lower 6 bits: 0b001001 = 9 = 9/64 = 0.14v
+    //      - Result: "2.14v"
+    auto formatVoltage = [](uint8_t value) -> std::string {
+        const uint8_t wholeVolts = (value >> 6) & 0x03; // Upper 2 bits
+        const uint8_t fractionalBits = value & 0x3F;    // Lower 6 bits
+        const float totalVolts = wholeVolts + (fractionalBits / 64.0f);
+
+        char buffer[16];
+        snprintf(buffer, sizeof(buffer), "%.2fv", totalVolts);
+        return buffer;
+    };
+
+    XLOGD_TELEMETRY("Successfully read raw battery voltage characteristic, unloaded = %s, loaded = %s, loaded percentage = %u%%",
+       formatVoltage(m_unloadedVoltage).c_str(), formatVoltage(m_loadedVoltage).c_str(), (unsigned int)m_voltagePercentage);
+    m_rawBatteryVoltageChangedSlots.invoke(newValue);
+}
 
 // -----------------------------------------------------------------------------
 /*!

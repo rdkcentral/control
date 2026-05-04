@@ -232,6 +232,9 @@ private:
     bool m_lastServicesResolvedState;
     bool m_isPairing;
 
+    int m_pairingRetryCnt;
+    int m_maxPairingRetries;
+
     GTimer* m_timeSinceReady;
 
     int m_recoveryAttempts;

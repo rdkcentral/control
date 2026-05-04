@@ -71,17 +71,13 @@ bool ctrlm_voice_endpoint_http_t::open() {
     }
 
     std::string device_id      = this->voice_obj->voice_stb_data_device_id_get();
-    std::string receiver_id    = this->voice_obj->voice_stb_data_receiver_id_get();
     std::string partner_id     = this->voice_obj->voice_stb_data_partner_id_get();
-    std::string experience     = this->voice_obj->voice_stb_data_experience_get();
     std::string app_id         = this->voice_obj->voice_stb_data_app_id_http_get();
     std::string language       = this->voice_obj->voice_stb_data_guide_language_get().c_str();
 
     xrsv_http_params_t    params_http = {
        .device_id        = device_id.c_str(),
-       .receiver_id      = receiver_id.c_str(),
        .partner_id       = partner_id.c_str(),
-       .experience       = experience.c_str(),
        .app_id           = app_id.c_str(),
        .language         = language.c_str(),
        .test_flag        = this->voice_obj->voice_stb_data_test_get(),
@@ -128,12 +124,6 @@ bool ctrlm_voice_endpoint_http_t::get_handlers(xrsr_handlers_t *handlers) {
     return(true);
 }
 
-void ctrlm_voice_endpoint_http_t::voice_stb_data_receiver_id_set(std::string &receiver_id) {
-    if(this->xrsv_obj_http) {
-        xrsv_http_update_receiver_id(this->xrsv_obj_http, receiver_id.c_str());
-    }
-}
-
 void ctrlm_voice_endpoint_http_t::voice_stb_data_device_id_set(std::string &device_id) {
     if(this->xrsv_obj_http) {
         xrsv_http_update_device_id(this->xrsv_obj_http, device_id.c_str());
@@ -146,12 +136,6 @@ void ctrlm_voice_endpoint_http_t::voice_stb_data_partner_id_set(std::string &par
     }
 }
  
-void ctrlm_voice_endpoint_http_t::voice_stb_data_experience_set(std::string &experience) {
-    if(this->xrsv_obj_http) {
-        xrsv_http_update_experience(this->xrsv_obj_http, experience.c_str());
-    }
-}
-
 void ctrlm_voice_endpoint_http_t::voice_stb_data_guide_language_set(const char *language) {
    if(this->xrsv_obj_http) {
        xrsv_http_update_language(this->xrsv_obj_http, language);
@@ -202,7 +186,7 @@ void ctrlm_voice_endpoint_http_t::voice_session_begin_callback_http(void *data, 
         has_sat = true;
     }
 
-    XLOGD_TELEMETRY("session begin - src <%s> h_SAT <%s> h_MTLS <%s> h_OCSPst <%s> h_OCSPca <%s>", ctrlm_voice_device_str(source), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO");
+    XLOGD_AUTOMATION_TELEMETRY("session begin - src <%s> h_SAT <%s> h_MTLS <%s> h_OCSPst <%s> h_OCSPca <%s>", ctrlm_voice_device_str(source), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO");
 
     errno_t safec_rc = strcpy_s(this->user_agent, sizeof(this->user_agent), user_agent.str().c_str());
     ERR_CHK(safec_rc);
@@ -294,7 +278,7 @@ void ctrlm_voice_endpoint_http_t::voice_session_end_callback_http(void *data, in
     }
 
     // Check if HTTP was successful
-    if((stats->reason != XRSR_SESSION_END_REASON_EOS && stats->reason != XRSR_SESSION_END_REASON_TERMINATE && stats->reason != XRSR_SESSION_END_REASON_EOT) 
+    if((stats->session_end_reason != XRSR_SESSION_END_REASON_EOS && stats->session_end_reason != XRSR_SESSION_END_REASON_TERMINATE && stats->session_end_reason != XRSR_SESSION_END_REASON_EOT)
             || (stats->ret_code_library != 0)  || (stats->ret_code_protocol != 200) || (this->server_ret_code != 0)) {
         success = false;
     }

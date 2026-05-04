@@ -23,8 +23,10 @@
 #include <sys/sysinfo.h>
 #include <poll.h>
 #include <glib.h>
+#include <glib-unix.h>
 #include <string.h>
 #include <semaphore.h>
+#include <errno.h>
 #include <dlfcn.h>
 #include <memory>
 #include <algorithm>
@@ -54,12 +56,15 @@
 #include "ctrlm_validation.h"
 #include "ctrlm_recovery.h"
 #include "ctrlm_ir_controller.h"
+#include "ctrlm_powermanager.h"
 #ifdef CTRLM_THUNDER
 #include "ctrlm_thunder_plugin_device_info.h"
+#include "ctrlm_thunder_plugin_system.h"
+#include "ctrlm_rcp_ipc_iarm_thunder.h"
 #endif
 #ifdef AUTH_ENABLED
 #include "ctrlm_auth.h"
-#include "ctrlm_hal_certificate.h"
+#include "ctrlm_auth_certificate.h"
 #endif
 #include "ctrlm_rfc.h"
 #include "ctrlm_telemetry.h"
@@ -72,9 +77,7 @@
 #include "dsMgr.h"
 #include "dsRpc.h"
 #include "dsDisplay.h"
-#ifdef SYSTEMD_NOTIFY
 #include <systemd/sd-daemon.h>
-#endif
 #include <systemd/sd-bus.h>
 #include "xr_voice_sdk.h"
 #include "ctrlm_voice_obj.h"
@@ -85,10 +88,6 @@
 #include "xr_fdc.h"
 #endif
 #include<features.h>
-#ifdef MEMORY_LOCK
-#include "clnl.h"
-#endif
-#include "ctrlm_rcp_ipc_iarm_thunder.h"
 
 using namespace std;
 
@@ -115,11 +114,6 @@ using namespace std;
 #define CTRLM_RF4CE_LEN_PAIRING_METRICS sizeof(ctrlm_pairing_metrics_t)
 
 #define CTRLM_MAIN_QUEUE_REPEAT_DELAY   (5000)
-
-#define NETWORK_ID_BASE_RF4CE   1
-#define NETWORK_ID_BASE_IP      11
-#define NETWORK_ID_BASE_BLE     21
-#define NETWORK_ID_BASE_CUSTOM  41
 
 #define CTRLM_MAIN_FIRST_BOOT_TIME_MAX (180) // maximum amount of uptime allowed (in seconds) for declaring "first boot"
 
@@ -188,7 +182,6 @@ typedef struct {
    sem_t                              ctrlm_utils_sem;
    GAsyncQueue *                      queue;
    string                             stb_name;
-   string                             receiver_id;
    string                             device_id;
    ctrlm_device_type_t                device_type;
    string                             service_account_id;
@@ -205,7 +198,6 @@ typedef struct {
    string                             image_build_time;
    string                             db_path;
    string                             minidump_path;
-   gboolean                           has_receiver_id;
    gboolean                           has_device_id;
    gboolean                           has_device_type;
    gboolean                           has_service_account_id;
@@ -215,8 +207,16 @@ typedef struct {
    gboolean                           sat_enabled;
    gboolean                           production_build;
    bool                               rf4ce_enabled;
-   void *                             rf4ce_handle;
+   void *                             rf4ce_hal_handle;
    ctrlm_hal_rf4ce_main_t             rf4ce_hal_main;
+   bool                               rf4ce_asb_supported;
+   void *                             rf4ce_asb_handle;
+
+   ctrlm_hal_rf4ce_asb_init_t         rf4ce_hal_asb_init;
+   ctrlm_hal_rf4ce_asb_methods_get_t  rf4ce_hal_asb_methods_get;
+   ctrlm_hal_rf4ce_asb_key_derive_t   rf4ce_hal_asb_key_derive;
+   ctrlm_hal_rf4ce_asb_destroy_t      rf4ce_hal_asb_destroy;
+
    guint                              thread_monitor_timeout_val;
    guint                              thread_monitor_timeout_tag;
    guint                              thread_monitor_index;
@@ -270,19 +270,20 @@ typedef struct {
    ctrlm_cs_values_t                  cs_values;
 #ifdef AUTH_ENABLED
    ctrlm_auth_t                      *authservice;
-   ctrlm_hal_certificate_t           *hal_certificate;
+   ctrlm_auth_certificate_t          *auth_certificate;
 #endif
 #ifdef CTRLM_THUNDER
    Thunder::DeviceInfo::ctrlm_thunder_plugin_device_info_t *thunder_device_info;
+   Thunder::System::ctrlm_thunder_plugin_system_t *thunder_system;
 #endif
+   ctrlm_powermanager_t              *power_manager;
    ctrlm_power_state_t                power_state;
    gboolean                           auto_ack;
    gboolean                           local_conf;
    guint                              telemetry_report_interval;
    ctrlm_ir_controller_t             *ir_controller;
-#ifdef DEEP_SLEEP_ENABLED
+   bool                               networked_standby_supported;
    gboolean                           wake_with_voice_allowed;
-#endif
 } ctrlm_global_t;
 
 static ctrlm_global_t g_ctrlm;
@@ -291,10 +292,6 @@ static ctrlm_global_t g_ctrlm;
 #ifdef AUTH_ENABLED
 static gboolean ctrlm_has_authservice_data(void);
 static gboolean ctrlm_load_authservice_data(void);
-#ifdef AUTH_RECEIVER_ID
-static gboolean ctrlm_load_receiver_id(void);
-static void     ctrlm_main_has_receiver_id_set(gboolean has_id);
-#endif
 #ifdef AUTH_DEVICE_ID
 static gboolean ctrlm_load_device_id(void);
 static void     ctrlm_main_has_device_id_set(gboolean has_id);
@@ -306,10 +303,6 @@ static void     ctrlm_main_has_service_account_id_set(gboolean has_id);
 #ifdef AUTH_PARTNER_ID
 static gboolean ctrlm_load_partner_id(void);
 static void     ctrlm_main_has_partner_id_set(gboolean has_id);
-#endif
-#ifdef AUTH_EXPERIENCE
-static gboolean ctrlm_load_experience(void);
-static void     ctrlm_main_has_experience_set(gboolean has_experience);
 #endif
 #ifdef AUTH_SAT_TOKEN
 static gboolean ctrlm_load_service_access_token(void);
@@ -323,9 +316,11 @@ static void     ctrlm_device_type_loaded(ctrlm_device_type_t device_type);
 static void     ctrlm_main_has_device_type_set(gboolean has_type);
 #ifdef CTRLM_THUNDER
 static void ctrlm_device_info_activated(void *user_data);
+static void ctrlm_system_activated(Thunder::plugin_state_t state, void *user_data);
 #endif
 
-static void *   ctrlm_load_hal_rf4ce(void);
+static void *   ctrlm_load_plugin_rf4ce_hal(void);
+static void *   ctrlm_load_plugin_rf4ce_asb(void);
 
 static gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, json_t **json_obj_voice, json_t **json_obj_device_update, json_t **json_obj_validation, json_t **json_obj_vsdk);
 static gboolean ctrlm_iarm_init(void);
@@ -354,6 +349,8 @@ static gboolean ctrlm_authservice_expired(gpointer user_data);
 static gboolean ctrlm_ntp_check(gpointer user_data);
 static void     ctrlm_signals_register(void);
 static void     ctrlm_signal_handler(int signal);
+static gboolean ctrlm_unix_signal_terminate(gpointer user_data);
+static gboolean ctrlm_unix_signal_quit(gpointer user_data);
 
 static void     ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *status);
 static void     ctrlm_main_iarm_call_property_get_(ctrlm_main_iarm_call_property_t *property);
@@ -366,7 +363,6 @@ static void     ctrlm_main_update_export_controller_list(void);
 static void     ctrlm_main_iarm_call_ir_remote_usage_get_(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage);
 static void     ctrlm_main_iarm_call_pairing_metrics_get_(ctrlm_main_iarm_call_pairing_metrics_t *pairing_metrics);
 static void     ctrlm_main_iarm_call_last_key_info_get_(ctrlm_main_iarm_call_last_key_info_t *last_key_info);
-static void     ctrlm_main_iarm_call_control_service_end_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 static void     ctrlm_stop_one_touch_autobind_(ctrlm_network_id_t network_id);
 static void     ctrlm_close_pairing_window_(ctrlm_network_id_t network_id, ctrlm_close_pairing_window_reason reason);
 static void     ctrlm_pairing_window_bind_status_set_(ctrlm_bind_status_t bind_status);
@@ -397,17 +393,6 @@ static void     control_service_values_read_from_db();
 #ifdef USE_DEPRECATED_IRMGR
 static void     ctrlm_check_for_key_tag(int key_tag) __attribute__((unused)); //USE_DEPRECATED_IRMGR
 #endif
-#ifdef MEMORY_LOCK
-const char *memory_lock_progs[] = {
-"/usr/bin/controlMgr",
-"/usr/lib/libctrlm_hal_rf4ce.so.0.0.0",
-"/usr/lib/libxraudio.so.0.0.0",
-"/usr/lib/libxraudio-hal.so.0.0.0",
-"/usr/lib/libxr_mq.so.0.0.0",
-"/usr/lib/libxr-timer.so.0.0.0",
-"/usr/lib/libxr-timestamp.so.0.0.0"
-};
-#endif
 
 #if CTRLM_HAL_RF4CE_API_VERSION >= 9
 static void ctrlm_crash_recovery_check();
@@ -417,13 +402,6 @@ static void ctrlm_backup_data();
 static void ctrlm_ir_controller_thread_poll(void *data);
 static void ctrlm_vsdk_thread_poll(void *data);
 static void ctrlm_vsdk_thread_response(void *data);
-
-#ifdef MEM_DEBUG
-static gboolean ctrlm_memory_profile(gpointer user_data) {
-   g_mem_profile();
-   return(TRUE);
-}
-#endif
 
 #ifdef BREAKPAD_SUPPORT
 static bool ctrlm_minidump_callback(const google_breakpad::MinidumpDescriptor& descriptor, void* context, bool succeeded) {
@@ -441,26 +419,12 @@ int main(int argc, char *argv[]) {
    // Set stdout to be line buffered
    setvbuf(stdout, NULL, _IOLBF, 0);
 
-   XLOGD_INFO("name <%-24s> version <%-7s> branch <%-20s> commit <%s>", "ctrlm-main", CTRLM_MAIN_VERSION, CTRLM_MAIN_BRANCH, CTRLM_MAIN_COMMIT_ID);
-
-#ifdef MEMORY_LOCK
-   clnl_init();
-   for(unsigned int i = 0; i < (sizeof(memory_lock_progs) / sizeof(memory_lock_progs[0])); i++) {
-      if(ctrlm_file_exists(memory_lock_progs[i])) {
-         if(clnl_lock(memory_lock_progs[i], SECTION_TEXT)) {
-            XLOGD_ERROR("failed to lock instructions to memory <%s>", memory_lock_progs[i]);
-         } else {
-            XLOGD_INFO("successfully locked to memory <%s>", memory_lock_progs[i]);
-         }
-      } else {
-         XLOGD_DEBUG("file doesn't exist, cannot lock to memory <%s>", memory_lock_progs[i]);
-      }
-   }
-#endif
+   XLOGD_INFO("name <%-24s> version <%-9s> branch <%-20s> commit <%s>", "ctrlm-main", CTRLM_MAIN_VERSION, CTRLM_MAIN_BRANCH, CTRLM_MAIN_COMMIT_ID);
 
    ctrlm_signals_register();
 
 #ifdef BREAKPAD_SUPPORT
+   XLOGD_INFO("breakpad enabled");
    std::string minidump_path = "/opt/minidumps";
    #ifdef BREAKPAD_MINIDUMP_PATH_OVERRIDE
    minidump_path = BREAKPAD_MINIDUMP_PATH_OVERRIDE;
@@ -476,6 +440,8 @@ int main(int argc, char *argv[]) {
    google_breakpad::ExceptionHandler eh(descriptor, NULL, ctrlm_minidump_callback, NULL, true, -1);
 
    //ctrlm_crash();
+#else
+   XLOGD_INFO("breakpad disabled");
 #endif
 
    XLOGD_INFO("glib     run-time version... %d.%d.%d", glib_major_version, glib_minor_version, glib_micro_version);
@@ -488,11 +454,6 @@ int main(int argc, char *argv[]) {
    } else {
       XLOGD_INFO("Glib run-time library is compatible");
    }
-
-#ifdef MEM_DEBUG
-   XLOGD_WARN("Memory debug is ENABLED.");
-   g_mem_set_vtable(glib_mem_profiler_table);
-#endif
 
    sem_init(&g_ctrlm.ctrlm_utils_sem, 0, 1);
 
@@ -510,10 +471,13 @@ int main(int argc, char *argv[]) {
    for(uint32_t index = 0; index < qty_vsdk; index++) {
       vsdk_version_info_t *entry = &version_info[index];
       if(entry->name != NULL) {
-         XLOGD_INFO("name <%-24s> version <%-7s> branch <%-20s> commit <%s>", entry->name ? entry->name : "NULL", entry->version ? entry->version : "NULL", entry->branch ? entry->branch : "NULL", entry->commit_id ? entry->commit_id : "NULL");
+         XLOGD_INFO("name <%-24s> version <%-9s> branch <%-20s> commit <%s>", entry->name ? entry->name : "NULL", entry->version ? entry->version : "NULL", entry->branch ? entry->branch : "NULL", entry->commit_id ? entry->commit_id : "NULL");
       }
    }
-   vsdk_init();
+
+   const char *filename   = NULL;
+   uint32_t file_size_max = 0;
+   vsdk_init(true, filename, file_size_max);
 
    //struct sched_param param;
    //param.sched_priority = 10;
@@ -526,8 +490,19 @@ int main(int argc, char *argv[]) {
    g_ctrlm.main_thread                    = NULL;
    g_ctrlm.queue                          = NULL;
    g_ctrlm.production_build               = true;
-   g_ctrlm.rf4ce_handle                   = ctrlm_load_hal_rf4ce();
-   g_ctrlm.rf4ce_enabled                  = (NULL == g_ctrlm.rf4ce_handle) ? false : true;
+   g_ctrlm.rf4ce_hal_handle               = ctrlm_load_plugin_rf4ce_hal();
+   g_ctrlm.rf4ce_enabled                  = (NULL == g_ctrlm.rf4ce_hal_handle) ? false : true;
+   if(g_ctrlm.rf4ce_enabled) { // Check for ASB support
+      g_ctrlm.rf4ce_asb_handle            = ctrlm_load_plugin_rf4ce_asb();
+      g_ctrlm.rf4ce_asb_supported         = (NULL == g_ctrlm.rf4ce_asb_handle) ? false : true;
+   } else {
+      g_ctrlm.rf4ce_asb_handle            = NULL;
+      g_ctrlm.rf4ce_asb_supported         = false;
+      g_ctrlm.rf4ce_hal_asb_init          = NULL;
+      g_ctrlm.rf4ce_hal_asb_methods_get   = NULL;
+      g_ctrlm.rf4ce_hal_asb_key_derive    = NULL;
+      g_ctrlm.rf4ce_hal_asb_destroy       = NULL;
+   }
    g_ctrlm.has_service_access_token       = false;
    g_ctrlm.sat_enabled                    = true;
    g_ctrlm.service_access_token_expiration_tag = 0;
@@ -570,13 +545,13 @@ int main(int argc, char *argv[]) {
    //g_ctrlm.precomission_table             = g_hash_table_new(g_str_hash, g_str_equal);
    g_ctrlm.loading_db                     = false;
    g_ctrlm.return_code                    = 0;
-   g_ctrlm.power_state                    = ctrlm_main_iarm_call_get_power_state();
+   g_ctrlm.power_manager                  = ctrlm_powermanager_t::get_instance();
+   g_ctrlm.power_state                    = ctrlm_main_get_system_power_state();
    g_ctrlm.auto_ack                       = true;
    g_ctrlm.local_conf                     = false;
    g_ctrlm.telemetry                      = NULL;
    g_ctrlm.telemetry_report_interval      = JSON_INT_VALUE_CTRLM_GLOBAL_TELEMETRY_REPORT_INTERVAL;
    g_ctrlm.service_access_token.clear();
-   g_ctrlm.has_receiver_id                = false;
    g_ctrlm.has_device_id                  = false;
    g_ctrlm.has_device_type                = false;
    g_ctrlm.has_service_account_id         = false;
@@ -588,18 +563,20 @@ int main(int argc, char *argv[]) {
    g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_UNKNOWN;
    g_ctrlm.last_key_info.is_screen_bind_mode  = false;
    g_ctrlm.last_key_info.remote_keypad_config = CTRLM_REMOTE_KEYPAD_CONFIG_INVALID;
-#ifdef DEEP_SLEEP_ENABLED
+
+   xrsr_config_t xrsr_config;
+   if(xrsr_config_get(&xrsr_config)) {
+      g_ctrlm.networked_standby_supported = xrsr_config.networked_standby;
+   } else {
+      g_ctrlm.networked_standby_supported = false;
+   }
+   XLOGD_INFO("networked standby supported <%s>", g_ctrlm.networked_standby_supported ? "YES" : "NO");
+   
    g_ctrlm.wake_with_voice_allowed            = false;
-#endif
    errno_t safec_rc = strcpy_s(g_ctrlm.last_key_info.source_name, sizeof(g_ctrlm.last_key_info.source_name), ctrlm_rcu_ir_remote_types_str(g_ctrlm.last_key_info.last_ir_remote_type));
    ERR_CHK(safec_rc);
 
    g_ctrlm.discovery_remote_type[0] = '\0';
-
-#ifdef MEM_DEBUG
-   g_mem_profile();
-   g_timeout_add_seconds(10, ctrlm_memory_profile, NULL);
-#endif
 
    XLOGD_INFO("load version");
    if(!ctrlm_load_version()) {
@@ -676,14 +653,14 @@ int main(int argc, char *argv[]) {
 
 #ifdef AUTH_ENABLED
    XLOGD_INFO("ctrlm_auth init");
-   g_ctrlm.authservice     = ctrlm_auth_service_create(g_ctrlm.server_url_authservice);
-   g_ctrlm.hal_certificate = ctrlm_hal_certificate_get();
+   g_ctrlm.authservice      = ctrlm_auth_service_create(g_ctrlm.server_url_authservice);
+   g_ctrlm.auth_certificate = ctrlm_auth_certificate_get();
 
    ctrlm_voice_cert_t device_cert;
    bool ocsp_verify_stapling = false;
    bool ocsp_verify_ca       = false;
 
-   if(!g_ctrlm.hal_certificate->device_cert_get(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
+   if(!g_ctrlm.auth_certificate->device_cert_get(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
       XLOGD_ERROR("unable to get device certificate");
    } else {
       if(!g_ctrlm.voice_session->voice_stb_data_device_certificate_set(device_cert, ocsp_verify_stapling, ocsp_verify_ca)) {
@@ -791,10 +768,12 @@ int main(int argc, char *argv[]) {
    g_ctrlm.ir_controller->db_load();
    g_ctrlm.ir_controller->print_status();
 
+   #ifdef CTRLM_THUNDER
    ctrlm_rcp_ipc_iarm_thunder_t *rcp_ipc = ctrlm_rcp_ipc_iarm_thunder_t::get_instance();
    if (rcp_ipc) {
        rcp_ipc->register_ipc();
    }
+   #endif
 
    XLOGD_INFO("init voice");
    g_ctrlm.voice_session->voice_configure_config_file_json(json_obj_voice, json_obj_vsdk, g_ctrlm.local_conf );
@@ -822,7 +801,7 @@ int main(int argc, char *argv[]) {
 
    ctrlm_trigger_startup_actions();
 
-   XLOGD_INFO("Enter main loop");
+   XLOGD_AUTOMATION_INFO("Enter main loop");
    g_main_loop_run(g_ctrlm.main_loop);
 
    //Save the shutdown time if it is valid
@@ -857,27 +836,25 @@ int main(int argc, char *argv[]) {
 
    sem_destroy(&g_ctrlm.ctrlm_utils_sem);
 
-#ifdef MEMORY_LOCK
-   for(unsigned int i = 0; i < (sizeof(memory_lock_progs) / sizeof(memory_lock_progs[0])); i++) {
-      if(ctrlm_file_exists(memory_lock_progs[i])) {
-         clnl_unlock(memory_lock_progs[i], SECTION_TEXT);
-      }
-   }
-   clnl_destroy();
-#endif
-
    ctrlm_config_t::destroy_instance();
    ctrlm_rfc_t::destroy_instance();
    #ifdef TELEMETRY_SUPPORT
    ctrlm_telemetry_t::destroy_instance();
    #endif
    ctrlm_ir_controller_t::destroy_instance();
+   ctrlm_powermanager_t::destroy_instance();
    ctrlm_irdb_interface_t::destroy_instance();
 
-   if(g_ctrlm.rf4ce_handle != NULL) {
+   if(g_ctrlm.rf4ce_asb_handle != NULL) {
+      XLOGD_INFO("unload rf4ce asb hal");
+      dlclose(g_ctrlm.rf4ce_asb_handle);
+      g_ctrlm.rf4ce_asb_handle = NULL;
+   }
+
+   if(g_ctrlm.rf4ce_hal_handle != NULL) {
       XLOGD_INFO("unload rf4ce hal");
-      dlclose(g_ctrlm.rf4ce_handle);
-      g_ctrlm.rf4ce_handle = NULL;
+      dlclose(g_ctrlm.rf4ce_hal_handle);
+      g_ctrlm.rf4ce_hal_handle = NULL;
    }
 
    XLOGD_INFO("exit program");
@@ -1006,7 +983,7 @@ gboolean ctrlm_thread_monitor(gpointer user_data) {
          XLOGD_DEBUG("Checking %s", it->name);
 
          if(it->response != CTRLM_THREAD_MONITOR_RESPONSE_ALIVE) {
-            XLOGD_TELEMETRY("Thread %s is unresponsive", it->name);
+            XLOGD_AUTOMATION_TELEMETRY("Thread %s is unresponsive", it->name);
             #ifdef BREAKPAD_SUPPORT
             if(g_ctrlm.thread_monitor_minidump) {
                XLOGD_FATAL("Thread Monitor Minidump is enabled");
@@ -1125,27 +1102,51 @@ gboolean ctrlm_authservice_poll(gpointer user_data) {
 }
 #endif
 
+// GLib main-loop callbacks for Unix signals — run in the main loop context so
+// they are safe to call g_main_loop_quit() and other non-async-signal-safe APIs.
+static gboolean ctrlm_unix_signal_terminate(gpointer user_data) {
+   int sig = GPOINTER_TO_INT(user_data);
+   XLOGD_INFO("Received %s", sig == SIGINT ? "SIGINT" : "SIGTERM");
+   ctrlm_quit_main_loop();
+   return G_SOURCE_CONTINUE;
+}
+
+static gboolean ctrlm_unix_signal_quit(gpointer user_data) {
+   XLOGD_INFO("Received SIGQUIT");
+#ifdef BREAKPAD_SUPPORT
+   ctrlm_crash();
+#endif
+   return G_SOURCE_CONTINUE;
+}
+
 void ctrlm_signals_register(void) {
-   // Handle these signals
+   // Use g_unix_signal_add() so callbacks run inside the GLib main loop context
+   // rather than from an async signal handler, avoiding undefined behavior from
+   // calling non-async-signal-safe functions (e.g. g_main_loop_quit).
    XLOGD_INFO("Registering SIGINT...");
-   if(signal(SIGINT, ctrlm_signal_handler) == SIG_ERR) {
+   if(0 == g_unix_signal_add(SIGINT,  ctrlm_unix_signal_terminate, GINT_TO_POINTER(SIGINT))) {
       XLOGD_ERROR("Unable to register for SIGINT.");
    }
    XLOGD_INFO("Registering SIGTERM...");
-   if(signal(SIGTERM, ctrlm_signal_handler) == SIG_ERR) {
+   if(0 == g_unix_signal_add(SIGTERM, ctrlm_unix_signal_terminate, GINT_TO_POINTER(SIGTERM))) {
       XLOGD_ERROR("Unable to register for SIGTERM.");
    }
    XLOGD_INFO("Registering SIGQUIT...");
-   if(signal(SIGQUIT, ctrlm_signal_handler) == SIG_ERR) {
+   if(0 == g_unix_signal_add(SIGQUIT, ctrlm_unix_signal_quit, NULL)) {
       XLOGD_ERROR("Unable to register for SIGQUIT.");
    }
-   XLOGD_INFO("Registering SIGPIPE...");
-   if(signal(SIGPIPE, ctrlm_signal_handler) == SIG_ERR) {
-      XLOGD_ERROR("Unable to register for SIGPIPE.");
+   // Ignore SIGPIPE — broken-pipe errors are handled at the call site via errno.
+   XLOGD_INFO("Ignoring SIGPIPE...");
+   errno = 0;
+   if(SIG_ERR == signal(SIGPIPE, SIG_IGN)) {
+      int errsv = errno;
+      XLOGD_ERROR("Unable to ignore SIGPIPE <%s>", strerror(errsv));
    }
 }
 
-void ctrlm_signal_handler(int signal) {
+// Direct-call fallback only (e.g. from ctrlm_on_network_assert when kill() fails).
+// No longer registered as an OS signal handler, so non-async-signal-safe calls are safe.
+static void ctrlm_signal_handler(int signal) {
    switch(signal) {
       case SIGTERM:
       case SIGINT: {
@@ -1260,9 +1261,18 @@ void ctrlm_on_network_assert(ctrlm_network_id_t network_id) {
        // Invalidate main thread so terminate does not attempt to terminate it
        g_ctrlm.main_thread = NULL;
    }
-   // g_main_loop_quit() will be called in ctrlm_signal_handler(SIGTERM)
+   // g_main_loop_quit() will be called when the SIGTERM GLib source fires,
+   // or directly via ctrlm_signal_handler() in the kill() fallback below.
    g_ctrlm.return_code = -1;
-   ctrlm_signal_handler(SIGTERM);
+
+   errno = 0;
+   int rc = kill(getpid(), SIGTERM);
+   if(rc != 0) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to send SIGTERM to self <%s> - invoking shutdown handler directly", strerror(errsv));
+      ctrlm_signal_handler(SIGTERM);
+   }
+   
    // give main() time to clean up
    sleep(5);
    // Exit here in case main fails to exit
@@ -1291,31 +1301,25 @@ gboolean ctrlm_load_version(void) {
    return(ret_val == 0);
 }
 
-gboolean ctrlm_load_device_mac(void) {
-   gboolean ret = false;
+#ifdef CTRLM_THUNDER
+void ctrlm_system_activated(Thunder::plugin_state_t state, void *user_data) {
    std::string mac;
-   std::string file;
-   std::ifstream ifs;
-   const char *interface = NULL;
-
-   // First check environment variable to find ESTB interface, or fall back to default
-   interface = getenv("ESTB_INTERFACE");
-   file = "/sys/class/net/" + std::string((interface != NULL ? interface : CTRLM_DEFAULT_DEVICE_MAC_INTERFACE)) + "/address";
-
-   // Open file and read mac address
-   ifs.open(file.c_str(), std::ifstream::in);
-   if(ifs.is_open()) {
-      ifs >> mac;
-      std::transform(mac.begin(), mac.end(), mac.begin(), ::toupper);
-      g_ctrlm.device_mac = mac;
-      ret = true;
-      XLOGD_INFO("Device Mac set to <%s>", ctrlm_is_pii_mask_enabled() ? "***" : mac.c_str());
+   if (!g_ctrlm.thunder_system->get_device_info_mac(mac)) {
+       g_ctrlm.device_mac = "";
+       XLOGD_ERROR("Failed to get MAC address for device mac");
    } else {
-      XLOGD_ERROR("Failed to get MAC address for device mac");
-      g_ctrlm.device_mac = "UNKNOWN";
+       g_ctrlm.device_mac = mac;
+       XLOGD_INFO("Device Mac set to <%s>", ctrlm_is_pii_mask_enabled() ? "***" : mac.c_str());
    }
+}
+#endif
 
-   return(ret);
+gboolean ctrlm_load_device_mac(void) {
+#ifdef CTRLM_THUNDER
+   g_ctrlm.thunder_system = Thunder::System::ctrlm_thunder_plugin_system_t::getInstance();
+   g_ctrlm.thunder_system->add_activation_handler((Thunder::Plugin::plugin_activation_handler_t)ctrlm_system_activated);
+#endif
+   return(true);
 }
 
 #ifdef CTRLM_THUNDER
@@ -1373,31 +1377,6 @@ void ctrlm_main_auth_start_poll() {
                                                          ctrlm_authservice_poll,
                                                          NULL);
 }
-
-#ifdef AUTH_RECEIVER_ID
-gboolean ctrlm_main_has_receiver_id_get(void) {
-   return(g_ctrlm.has_receiver_id);
-}
-
-void ctrlm_main_has_receiver_id_set(gboolean has_id) {
-   g_ctrlm.has_receiver_id = has_id;
-}
-
-gboolean ctrlm_load_receiver_id(void) {
-   if(!g_ctrlm.authservice->get_receiver_id(g_ctrlm.receiver_id)) {
-      ctrlm_main_has_receiver_id_set(false);
-      return(false);
-   }
-
-   g_ctrlm.voice_session->voice_stb_data_receiver_id_set(g_ctrlm.receiver_id);
-
-   for(auto const &itr : g_ctrlm.networks) {
-      itr.second->receiver_id_set(g_ctrlm.receiver_id);
-   }
-   ctrlm_main_has_receiver_id_set(true);
-   return(true);
-}
-#endif
 
 #ifdef AUTH_DEVICE_ID
 void ctrlm_main_has_device_id_set(gboolean has_id) {
@@ -1475,30 +1454,6 @@ gboolean ctrlm_load_partner_id(void) {
 }
 #endif
 
-#ifdef AUTH_EXPERIENCE
-gboolean ctrlm_main_has_experience_get(void) {
-   return(g_ctrlm.has_experience);
-}
-
-void ctrlm_main_has_experience_set(gboolean has_experience) {
-   g_ctrlm.has_experience = has_experience;
-}
-
-gboolean ctrlm_load_experience(void) {
-   if(!g_ctrlm.authservice->get_experience(g_ctrlm.experience)) {
-      ctrlm_main_has_experience_set(false);
-      return(false);
-   }
-   g_ctrlm.voice_session->voice_stb_data_experience_set(g_ctrlm.experience);
-
-   for(auto const &itr : g_ctrlm.networks) {
-      itr.second->experience_set(g_ctrlm.experience);
-   }
-   ctrlm_main_has_experience_set(true);
-   return(true);
-}
-#endif
-
 #ifdef AUTH_SAT_TOKEN
 gboolean ctrlm_main_needs_service_access_token_get(void) {
    gboolean ret = false;
@@ -1546,12 +1501,6 @@ gboolean ctrlm_load_service_access_token(void) {
 gboolean ctrlm_has_authservice_data(void) {
    gboolean ret = TRUE;
 #ifdef AUTH_ENABLED
-#ifdef AUTH_RECEIVER_ID
-   if(!ctrlm_main_has_receiver_id_get()) {
-      ret = FALSE;
-   }
-#endif
-
 #ifdef AUTH_DEVICE_ID
    if(!ctrlm_main_has_device_id_get()) {
       ret = FALSE;
@@ -1570,12 +1519,6 @@ gboolean ctrlm_has_authservice_data(void) {
    }
 #endif
 
-#ifdef AUTH_EXPERIENCE
-   if(!ctrlm_main_has_experience_get()) {
-      ret = FALSE;
-   }
-#endif
-
 #ifdef AUTH_SAT_TOKEN
    if(ctrlm_main_needs_service_access_token_get()) {
       ret = FALSE;
@@ -1590,18 +1533,6 @@ gboolean ctrlm_load_authservice_data(void) {
    gboolean ret = TRUE;
 #ifdef AUTH_ENABLED
    if(g_ctrlm.authservice->is_ready()) {
-#ifdef AUTH_RECEIVER_ID
-   if(!ctrlm_main_has_receiver_id_get()) {
-      XLOGD_INFO("load receiver id");
-      if(!ctrlm_load_receiver_id()) {
-         XLOGD_TELEMETRY("failed to load receiver id");
-         ret = FALSE;
-      } else {
-         XLOGD_INFO("load receiver id successfully <%s>", ctrlm_is_pii_mask_enabled() ? "***" : g_ctrlm.receiver_id.c_str());
-      }
-   }
-#endif
-
 #ifdef AUTH_DEVICE_ID
    if(!ctrlm_main_has_device_id_get()) {
       XLOGD_INFO("load device id");
@@ -1638,18 +1569,6 @@ gboolean ctrlm_load_authservice_data(void) {
    }
 #endif
 
-#ifdef AUTH_EXPERIENCE
-   if(!ctrlm_main_has_experience_get()) {
-      XLOGD_INFO("load experience");
-      if(!ctrlm_load_experience()) {
-         XLOGD_TELEMETRY("failed to load experience");
-         ret = FALSE;
-      } else {
-         XLOGD_INFO("load experience successfully <%s>", ctrlm_is_pii_mask_enabled() ? "***" : g_ctrlm.experience.c_str());
-      }
-   }
-#endif
-
 #ifdef AUTH_SAT_TOKEN
    if(ctrlm_main_needs_service_access_token_get()) {
       XLOGD_INFO("load sat token");
@@ -1673,8 +1592,7 @@ gboolean ctrlm_load_authservice_data(void) {
 
 gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, json_t **json_obj_voice, json_t **json_obj_device_update, json_t **json_obj_validation, json_t **json_obj_vsdk) {
    std::string config_fn_opt = "/opt/ctrlm_config.json";
-   std::string config_fn_etc = "/etc/ctrlm_config.json";
-   std::string config_fn_etc_override = "/etc/ctrlm_config.json.OVERRIDE";
+   std::string config_fn_oem = "/etc/vendor/input/ctrlm_config.json";
    json_t *json_obj_ctrlm;
    ctrlm_config_t *ctrlm_config = ctrlm_config_t::get_instance();
    gboolean local_conf = false;
@@ -1684,16 +1602,42 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
    if(ctrlm_config == NULL) {
       XLOGD_ERROR("Failed to get config manager instance");
       return(false);
-   } else if(!ctrlm_is_production_build() && g_file_test(config_fn_opt.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_opt)) {
-      XLOGD_INFO("Read configuration from <%s>", config_fn_opt.c_str());
-      local_conf = true;
-   } else if(g_file_test(config_fn_etc.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_etc)) {
-      XLOGD_INFO("Read configuration from <%s>", config_fn_etc.c_str());
-   } else if(g_file_test(config_fn_etc_override.c_str(), G_FILE_TEST_EXISTS) && ctrlm_config->load_config(config_fn_etc_override)) {
-      XLOGD_INFO("Read configuration from <%s>", config_fn_etc_override.c_str());
-   } else {
-      XLOGD_WARN("Configuration error. Configuration file(s) missing, using defaults");
+   }
+   
+   bool oem_append = g_file_test(config_fn_oem.c_str(), G_FILE_TEST_EXISTS);
+   bool opt_append = ctrlm_is_production_build() ? false : g_file_test(config_fn_opt.c_str(), G_FILE_TEST_EXISTS);
+
+   if(!oem_append && !opt_append) {
+      XLOGD_INFO("Using default configuration");
       return(false);
+   }
+
+   // Check for OEM config file override
+   if(oem_append) {
+      XLOGD_INFO("Loading OEM configuration from <%s>", config_fn_oem.c_str());
+      if(!ctrlm_config->load_config(config_fn_oem)) {
+         XLOGD_ERROR("Failed to load OEM configuration from <%s>", config_fn_oem.c_str());
+         return(false);
+      }
+   }
+
+   // Check for OPT config file override
+   if(opt_append) {
+      if(!oem_append) {
+         XLOGD_INFO("Loading OPT configuration from <%s>", config_fn_opt.c_str());
+         if(!ctrlm_config->load_config(config_fn_opt)) {
+            XLOGD_ERROR("Failed to load OPT configuration from <%s>", config_fn_opt.c_str());
+            return(false);
+         }
+      } else {
+         XLOGD_INFO("Appending OPT configuration from <%s>", config_fn_opt.c_str());
+      
+         if(!ctrlm_config->append_config(config_fn_opt)) {
+            XLOGD_ERROR("Failed to append OPT configuration from <%s>", config_fn_opt.c_str());
+            return(false);
+         }
+      }
+      local_conf = true;
    }
 
    // Parse the JSON data
@@ -1709,37 +1653,52 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
       return(false);
    }
 
+   // Print the configuration since it was loaded from files
+   char *json_dump = json_dumps(*json_obj_root, JSON_INDENT(3) | JSON_SORT_KEYS);
+   if(json_dump == NULL) {
+      XLOGD_ERROR("unable to dump JSON object");
+      json_decref(*json_obj_root);
+      *json_obj_root = NULL;
+      return(false);
+   } else {
+      XLOGD_INFO_OPTS(XLOG_OPTS_DEFAULT, 20 * 1024, "Final configuration:\n%s", json_dump);
+      free(json_dump);
+   }
+
    // Extract the RF4CE network configuration object
    if(g_ctrlm.rf4ce_enabled) {
       *json_obj_net_rf4ce = json_object_get(*json_obj_root, JSON_OBJ_NAME_NETWORK_RF4CE);
       if(*json_obj_net_rf4ce == NULL || !json_is_object(*json_obj_net_rf4ce)) {
-         XLOGD_WARN("RF4CE network object not found");
+         XLOGD_INFO("RF4CE network object not found");
+         *json_obj_net_rf4ce = NULL;
       }
    }
 
    // Extract the voice configuration object
    *json_obj_voice = json_object_get(*json_obj_root, JSON_OBJ_NAME_VOICE);
    if(*json_obj_voice == NULL || !json_is_object(*json_obj_voice)) {
-      XLOGD_WARN("voice object not found");
+      XLOGD_INFO("voice object not found");
+      *json_obj_voice = NULL;
    }
 
    // Extract the device update configuration object
    *json_obj_device_update = json_object_get(*json_obj_root, JSON_OBJ_NAME_DEVICE_UPDATE);
    if(*json_obj_device_update == NULL || !json_is_object(*json_obj_device_update)) {
-      XLOGD_WARN("device update object not found");
+      XLOGD_INFO("device update object not found");
+      *json_obj_device_update = NULL;
    }
 
   //Extract the vsdk configuration object
    *json_obj_vsdk = json_object_get( *json_obj_root, JSON_OBJ_NAME_VSDK);
    if(*json_obj_vsdk == NULL || !json_is_object(*json_obj_vsdk)) {
-      XLOGD_WARN("vsdk object not found");
-      json_obj_vsdk = NULL;
+      XLOGD_INFO("vsdk object not found");
+      *json_obj_vsdk = NULL;
    }
 
    // Extract the ctrlm global configuration object
    json_obj_ctrlm = json_object_get(*json_obj_root, JSON_OBJ_NAME_CTRLM_GLOBAL);
    if(json_obj_ctrlm == NULL || !json_is_object(json_obj_ctrlm)) {
-      XLOGD_WARN("control manger object not found");
+      XLOGD_INFO("control manager object not found");
    } else {
       json_config conf_global;
       if(!conf_global.config_object_set(json_obj_ctrlm)) {
@@ -1749,7 +1708,7 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
       // Extract the validation configuration object
       *json_obj_validation = json_object_get(json_obj_ctrlm, JSON_OBJ_NAME_CTRLM_GLOBAL_VALIDATION_CONFIG);
       if(*json_obj_validation == NULL || !json_is_object(*json_obj_validation)) {
-         XLOGD_WARN("validation object not found");
+         XLOGD_INFO("validation object not found");
       }
 
       // Now parse the control manager object
@@ -2016,9 +1975,16 @@ void ctrlm_global_rfc_values_retrieved(const ctrlm_rfc_attr_t &attr) {
    attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_TIMEOUT_ONE_TOUCH_AUTOBIND, g_ctrlm.one_touch_autobind_timeout_val, 0);
    attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_CRASH_RECOVERY_THRESHOLD, g_ctrlm.crash_recovery_threshold, 0);
    if(attr.get_rfc_value(JSON_ARRAY_NAME_CTRLM_GLOBAL_MASK_PII, g_ctrlm.mask_pii, ctrlm_is_production_build() ? CTRLM_JSON_ARRAY_INDEX_PRD : CTRLM_JSON_ARRAY_INDEX_DEV)) {
-      g_ctrlm.voice_session->voice_stb_data_pii_mask_set(g_ctrlm.mask_pii);
+      if(g_ctrlm.voice_session != NULL) {
+         g_ctrlm.voice_session->voice_stb_data_pii_mask_set(g_ctrlm.mask_pii);
+      }
+      if(g_ctrlm.ir_controller != NULL) {
+         g_ctrlm.ir_controller->mask_key_codes_set(g_ctrlm.mask_pii);
+      }
+      for(auto const &itr : g_ctrlm.networks) {
+         itr.second->mask_key_codes_set(g_ctrlm.mask_pii);
+      }
    }
-   attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_AUTHSERVICE_POLL_PERIOD, g_ctrlm.authservice_poll_val);   
    attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_AUTHSERVICE_FAST_POLL_PERIOD, g_ctrlm.authservice_fast_poll_val);
    attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_AUTHSERVICE_FAST_MAX_RETRIES, g_ctrlm.authservice_fast_retries_max);   
 }
@@ -2126,6 +2092,11 @@ gboolean ctrlm_networks_pre_init(json_t *json_obj_net_rf4ce, json_t *json_config
       ctrlm_obj_network_rf4ce_t *obj_net_rf4ce = new ctrlm_obj_network_rf4ce_t(CTRLM_NETWORK_TYPE_RF4CE, network_id, "RF4CE", g_ctrlm.mask_pii, json_obj_net_rf4ce, g_thread_self());
       // Set main function for the RF4CE Network object
       obj_net_rf4ce->hal_api_main_set(g_ctrlm.rf4ce_hal_main);
+
+      if(ctrlm_is_rf4ce_asb_supported()) {
+         // Set ASB function for the RF4CE Network object
+         obj_net_rf4ce->hal_api_asb_set(g_ctrlm.rf4ce_hal_asb_init, g_ctrlm.rf4ce_hal_asb_methods_get, g_ctrlm.rf4ce_hal_asb_key_derive, g_ctrlm.rf4ce_hal_asb_destroy);
+      }
       g_ctrlm.networks[network_id]      = obj_net_rf4ce;
       //g_ctrlm.networks[network_id].net.rf4ce = obj_net_rf4ce;
       g_ctrlm.network_type[network_id]       = g_ctrlm.networks[network_id]->type_get();
@@ -2391,7 +2362,7 @@ gpointer ctrlm_main_thread(gpointer param) {
    // Unblock the caller that launched this thread
    sem_post(&g_ctrlm.semaphore);
 
-   XLOGD_INFO("Enter main loop");
+   XLOGD_AUTOMATION_INFO("Enter main loop");
    do {
       gpointer msg = g_async_queue_pop(g_ctrlm.queue);
 
@@ -2450,7 +2421,16 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             ctrlm_validation_begin(hdr->network_id, dqm->controller_id, obj_net->ctrlm_controller_type_get(dqm->controller_id));
             obj_net->bind_validation_begin(dqm);
-            obj_net->iarm_event_rcu_status();
+            obj_net->iarm_event_rcu_validation_status();
+            break;
+         }
+         case CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_KEY: {
+            ctrlm_main_queue_msg_bind_validation_key_t *dqm = (ctrlm_main_queue_msg_bind_validation_key_t *)msg;
+            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_KEY");
+
+            ctrlm_validation_key(hdr->network_id, dqm->controller_id, obj_net->ctrlm_controller_type_get(dqm->controller_id), dqm->key_code);
+            obj_net->bind_validation_key(dqm);
+            obj_net->iarm_event_rcu_validation_status();
             break;
          }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_END: {
@@ -2459,7 +2439,7 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             ctrlm_validation_end(hdr->network_id, dqm->controller_id, obj_net->ctrlm_controller_type_get(dqm->controller_id), dqm->binding_type, dqm->validation_type, dqm->result, dqm->semaphore, dqm->cmd_result);
             obj_net->bind_validation_end(dqm);
-            obj_net->iarm_event_rcu_status();
+            obj_net->iarm_event_rcu_validation_status();
             break;
          }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_FAILED_TIMEOUT: {
@@ -2583,6 +2563,34 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
+         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_IR_LINE_OF_SIGHT: {
+            // Cancel active line of sight timer (if active)
+            ctrlm_timeout_destroy(&g_ctrlm.line_of_sight_timeout_tag);
+
+            if(!g_ctrlm.line_of_sight) {
+               ctrlm_main_iarm_event_binding_line_of_sight(TRUE);
+            }
+            // Set line of sight as active
+            g_ctrlm.line_of_sight = TRUE;
+
+            // Set a timer to clear the line of sight after a period of time
+            g_ctrlm.line_of_sight_timeout_tag = ctrlm_timeout_create(g_ctrlm.line_of_sight_timeout_val, ctrlm_timeout_line_of_sight, NULL);
+            break;
+         }
+         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_IR_AUTOBIND: {
+            // Cancel active autobind timer (if active)
+            ctrlm_timeout_destroy(&g_ctrlm.autobind_timeout_tag);
+
+            if(!g_ctrlm.autobind) {
+               ctrlm_main_iarm_event_autobind_line_of_sight(TRUE);
+            }
+            // Set autobind as active
+            g_ctrlm.autobind = TRUE;
+
+            // Set a timer to clear the autobind after a period of time
+            g_ctrlm.autobind_timeout_tag = ctrlm_timeout_create(g_ctrlm.autobind_timeout_val, ctrlm_timeout_autobind, NULL);
+            break;
+         }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_TIMEOUT_LINE_OF_SIGHT: {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_TIMEOUT_LINE_OF_SIGHT");
             g_ctrlm.line_of_sight             = FALSE;
@@ -2666,9 +2674,9 @@ gpointer ctrlm_main_thread(gpointer param) {
 
             if( (old_state == CTRLM_POWER_STATE_DEEP_SLEEP) && (dqm->new_state != CTRLM_POWER_STATE_DEEP_SLEEP) ) {
                XLOGD_INFO("power_state_change: wake DB and networks");
-               #ifdef DEEP_SLEEP_ENABLED
-               g_ctrlm.wake_with_voice_allowed = true;
-               #endif
+               if(g_ctrlm.networked_standby_supported) {
+                  g_ctrlm.wake_with_voice_allowed = true;
+               }
                ctrlm_db_power_state_change(true);
                for(auto const &itr : g_ctrlm.networks) {
                   itr.second->power_state_change(true);
@@ -2681,12 +2689,13 @@ gpointer ctrlm_main_thread(gpointer param) {
                }
             }
 
-            #ifdef DEEP_SLEEP_ENABLED
             //Wake with voice? Handle NSM voice, do not change power state
-            if(dqm->new_state == CTRLM_POWER_STATE_ON) {
+            if(g_ctrlm.networked_standby_supported && dqm->new_state == CTRLM_POWER_STATE_ON) {
                bool wake_with_voice_allowed = g_ctrlm.wake_with_voice_allowed;
+
                g_ctrlm.wake_with_voice_allowed = false;
-               if( (wake_with_voice_allowed == true) && (ctrlm_main_iarm_wakeup_reason_voice() == true) ) {
+
+               if((wake_with_voice_allowed == true) && (g_ctrlm.power_manager->get_wakeup_reason_voice())) {
                   if( g_ctrlm.voice_session->nsm_voice_session == true ) {
                      XLOGD_INFO("Handling NSM voice session, ignore ON");
                   } else {
@@ -2695,17 +2704,14 @@ gpointer ctrlm_main_thread(gpointer param) {
                   break;
                }
             }
-            #endif
 
             //If execution reaches here, then change power state and inform VSDK of on or deep sleep states
             g_ctrlm.power_state = dqm->new_state;
 
-            XLOGD_INFO("Enter power state <%s>", ctrlm_power_state_str(g_ctrlm.power_state));
-            #ifdef DEEP_SLEEP_ENABLED
-            if(g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP) {
-               XLOGD_INFO("NSM is <%s>",  ctrlm_main_iarm_networked_standby()?"ENABLED":"DISABLED");
+            XLOGD_AUTOMATION_INFO("Enter power state <%s>", ctrlm_power_state_str(g_ctrlm.power_state));
+            if(g_ctrlm.networked_standby_supported && (g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP)) {
+               XLOGD_INFO("NSM is <%s>", (ctrlm_main_get_networked_standby_mode())?"ENABLED":"DISABLED");
             }
-            #endif
 
             if(dqm->new_state != CTRLM_POWER_STATE_STANDBY) {
                // Set VSDK power state
@@ -2713,7 +2719,7 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-#ifdef AUTH_ENABLED
+         #ifdef AUTH_ENABLED
          case CTRLM_MAIN_QUEUE_MSG_TYPE_AUTHSERVICE_POLL: {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_AUTHSERVICE_POLL");
 
@@ -2733,7 +2739,7 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-#endif
+         #endif
          case CTRLM_MAIN_QUEUE_MSG_TYPE_NOTIFY_FIRMWARE: {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_NOTIFY_FIRMWARE");
             if(g_ctrlm.rf4ce_enabled) {
@@ -2813,14 +2819,14 @@ gpointer ctrlm_main_thread(gpointer param) {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_SET_VALUES");
 
             if(settings->available & CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_ASB_ENABLED) {
-#ifdef ASB
-               // Write new asb_enabled flag to NVM
-               ctrlm_db_asb_enabled_write(&settings->asb_enabled, CTRLM_ASB_ENABLED_LEN); 
-               g_ctrlm.cs_values.asb_enable = settings->asb_enabled;
-               XLOGD_INFO("ASB Enabled Set Values <%s>", g_ctrlm.cs_values.asb_enable ? "true" : "false");
-#else
-               XLOGD_INFO("ASB Enabled Set Values <false>, ASB Not Supported");
-#endif
+               if(ctrlm_is_rf4ce_asb_supported()) {
+                  // Write new asb_enabled flag to NVM
+                  ctrlm_db_asb_enabled_write(&settings->asb_enabled, CTRLM_ASB_ENABLED_LEN); 
+                  g_ctrlm.cs_values.asb_enable = settings->asb_enabled;
+                  XLOGD_INFO("ASB Enabled Set Values <%s>", g_ctrlm.cs_values.asb_enable ? "true" : "false");
+               } else {
+                  XLOGD_INFO("ASB Enabled Set Values <false>, ASB Not Supported");
+               }
             }
             if(settings->available & CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_OPEN_CHIME_ENABLED) {
                // Write new open_chime_enabled flag to NVM
@@ -2887,12 +2893,13 @@ gpointer ctrlm_main_thread(gpointer param) {
             ctrlm_main_queue_msg_main_control_service_settings_t *dqm = (ctrlm_main_queue_msg_main_control_service_settings_t *) msg;
             ctrlm_main_iarm_call_control_service_settings_t *settings = dqm->settings;
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES");
-#ifdef ASB
-            settings->asb_supported = true;
-#else
-            settings->asb_supported = false;
-#endif
-            settings->asb_enabled   = g_ctrlm.cs_values.asb_enable;
+            if(ctrlm_is_rf4ce_asb_supported()) {
+               settings->asb_supported = true;
+            } else {
+               settings->asb_supported = false;
+            }
+
+            settings->asb_enabled                 = g_ctrlm.cs_values.asb_enable;
             settings->open_chime_enabled          = g_ctrlm.cs_values.chime_open_enable;
             settings->close_chime_enabled         = g_ctrlm.cs_values.chime_close_enable;
             settings->privacy_chime_enabled       = g_ctrlm.cs_values.chime_privacy_enable;
@@ -3160,6 +3167,10 @@ bool ctrlm_is_pii_mask_enabled(void) {
    return(g_ctrlm.mask_pii);
 }
 
+bool ctrlm_is_networked_standby_supported(void) {
+   return(g_ctrlm.networked_standby_supported);
+}
+
 gboolean ctrlm_timeout_recently_booted(gpointer user_data) {
    XLOGD_INFO("Timeout - Recently booted.");
    g_ctrlm.recently_booted             = FALSE;
@@ -3255,10 +3266,6 @@ void ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *status) {
    safec_rc = strncpy_s(status->stb_device_id, sizeof(status->stb_device_id), g_ctrlm.device_id.c_str(), CTRLM_MAIN_DEVICE_ID_MAX_LENGTH - 1);
    ERR_CHK(safec_rc);
    status->stb_device_id[CTRLM_MAIN_DEVICE_ID_MAX_LENGTH - 1] = '\0';
-
-   safec_rc = strncpy_s(status->stb_receiver_id, sizeof(status->stb_receiver_id), g_ctrlm.receiver_id.c_str(), CTRLM_MAIN_RECEIVER_ID_MAX_LENGTH - 1);
-   ERR_CHK(safec_rc);
-   status->stb_receiver_id[CTRLM_MAIN_RECEIVER_ID_MAX_LENGTH - 1] = '\0';
 }
 
 gboolean ctrlm_main_iarm_call_ir_remote_usage_get(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage) {
@@ -4783,10 +4790,6 @@ ctrlm_auth_t* ctrlm_main_auth_get() {
 #endif
 }
 
-string ctrlm_receiver_id_get(){
-   return g_ctrlm.receiver_id;
-}
-
 string ctrlm_device_id_get(){
    return g_ctrlm.device_id;
 }
@@ -5359,8 +5362,9 @@ void ctrlm_main_iarm_call_control_service_start_pairing_mode_(ctrlm_main_iarm_ca
       case CTRLM_PAIRING_MODE_SCREEN_BIND: {
          pairing->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
          g_ctrlm.binding_screen_active = true;
-         // Set a timer to limit the binding mode window
-         g_ctrlm.screen_bind_timeout_tag = ctrlm_timeout_create(g_ctrlm.screen_bind_timeout_val, ctrlm_timeout_screen_bind, NULL);
+         if(pairing->use_timeout != 0) { // Set a timer to limit the binding mode window
+            g_ctrlm.screen_bind_timeout_tag = ctrlm_timeout_create(g_ctrlm.screen_bind_timeout_val, ctrlm_timeout_screen_bind, NULL);
+         }
          XLOGD_INFO("SCREEN BIND STATE <ACTIVE>");
          break;
       }
@@ -5831,6 +5835,28 @@ gboolean ctrlm_power_state_change(ctrlm_power_state_t power_state) {
    return(true);
 }
 
+ctrlm_power_state_t ctrlm_main_get_system_power_state(void) {
+   ctrlm_power_state_t power_state = CTRLM_POWER_STATE_ON;
+
+   if(g_ctrlm.power_manager == NULL) {
+      XLOGD_ERROR("power_manager is invalid, defaulting to ON");
+   } else {
+      power_state = g_ctrlm.power_manager->get_power_state();
+   }
+   return power_state;
+}
+
+gboolean ctrlm_main_get_networked_standby_mode(void) {
+   bool networked_standby_mode = false;
+
+   if(g_ctrlm.networked_standby_supported && (g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP)) {
+      networked_standby_mode = g_ctrlm.power_manager->get_networked_standby_mode();
+   }
+
+   return networked_standby_mode ? true : false;
+}
+
+
 ctrlm_controller_id_t ctrlm_last_used_controller_get(ctrlm_network_type_t network_type) {
    if (network_type == CTRLM_NETWORK_TYPE_RF4CE) {
       return g_ctrlm.last_key_info.controller_id;
@@ -5872,22 +5898,23 @@ void control_service_values_read_from_db() {
    guchar *data = NULL;
    guint32 length;
 
-#ifdef ASB
-   //ASB enabled
-   gboolean asb_enabled = CTRLM_ASB_ENABLED_DEFAULT;
-   ctrlm_db_asb_enabled_read(&data, &length);
-   if(data == NULL) {
-      XLOGD_WARN("Not read from DB - ASB Enabled.  Using default of <%s>.", asb_enabled ? "true" : "false");
-      // Write new asb_enabled flag to NVM
-      ctrlm_db_asb_enabled_write((guchar *)&asb_enabled, CTRLM_ASB_ENABLED_LEN); 
-   } else {
-      asb_enabled = data[0];
-      ctrlm_db_free(data);
-      data = NULL;
-      XLOGD_INFO("ASB Enabled read from DB <%s>", asb_enabled ? "YES" : "NO");
+   if(ctrlm_is_rf4ce_asb_supported()) {
+      //ASB enabled
+      gboolean asb_enabled = CTRLM_ASB_ENABLED_DEFAULT;
+      ctrlm_db_asb_enabled_read(&data, &length);
+      if(data == NULL) {
+         XLOGD_WARN("Not read from DB - ASB Enabled.  Using default of <%s>.", asb_enabled ? "true" : "false");
+         // Write new asb_enabled flag to NVM
+         ctrlm_db_asb_enabled_write((guchar *)&asb_enabled, CTRLM_ASB_ENABLED_LEN); 
+      } else {
+         asb_enabled = data[0];
+         ctrlm_db_free(data);
+         data = NULL;
+         XLOGD_INFO("ASB Enabled read from DB <%s>", asb_enabled ? "YES" : "NO");
+      }
+      g_ctrlm.cs_values.asb_enable = asb_enabled;
    }
-   g_ctrlm.cs_values.asb_enable = asb_enabled;
-#endif
+
    // Open Chime Enabled
    gboolean open_chime_enabled = CTRLM_OPEN_CHIME_ENABLED_DEFAULT;
    ctrlm_db_open_chime_enabled_read(&data, &length);
@@ -6019,14 +6046,13 @@ gboolean ctrlm_start_iarm(gpointer user_data) {
 
    ctrlm_main_iarm_init();
 
-#ifdef SYSTEMD_NOTIFY
    XLOGD_INFO("Notifying systemd of successful initialization");
    sd_notifyf(0, "READY=1\nSTATUS=ctrlm-main has successfully initialized\nMAINPID=%lu", (unsigned long)getpid());
-#endif
+
    return false;
 }
 
-ctrlm_power_state_t ctrlm_main_get_power_state(void) {
+ctrlm_power_state_t ctrlm_main_get_internal_power_state(void) {
    return(g_ctrlm.power_state);
 }
 
@@ -6041,14 +6067,21 @@ void ctrlm_trigger_startup_actions(void) {
    }
 }
 
-void *ctrlm_load_hal_rf4ce(void) {
-   void *handle = dlopen("libctrlm_hal_rf4ce.so", RTLD_NOW);
+void *ctrlm_load_plugin_rf4ce_hal(void) {
+   void *handle = NULL;
+   const char *so_path_vd = "/vendor/lib/libctrlm_hal_rf4ce.so";
+   const char *so_path_mw = "/usr/lib/libctrlm_hal_rf4ce.so";
+   if(ctrlm_file_exists(so_path_vd)) {
+      handle = dlopen(so_path_vd, RTLD_NOW);
+   } else if(ctrlm_file_exists(so_path_mw)) {
+      handle = dlopen(so_path_mw, RTLD_NOW);
+   } else {
+      XLOGD_INFO("RF4CE HAL plugin is not present.");
+      return(NULL);
+   }
+
    if(NULL == handle) {
-      if(ctrlm_file_exists("/usr/lib/libctrlm_hal_rf4ce.so") || ctrlm_file_exists("/vendor/lib/libctrlm_hal_rf4ce.so")) {
-         XLOGD_ERROR("Failed to load RF4CE HAL plugin <%s>", dlerror());
-      } else {
-         XLOGD_INFO("RF4CE HAL is not present.");
-      }
+      XLOGD_ERROR("Failed to load RF4CE HAL plugin <%s>", dlerror());
       return(NULL);
    }
 
@@ -6062,10 +6095,82 @@ void *ctrlm_load_hal_rf4ce(void) {
       dlclose(handle);
       return(NULL);
    }
+
+   XLOGD_INFO("RF4CE HAL plugin is loaded.");
    
    return(handle);
 }
 
 gboolean ctrlm_is_rf4ce_enabled(void) {
    return(g_ctrlm.rf4ce_enabled);
+}
+
+void *ctrlm_load_plugin_rf4ce_asb(void) {
+   void *handle = NULL;
+   const char *so_path_vd = "/vendor/lib/libctrlm-rf4ce-asb-plugin.so";
+   const char *so_path_mw = "/usr/lib/libctrlm-rf4ce-asb-plugin.so";
+   if(ctrlm_file_exists(so_path_vd)) {
+      handle = dlopen(so_path_vd, RTLD_NOW);
+   } else if(ctrlm_file_exists(so_path_mw)) {
+      handle = dlopen(so_path_mw, RTLD_NOW);
+   } else {
+      XLOGD_INFO("RF4CE ASB plugin is not present.");
+      return(NULL);
+   }
+
+   if(NULL == handle) {
+      XLOGD_ERROR("Failed to load RF4CE ASB plugin <%s>", dlerror());
+      return(NULL);
+   }
+
+   dlerror();  // Clear any existing error
+
+   ctrlm_hal_rf4ce_asb_init_t asb_init = (ctrlm_hal_rf4ce_asb_init_t)dlsym(handle, "asb_init");
+   char *error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (asb_init), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   ctrlm_hal_rf4ce_asb_methods_get_t asb_methods_get = (ctrlm_hal_rf4ce_asb_methods_get_t)dlsym(handle, "asb_key_derivation_methods_get");
+   error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (asb_key_derivation_methods_get), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   ctrlm_hal_rf4ce_asb_key_derive_t asb_key_derive = (ctrlm_hal_rf4ce_asb_key_derive_t)dlsym(handle, "asb_key_derivation");
+   error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (asb_key_derivation), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   ctrlm_hal_rf4ce_asb_destroy_t asb_destroy = (ctrlm_hal_rf4ce_asb_destroy_t)dlsym(handle, "asb_destroy");
+   error = dlerror();
+
+   if(error != NULL) {
+      XLOGD_ERROR("Failed to find plugin method (asb_destroy), error <%s>", error);
+      dlclose(handle);
+      return(NULL);
+   }
+
+   g_ctrlm.rf4ce_hal_asb_init        = asb_init;
+   g_ctrlm.rf4ce_hal_asb_methods_get = asb_methods_get;
+   g_ctrlm.rf4ce_hal_asb_key_derive  = asb_key_derive;
+   g_ctrlm.rf4ce_hal_asb_destroy     = asb_destroy;
+
+   XLOGD_INFO("RF4CE ASB plugin is loaded.");
+
+   return(handle);
+}
+
+gboolean ctrlm_is_rf4ce_asb_supported(void) {
+   return(g_ctrlm.rf4ce_asb_supported);
 }

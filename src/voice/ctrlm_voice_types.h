@@ -31,12 +31,8 @@
 typedef enum {
     CTRLM_VOICE_DEVICE_PTT,
     CTRLM_VOICE_DEVICE_FF,
-    #ifdef CTRLM_LOCAL_MIC
     CTRLM_VOICE_DEVICE_MICROPHONE,
-    #ifdef CTRLM_LOCAL_MIC_TAP
     CTRLM_VOICE_DEVICE_MICROPHONE_TAP,
-    #endif
-    #endif
     CTRLM_VOICE_DEVICE_INVALID,
 } ctrlm_voice_device_t;
 

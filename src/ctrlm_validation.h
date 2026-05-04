@@ -37,6 +37,12 @@ typedef struct {
 typedef struct {
    ctrlm_main_queue_msg_header_t      header;
    ctrlm_controller_id_t              controller_id;
+   ctrlm_key_code_t                   key_code;
+} ctrlm_main_queue_msg_bind_validation_key_t;
+
+typedef struct {
+   ctrlm_main_queue_msg_header_t      header;
+   ctrlm_controller_id_t              controller_id;
    ctrlm_rcu_binding_type_t           binding_type;
    ctrlm_rcu_validation_type_t        validation_type;
    ctrlm_rcu_validation_result_t      result;
@@ -69,10 +75,12 @@ void     ctrlm_validation_max_attempts_set(guint value);
 std::vector<ctrlm_key_code_t> ctrlm_validation_golden_code_get(void);
 
 void     ctrlm_inform_validation_begin(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, unsigned long long ieee_address);
+void     ctrlm_inform_validation_key(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_key_code_t key_code);
 gboolean ctrlm_inform_validation_end(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_binding_type_t binding_type, ctrlm_rcu_validation_type_t validation_type, ctrlm_rcu_validation_result_t validation_result, sem_t *semaphore, ctrlm_validation_end_cmd_result_t *cmd_result);
 gboolean ctrlm_inform_configuration_complete(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_configuration_result_t configuration_result);
 
 void     ctrlm_validation_begin(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_controller_type_t controller_type);
+void     ctrlm_validation_key(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_controller_type_t controller_type, ctrlm_key_code_t key_code);
 gboolean ctrlm_validation_end(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_controller_type_t controller_type, ctrlm_rcu_binding_type_t binding_type, ctrlm_rcu_validation_type_t validation_type, ctrlm_rcu_validation_result_t validation_result, sem_t *semaphore, ctrlm_validation_end_cmd_result_t *cmd_result);
 gboolean ctrlm_configuration_complete(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_controller_type_t controller_type, ctrlm_rcu_binding_type_t binding_type, ctrlm_controller_status_t *status, ctrlm_rcu_configuration_result_t configuration_result);
 gboolean ctrlm_validation_key_sniff(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_controller_type_t controller_type, ctrlm_key_status_t key_status, ctrlm_key_code_t key_code, gboolean auto_bind_in_progress);

@@ -81,7 +81,7 @@ ctrlm_thunder_plugin_av_input_t::~ctrlm_thunder_plugin_av_input_t() {
 }
 
 ctrlm_thunder_plugin_av_input_t *ctrlm_thunder_plugin_av_input_t::getInstance() {
-    XLOGD_INFO("AV input");
+    XLOGD_INFO("AV Input Plugin");
     static ctrlm_thunder_plugin_av_input_t instance;
     return &instance;
 }

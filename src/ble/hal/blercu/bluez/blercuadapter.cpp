@@ -1257,14 +1257,22 @@ bool BleRcuAdapterBluez::addDevice(const BleAddress &address)
 /*!
     \internal
 
-    Sends a request to bluez to reconnect all devices stored in our internal map
+    Sends a request to bluez to reconnect all devices stored in our internal map if paired
 
  */
 void BleRcuAdapterBluez::reconnectAllDevices()
 {
     for (auto const &device : m_devices) {
-        XLOGD_INFO("reconnecting to %s", device.first.toString().c_str());
-        device.second->connect();
+        bool isPaired = false;
+        if (device.second->m_deviceProxy) {
+            device.second->m_deviceProxy->paired(isPaired);
+        }
+        if (isPaired) {
+            XLOGD_INFO("reconnecting to %s", device.first.toString().c_str());
+            device.second->connect();
+        } else {
+            XLOGD_INFO("not paired, skipping reconnecting to %s", device.first.toString().c_str());
+        }
     }
 }
 
@@ -1721,7 +1729,7 @@ void BleRcuAdapterBluez::onDevicePairedChanged(const BleAddress &address,
 void BleRcuAdapterBluez::onDeviceReadyChanged(const BleAddress &address,
                                               bool ready)
 {
-    XLOGD_INFO("device with address %s is %sREADY", address.toString().c_str(), ready ? "" : "NOT ");
+    XLOGD_AUTOMATION_INFO("device with address %s is %sREADY", address.toString().c_str(), ready ? "" : "NOT ");
 
     map<BleAddress, shared_ptr<BleRcuDeviceBluez>>::const_iterator it = m_devices.find(address);
 
@@ -1768,7 +1776,7 @@ bool BleRcuAdapterBluez::setConnectionParams(BleAddress address, double minInter
 
             if (address == deviceInfo.address) {
 
-                XLOGD_INFO("HCI connection handle: %u, device: %s requesting an update of connection parameters to " 
+                XLOGD_AUTOMATION_INFO("HCI connection handle: %u, device: %s requesting an update of connection parameters to "
                         "minInterval=%f, maxInterval=%f, latency=%d, supervisionTimeout=%d",
                         deviceInfo.handle, deviceInfo.address.toString().c_str(),
                         minInterval, maxInterval, latency, supervisionTimeout);

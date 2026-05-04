@@ -86,21 +86,15 @@ bool ctrlm_voice_endpoint_ws_nextgen_t::open() {
     }
     std::string device_id      = this->voice_obj->voice_stb_data_device_id_get();
     std::string partner_id     = this->voice_obj->voice_stb_data_partner_id_get();
-    std::string experience     = this->voice_obj->voice_stb_data_experience_get();
     std::string language       = this->voice_obj->voice_stb_data_guide_language_get().c_str();
     std::string account_number = this->voice_obj->voice_stb_data_account_number_get();
-#ifdef VOICE_NEXTGEN_MAC
     std::string device_mac     = ctrlm_device_mac_get();
-#else
-    std::string device_mac     = "";
-#endif
     std::string rf_protocol    = "";
 
     xrsv_ws_nextgen_params_t      params_ws = {
        .device_id                 = (device_id.empty() == false ? device_id.c_str() : NULL),
        .account_id                = (account_number.empty() == false ? account_number.c_str() : NULL),
        .partner_id                = (partner_id.empty() == false ? partner_id.c_str() : NULL),
-       .experience                = (experience.empty() == false ? experience.c_str() : NULL),
        .audio_profile             = controller_name_to_audio_profile(""),
        .audio_model               = controller_name_to_audio_model(""),
        .language                  = language.c_str(),
@@ -241,12 +235,6 @@ void ctrlm_voice_endpoint_ws_nextgen_t::voice_stb_data_partner_id_set(std::strin
     }
 }
  
-void ctrlm_voice_endpoint_ws_nextgen_t::voice_stb_data_experience_set(std::string &experience) {
-    if(this->xrsv_obj_ws_nextgen) {
-        xrsv_ws_nextgen_update_experience(this->xrsv_obj_ws_nextgen, experience.c_str());
-    }
-}
-
 void ctrlm_voice_endpoint_ws_nextgen_t::voice_stb_data_guide_language_set(const char *language) {
    if(this->xrsv_obj_ws_nextgen) {
        xrsv_ws_nextgen_update_language(this->xrsv_obj_ws_nextgen, language);
@@ -371,7 +359,7 @@ void ctrlm_voice_endpoint_ws_nextgen_t::voice_session_begin_callback_ws_nextgen(
        }
        config_in.ws.app_config = stream_params_out;
 
-       XLOGD_TELEMETRY("session begin - src <%s> ptt <%s> w_SAT <%s> w_MTLS <%s> w_OCSPst <%s> w_OCSPca <%s> keyword begin <%u> end <%u> doa <%u> gain <%4.1f> db", ctrlm_voice_device_str(source), (stream_params->push_to_talk ? "TRUE" : "FALSE"), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO", stream_params->keyword_sample_begin, stream_params->keyword_sample_end, stream_params->keyword_doa, stream_params->dynamic_gain);
+       XLOGD_AUTOMATION_TELEMETRY("session begin - src <%s> ptt <%s> w_SAT <%s> w_MTLS <%s> w_OCSPst <%s> w_OCSPca <%s> keyword begin <%u> end <%u> doa <%u> gain <%4.1f> db", ctrlm_voice_device_str(source), (stream_params->push_to_talk ? "TRUE" : "FALSE"), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO", stream_params->keyword_sample_begin, stream_params->keyword_sample_end, stream_params->keyword_doa, stream_params->dynamic_gain);
     } else if(!is_mic || dqm->configuration.user_initiated) {
        xrsv_ws_nextgen_stream_params_t *stream_params = (xrsv_ws_nextgen_stream_params_t *)malloc(sizeof(xrsv_ws_nextgen_stream_params_t));
 
@@ -384,7 +372,7 @@ void ctrlm_voice_endpoint_ws_nextgen_t::voice_session_begin_callback_ws_nextgen(
        }
        config_in.ws.app_config = stream_params;
 
-       XLOGD_TELEMETRY("session begin - src <%s> ptt <TRUE> w_SAT <%s> w_MTLS <%s> w_OCSPst <%s> w_OCSPca <%s>", ctrlm_voice_device_str(source), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO");
+       XLOGD_AUTOMATION_TELEMETRY("session begin - src <%s> ptt <TRUE> w_SAT <%s> w_MTLS <%s> w_OCSPst <%s> w_OCSPca <%s>", ctrlm_voice_device_str(source), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO");
     } else {
        XLOGD_ERROR("session begin - invalid params - src <%s>", ctrlm_voice_device_str(source));
     }
@@ -466,7 +454,7 @@ void ctrlm_voice_endpoint_ws_nextgen_t::voice_session_end_callback_ws_nextgen(vo
     }
 
     // Check if WS was successful
-    if((stats->reason != XRSR_SESSION_END_REASON_EOS && stats->reason != XRSR_SESSION_END_REASON_EOT) || (this->server_ret_code != 0 && this->server_ret_code != 200)) {
+    if((stats->session_end_reason != XRSR_SESSION_END_REASON_EOS && stats->session_end_reason != XRSR_SESSION_END_REASON_EOT) || (this->server_ret_code != 0 && this->server_ret_code != 200)) {
         success = false;
     }
 

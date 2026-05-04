@@ -351,7 +351,7 @@ ctrlm_rf4ce_rib_attr_t::status ctrlm_rf4ce_controller_ir_rf_database_status_t::r
             } else { // Normal Read
                 data[0] = this->ir_rf_status;
                 *len = IR_RF_STATUS_LEN;
-#ifdef XR15_704
+                
                 if(this->controller && this->controller->needs_reset() && !ctrlm_device_update_is_controller_updating(this->controller->network_id_get(), this->controller->controller_id_get(), true)) {
                     if(ctrlm_device_update_xr15_crash_update_get()) {
                         XLOGD_INFO("ENTERING XR15 CRASH CODE: XR15-10 running less then 2.0.0.0, need to force reboot for device update... Setting proper IR RF Status bits");
@@ -362,7 +362,7 @@ ctrlm_rf4ce_rib_attr_t::status ctrlm_rf4ce_controller_ir_rf_database_status_t::r
                             (data[0] & ctrlm_rf4ce_ir_rf_database_status_t::flag::DOWNLOAD_AVR_5_DIGIT_CODE) ? "YES" : "NO",(data[0] & ctrlm_rf4ce_ir_rf_database_status_t::flag::CLEAR_ALL_5_DIGIT_CODES) ? "YES" : "NO");
                     }
                 }
-#endif
+
                 if(this->controller && this->ir_rf_status & ctrlm_rf4ce_ir_rf_database_status_t::flag::DB_DOWNLOAD_YES) {
                     XLOGD_INFO("Creating timer for download flag reset");
                     ctrlm_timeout_create(200, ir_rf_database_status_download_timeout, (void *)this->controller);

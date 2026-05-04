@@ -64,6 +64,10 @@ public:
     {
         m_lastKeypressChangedSlots.addSlot(func);
     }
+    inline void addRawBatteryVoltageChangedSlot(const Slot<const std::vector<uint8_t> &> &func)
+    {
+        m_rawBatteryVoltageChangedSlots.addSlot(func);
+    }
     inline void addAdvConfigChangedSlot(const Slot<uint8_t> &func)
     {
         m_advConfigChangedSlots.addSlot(func);
@@ -77,6 +81,7 @@ protected:
     Slots<uint8_t> m_unpairReasonChangedSlots;
     Slots<uint8_t, std::string> m_rebootReasonChangedSlots;
     Slots<uint8_t> m_lastKeypressChangedSlots;
+    Slots<const std::vector<uint8_t> &> m_rawBatteryVoltageChangedSlots;
     Slots<uint8_t> m_advConfigChangedSlots;
     Slots<const std::vector<uint8_t> &> m_advConfigCustomListChangedSlots;
 };

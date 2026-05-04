@@ -41,6 +41,8 @@
 
 // End Includes
 
+#define BLE_RCU_ID_RANGE_MIN (NETWORK_ID_BASE_BLE)
+#define BLE_RCU_ID_RANGE_MAX ((BLE_RCU_ID_RANGE_MIN)+BLE_MAX_MANAGED_RCUS+1) // +1 as a buffer for pairing
 
 typedef struct {
    ctrlm_main_queue_msg_header_t               header;
@@ -145,6 +147,7 @@ public:
    virtual void                  req_process_voice_session_end(void *data, int size);
 
    virtual void                  req_process_start_pairing(void *data, int size);
+   virtual void                  req_process_stop_pairing(void *data, int size);
    virtual void                  req_process_pair_with_code(void *data, int size);
    virtual void                  req_process_program_ir_codes(void *data, int size);
    virtual void                  req_process_ir_clear_codes(void *data, int size);
@@ -191,6 +194,11 @@ public:
 
    std::shared_ptr<ConfigSettings> getConfigSettings();
 
+   virtual void                  start_controller_audio_streaming(ctrlm_voice_start_audio_params_t *params);
+
+protected:
+   virtual bool                  is_managed_by_network(ctrlm_controller_id_t id);
+
 private:
    ctrlm_obj_network_ble_t();
 
@@ -203,6 +211,7 @@ private:
    ctrlm_controller_id_t                     find_controller_from_upgrade_session_uuid(const std::string &uuid);
 
    json_t *                                  json_config_               = NULL;
+   bool                                      voice_disabled_            = false;
    bool                                      upgrade_in_progress_       = false;
    bool                                      unpair_on_remote_request_  = true;
    ctrlm_ble_unpair_metrics_t                last_rcu_unpair_metrics_;

@@ -64,7 +64,7 @@
 #define CTRLM_VOICE_SESSION_TEXT_MAX_LENGTH         (512) ///< Session text string maximum length
 #define CTRLM_VOICE_SESSION_MSG_MAX_LENGTH          (128) ///< Session message string maximum length
 #define CTRLM_VOICE_QUERY_STRING_MAX_LENGTH         (128) ///< Query string maximum name or value length
-#define CTRLM_VOICE_QUERY_STRING_MAX_PAIRS           (16) ///< Query string maximum number of name/value pairs
+#define CTRLM_VOICE_QUERY_STRING_MAX_PAIRS           (24) ///< Query string maximum number of name/value pairs
 #define CTRLM_VOICE_REQUEST_IP_MAX_LENGTH            (48) ///< cURL request primary IP address string maximum length (big enough for IPv6)
 
 #define CTRLM_VOICE_MIN_UTTERANCE_DURATION_MAXIMUM  (600) ///< Maximum value of the utterance duration minimum setting (in milliseconds)
@@ -119,7 +119,7 @@ typedef enum {
    CTRLM_VOICE_SESSION_ABORT_REASON_FAILURE               =  3, ///< Session aborted for any other reason
    CTRLM_VOICE_SESSION_ABORT_REASON_VOICE_DISABLED        =  4, ///< Session aborted because the voice feature is disabled
    CTRLM_VOICE_SESSION_ABORT_REASON_DEVICE_UPDATE         =  5, ///< Session aborted due to device update in progress
-   CTRLM_VOICE_SESSION_ABORT_REASON_NO_RECEIVER_ID        =  6, ///< Session aborted because there is no receiver id
+   CTRLM_VOICE_SESSION_ABORT_REASON_NO_AUTH_DATA          =  6, ///< Session aborted due to missing authorization data
    CTRLM_VOICE_SESSION_ABORT_REASON_NEW_SESSION           =  7, ///< Session aborted because the remote's previous session is still active
    CTRLM_VOICE_SESSION_ABORT_REASON_INVALID_CONTROLLER_ID =  8, ///< Session aborted because the controller id isn't valid
    CTRLM_VOICE_SESSION_ABORT_REASON_APPLICATION_RESTART   =  9, ///< Session aborted due to restarting controlMgr.
@@ -229,7 +229,7 @@ typedef struct {
    ctrlm_network_type_t             network_type;         ///< Type of network on which the controller is bound
    ctrlm_controller_id_t            controller_id;        ///< A unique identifier of the remote
    unsigned long                    session_id;           ///< A unique id for the voice session.
-   ctrlm_voice_session_end_reason_t reason;               ///< The reason for ending
+   ctrlm_voice_session_end_reason_t reason;               ///< The reason for ending session
    unsigned char                    is_voice_assistant;   ///< Boolean indicating if the device is a far-field device (1) as opposed to a hand-held remote (0).
 } ctrlm_voice_iarm_event_session_end_t;
 
@@ -305,11 +305,11 @@ typedef struct {
 
 // IARM Event JSON
 // This structure is used for the following calls:
-//   CTRLM_VOICE_IARM_EVENT_SESSION_BEGIN_JSON 
-//   CTRLM_VOICE_IARM_EVENT_STREAM_BEGIN_JSON  
+//   CTRLM_VOICE_IARM_EVENT_SESSION_BEGIN_JSON
+//   CTRLM_VOICE_IARM_EVENT_STREAM_BEGIN_JSON
 //   CTRLM_VOICE_IARM_EVENT_SERVER_MESSAGE_JSON
-//   CTRLM_VOICE_IARM_EVENT_STREAM_END_JSON    
-//   CTRLM_VOICE_IARM_EVENT_SESSION_END_JSON   
+//   CTRLM_VOICE_IARM_EVENT_STREAM_END_JSON
+//   CTRLM_VOICE_IARM_EVENT_SESSION_END_JSON
 //
 // The payload MUST be a NULL terminated JSON String.
 typedef struct {

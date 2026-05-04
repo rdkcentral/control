@@ -53,10 +53,8 @@ void ctrlm_sm_voice_url_ptt_write(std::string url);
 void ctrlm_sm_voice_url_ff_read(std::string &url);
 void ctrlm_sm_voice_url_ff_write(std::string url);
 
-#ifdef CTRLM_LOCAL_MIC_TAP
 void ctrlm_sm_voice_url_mic_tap_read(std::string &url);
 void ctrlm_sm_voice_url_mic_tap_write(std::string url);
-#endif
 
 void ctrlm_sm_voice_query_string_ptt_count_read(uint8_t &count);
 void ctrlm_sm_voice_query_string_ptt_count_write(uint8_t count);

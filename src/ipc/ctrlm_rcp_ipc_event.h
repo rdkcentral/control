@@ -33,7 +33,9 @@ namespace rcp_net_status_json_keys
     constexpr char const* NET_TYPES_SUPPORTED  = "netTypesSupported";
     constexpr char const* PAIRING_STATE        = "pairingState";
     constexpr char const* IR_PROG_STATE        = "irProgState";
-    constexpr char const* MANUAL_PAIR_CODE     = "manualPairCode";
+    constexpr char const* VALIDATION_STATUS    = "status";
+    constexpr char const* VALIDATION_CODE      = "code";
+    constexpr char const* VALIDATION_KEY       = "key";
     constexpr char const* REMOTE_DATA          = "remoteData";
 
     constexpr char const* MAC_ADDRESS          = "macAddress";
@@ -109,13 +111,18 @@ public:
 
     virtual json_t *to_json() const;
 
-    char              *to_string() const;
-    uint8_t            get_api_revision() const                             { return api_revision_; }
-    bool               get_result() const                                   { return (result_ == CTRLM_IARM_CALL_RESULT_SUCCESS) ? true : false; }
-    void               set_result(ctrlm_iarm_call_result_t result)          { result_ = result; }
-    ctrlm_network_id_t get_net_id() const                                   { return net_id_; }
-    void               set_net_id(ctrlm_network_id_t net_id)                { net_id_ = net_id; }
-    void               populate_status(const ctrlm_obj_network_t &network);
+    char                *to_string() const;
+    uint8_t              get_api_revision() const                    { return api_revision_; }
+    bool                 get_result() const                          { return (result_ == CTRLM_IARM_CALL_RESULT_SUCCESS) ? true : false; }
+    void                 set_result(ctrlm_iarm_call_result_t result) { result_ = result; }
+    ctrlm_network_id_t   get_net_id() const                          { return net_id_; }
+    void                 set_net_id(ctrlm_network_id_t net_id)       { net_id_ = net_id; }
+    ctrlm_network_type_t get_type() const                            { return net_type_; }
+
+    void                  populate_status(const ctrlm_obj_network_t &network);
+    ctrlm_ir_state_t      get_ir_prog_state(void);
+    ctrlm_rf_pair_state_t get_rf_pair_state(void);
+    void                  get_controller_status_list(std::vector<ctrlm_rcp_ipc_controller_status_t> &list);
 
 private:
     uint8_t                  api_revision_   = 0;
@@ -154,6 +161,28 @@ private:
     ctrlm_iarm_call_result_t  result_           = CTRLM_IARM_CALL_RESULT_INVALID;
 };
 
+class ctrlm_rcp_ipc_validation_status_t : public ctrlm_virtual_json_t
+{
+public:
+    ctrlm_rcp_ipc_validation_status_t() = default;
+    ~ctrlm_rcp_ipc_validation_status_t();
+
+    virtual json_t    *to_json() const;
+    char              *to_string() const;
+    uint8_t            get_api_revision() const                             { return api_revision_; }
+    bool               get_result() const                                   { return (result_ == CTRLM_IARM_CALL_RESULT_SUCCESS) ? true : false; }
+    void               set_result(ctrlm_iarm_call_result_t result)          { result_ = result; }
+    void               set_status(ctrlm_rcu_validation_result_t status)     { validation_status_ = status; }
+    void               set_key(ctrlm_key_code_t key)                        { (key >= CTRLM_KEY_CODE_DIGIT_0 && key <= CTRLM_KEY_CODE_DIGIT_9) ? validation_key_ = key : validation_key_ = CTRLM_KEY_CODE_INVALID; }
+    void               populate_status(const ctrlm_obj_network_t &network);
+
+private:
+    uint8_t                       api_revision_      = CTRLM_MAIN_IARM_BUS_API_REVISION;
+    ctrlm_rcu_validation_result_t validation_status_ = CTRLM_RCU_VALIDATION_RESULT_MAX;
+    ctrlm_key_code_t              validation_key_    = CTRLM_KEY_CODE_INVALID;
+    ctrlm_iarm_call_result_t      result_            = CTRLM_IARM_CALL_RESULT_INVALID;
+};
+
 class ctrlm_network_all_ipc_result_wrapper_t {
 private:
     ctrlm_network_id_t network_id_;
@@ -173,11 +202,11 @@ public:
             return (result_map_[network_id_] == CTRLM_IARM_CALL_RESULT_SUCCESS);
         } else {
             for (const auto &it : result_map_) {
-                if (it.second != CTRLM_IARM_CALL_RESULT_SUCCESS) {
-                    return false;
+                if (it.second == CTRLM_IARM_CALL_RESULT_SUCCESS) {
+                    return true;
                 }
             }
-            return true;
+            return false;
         }
     }
 };

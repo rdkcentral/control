@@ -117,7 +117,7 @@
 // <server_message>       - server message.
 // <result>               - flag to indicate if session was successful.
 #define MARKER_VOICE_SESSION_STATS                 "ctrlm.voice.session.stats"
-#define MARKER_VOICE_SESSION_STATS_VERSION         "1"
+#define MARKER_VOICE_SESSION_STATS_VERSION         "2"
 
 // End Voice Session Statistics
 

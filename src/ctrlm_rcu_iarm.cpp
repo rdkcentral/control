@@ -110,26 +110,6 @@ void ctrlm_rcu_iarm_event_key_press(ctrlm_network_id_t network_id, ctrlm_control
    }
 }
 
-void ctrlm_rcu_iarm_event_key_press_validation(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_controller_type_t controller_type, ctrlm_rcu_binding_type_t binding_type, ctrlm_key_status_t key_status, ctrlm_key_code_t key_code) {
-   ctrlm_rcu_iarm_event_key_press_t msg;
-   init_iarm_event_struct(msg, network_id, controller_id);
-   msg.binding_type  = binding_type;
-   msg.key_status    = key_status;
-   msg.key_code      = key_code;
-   errno_t safec_rc = strncpy_s(msg.controller_type, sizeof(msg.controller_type), ctrlm_rcu_controller_type_str(controller_type), CTRLM_RCU_MAX_USER_STRING_LENGTH - 1);
-   ERR_CHK(safec_rc);
-   msg.controller_type[CTRLM_RCU_MAX_USER_STRING_LENGTH - 1] = '\0';
-   if(ctrlm_is_pii_mask_enabled()) {
-      XLOGD_INFO("(%u, %u) Controller Type <%s> key %s *", network_id, controller_id, msg.controller_type, ctrlm_key_status_str(key_status));
-   } else {
-      XLOGD_INFO("(%u, %u) Controller Type <%s> key %s (0x%02X) %s", network_id, controller_id, msg.controller_type, ctrlm_key_status_str(key_status), (guchar)key_code, ctrlm_key_code_str(key_code));
-   }
-   IARM_Result_t result = IARM_Bus_BroadcastEvent(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_VALIDATION_KEY_PRESS, &msg, sizeof(msg));
-   if(IARM_RESULT_SUCCESS != result) {
-      XLOGD_ERROR("IARM Bus Error!");
-   }
-}
-
 void ctrlm_rcu_iarm_event_function(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_function_t function, unsigned long value) {
    ctrlm_rcu_iarm_event_function_t msg;
    init_iarm_event_struct(msg, network_id, controller_id);

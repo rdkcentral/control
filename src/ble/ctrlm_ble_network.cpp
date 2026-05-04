@@ -797,18 +797,18 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
             if (dqm->ir_codes->type == CTRLM_IRDB_DEV_TYPE_TV && (ir_rf_database_.get_avr_ir_vendor_id() != 0 && ir_rf_database_.get_avr_ir_vendor_id() != dqm->vendor_info.rcu_support_bitmask) ) {
                 // if we are programming TV codes but the previous AVR codes are from a different IRDB vendor, then clear out the AVR codes.
                 // the remote cannot send different codes from different IRDB vendors at the same time.
-                XLOGD_INFO("Programming TV codes from vendor %s(%d), but currently have AVR codes from %s(%d).  Clearing AVR codes.", 
-                     dqm->vendor_info.name.c_str(), dqm->vendor_info.rcu_support_bitmask, 
-                     ir_rf_database_.get_avr_ir_vendor_name().c_str(),ir_rf_database_.get_avr_ir_vendor_id());
+                XLOGD_INFO("Programming TV codes from vendor %s(0x%X), but currently have AVR codes from %s(0x%X).  Clearing AVR codes.", 
+                     dqm->vendor_info.name.c_str(), (unsigned int)dqm->vendor_info.rcu_support_bitmask, 
+                     ir_rf_database_.get_avr_ir_vendor_name().c_str(), (unsigned int)ir_rf_database_.get_avr_ir_vendor_id());
                
                ir_rf_database_.clear_avr_ir_codes();
 
             } else if (dqm->ir_codes->type == CTRLM_IRDB_DEV_TYPE_AVR && (ir_rf_database_.get_tv_ir_vendor_id() != 0 && ir_rf_database_.get_tv_ir_vendor_id() != dqm->vendor_info.rcu_support_bitmask) ) {
                 // if we are programming AVR codes but the previous TV codes are from a different IRDB vendor, then clear out the TV codes.
                 // the remote cannot send different codes from different IRDB vendors at the same time.
-                XLOGD_INFO("Programming AVR codes from vendor %s(%d), but currently have TV codes from %s(%d).  Clearing TV codes.", 
-                     dqm->vendor_info.name.c_str(), dqm->vendor_info.rcu_support_bitmask, 
-                     ir_rf_database_.get_tv_ir_vendor_name().c_str(),ir_rf_database_.get_tv_ir_vendor_id());
+                XLOGD_INFO("Programming AVR codes from vendor %s(0x%X), but currently have TV codes from %s(0x%X).  Clearing TV codes.", 
+                     dqm->vendor_info.name.c_str(), (unsigned int)dqm->vendor_info.rcu_support_bitmask, 
+                     ir_rf_database_.get_tv_ir_vendor_name().c_str(), (unsigned int)ir_rf_database_.get_tv_ir_vendor_id());
                
                ir_rf_database_.clear_tv_ir_codes();
             }

@@ -102,7 +102,7 @@ ConfigSettings::TimeOuts ConfigSettings::parseTimeouts(json_t *json)
             } else {
                *(fields[i].storage) = (int)value;
             }
-            XLOGD_DEBUG("'%s' field = %d", fields[i].name, *(fields[i].storage));
+            XLOGD_INFO("'%s' field = %d ms", fields[i].name, *(fields[i].storage));
         }
     }
 

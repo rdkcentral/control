@@ -35,6 +35,7 @@ typedef enum {
 
 typedef struct {
    sem_t *                semaphore;
+   bool                   result;
    uint16_t               port;
    bool                   log_enable;
 } ctrlms_ws_thread_params_t;
@@ -51,7 +52,7 @@ typedef struct {
 } ctrlms_ws_global_t;
 
 static void *ctrlms_ws_main(void *param);
-static void *ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state);
+static void *ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state, bool use_stub);
 
 static nopoll_bool ctrlms_ws_on_accept(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data);
 static nopoll_bool ctrlms_ws_on_ready(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data);
@@ -73,23 +74,23 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
    sem_init(&semaphore, 0, 0);
    
    // Launch thread
-   params.semaphore = &semaphore;
-
-   params.port             = port;
-   params.log_enable       = log_enable;
+   params.semaphore  = &semaphore;
+   params.result     = false;
+   params.port       = port;
+   params.log_enable = log_enable;
 
    g_ctrlms_ws.nopoll_ctx      = NULL;
    
    if(0 != pthread_create(&g_ctrlms_ws.thread_id, NULL, ctrlms_ws_main, &params)) {
       XLOGD_ERROR("unable to launch thread");
-      return(false);
+      return(params.result);
    }
 
    // Block until initialization is complete or a timeout occurs
    XLOGD_INFO("Waiting for thread initialization...");
    sem_wait(&semaphore);
    sem_destroy(&semaphore);
-   return(true);
+   return(params.result);
 }
 
 bool ctrlms_ws_listen(void) {
@@ -117,124 +118,141 @@ void *ctrlms_ws_main(void *param) {
    ctrlms_ws_thread_params_t params = *((ctrlms_ws_thread_params_t *)param);
    errno_t safec_rc = -1;
 
+   bool result = false;
+
    ctrlms_ws_thread_state_t state;
    
    state.app_interface = NULL;
-   state.app_handle    = ctrlms_ws_load_app(&state);
+   state.app_handle    = NULL;
 
-   g_ctrlms_ws.nopoll_ctx = nopoll_ctx_new();
-   if(g_ctrlms_ws.nopoll_ctx == NULL) {
-      XLOGD_ERROR("nopoll context create");
-      return(NULL);
-   }
+   noPollConnOpts *opts = NULL;
+   do {
+      state.app_handle = ctrlms_ws_load_app(&state, false);
 
-   #ifdef CTRLMS_WSS_ENABLED
-   int cert_key_fd   = -1;
-   FILE *cert_key_fp = NULL;
-   char tmp_cert[32] = {0};
-   int err_store;
-
-   safec_rc = sprintf_s(tmp_cert, sizeof(tmp_cert), "%s", CTRLMS_WS_TLS_CERT_KEY_FILE);
-   if(safec_rc < EOK) {
-      ERR_CHK(safec_rc);
-   }
-
-   umask(0600);
-   cert_key_fd = mkstemp(tmp_cert);
-   if (cert_key_fd == -1)
-   {
-      err_store = errno;
-      XLOGD_ERROR("mkstemp failed: <%s>", strerror(err_store));
-      return(NULL);
-   }
-
-   cert_key_fp = fdopen(cert_key_fd, "w");
-   if(cert_key_fp == NULL) {
-      err_store = errno;
-      XLOGD_ERROR("fdopen failed: <%s>", strerror(err_store));
-      if(0 != unlink(&tmp_cert[0])) {
-         err_store = errno;
-         XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
+      if(state.app_handle == NULL) {
+         XLOGD_INFO("exiting thread due to app load failure");
+         break;
       }
-      return(NULL);
-   }
 
-   if(!ctrlms_ws_cert_config(cert_key_fp)) {
-      XLOGD_ERROR("failed to set cert or key, exit");
+      g_ctrlms_ws.nopoll_ctx = nopoll_ctx_new();
+      if(g_ctrlms_ws.nopoll_ctx == NULL) {
+         XLOGD_ERROR("nopoll context create");
+         break;
+      }
+
+      #ifdef CTRLMS_WSS_ENABLED
+      int cert_key_fd   = -1;
+      FILE *cert_key_fp = NULL;
+      char tmp_cert[32] = {0};
+      int err_store;
+
+      safec_rc = sprintf_s(tmp_cert, sizeof(tmp_cert), "%s", CTRLMS_WS_TLS_CERT_KEY_FILE);
+      if(safec_rc < EOK) {
+         ERR_CHK(safec_rc);
+      }
+
+      umask(0600);
+      cert_key_fd = mkstemp(tmp_cert);
+      if (cert_key_fd == -1)
+      {
+         err_store = errno;
+         XLOGD_ERROR("mkstemp failed: <%s>", strerror(err_store));
+         break;
+      }
+
+      cert_key_fp = fdopen(cert_key_fd, "w");
+      if(cert_key_fp == NULL) {
+         err_store = errno;
+         XLOGD_ERROR("fdopen failed: <%s>", strerror(err_store));
+         if(0 != unlink(&tmp_cert[0])) {
+            err_store = errno;
+            XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
+         }
+         break;
+      }
+
+      if(!ctrlms_ws_cert_config(cert_key_fp)) {
+         XLOGD_ERROR("failed to set cert or key, exit");
+         fclose(cert_key_fp);
+         if(0 != unlink(&tmp_cert[0])) {
+            err_store = errno;
+            XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
+         }
+         break;
+      }
       fclose(cert_key_fp);
-      if(0 != unlink(&tmp_cert[0])) {
-         err_store = errno;
-         XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
+
+      // Init OpenSSL
+      SSL_library_init();
+      SSL_load_error_strings();
+      OpenSSL_add_all_algorithms();
+      #endif
+      
+      if(params.log_enable) {
+         nopoll_log_enable(g_ctrlms_ws.nopoll_ctx, nopoll_true);
+         nopoll_log_set_handler(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_nopoll_log, NULL);
       }
-      return(NULL);
-   }
-   fclose(cert_key_fp);
+      opts = nopoll_conn_opts_new();
+      nopoll_ctx_set_on_accept(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_accept, &state);
+      nopoll_ctx_set_on_ready(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_ready, &state);
+      nopoll_ctx_set_on_msg(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_message, &state);
+      
+      #ifdef CTRLMS_WSS_ENABLED
+      nopoll_conn_opts_set_ssl_protocol(opts, NOPOLL_METHOD_TLSV1_2);
+      nopoll_conn_opts_ssl_host_verify(opts, nopoll_false); //localhost will not match host specified in certificate
 
-   // Init OpenSSL
-   SSL_library_init();
-   SSL_load_error_strings();
-   OpenSSL_add_all_algorithms();
-   #endif
-   
-   if(params.log_enable) {
-      nopoll_log_enable(g_ctrlms_ws.nopoll_ctx, nopoll_true);
-      nopoll_log_set_handler(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_nopoll_log, NULL);
-   }
-   noPollConnOpts *opts = nopoll_conn_opts_new();
-   nopoll_ctx_set_on_accept(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_accept, &state);
-   nopoll_ctx_set_on_ready(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_ready, &state);
-   nopoll_ctx_set_on_msg(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_message, &state);
-   
-   #ifdef CTRLMS_WSS_ENABLED
-   nopoll_conn_opts_set_ssl_protocol(opts, NOPOLL_METHOD_TLSV1_2);
-   nopoll_conn_opts_ssl_host_verify(opts, nopoll_false); //localhost will not match host specified in certificate
+      if(!nopoll_conn_opts_set_ssl_certs(opts, &tmp_cert[0], &tmp_cert[0], NULL, NULL)) {
+         XLOGD_ERROR("Failed to add cert/key files to nopoll_conn");
+         nopoll_ctx_unref(g_ctrlms_ws.nopoll_ctx);
+         nopoll_conn_opts_free(opts);
+         break;
+      }
+      #endif
 
-   if(!nopoll_conn_opts_set_ssl_certs(opts, &tmp_cert[0], &tmp_cert[0], NULL, NULL)) {
-      XLOGD_ERROR("Failed to add cert/key files to nopoll_conn");
-      nopoll_ctx_unref(g_ctrlms_ws.nopoll_ctx);
-      nopoll_conn_opts_free(opts);
-      return(NULL);
-   }
-   #endif
+      char port[6];
+      safec_rc = sprintf_s(port, sizeof(port), "%u", params.port);
+      if(safec_rc < EOK) {
+         ERR_CHK(safec_rc);
+      }
 
-   char port[6];
-   safec_rc = sprintf_s(port, sizeof(port), "%u", params.port);
-   if(safec_rc < EOK) {
-      ERR_CHK(safec_rc);
-   }
+      // Start IPv4/6 listener
+      #ifdef CTRLMS_WSS_ENABLED
+      state.nopoll_conn = nopoll_listener_tls_new_opts6(g_ctrlms_ws.nopoll_ctx, opts, "::", port);
+      #else
+      state.nopoll_conn = nopoll_listener_new_opts6(g_ctrlms_ws.nopoll_ctx, opts, "::", port);
+      #endif
+      if(!nopoll_conn_is_ok(state.nopoll_conn)) {
+         XLOGD_ERROR("Listener connection IPv6 NOT ok");
+         nopoll_ctx_unref(g_ctrlms_ws.nopoll_ctx);
+         g_ctrlms_ws.nopoll_ctx = NULL;
+         break;
+      }
 
-   // Start IPv4/6 listener
-   #ifdef CTRLMS_WSS_ENABLED
-   state.nopoll_conn = nopoll_listener_tls_new_opts6(g_ctrlms_ws.nopoll_ctx, opts, "::", port);
-   #else
-   state.nopoll_conn = nopoll_listener_new_opts6(g_ctrlms_ws.nopoll_ctx, opts, "::", port);
-   #endif
-   if(!nopoll_conn_is_ok(state.nopoll_conn)) {
-      XLOGD_ERROR("Listener connection IPv6 NOT ok");
-      nopoll_ctx_unref(g_ctrlms_ws.nopoll_ctx);
-      g_ctrlms_ws.nopoll_ctx = NULL;
-      return(NULL);
-   }
+      result = true;
+   } while(0);
 
    // Unblock the caller that launched this thread
+   params.result = result;
    sem_post(params.semaphore);
    params.semaphore = NULL;
 
-   XLOGD_INFO("Enter main loop");
+   if(result) {
+      XLOGD_INFO("Enter main loop");
 
-   nopoll_loop_wait(g_ctrlms_ws.nopoll_ctx, 0);
+      nopoll_loop_wait(g_ctrlms_ws.nopoll_ctx, 0);
 
-   nopoll_conn_opts_unref(opts);
-   nopoll_conn_unref(state.nopoll_conn);
-   nopoll_ctx_unref(g_ctrlms_ws.nopoll_ctx);
-   g_ctrlms_ws.nopoll_ctx = NULL;
+      nopoll_conn_opts_unref(opts);
+      nopoll_conn_unref(state.nopoll_conn);
+      nopoll_ctx_unref(g_ctrlms_ws.nopoll_ctx);
+      g_ctrlms_ws.nopoll_ctx = NULL;
 
-   #ifdef CTRLMS_WSS_ENABLED
-   if(0 != unlink(tmp_cert)) {
-      int err_store = errno;
-      XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
+      #ifdef CTRLMS_WSS_ENABLED
+      if(0 != unlink(tmp_cert)) {
+         int err_store = errno;
+         XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
+      }
+      #endif
    }
-   #endif
 
    if(state.app_handle != NULL) {
       dlclose(state.app_handle);
@@ -474,12 +492,15 @@ void ctrlms_ws_nopoll_log(noPollCtx * ctx, noPollDebugLevel level, const char * 
 
 typedef ctrlms_app_interface_t *(*ctrlms_app_interface_create_t)(void);
 
-void *ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state) {
+void *ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state, bool use_stub) {
    void *handle = dlopen("libctrlm-server-app.so", RTLD_NOW);
    if(NULL == handle) {
-      XLOGD_WARN("failed to load server app plugin <%s>.  Using stub implementation.", dlerror());
+      XLOGD_WARN("failed to load server app plugin <%s>", dlerror());
 
-      state->app_interface = new ctrlms_app_interface_t();
+      if(use_stub) {
+         XLOGD_INFO("Using stub implementation of app interface");
+         state->app_interface = new ctrlms_app_interface_t();
+      }
       return(NULL);
    }
 
@@ -491,7 +512,10 @@ void *ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state) {
       XLOGD_ERROR("failed to find plugin interface, error <%s>", error);
       dlclose(handle);
 
-      state->app_interface = new ctrlms_app_interface_t();
+      if(use_stub) {
+         XLOGD_INFO("Using stub implementation of app interface");
+         state->app_interface = new ctrlms_app_interface_t();
+      }
       return(NULL);
    }
 

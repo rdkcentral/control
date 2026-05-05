@@ -753,7 +753,6 @@ typedef struct {
 typedef struct {
    unsigned char            api_revision;       ///< Revision of this API
    ctrlm_network_id_t       network_id;         ///< IN - Identifier of network
-   unsigned int             key_code;           ///< IN - Key code from device
    unsigned int             pair_code;          ///< IN - Pairing code from device
    ctrlm_iarm_call_result_t result;             ///< OUT - return code of the operation
 } ctrlm_iarm_call_StartPairWithCode_params_t;

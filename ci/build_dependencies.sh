@@ -172,7 +172,7 @@ cp "$GITHUB_WORKSPACE/ci/mocks/safec_lib.h" safec_lib.h
 
 echo "Stub headers created successfully"
 
-cd ${GITHUB_WORKSPACE}
+cd "${GITHUB_WORKSPACE}"
 
 mkdir -p "${GITHUB_WORKSPACE}/install/usr/include"
 printf '{}\n' > "${GITHUB_WORKSPACE}/install/usr/include/ctrlm_config_empty.json"

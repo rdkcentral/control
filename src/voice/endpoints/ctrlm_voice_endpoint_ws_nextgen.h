@@ -68,6 +68,7 @@ protected:
     static void ctrlm_voice_handler_ws_nextgen_tv_mute(bool mute, void *user_data);
     static void ctrlm_voice_handler_ws_nextgen_tv_power(bool power, bool toggle, void *user_data);
     static void ctrlm_voice_handler_ws_nextgen_tv_volume(bool up, uint32_t repeat_count, void *user_data);
+
 protected:
     void       *xrsv_obj_ws_nextgen;
 

@@ -33,7 +33,7 @@
      static ManagerImpl* impl;
  
  public:
-+    inline static bool IsInitialized = false;
++    static bool IsInitialized;
 +
      Manager();
  

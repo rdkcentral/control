@@ -89,6 +89,10 @@ mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
 # safec_lib.h during its own build, so make it available before invoking cmake.
 cp "$GITHUB_WORKSPACE/ci/mocks/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
 
+# rdkversion.h is included by xr-voice-sdk during its own build, so stage it
+# before invoking cmake.
+cp "$RDKVERSION_DIR/src/rdkversion.h" "$HEADERS_DIR/rdkversion.h"
+
 # Build xr-voice-sdk with cmake and install its headers.
 # This uses the COMPONENT headers install target added to xr-voice-sdk/src/CMakeLists.txt,
 # which covers all headers including the generated rdkx_logger.h and rdkx_logger_modules.h.
@@ -161,8 +165,7 @@ touch rfcapi.h
 find "$IARMMGRS_DIR" -name comcastIrKeyCodes.h -print -quit | xargs -r -I{} cp "{}" comcastIrKeyCodes.h
 [ -f comcastIrKeyCodes.h ]
 
-# rdkversion.h (used by ctrlm_main.cpp)
-cp "$RDKVERSION_DIR/src/rdkversion.h" rdkversion.h
+# rdkversion.h (used by ctrlm_main.cpp and xr-voice-sdk)
 [ -f rdkversion.h ]
 
 # secure_wrapper (types provided via empty stub — no v_secure_* calls in core)

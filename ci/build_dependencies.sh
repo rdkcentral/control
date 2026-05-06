@@ -44,13 +44,15 @@ apt install -y \
     libevdev-dev \
     libdrm-dev \
     libsafec-dev \
+    libbsd-dev \
+    gperf \
     python3-pip
 python3 -m pip install jsonref
 
 ###########################################
 # 2. Clone the required repositories
 
-XRSDK_REF="1.0.13"
+XRSDK_REF="feature/RDKEMW-18082"
 git clone --depth 1 --filter=blob:none --branch "${XRSDK_REF}" https://github.com/rdkcentral/xr-voice-sdk.git
 
 git clone --depth 1 --filter=blob:none --branch feature/RDKEMW-18082 https://github.com/rdkcentral/entservices-testframework.git
@@ -78,30 +80,24 @@ echo "==========================================================================
 echo "Creating stub headers"
 
 HEADERS_DIR="$GITHUB_WORKSPACE/ci/headers"
-XRSDK_HEADERS_DIR="$HEADERS_DIR/xr-voice-sdk"
 mkdir -p "${HEADERS_DIR}"
 mkdir -p "${HEADERS_DIR}/rdk/iarmbus"
 mkdir -p "${HEADERS_DIR}/rdk/ds"
 mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
-mkdir -p "${XRSDK_HEADERS_DIR}"
 
-# Copy real xr-voice-sdk headers.
-# xr_fdc.h is NOT copied: only needed when FDC_ENABLED=ON
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv.h" "${XRSDK_HEADERS_DIR}/"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-router/xrsr.h" "${XRSDK_HEADERS_DIR}/"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-mq/xr_mq.h" "${XRSDK_HEADERS_DIR}/"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv_http/xrsv_http.h" "${XRSDK_HEADERS_DIR}/"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv_ws_nextgen/xrsv_ws_nextgen.h" "${XRSDK_HEADERS_DIR}/"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-timestamp/xr_timestamp.h" "${XRSDK_HEADERS_DIR}/"
-
-# Generate rdkx_logger_modules.h from xr-voice-sdk's module configuration,
-# then copy the real rdkx_logger and xr_voice_sdk headers.
-# This replaces the hand-written ci/mocks/control/ stubs.
-python3 "$GITHUB_WORKSPACE/xr-voice-sdk/scripts/rdkx_logger_modules_to_c.py" \
-    "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-logger/rdkv/rdkx_logger_modules.json" \
-    "${XRSDK_HEADERS_DIR}/rdkx_logger_modules" "mw"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-logger/rdkx_logger_mw.h" "${XRSDK_HEADERS_DIR}/rdkx_logger.h"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr_voice_sdk.h" "${XRSDK_HEADERS_DIR}/xr_voice_sdk.h"
+# Build xr-voice-sdk with cmake and install its headers.
+# This uses the COMPONENT headers install target added to xr-voice-sdk/src/CMakeLists.txt,
+# which covers all headers including the generated rdkx_logger.h and rdkx_logger_modules.h.
+# CMAKE_INSTALL_INCLUDEDIR=xr-voice-sdk places headers under ${HEADERS_DIR}/xr-voice-sdk/.
+cmake -G Ninja \
+    -S "$GITHUB_WORKSPACE/xr-voice-sdk" \
+    -B "$GITHUB_WORKSPACE/build/xr-voice-sdk" \
+    -DCMAKE_INSTALL_PREFIX="${HEADERS_DIR}" \
+    -DCMAKE_INSTALL_INCLUDEDIR="xr-voice-sdk" \
+    -DSTAGING_BINDIR_NATIVE="/usr/bin" \
+    -DCMAKE_PROJECT_VERSION="1.0.13"
+cmake --build "$GITHUB_WORKSPACE/build/xr-voice-sdk"
+cmake --install "$GITHUB_WORKSPACE/build/xr-voice-sdk" --component headers
 
 cd "${HEADERS_DIR}"
 
@@ -188,9 +184,13 @@ STUB_EOF
 # Build stub .so for each missing library
 # nopoll and dshalcli are unused (factory-only) but unconditionally linked by CMakeLists.txt
 # We can remove them from the link list in the future if desired, but for now just provide stubs to satisfy the linker.
-for lib in xr-voice-sdk rdkversion IARMBus ds nopoll dshalcli rfcapi secure_wrapper evdev; do
+# xr-voice-sdk is not stubbed here: the real .so is produced by the cmake build above.
+for lib in rdkversion IARMBus ds nopoll dshalcli rfcapi secure_wrapper evdev; do
     gcc -shared -fPIC -o "${STUB_LIB_DIR}/lib${lib}.so" /tmp/stub.c
 done
+
+# Copy the real xr-voice-sdk .so built by cmake into the stub lib dir.
+cp "$GITHUB_WORKSPACE/build/xr-voice-sdk/src/libxr-voice-sdk.so" "${STUB_LIB_DIR}/libxr-voice-sdk.so"
 
 rm /tmp/stub.c
 

@@ -25,6 +25,7 @@
 #include <archive.h>
 #include <algorithm>
 #include <cctype>
+#include <tuple>
 #include "ctrlm.h"
 #include "ctrlm_utils.h"
 #include <xr_mq.h>

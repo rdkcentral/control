@@ -213,24 +213,34 @@ bool ctrlm_ir_rf_db_t::add_irdb_codes(ctrlm_irdb_ir_code_set_t *ir_codes, unsign
 }
 
 void ctrlm_ir_rf_db_t::clear_tv_ir_codes() {
+    ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_TV_POWER_ON);
     this->remove_entry(CTRLM_KEY_CODE_TV_POWER_ON);
+
+    ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_TV_POWER_OFF);
     this->remove_entry(CTRLM_KEY_CODE_TV_POWER_OFF);
+
+    ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_TV_POWER);
     this->remove_entry(CTRLM_KEY_CODE_TV_POWER);
+
     if(this->has_entry(CTRLM_KEY_CODE_VOL_UP)) {
         if(this->ir_rf_db[CTRLM_KEY_CODE_VOL_UP]->get_type() == CTRLM_IR_RF_DB_DEV_TV) {
+            ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_VOL_UP);
             this->remove_entry(CTRLM_KEY_CODE_VOL_UP);
         }
     }
     if(this->has_entry(CTRLM_KEY_CODE_VOL_DOWN)) {
         if(this->ir_rf_db[CTRLM_KEY_CODE_VOL_DOWN]->get_type() == CTRLM_IR_RF_DB_DEV_TV) {
+            ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_VOL_DOWN);
             this->remove_entry(CTRLM_KEY_CODE_VOL_DOWN);
         }
     }
     if(this->has_entry(CTRLM_KEY_CODE_MUTE)) {
         if(this->ir_rf_db[CTRLM_KEY_CODE_MUTE]->get_type() == CTRLM_IR_RF_DB_DEV_TV) {
+            ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_MUTE);
             this->remove_entry(CTRLM_KEY_CODE_MUTE);
         }
     }
+    ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_INPUT_SELECT);
     this->remove_entry(CTRLM_KEY_CODE_INPUT_SELECT);
 
     this->fix_common_slots_and_ir_flags();
@@ -240,21 +250,30 @@ void ctrlm_ir_rf_db_t::clear_tv_ir_codes() {
 }
 
 void ctrlm_ir_rf_db_t::clear_avr_ir_codes() {
+    ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_AVR_POWER_ON);
     this->remove_entry(CTRLM_KEY_CODE_AVR_POWER_ON);
+
+    ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_AVR_POWER_OFF);
     this->remove_entry(CTRLM_KEY_CODE_AVR_POWER_OFF);
+
+    ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_AVR_POWER_TOGGLE);
     this->remove_entry(CTRLM_KEY_CODE_AVR_POWER_TOGGLE);
+
     if(this->has_entry(CTRLM_KEY_CODE_VOL_UP)) {
         if(this->ir_rf_db[CTRLM_KEY_CODE_VOL_UP]->get_type() == CTRLM_IR_RF_DB_DEV_AVR) {
+            ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_VOL_UP);
             this->remove_entry(CTRLM_KEY_CODE_VOL_UP);
         }
     }
     if(this->has_entry(CTRLM_KEY_CODE_VOL_DOWN)) {
         if(this->ir_rf_db[CTRLM_KEY_CODE_VOL_DOWN]->get_type() == CTRLM_IR_RF_DB_DEV_AVR) {
+            ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_VOL_DOWN);
             this->remove_entry(CTRLM_KEY_CODE_VOL_DOWN);
         }
     }
     if(this->has_entry(CTRLM_KEY_CODE_MUTE)) {
         if(this->ir_rf_db[CTRLM_KEY_CODE_MUTE]->get_type() == CTRLM_IR_RF_DB_DEV_AVR) {
+            ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_MUTE);
             this->remove_entry(CTRLM_KEY_CODE_MUTE);
         }
     }

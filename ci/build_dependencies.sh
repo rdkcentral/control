@@ -85,6 +85,10 @@ mkdir -p "${HEADERS_DIR}/rdk/iarmbus"
 mkdir -p "${HEADERS_DIR}/rdk/ds"
 mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
 
+# safec compatibility header - committed in ci/mocks. xr-voice-sdk includes
+# safec_lib.h during its own build, so make it available before invoking cmake.
+cp "$GITHUB_WORKSPACE/ci/mocks/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
+
 # Build xr-voice-sdk with cmake and install its headers.
 # This uses the COMPONENT headers install target added to xr-voice-sdk/src/CMakeLists.txt,
 # which covers all headers including the generated rdkx_logger.h and rdkx_logger_modules.h.
@@ -94,6 +98,7 @@ cmake -G Ninja \
     -B "$GITHUB_WORKSPACE/build/xr-voice-sdk" \
     -DCMAKE_INSTALL_PREFIX="${HEADERS_DIR}" \
     -DCMAKE_INSTALL_INCLUDEDIR="xr-voice-sdk" \
+    -DCMAKE_C_FLAGS="-I${HEADERS_DIR}" \
     -DSTAGING_BINDIR_NATIVE="/usr/bin" \
     -DCMAKE_PROJECT_VERSION="1.0.13"
 cmake --build "$GITHUB_WORKSPACE/build/xr-voice-sdk"
@@ -156,10 +161,6 @@ cp "$RDKVERSION_DIR/src/rdkversion.h" rdkversion.h
 
 # secure_wrapper (types provided via empty stub — no v_secure_* calls in core)
 touch secure_wrapper.h
-
-# safec compatibility header - committed in ci/mocks, copied here so it is
-# resolved on the generated-headers include path.
-cp "$GITHUB_WORKSPACE/ci/mocks/safec_lib.h" safec_lib.h
 
 echo "Stub headers created successfully"
 

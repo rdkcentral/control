@@ -101,6 +101,12 @@ cmake -G Ninja \
     -DCMAKE_C_FLAGS="-I${HEADERS_DIR}" \
     -DSTAGING_BINDIR_NATIVE="/usr/bin" \
     -DCMAKE_PROJECT_VERSION="1.0.13"
+
+# xr-voice-sdk unconditionally appends -Werror via target_compile_options.
+# Strip it from generated build files for this reduced CI build, matching the
+# control build workaround below.
+find "$GITHUB_WORKSPACE/build/xr-voice-sdk" \( -name "*.ninja" -o -name "flags.make" \) -exec sed -i 's/\(^\|[[:space:]]\)-Werror\([[:space:]]\|$\)/\1\2/g' {} \;
+
 cmake --build "$GITHUB_WORKSPACE/build/xr-voice-sdk"
 cmake --install "$GITHUB_WORKSPACE/build/xr-voice-sdk" --component headers
 

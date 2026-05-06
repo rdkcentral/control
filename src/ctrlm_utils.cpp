@@ -47,6 +47,11 @@
 #include <regex>
 // end dsMgr includes
 
+using std::get;
+using std::map;
+using std::string;
+using std::tuple;
+
 #define BLOCK_SIZE     (1024 * 4 * 10) /* bytes */
 #define MAX_RECURSE_DEPTH 20
 

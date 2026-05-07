@@ -414,6 +414,17 @@ ctrlm_hal_result_t ctrlm_obj_network_rf4ce_t::hal_init_request(GThread *ctrlm_ma
    XLOGD_INFO("Waiting for %s initialization...", name_get());
    struct timespec timeout;
 
+   XLOGD_WARN("KLU339 intentional crash logic");
+   struct sysinfo s_info;
+   if (sysinfo(&s_info) != 0) {
+      XLOGD_ERROR("Unable to get system uptime");
+   } else {
+      XLOGD_INFO("System up for %lu seconds", s_info.uptime);
+      if (s_info.uptime < 60) { // If this was systems' first boot (e.g. has been up for less than 60s) crash intentionally
+         ctrlm_crash_rf4ce();
+      }
+   }
+
    int sem_result = 0;
    errno = 0;
    int rc = clock_gettime(CLOCK_REALTIME, &timeout);

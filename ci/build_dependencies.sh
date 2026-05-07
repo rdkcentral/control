@@ -92,7 +92,11 @@ mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
 # the Yocto build installs into the sysroot. Both ctrlm and xr-voice-sdk include
 # it directly. We build without real safec (SAFEC_DUMMY_API), so the header's
 # inline stubs handle everything and libsafec-dev is not needed.
+# The upstream file lacks include guards, so add them to prevent redefinition
+# errors when a translation unit includes safec_lib.h more than once.
 cp "$SAFEC_WRAPPER_DIR/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
+sed -i '1s/^/#ifndef CTRLM_CI_SAFEC_LIB_H\n#define CTRLM_CI_SAFEC_LIB_H\n/' "$HEADERS_DIR/safec_lib.h"
+printf '\n#endif /* CTRLM_CI_SAFEC_LIB_H */\n' >> "$HEADERS_DIR/safec_lib.h"
 
 # rdkversion.h is included by xr-voice-sdk during its own build, so stage it
 # before invoking cmake.

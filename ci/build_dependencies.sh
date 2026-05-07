@@ -194,12 +194,11 @@ STUB_EOF
 # Build stub .so for each missing library
 # nopoll and dshalcli are unused (factory-only) but unconditionally linked by CMakeLists.txt
 # We can remove them from the link list in the future if desired, but for now just provide stubs to satisfy the linker.
-# xr-voice-sdk is not stubbed here: the real .so is produced by the cmake build above.
 for lib in rdkversion IARMBus ds nopoll dshalcli rfcapi secure_wrapper evdev; do
     gcc -shared -fPIC -o "${STUB_LIB_DIR}/lib${lib}.so" /tmp/stub.c
 done
 
-# Copy the real xr-voice-sdk .so built by cmake into the stub lib dir.
+# Copy the real xr-voice-sdk .so built by cmake into the lib dir alongside the stubs.
 cp "$GITHUB_WORKSPACE/build/xr-voice-sdk/src/libxr-voice-sdk.so" "${STUB_LIB_DIR}/libxr-voice-sdk.so"
 
 rm /tmp/stub.c

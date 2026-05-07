@@ -88,24 +88,16 @@ mkdir -p "${HEADERS_DIR}/rdk/iarmbus"
 mkdir -p "${HEADERS_DIR}/rdk/ds"
 mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
 
-# safec_lib.h from meta-rdk-oss-reference/safec-common-wrapper — the same header
-# the Yocto build installs into the sysroot. Both ctrlm and xr-voice-sdk include
-# it directly. We build without real safec (SAFEC_DUMMY_API), so the header's
-# inline stubs handle everything and libsafec-dev is not needed.
-# The upstream file lacks include guards, so add them to prevent redefinition
-# errors when a translation unit includes safec_lib.h more than once.
+# Use the Yocto safec_lib.h sysroot header for CI builds without libsafec.
+# Add include guards because the upstream header does not provide them.
 cp "$SAFEC_WRAPPER_DIR/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
 sed -i '1s/^/#ifndef CTRLM_CI_SAFEC_LIB_H\n#define CTRLM_CI_SAFEC_LIB_H\n/' "$HEADERS_DIR/safec_lib.h"
 printf '\n#endif /* CTRLM_CI_SAFEC_LIB_H */\n' >> "$HEADERS_DIR/safec_lib.h"
 
-# rdkversion.h is included by xr-voice-sdk during its own build, so stage it
-# before invoking cmake.
+# Stage rdkversion.h before building xr-voice-sdk.
 cp "$RDKVERSION_DIR/src/rdkversion.h" "$HEADERS_DIR/rdkversion.h"
 
-# Build xr-voice-sdk with cmake and install its headers.
-# This uses the COMPONENT headers install target added to xr-voice-sdk/src/CMakeLists.txt,
-# which covers all headers including the generated rdkx_logger.h and rdkx_logger_modules.h.
-# CMAKE_INSTALL_INCLUDEDIR=xr-voice-sdk places headers under ${HEADERS_DIR}/xr-voice-sdk/.
+# Build xr-voice-sdk and install its headers under ${HEADERS_DIR}/xr-voice-sdk/.
 cmake -G Ninja \
     -S "$GITHUB_WORKSPACE/xr-voice-sdk" \
     -B "$GITHUB_WORKSPACE/build/xr-voice-sdk" \
@@ -115,9 +107,7 @@ cmake -G Ninja \
     -DSTAGING_BINDIR_NATIVE="/usr/bin" \
     -DCMAKE_PROJECT_VERSION="1.0.13"
 
-# xr-voice-sdk unconditionally appends -Werror via target_compile_options.
-# Strip it from generated build files for this reduced CI build, matching the
-# control build workaround below.
+# xr-voice-sdk adds -Werror unconditionally, strip it for CI until warnings are dealt with
 find "$GITHUB_WORKSPACE/build/xr-voice-sdk" \( -name "*.ninja" -o -name "flags.make" \) -exec sed -i 's/\(^\|[[:space:]]\)-Werror\([[:space:]]\|$\)/\1\2/g' {} \;
 
 cmake --build "$GITHUB_WORKSPACE/build/xr-voice-sdk"
@@ -131,10 +121,7 @@ touch rdk/iarmbus/libIBus.h
 touch rdk/iarmbus/libIBusDaemon.h
 
 # IARM manager headers
-# sysMgr.h conflicts with the forced Iarm.h mock, which already provides the
-# needed SYSMgr types. Use a shim here. To remove it later, either stop
-# force-including those overlapping Iarm.h declarations or drop sysMgr.h from
-# ctrlm source.
+# sysMgr.h conflicts with the forced Iarm.h mock, so use a shim instead.
 cat > rdk/iarmmgrs-hal/sysMgr.h <<'EOF'
 #ifndef CTRLM_CI_SYSMGR_SHIM_H
 #define CTRLM_CI_SYSMGR_SHIM_H
@@ -200,14 +187,13 @@ cat > /tmp/stub.c << 'STUB_EOF'
 void __stub_placeholder(void) {}
 STUB_EOF
 
-# Build stub .so for each missing library
-# nopoll and dshalcli are unused (factory-only) but unconditionally linked by CMakeLists.txt
-# We can remove them from the link list in the future if desired, but for now just provide stubs to satisfy the linker.
+# Build stub .so files for libraries still linked in CI.
+# nopoll and dshalcli are factory-only but still linked unconditionally.
 for lib in rdkversion IARMBus ds nopoll dshalcli rfcapi secure_wrapper evdev; do
     gcc -shared -fPIC -o "${STUB_LIB_DIR}/lib${lib}.so" /tmp/stub.c
 done
 
-# Copy the real xr-voice-sdk .so built by cmake into the lib dir alongside the stubs.
+# Copy the real xr-voice-sdk .so alongside the stubs.
 cp "$GITHUB_WORKSPACE/build/xr-voice-sdk/src/libxr-voice-sdk.so" "${STUB_LIB_DIR}/libxr-voice-sdk.so"
 
 rm /tmp/stub.c

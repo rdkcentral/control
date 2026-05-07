@@ -43,7 +43,6 @@ apt install -y \
     uuid-dev \
     libevdev-dev \
     libdrm-dev \
-    libsafec-dev \
     libbsd-dev \
     gperf \
     python3-pip
@@ -69,10 +68,14 @@ git -C rdk-halif-power_manager sparse-checkout set include
 git clone --depth 1 --filter=blob:none --sparse --branch develop https://github.com/rdkcentral/rdkversion.git
 git -C rdkversion sparse-checkout set src
 
+git clone --depth 1 --filter=blob:none --sparse https://github.com/rdkcentral/meta-rdk-oss-reference.git
+git -C meta-rdk-oss-reference sparse-checkout set recipes-common/safec-common-wrapper/files
+
 IARMMGRS_DIR="$GITHUB_WORKSPACE/iarmmgrs"
 DEEPSLEEP_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-deepsleep_manager"
 POWER_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-power_manager"
 RDKVERSION_DIR="$GITHUB_WORKSPACE/rdkversion"
+SAFEC_WRAPPER_DIR="$GITHUB_WORKSPACE/meta-rdk-oss-reference/recipes-common/safec-common-wrapper/files"
 
 ############################
 # 3. Create stub/empty headers for external dependencies
@@ -85,9 +88,11 @@ mkdir -p "${HEADERS_DIR}/rdk/iarmbus"
 mkdir -p "${HEADERS_DIR}/rdk/ds"
 mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
 
-# safec compatibility header - committed in ci/mocks. xr-voice-sdk includes
-# safec_lib.h during its own build, so make it available before invoking cmake.
-cp "$GITHUB_WORKSPACE/ci/mocks/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
+# safec_lib.h from meta-rdk-oss-reference/safec-common-wrapper — the same header
+# the Yocto build installs into the sysroot. Both ctrlm and xr-voice-sdk include
+# it directly. We build without real safec (SAFEC_DUMMY_API), so the header's
+# inline stubs handle everything and libsafec-dev is not needed.
+cp "$SAFEC_WRAPPER_DIR/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
 
 # rdkversion.h is included by xr-voice-sdk during its own build, so stage it
 # before invoking cmake.
@@ -102,7 +107,7 @@ cmake -G Ninja \
     -B "$GITHUB_WORKSPACE/build/xr-voice-sdk" \
     -DCMAKE_INSTALL_PREFIX="${HEADERS_DIR}" \
     -DCMAKE_INSTALL_INCLUDEDIR="xr-voice-sdk" \
-    -DCMAKE_C_FLAGS="-I${HEADERS_DIR}" \
+    -DCMAKE_C_FLAGS="-I${HEADERS_DIR} -DSAFEC_DUMMY_API" \
     -DSTAGING_BINDIR_NATIVE="/usr/bin" \
     -DCMAKE_PROJECT_VERSION="1.0.13"
 

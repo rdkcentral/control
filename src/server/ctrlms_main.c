@@ -60,13 +60,12 @@ int main(int argc, char* argv[]) {
    if(!ctrlms_init(level)) {
       XLOGD_ERROR("ctrlms_main: init failed");
    } else {
-
-      // TODO Start listening for connections
+      // Start listening for connections
       if(!ctrlms_ws_init(CTRLMS_WS_PORT_INT, true)) {
          XLOGD_ERROR("ctrlms_main: ws init failed");
       } else {
          XLOGD_INFO("Notifying systemd of successful initialization");
-         sd_notifyf(0, "READY=1\nSTATUS=ctrlm-server has successfully initialized\nMAINPID=%lu", (unsigned long)getpid());      
+         sd_notifyf(0, "READY=1\nSTATUS=ctrlm-server has successfully initialized\nMAINPID=%lu", (unsigned long)getpid());
          ctrlms_ws_listen();
          ctrlms_ws_term();
       }

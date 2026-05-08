@@ -1123,7 +1123,7 @@ void ctrlm_signals_register(void) {
    if(0 == g_unix_signal_add(SIGTERM, ctrlm_unix_signal_terminate, GINT_TO_POINTER(SIGTERM))) {
       XLOGD_ERROR("Unable to register for SIGTERM.");
    }
-   bool interactive = isatty(STDOUT_FILENO);
+   bool interactive = isatty(STDIN_FILENO);
    if(!interactive) {
       XLOGD_INFO("Skipping SIGQUIT registration.");
    } else {

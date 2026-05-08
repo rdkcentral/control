@@ -51,8 +51,9 @@ python3 -m pip install jsonref
 ###########################################
 # 2. Clone the required repositories
 
-XRSDK_REF="feature/RDKEMW-18082"
-git clone --depth 1 --filter=blob:none --branch "${XRSDK_REF}" https://github.com/rdkcentral/xr-voice-sdk.git
+XRSDK_REF="1.0.13"
+# git clone --depth 1 --filter=blob:none --branch "${XRSDK_REF}" https://github.com/rdkcentral/xr-voice-sdk.git
+git clone --depth 1 --filter=blob:none --branch feature/RDKEMW-18082 https://github.com/rdkcentral/xr-voice-sdk.git
 
 git clone --depth 1 --filter=blob:none --branch feature/RDKEMW-18082 https://github.com/rdkcentral/entservices-testframework.git
 
@@ -104,7 +105,8 @@ cmake -G Ninja \
     -DCMAKE_INSTALL_PREFIX="${HEADERS_DIR}" \
     -DCMAKE_INSTALL_INCLUDEDIR="xr-voice-sdk" \
     -DCMAKE_C_FLAGS="-I${HEADERS_DIR} -DSAFEC_DUMMY_API" \
-    -DSTAGING_BINDIR_NATIVE="/usr/bin"
+    -DSTAGING_BINDIR_NATIVE="/usr/bin" \
+    -DCMAKE_PROJECT_VERSION="${XRSDK_REF}"
 
 # xr-voice-sdk adds -Werror unconditionally, strip it for CI until warnings are dealt with
 find "$GITHUB_WORKSPACE/build/xr-voice-sdk" \( -name "*.ninja" -o -name "flags.make" \) -exec sed -i 's/\(^\|[[:space:]]\)-Werror\([[:space:]]\|$\)/\1\2/g' {} \;

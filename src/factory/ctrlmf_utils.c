@@ -9,7 +9,7 @@ static char ctrlmf_invalid_str[CTRLMF_INVALID_STR_LEN];
 static const char *ctrlmf_invalid_return(int value);
 
 const char *ctrlmf_invalid_return(int value) {
-   snprintf(ctrlmf_invalid_str, sizeof(ctrlmf_invalid_str), "INVALID(%d)", value);
+   snprintf(ctrlmf_invalid_str, sizeof(ctrlmf_invalid_str), "INVALID(%d %s)", value);
    ctrlmf_invalid_str[sizeof(ctrlmf_invalid_str) - 1] = '\0';
    return(ctrlmf_invalid_str);
 }

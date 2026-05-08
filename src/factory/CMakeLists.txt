@@ -19,6 +19,7 @@
 
 add_executable(controlFactory ctrlmf_main.c)
 add_library(ctrlm-fta SHARED)
+add_compile_options(-Wno-error=format)
 set_target_properties( ctrlm-fta PROPERTIES
    PREFIX    "lib"
    SOVERSION "0.0"

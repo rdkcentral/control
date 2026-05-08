@@ -1141,15 +1141,14 @@ void ctrlm_signals_register(void) {
    }
 }
 
-// Direct-call fallback only (e.g. from ctrlm_on_network_assert when kill() fails).
-// No longer registered as an OS signal handler, so non-async-signal-safe calls are safe.
+// Registered as an OS signal handler (must use async-signal-safe calls only).
 static void ctrlm_signal_handler(int signal) {
    switch(signal) {
       case SIGQUIT: {
          XLOGD_SAFE_INFO("Received SIGQUIT");
-#ifdef BREAKPAD_SUPPORT
+         #ifdef BREAKPAD_SUPPORT
          ctrlm_crash();
-#endif
+         #endif
          break;
       }
       case SIGPIPE: {

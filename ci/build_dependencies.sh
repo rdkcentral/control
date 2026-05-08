@@ -104,8 +104,7 @@ cmake -G Ninja \
     -DCMAKE_INSTALL_PREFIX="${HEADERS_DIR}" \
     -DCMAKE_INSTALL_INCLUDEDIR="xr-voice-sdk" \
     -DCMAKE_C_FLAGS="-I${HEADERS_DIR} -DSAFEC_DUMMY_API" \
-    -DSTAGING_BINDIR_NATIVE="/usr/bin" \
-    -DCMAKE_PROJECT_VERSION="1.0.13"
+    -DSTAGING_BINDIR_NATIVE="/usr/bin"
 
 # xr-voice-sdk adds -Werror unconditionally, strip it for CI until warnings are dealt with
 find "$GITHUB_WORKSPACE/build/xr-voice-sdk" \( -name "*.ninja" -o -name "flags.make" \) -exec sed -i 's/\(^\|[[:space:]]\)-Werror\([[:space:]]\|$\)/\1\2/g' {} \;

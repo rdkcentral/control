@@ -51,7 +51,8 @@ python3 -m pip install jsonref
 ###########################################
 # 2. Clone the required repositories
 
-git clone --depth 1 --filter=blob:none https://github.com/rdkcentral/xr-voice-sdk.git
+# Will uncomment the following lines and update the branch to main once the changes in feature/RDKEMW-18082 are merged and released.
+# git clone --depth 1 --filter=blob:none https://github.com/rdkcentral/xr-voice-sdk.git
 git clone --depth 1 --filter=blob:none --branch feature/RDKEMW-18082 https://github.com/rdkcentral/xr-voice-sdk.git
 
 git clone --depth 1 --filter=blob:none --branch feature/RDKEMW-18082 https://github.com/rdkcentral/entservices-testframework.git

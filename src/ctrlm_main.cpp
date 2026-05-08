@@ -26,6 +26,7 @@
 #include <glib-unix.h>
 #include <string.h>
 #include <semaphore.h>
+#include <unistd.h>
 #include <errno.h>
 #include <dlfcn.h>
 #include <memory>
@@ -1144,25 +1145,19 @@ void ctrlm_signals_register(void) {
 // No longer registered as an OS signal handler, so non-async-signal-safe calls are safe.
 static void ctrlm_signal_handler(int signal) {
    switch(signal) {
-      case SIGTERM:
-      case SIGINT: {
-         XLOGD_INFO("Received %s", signal == SIGINT ? "SIGINT" : "SIGTERM");
-         ctrlm_quit_main_loop();
-         break;
-      }
       case SIGQUIT: {
-         XLOGD_INFO("Received SIGQUIT");
+         XLOGD_SAFE_INFO("Received SIGQUIT");
 #ifdef BREAKPAD_SUPPORT
          ctrlm_crash();
 #endif
          break;
       }
       case SIGPIPE: {
-         XLOGD_ERROR("Received SIGPIPE. Pipe is broken");
+         XLOGD_SAFE_ERROR("Received SIGPIPE. Pipe is broken");
          break;
       }
       default:
-         XLOGD_ERROR("Received unhandled signal %d", signal);
+         XLOGD_SAFE_ERROR("Received unhandled signal %d", signal);
          break;
    }
 }
@@ -1258,7 +1253,7 @@ void ctrlm_on_network_assert(ctrlm_network_id_t network_id) {
        g_ctrlm.main_thread = NULL;
    }
    // g_main_loop_quit() will be called when the SIGTERM GLib source fires,
-   // or directly via ctrlm_signal_handler() in the kill() fallback below.
+   // or directly in the kill() fallback below.
    g_ctrlm.return_code = -1;
 
    errno = 0;
@@ -1266,7 +1261,7 @@ void ctrlm_on_network_assert(ctrlm_network_id_t network_id) {
    if(rc != 0) {
       int errsv = errno;
       XLOGD_ERROR("Failed to send SIGTERM to self <%s> - invoking shutdown handler directly", strerror(errsv));
-      ctrlm_signal_handler(SIGTERM);
+      ctrlm_quit_main_loop();
    }
    
    // give main() time to clean up

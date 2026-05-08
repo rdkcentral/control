@@ -350,7 +350,6 @@ static gboolean ctrlm_ntp_check(gpointer user_data);
 static void     ctrlm_signals_register(void);
 static void     ctrlm_signal_handler(int signal);
 static gboolean ctrlm_unix_signal_terminate(gpointer user_data);
-static gboolean ctrlm_unix_signal_quit(gpointer user_data);
 
 static void     ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *status);
 static void     ctrlm_main_iarm_call_property_get_(ctrlm_main_iarm_call_property_t *property);
@@ -1111,14 +1110,6 @@ static gboolean ctrlm_unix_signal_terminate(gpointer user_data) {
    return G_SOURCE_CONTINUE;
 }
 
-static gboolean ctrlm_unix_signal_quit(gpointer user_data) {
-   XLOGD_INFO("Received SIGQUIT");
-#ifdef BREAKPAD_SUPPORT
-   ctrlm_crash();
-#endif
-   return G_SOURCE_CONTINUE;
-}
-
 void ctrlm_signals_register(void) {
    // Use g_unix_signal_add() so callbacks run inside the GLib main loop context
    // rather than from an async signal handler, avoiding undefined behavior from
@@ -1131,9 +1122,14 @@ void ctrlm_signals_register(void) {
    if(0 == g_unix_signal_add(SIGTERM, ctrlm_unix_signal_terminate, GINT_TO_POINTER(SIGTERM))) {
       XLOGD_ERROR("Unable to register for SIGTERM.");
    }
-   XLOGD_INFO("Registering SIGQUIT...");
-   if(0 == g_unix_signal_add(SIGQUIT, ctrlm_unix_signal_quit, NULL)) {
-      XLOGD_ERROR("Unable to register for SIGQUIT.");
+   bool interactive = isatty(STDOUT_FILENO);
+   if(!interactive) {
+      XLOGD_INFO("Skipping SIGQUIT registration.");
+   } else {
+      XLOGD_INFO("Registering SIGQUIT...");
+      if(signal(SIGQUIT, ctrlm_signal_handler) == SIG_ERR) { // SIGQUIT is not supported by g_unix_signal_add, so use signal() with a direct handler
+         XLOGD_ERROR("Unable to register for SIGQUIT.");
+      }
    }
    // Ignore SIGPIPE — broken-pipe errors are handled at the call site via errno.
    XLOGD_INFO("Ignoring SIGPIPE...");

@@ -51,8 +51,7 @@ python3 -m pip install jsonref
 ###########################################
 # 2. Clone the required repositories
 
-XRSDK_REF="1.0.13"
-# git clone --depth 1 --filter=blob:none --branch "${XRSDK_REF}" https://github.com/rdkcentral/xr-voice-sdk.git
+git clone --depth 1 --filter=blob:none https://github.com/rdkcentral/xr-voice-sdk.git
 git clone --depth 1 --filter=blob:none --branch feature/RDKEMW-18082 https://github.com/rdkcentral/xr-voice-sdk.git
 
 git clone --depth 1 --filter=blob:none --branch feature/RDKEMW-18082 https://github.com/rdkcentral/entservices-testframework.git
@@ -99,6 +98,9 @@ printf '\n#endif /* CTRLM_CI_SAFEC_LIB_H */\n' >> "$HEADERS_DIR/safec_lib.h"
 cp "$RDKVERSION_DIR/src/rdkversion.h" "$HEADERS_DIR/rdkversion.h"
 
 # Build xr-voice-sdk and install its headers under ${HEADERS_DIR}/xr-voice-sdk/.
+# Version doesn't matter here, but we try to get the latest tag for good measure since it's included in the generated headers and may be used by downstream code.
+XRSDK_REF=$(git ls-remote --tags https://github.com/rdkcentral/xr-voice-sdk.git \
+    | grep -oP '\d+\.\d+\.\d+$' | sort -V | tail -1)
 cmake -G Ninja \
     -S "$GITHUB_WORKSPACE/xr-voice-sdk" \
     -B "$GITHUB_WORKSPACE/build/xr-voice-sdk" \

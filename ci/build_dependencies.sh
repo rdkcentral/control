@@ -94,6 +94,8 @@ mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
 cp "$SAFEC_WRAPPER_DIR/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
 sed -i '1s/^/#ifndef CTRLM_CI_SAFEC_LIB_H\n#define CTRLM_CI_SAFEC_LIB_H\n/' "$HEADERS_DIR/safec_lib.h"
 printf '\n#endif /* CTRLM_CI_SAFEC_LIB_H */\n' >> "$HEADERS_DIR/safec_lib.h"
+# patching parseFormat to avoid -Wmaybe-uninitialized warnings in ctrlm_database.cpp from the safec wrapper's dummy implementation
+sed -i 's/static inline int parseFormat(const char \*dst,/static inline int parseFormat(char *dst,/' "$HEADERS_DIR/safec_lib.h"
 
 # Stage rdkversion.h before building xr-voice-sdk.
 cp "$RDKVERSION_DIR/src/rdkversion.h" "$HEADERS_DIR/rdkversion.h"

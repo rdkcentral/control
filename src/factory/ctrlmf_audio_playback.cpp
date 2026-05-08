@@ -78,6 +78,7 @@ bool ctrlmf_audio_playback_start(const char *filename) {
       return(false);
    }
    
+   printf("Test coverity flow %s\n");
    return(true);
 }
 

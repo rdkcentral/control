@@ -1129,7 +1129,8 @@ void ctrlm_signals_register(void) {
    } else {
       XLOGD_INFO("Registering SIGQUIT...");
       if(signal(SIGQUIT, ctrlm_signal_handler) == SIG_ERR) { // SIGQUIT is not supported by g_unix_signal_add, so use signal() with a direct handler
-         XLOGD_ERROR("Unable to register for SIGQUIT.");
+         int errsv = errno;
+         XLOGD_ERROR("Unable to register for SIGQUIT <%s>", strerror(errsv));
       }
    }
    // Ignore SIGPIPE — broken-pipe errors are handled at the call site via errno.

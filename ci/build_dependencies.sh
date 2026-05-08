@@ -98,22 +98,7 @@ printf '\n#endif /* CTRLM_CI_SAFEC_LIB_H */\n' >> "$HEADERS_DIR/safec_lib.h"
 sed -i 's/static inline int parseFormat(const char \*dst,/static inline int parseFormat(char *dst,/' "$HEADERS_DIR/safec_lib.h"
 # patching strncpy_s to avoid the wrapper's raw strncpy expansion, which triggers
 # -Wstringop-truncation in CI even though ctrlm manually terminates the destination buffer.
-python3 - "$HEADERS_DIR/safec_lib.h" <<'PY'
-from pathlib import Path
-import sys
-
-header = Path(sys.argv[1])
-content = header.read_text()
-old = """#define strncpy_s(dst,max,src,len) (src != NULL)?((len <= max)?EOK:ESLEMAX):ESNULLP; \\
- if((src != NULL) && (len <= max)) strncpy(dst,src,len);"""
-new = """#define strncpy_s(dst,max,src,len) (src != NULL)?((len <= max)?EOK:ESLEMAX):ESNULLP; \\
- if((src != NULL) && (len <= max)) { memcpy(dst,src,len); if((len) < (max)) ((char *)(dst))[len] = '\\0'; }"""
-
-if old not in content:
-    raise SystemExit("failed to patch strncpy_s in safec_lib.h")
-
-header.write_text(content.replace(old, new, 1))
-PY
+perl -0pi -e 's{#define strncpy_s\(dst,max,src,len\) \(src != NULL\)\?\(\(len <= max\)\?EOK:ESLEMAX\):ESNULLP; \\\n if\(\(src != NULL\) && \(len <= max\)\) strncpy\(dst,src,len\);}{#define strncpy_s(dst,max,src,len) (src != NULL)?((len <= max)?EOK:ESLEMAX):ESNULLP; \\\n if((src != NULL) && (len <= max)) { size_t copy_len = strnlen(src, len); memcpy(dst, src, copy_len); if(copy_len < (size_t)(max)) memset((char *)(dst) + copy_len, 0, (size_t)(max) - copy_len); }}s or die "failed to patch strncpy_s in safec_lib.h\n"' "$HEADERS_DIR/safec_lib.h"
 
 # Stage rdkversion.h before building xr-voice-sdk.
 cp "$RDKVERSION_DIR/src/rdkversion.h" "$HEADERS_DIR/rdkversion.h"

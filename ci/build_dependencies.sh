@@ -123,6 +123,7 @@ find "$GITHUB_WORKSPACE/build/xr-voice-sdk" \( -name "*.ninja" -o -name "flags.m
 
 cmake --build "$GITHUB_WORKSPACE/build/xr-voice-sdk"
 cmake --install "$GITHUB_WORKSPACE/build/xr-voice-sdk" --component headers
+cmake --install "$GITHUB_WORKSPACE/build/xr-voice-sdk" --component internal-headers
 
 cd "${HEADERS_DIR}"
 

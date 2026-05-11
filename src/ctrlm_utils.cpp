@@ -114,6 +114,7 @@ void ctrlm_timeout_destroy(guint *p_timeout_tag) {
       g_source_remove(*p_timeout_tag);
       *p_timeout_tag = 0;
    }
+   printf("Test coverity workflow %s\n");
 }
 
 void ctrlm_timestamp_get(ctrlm_timestamp_t *timestamp) {

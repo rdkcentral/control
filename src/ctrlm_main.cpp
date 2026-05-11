@@ -1157,7 +1157,7 @@ static void ctrlm_signal_handler(int signal) {
          break;
       }
       default:
-         XLOGD_SAFE_ERROR("Received unhandled signal %d", signal);
+         XLOGD_SAFE_ERROR("Received unhandled signal");
          break;
    }
 }

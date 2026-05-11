@@ -115,7 +115,16 @@ void ctrlms_ws_term(void) {
 }
 
 void *ctrlms_ws_main(void *param) {
-   ctrlms_ws_thread_params_t params = *((ctrlms_ws_thread_params_t *)param);
+   ctrlms_ws_thread_params_t *params_ptr = (ctrlms_ws_thread_params_t *)param;
+
+   if(params_ptr == NULL) {
+      XLOGD_ERROR("invalid params");
+      return(NULL);
+   }
+
+   uint16_t port_int   = params_ptr->port;
+   bool     log_enable = params_ptr->log_enable;
+
    errno_t safec_rc = -1;
 
    bool result = false;
@@ -188,7 +197,7 @@ void *ctrlms_ws_main(void *param) {
       OpenSSL_add_all_algorithms();
       #endif
       
-      if(params.log_enable) {
+      if(log_enable) {
          nopoll_log_enable(g_ctrlms_ws.nopoll_ctx, nopoll_true);
          nopoll_log_set_handler(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_nopoll_log, NULL);
       }
@@ -210,7 +219,7 @@ void *ctrlms_ws_main(void *param) {
       #endif
 
       char port[6];
-      safec_rc = sprintf_s(port, sizeof(port), "%u", params.port);
+      safec_rc = sprintf_s(port, sizeof(port), "%u", port_int);
       if(safec_rc < EOK) {
          ERR_CHK(safec_rc);
       }
@@ -232,9 +241,8 @@ void *ctrlms_ws_main(void *param) {
    } while(0);
 
    // Unblock the caller that launched this thread
-   params.result = result;
-   sem_post(params.semaphore);
-   params.semaphore = NULL;
+   params_ptr->result = result;
+   sem_post(params_ptr->semaphore);
 
    if(result) {
       XLOGD_INFO("Enter main loop");

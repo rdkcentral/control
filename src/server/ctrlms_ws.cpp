@@ -106,13 +106,13 @@ bool ctrlms_ws_listen(void) {
 void ctrlms_ws_term(void) {
    if(g_ctrlms_ws.nopoll_ctx != NULL) {
       nopoll_loop_stop(g_ctrlms_ws.nopoll_ctx);
-   }
 
-   // Wait for thread to exit
-   XLOGD_INFO("Waiting for thread to exit");
-   void *retval = NULL;
-   pthread_join(g_ctrlms_ws.thread_id, &retval);
-   XLOGD_INFO("thread exited.");
+      // Wait for thread to exit
+      XLOGD_INFO("Waiting for thread to exit");
+      void *retval = NULL;
+      pthread_join(g_ctrlms_ws.thread_id, &retval);
+      XLOGD_INFO("thread exited.");
+   }
 }
 
 void *ctrlms_ws_main(void *param) {
@@ -219,8 +219,9 @@ void *ctrlms_ws_main(void *param) {
          if(!nopoll_conn_opts_set_ssl_certs(opts, &tmp_cert[0], &tmp_cert[0], NULL, NULL)) {
             XLOGD_ERROR("Failed to add cert/key files to nopoll_conn");
             nopoll_ctx_unref(g_ctrlms_ws.nopoll_ctx);
+            g_ctrlms_ws.nopoll_ctx = NULL;
             nopoll_conn_opts_free(opts);
-            return(NULL);
+            break;
          }
       }
 
@@ -240,6 +241,7 @@ void *ctrlms_ws_main(void *param) {
          XLOGD_ERROR("Listener connection IPv6 NOT ok");
          nopoll_ctx_unref(g_ctrlms_ws.nopoll_ctx);
          g_ctrlms_ws.nopoll_ctx = NULL;
+         nopoll_conn_opts_free(opts);
          break;
       }
 
@@ -327,7 +329,7 @@ void ctrlms_ws_on_message(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPo
       case NOPOLL_TEXT_FRAME: {
          XLOGD_DEBUG("NOPOLL_TEXT_FRAME size <%d>", payload_size);
 
-         json_t *json_obj = json_loads((const char *)payload, 0, NULL);
+         json_t *json_obj = json_loadb((const char *)payload, payload_size, 0, NULL);
 
          if(json_obj == NULL) {
             XLOGD_ERROR("Failed to parse JSON object");
@@ -386,18 +388,17 @@ void ctrlms_ws_on_close(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
    state->app_interface->ws_handle_set(NULL);
 }
 
-
 #ifdef CTRLMS_WSS_ENABLED
 bool ctrlms_ws_cert_config(FILE* cert_key_fp) {
    bool ret = false;
    
-   rdkcertselector_h cert_selector = NULL;
+   rdkcertselector_h cert_selector  = NULL;
+   PKCS12 *p12_cert                 = NULL;
+   EVP_PKEY *pkey                   = NULL;
+   X509 *x509_cert                  = NULL;
+   STACK_OF(X509) *additional_certs = NULL;
    do {
       FILE *device_cert_fp             = NULL;
-      PKCS12 *p12_cert                 = NULL;
-      EVP_PKEY *pkey                   = NULL;
-      X509 *x509_cert                  = NULL;
-      STACK_OF(X509) *additional_certs = NULL;
 
       char *cert_path     = NULL;
       char *cert_password = NULL;
@@ -467,6 +468,22 @@ bool ctrlms_ws_cert_config(FILE* cert_key_fp) {
       rdkcertselector_free(&cert_selector);
    }
 
+   if(p12_cert != NULL) {
+      PKCS12_free(p12_cert);
+   }
+
+   if(pkey != NULL) {
+      EVP_PKEY_free(pkey);
+   }
+
+   if(x509_cert != NULL) {
+      X509_free(x509_cert);
+   }
+
+   if(additional_certs != NULL) {
+      sk_X509_pop_free(additional_certs, X509_free);
+   }
+
    return ret;
 }
 
@@ -476,8 +493,8 @@ bool ctrlms_ws_add_chain(FILE *cert_key_fp, STACK_OF(X509) *additional_certs) {
       return false;
    }
    if(additional_certs == NULL) {
-      XLOGD_ERROR("null certs");
-      return false;
+      XLOGD_WARN("no additional certs");
+      return true;
    }
 
    for(int32_t index = 0; index < sk_X509_num(additional_certs); index++) {

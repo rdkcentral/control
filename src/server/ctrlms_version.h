@@ -20,6 +20,7 @@
 #define _CTRLMS_VERSION_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <rdkx_logger.h>
 
 #ifdef __cplusplus
@@ -28,6 +29,9 @@ extern "C" {
 
 bool ctrlms_init(xlog_level_t level);
 void ctrlms_term(void);
+
+bool ctrlms_is_initialized(void);
+bool ctrlms_is_production(void);
 
 #ifdef __cplusplus
 }

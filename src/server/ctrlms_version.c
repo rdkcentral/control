@@ -4,7 +4,6 @@
 #include <ctrlm_log.h>
 #include <rdkx_logger.h>
 #include <rdkversion.h>
-#include <ctrlms_utils.h>
 
 typedef struct {
    bool initialized;

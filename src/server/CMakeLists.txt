@@ -37,7 +37,7 @@ target_compile_options(controlServer PUBLIC -fPIC -rdynamic -Wall -Werror)
 target_link_libraries(controlServer c rdkversion pthread nopoll jansson xr-voice-sdk secure_wrapper systemd ${CMAKE_DL_LIBS})
 
 if(AUTH_ENABLED)
-   add_compile_definitions(controlServer PRIVATE CTRLMS_WSS_ENABLED)
+   target_compile_definitions(controlServer PRIVATE CTRLMS_WSS_ENABLED)
    target_link_libraries(controlServer ssl crypto RdkCertSelector rdkconfig secure_wrapper)
 endif()
 
@@ -48,7 +48,7 @@ if(USE_SAFEC)
       target_link_libraries(controlServer ${SAFEC_LIBRARIES})
    endif()
 else()
-   add_compile_definitions(controlServer PUBLIC SAFEC_DUMMY_API)
+   target_compile_definitions(controlServer PUBLIC SAFEC_DUMMY_API)
 endif()
 
 install(TARGETS controlServer DESTINATION bin)

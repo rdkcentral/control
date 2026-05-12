@@ -35,7 +35,7 @@ class ctrlms_app_interface_t
            void ws_handle_set(void *handle);
 
    private:
-   void *ws_handle;
+   void *ws_handle = NULL;
 };
 
 #ifdef __cplusplus

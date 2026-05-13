@@ -20,18 +20,9 @@
 #include "rdkcertselector.h"
 #include <openssl/ssl.h>
 #include <openssl/pkcs12.h>
-#define CTRLMS_WS_CIPHER_LIST          "AES256-SHA256:AES128-GCM-SHA256:AES128-SHA256"
 #define CTRLMS_WS_TLS_CERT_KEY_FILE    "/tmp/serverXXXXXX"
-#define CTRLMS_WS_CERT_NAME_LEN        (1024)
-#define CTRLMS_WS_CERT_PW_LEN          (128)
 #define CTRLMS_WS_CERT_FILENAME_PREFIX "file://"
 #endif
-
-typedef enum {
-   CTRLMS_WS_MSG_TYPE_TEXT    = 0,
-   CTRLMS_WS_MSG_TYPE_BINARY  = 1,
-   CTRLMS_WS_MSG_TYPE_UNKNOWN = 2
-} ctrlms_ws_msg_type_t;
 
 typedef struct {
    volatile sig_atomic_t    term_requested;

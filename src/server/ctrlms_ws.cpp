@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <errno.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <nopoll.h>
 #include <dlfcn.h>
@@ -33,6 +34,7 @@ typedef enum {
 } ctrlms_ws_msg_type_t;
 
 typedef struct {
+   volatile sig_atomic_t    term_requested;
    noPollCtx *              nopoll_ctx;
    noPollConnOpts *         opts;
    char                     tmp_cert[32];
@@ -61,6 +63,7 @@ ctrlms_ws_global_t g_ctrlms_ws;
 bool ctrlms_ws_init(uint16_t port, bool log_enable) {
    errno_t safec_rc = -1;
 
+   g_ctrlms_ws.term_requested      = 0;
    g_ctrlms_ws.nopoll_ctx          = NULL;
    g_ctrlms_ws.opts                = NULL;
    g_ctrlms_ws.cert_valid          = false;
@@ -126,6 +129,11 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
          OpenSSL_add_all_algorithms();
          g_ctrlms_ws.cert_valid = true;
       } while(0);
+
+      if(!g_ctrlms_ws.cert_valid) {
+         XLOGD_ERROR("no valid cert/key available");
+         break;
+      }
       #endif
 
       if(log_enable) {
@@ -133,6 +141,13 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
          nopoll_log_set_handler(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_nopoll_log, NULL);
       }
       g_ctrlms_ws.opts = nopoll_conn_opts_new();
+      if(g_ctrlms_ws.opts == NULL) {
+         XLOGD_ERROR("nopoll connection options create");
+         nopoll_ctx_unref(g_ctrlms_ws.nopoll_ctx);
+         g_ctrlms_ws.nopoll_ctx = NULL;
+         break;
+      }
+
       nopoll_ctx_set_on_accept(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_accept, &g_ctrlms_ws);
       nopoll_ctx_set_on_ready(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_ready, &g_ctrlms_ws);
       nopoll_ctx_set_on_msg(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_message, &g_ctrlms_ws);
@@ -176,7 +191,7 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
    } while(0);
 
    if(!result) {
-      if(g_ctrlms_ws.tmp_cert_created && !g_ctrlms_ws.cert_valid) {
+      if(g_ctrlms_ws.tmp_cert_created) {
          if(0 != unlink(g_ctrlms_ws.tmp_cert)) {
             int errsv = errno;
             XLOGD_ERROR("failed to remove temp cert <%s>", strerror(errsv));
@@ -197,7 +212,11 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
 
 bool ctrlms_ws_listen(void) {
    XLOGD_INFO("Enter main loop");
-   nopoll_loop_wait(g_ctrlms_ws.nopoll_ctx, 0);
+   // Poll with a 100 ms timeout so the loop can observe term_requested, which
+   // is set exclusively by ctrlms_ws_term() — an async-signal-safe operation.
+   while(!g_ctrlms_ws.term_requested) {
+      nopoll_loop_wait(g_ctrlms_ws.nopoll_ctx, 100000);
+   }
 
    nopoll_conn_opts_unref(g_ctrlms_ws.opts);
    nopoll_conn_unref(g_ctrlms_ws.nopoll_conn);
@@ -223,9 +242,7 @@ bool ctrlms_ws_listen(void) {
 }
 
 void ctrlms_ws_term(void) {
-   if(g_ctrlms_ws.nopoll_ctx != NULL) {
-      nopoll_loop_stop(g_ctrlms_ws.nopoll_ctx);
-   }
+   g_ctrlms_ws.term_requested = 1;
 }
 
 nopoll_bool ctrlms_ws_on_accept(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
@@ -539,13 +556,15 @@ void ctrlms_app_interface_t::ws_disconnected(void) {
    XLOGD_INFO("STUB: implement ws_disconnected");
 }
 
+// Return true to request that the WebSocket connection be closed.
+// Return false to keep the connection open after handling/ignoring the frame.
 bool ctrlms_app_interface_t::ws_receive_audio(const unsigned char *payload, int payload_size) {
    XLOGD_INFO("STUB: audio received size <%d>", payload_size);
-   return(true);   
+   return(false);
 };
 bool ctrlms_app_interface_t::ws_receive_json(const json_t *json_obj) {
    XLOGD_INFO("STUB: json object received");
-   return(true);
+   return(false);
 }
 
 void ctrlms_app_interface_t::ws_send_json(const json_t *json_obj) {

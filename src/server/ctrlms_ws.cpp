@@ -89,33 +89,31 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
       do {
          int cert_key_fd   = -1;
          FILE *cert_key_fp = NULL;
-         int err_store;
+         int errsv;
 
          safec_rc = sprintf_s(g_ctrlms_ws.tmp_cert, sizeof(g_ctrlms_ws.tmp_cert), "%s", CTRLMS_WS_TLS_CERT_KEY_FILE);
          if(safec_rc < EOK) {
             ERR_CHK(safec_rc);
          }
 
-         mode_t old_umask = umask(0600);
          cert_key_fd = mkstemp(g_ctrlms_ws.tmp_cert);
-         umask(old_umask);
          if(cert_key_fd == -1) {
-            err_store = errno;
-            XLOGD_ERROR("mkstemp failed: <%s>", strerror(err_store));
+            errsv = errno;
+            XLOGD_ERROR("mkstemp failed: <%s>", strerror(errsv));
             break;
          }
 
          cert_key_fp = fdopen(cert_key_fd, "w");
          if(cert_key_fp == NULL) {
-            err_store = errno;
-            XLOGD_ERROR("fdopen failed: <%s>", strerror(err_store));
+            errsv = errno;
+            XLOGD_ERROR("fdopen failed: <%s>", strerror(errsv));
             if(0 != close(cert_key_fd)) {
                errsv = errno;
                XLOGD_ERROR("failed to close cert/key file descriptor <%s>", strerror(errsv));
             }
             if(0 != unlink(g_ctrlms_ws.tmp_cert)) {
-               err_store = errno;
-               XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
+               errsv = errno;
+               XLOGD_ERROR("failed to remove temp cert <%s>", strerror(errsv));
             }
             break;
          }
@@ -124,8 +122,8 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
             XLOGD_ERROR("failed to set cert or key");
             fclose(cert_key_fp);
             if(0 != unlink(g_ctrlms_ws.tmp_cert)) {
-               err_store = errno;
-               XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
+               errsv = errno;
+               XLOGD_ERROR("failed to remove temp cert <%s>", strerror(errsv));
             }
             break;
          }
@@ -168,11 +166,11 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
          ERR_CHK(safec_rc);
       }
 
-      // Start IPv4/6 listener
+      // Start loopback-only IPv6 listener
       if(g_ctrlms_ws.cert_valid) {
-         g_ctrlms_ws.state.nopoll_conn = nopoll_listener_tls_new_opts6(g_ctrlms_ws.nopoll_ctx, g_ctrlms_ws.opts, "::", port_str);
+         g_ctrlms_ws.state.nopoll_conn = nopoll_listener_tls_new_opts6(g_ctrlms_ws.nopoll_ctx, g_ctrlms_ws.opts, "::1", port_str);
       } else {
-         g_ctrlms_ws.state.nopoll_conn = nopoll_listener_new_opts6(g_ctrlms_ws.nopoll_ctx, g_ctrlms_ws.opts, "::", port_str);
+         g_ctrlms_ws.state.nopoll_conn = nopoll_listener_new_opts6(g_ctrlms_ws.nopoll_ctx, g_ctrlms_ws.opts, "::1", port_str);
       }
       if(!nopoll_conn_is_ok(g_ctrlms_ws.state.nopoll_conn)) {
          XLOGD_ERROR("Listener connection IPv6 NOT ok");
@@ -242,7 +240,7 @@ nopoll_bool ctrlms_ws_on_accept(noPollCtx *ctx, noPollConn *conn, noPollPtr user
    }
 
    // Set ping handler
-   nopoll_conn_set_on_ping_msg(conn, ctrlms_ws_on_ping, NULL);
+   nopoll_conn_set_on_ping_msg(conn, ctrlms_ws_on_ping, user_data);
 
    return(nopoll_true);
 }
@@ -506,6 +504,7 @@ bool ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state, bool use_stub, void **h
    if(error != NULL) {
       XLOGD_ERROR("failed to find plugin interface, error <%s>", error);
       dlclose(*handle);
+      *handle = NULL;
 
       if(use_stub) {
          XLOGD_INFO("Using stub implementation of app interface");
@@ -521,6 +520,7 @@ bool ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state, bool use_stub, void **h
    if(NULL == state->app_interface) {
       XLOGD_ERROR("failed to create plugin app interface");
       dlclose(*handle);
+      *handle = NULL;
       if(use_stub) {
          XLOGD_INFO("Using stub implementation of app interface");
          state->app_interface = new ctrlms_app_interface_t();

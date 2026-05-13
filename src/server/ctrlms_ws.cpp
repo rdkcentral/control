@@ -33,20 +33,17 @@ typedef enum {
 } ctrlms_ws_msg_type_t;
 
 typedef struct {
-   noPollConn *              nopoll_conn;
-   void *                    app_handle;
-   ctrlms_app_interface_t   *app_interface;
-} ctrlms_ws_thread_state_t;
-
-typedef struct {
    noPollCtx *              nopoll_ctx;
    noPollConnOpts *         opts;
    char                     tmp_cert[32];
+   bool                     tmp_cert_created;
    bool                     cert_valid;
-   ctrlms_ws_thread_state_t state;
+   noPollConn *             nopoll_conn;
+   void *                   app_handle;
+   ctrlms_app_interface_t  *app_interface;
 } ctrlms_ws_global_t;
 
-static bool  ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state, bool use_stub, void **handle);
+static bool  ctrlms_ws_load_app(ctrlms_ws_global_t *state, bool use_stub, void **handle);
 
 static nopoll_bool ctrlms_ws_on_accept(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data);
 static nopoll_bool ctrlms_ws_on_ready(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data);
@@ -64,17 +61,18 @@ ctrlms_ws_global_t g_ctrlms_ws;
 bool ctrlms_ws_init(uint16_t port, bool log_enable) {
    errno_t safec_rc = -1;
 
-   g_ctrlms_ws.nopoll_ctx        = NULL;
-   g_ctrlms_ws.opts              = NULL;
-   g_ctrlms_ws.cert_valid        = false;
+   g_ctrlms_ws.nopoll_ctx          = NULL;
+   g_ctrlms_ws.opts                = NULL;
+   g_ctrlms_ws.cert_valid          = false;
+   g_ctrlms_ws.tmp_cert_created    = false;
    memset(g_ctrlms_ws.tmp_cert, 0, sizeof(g_ctrlms_ws.tmp_cert));
-   g_ctrlms_ws.state.app_interface = NULL;
-   g_ctrlms_ws.state.app_handle    = NULL;
-   g_ctrlms_ws.state.nopoll_conn   = NULL;
+   g_ctrlms_ws.app_interface       = NULL;
+   g_ctrlms_ws.app_handle          = NULL;
+   g_ctrlms_ws.nopoll_conn         = NULL;
 
    bool result = false;
    do {
-      if(!ctrlms_ws_load_app(&g_ctrlms_ws.state, false, &g_ctrlms_ws.state.app_handle)) {
+      if(!ctrlms_ws_load_app(&g_ctrlms_ws, false, &g_ctrlms_ws.app_handle)) {
          XLOGD_INFO("exiting due to app load failure");
          break;
       }
@@ -102,6 +100,7 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
             XLOGD_ERROR("mkstemp failed: <%s>", strerror(errsv));
             break;
          }
+         g_ctrlms_ws.tmp_cert_created = true;
 
          cert_key_fp = fdopen(cert_key_fd, "w");
          if(cert_key_fp == NULL) {
@@ -111,20 +110,12 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
                errsv = errno;
                XLOGD_ERROR("failed to close cert/key file descriptor <%s>", strerror(errsv));
             }
-            if(0 != unlink(g_ctrlms_ws.tmp_cert)) {
-               errsv = errno;
-               XLOGD_ERROR("failed to remove temp cert <%s>", strerror(errsv));
-            }
             break;
          }
 
          if(!ctrlms_ws_cert_config(cert_key_fp)) {
             XLOGD_ERROR("failed to set cert or key");
             fclose(cert_key_fp);
-            if(0 != unlink(g_ctrlms_ws.tmp_cert)) {
-               errsv = errno;
-               XLOGD_ERROR("failed to remove temp cert <%s>", strerror(errsv));
-            }
             break;
          }
          fclose(cert_key_fp);
@@ -142,9 +133,9 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
          nopoll_log_set_handler(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_nopoll_log, NULL);
       }
       g_ctrlms_ws.opts = nopoll_conn_opts_new();
-      nopoll_ctx_set_on_accept(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_accept, &g_ctrlms_ws.state);
-      nopoll_ctx_set_on_ready(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_ready, &g_ctrlms_ws.state);
-      nopoll_ctx_set_on_msg(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_message, &g_ctrlms_ws.state);
+      nopoll_ctx_set_on_accept(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_accept, &g_ctrlms_ws);
+      nopoll_ctx_set_on_ready(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_ready, &g_ctrlms_ws);
+      nopoll_ctx_set_on_msg(g_ctrlms_ws.nopoll_ctx, ctrlms_ws_on_message, &g_ctrlms_ws);
 
       if(g_ctrlms_ws.cert_valid) {
          nopoll_conn_opts_set_ssl_protocol(g_ctrlms_ws.opts, NOPOLL_METHOD_TLSV1_2);
@@ -168,11 +159,11 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
 
       // Start loopback-only IPv6 listener
       if(g_ctrlms_ws.cert_valid) {
-         g_ctrlms_ws.state.nopoll_conn = nopoll_listener_tls_new_opts6(g_ctrlms_ws.nopoll_ctx, g_ctrlms_ws.opts, "::1", port_str);
+         g_ctrlms_ws.nopoll_conn = nopoll_listener_tls_new_opts6(g_ctrlms_ws.nopoll_ctx, g_ctrlms_ws.opts, "::1", port_str);
       } else {
-         g_ctrlms_ws.state.nopoll_conn = nopoll_listener_new_opts6(g_ctrlms_ws.nopoll_ctx, g_ctrlms_ws.opts, "::1", port_str);
+         g_ctrlms_ws.nopoll_conn = nopoll_listener_new_opts6(g_ctrlms_ws.nopoll_ctx, g_ctrlms_ws.opts, "::1", port_str);
       }
-      if(!nopoll_conn_is_ok(g_ctrlms_ws.state.nopoll_conn)) {
+      if(!nopoll_conn_is_ok(g_ctrlms_ws.nopoll_conn)) {
          XLOGD_ERROR("Listener connection IPv6 NOT ok");
          nopoll_ctx_unref(g_ctrlms_ws.nopoll_ctx);
          g_ctrlms_ws.nopoll_ctx = NULL;
@@ -185,13 +176,19 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
    } while(0);
 
    if(!result) {
-      if(g_ctrlms_ws.state.app_handle != NULL) {
-         dlclose(g_ctrlms_ws.state.app_handle);
-         g_ctrlms_ws.state.app_handle = NULL;
+      if(g_ctrlms_ws.tmp_cert_created && !g_ctrlms_ws.cert_valid) {
+         if(0 != unlink(g_ctrlms_ws.tmp_cert)) {
+            int errsv = errno;
+            XLOGD_ERROR("failed to remove temp cert <%s>", strerror(errsv));
+         }
       }
-      if(g_ctrlms_ws.state.app_interface != NULL) {
-         delete g_ctrlms_ws.state.app_interface;
-         g_ctrlms_ws.state.app_interface = NULL;
+      if(g_ctrlms_ws.app_handle != NULL) {
+         dlclose(g_ctrlms_ws.app_handle);
+         g_ctrlms_ws.app_handle = NULL;
+      }
+      if(g_ctrlms_ws.app_interface != NULL) {
+         delete g_ctrlms_ws.app_interface;
+         g_ctrlms_ws.app_interface = NULL;
       }
    }
 
@@ -203,7 +200,7 @@ bool ctrlms_ws_listen(void) {
    nopoll_loop_wait(g_ctrlms_ws.nopoll_ctx, 0);
 
    nopoll_conn_opts_unref(g_ctrlms_ws.opts);
-   nopoll_conn_unref(g_ctrlms_ws.state.nopoll_conn);
+   nopoll_conn_unref(g_ctrlms_ws.nopoll_conn);
    nopoll_ctx_unref(g_ctrlms_ws.nopoll_ctx);
    g_ctrlms_ws.nopoll_ctx = NULL;
 
@@ -214,13 +211,13 @@ bool ctrlms_ws_listen(void) {
       }
    }
 
-   if(g_ctrlms_ws.state.app_handle != NULL) {
-      dlclose(g_ctrlms_ws.state.app_handle);
-      g_ctrlms_ws.state.app_handle = NULL;
+   if(g_ctrlms_ws.app_handle != NULL) {
+      dlclose(g_ctrlms_ws.app_handle);
+      g_ctrlms_ws.app_handle = NULL;
    }
-   if(g_ctrlms_ws.state.app_interface != NULL) {
-      delete g_ctrlms_ws.state.app_interface;
-      g_ctrlms_ws.state.app_interface = NULL;
+   if(g_ctrlms_ws.app_interface != NULL) {
+      delete g_ctrlms_ws.app_interface;
+      g_ctrlms_ws.app_interface = NULL;
    }
    return(true);
 }
@@ -232,7 +229,7 @@ void ctrlms_ws_term(void) {
 }
 
 nopoll_bool ctrlms_ws_on_accept(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
-   ctrlms_ws_thread_state_t *state = (ctrlms_ws_thread_state_t *)user_data;
+   ctrlms_ws_global_t *state = (ctrlms_ws_global_t *)user_data;
 
    if(state == NULL) {
       XLOGD_ERROR("invalid params");
@@ -246,7 +243,7 @@ nopoll_bool ctrlms_ws_on_accept(noPollCtx *ctx, noPollConn *conn, noPollPtr user
 }
 
 nopoll_bool ctrlms_ws_on_ready(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
-   ctrlms_ws_thread_state_t *state = (ctrlms_ws_thread_state_t *)user_data;
+   ctrlms_ws_global_t *state = (ctrlms_ws_global_t *)user_data;
 
    if(state == NULL) {
       XLOGD_ERROR("invalid params");
@@ -263,7 +260,7 @@ nopoll_bool ctrlms_ws_on_ready(noPollCtx *ctx, noPollConn *conn, noPollPtr user_
 }
 
 void ctrlms_ws_on_message(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPollPtr user_data) {
-   ctrlms_ws_thread_state_t *state = (ctrlms_ws_thread_state_t *)user_data;
+   ctrlms_ws_global_t *state = (ctrlms_ws_global_t *)user_data;
 
    if(state == NULL) {
       XLOGD_ERROR("invalid params");
@@ -284,7 +281,9 @@ void ctrlms_ws_on_message(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPo
             XLOGD_ERROR("Failed to parse JSON object");
             break;
          } else {
-            // Pass the incoming payload to the application
+            // Pass the incoming payload to the application as a borrowed reference.
+            // The json_obj pointer is only valid for the duration of this call and
+            // must not be stored by the callee unless it takes its own reference.
             close_conn = state->app_interface->ws_receive_json(json_obj);
             json_decref(json_obj);
          }
@@ -314,7 +313,7 @@ void ctrlms_ws_on_message(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPo
 }
 
 void ctrlms_ws_on_ping(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPollPtr user_data) {
-   ctrlms_ws_thread_state_t *state = (ctrlms_ws_thread_state_t *)user_data;
+   ctrlms_ws_global_t *state = (ctrlms_ws_global_t *)user_data;
    if(state == NULL) {
       XLOGD_ERROR("invalid params");
       return;
@@ -325,7 +324,7 @@ void ctrlms_ws_on_ping(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPollP
 }
 
 void ctrlms_ws_on_close(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
-   ctrlms_ws_thread_state_t *state = (ctrlms_ws_thread_state_t *)user_data;
+   ctrlms_ws_global_t *state = (ctrlms_ws_global_t *)user_data;
    
    if(state == NULL) {
       XLOGD_ERROR("invalid params");
@@ -480,7 +479,7 @@ void ctrlms_ws_nopoll_log(noPollCtx * ctx, noPollDebugLevel level, const char * 
 
 typedef ctrlms_app_interface_t *(*ctrlms_app_interface_create_t)(void);
 
-bool ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state, bool use_stub, void **handle) {
+bool ctrlms_ws_load_app(ctrlms_ws_global_t *state, bool use_stub, void **handle) {
    if(handle == NULL) {
       XLOGD_ERROR("invalid params");
       return(false);

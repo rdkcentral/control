@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <argp.h>
 #include <unistd.h>
+#include <signal.h>
 #include <systemd/sd-daemon.h>
 #include <ctrlm_log.h>
 #include <rdkx_logger.h>
@@ -21,6 +22,7 @@ typedef struct {
 
 static bool          ctrlms_cmdline_args(int argc, char *argv[]);
 static error_t       ctrlms_parse_opt(int key, char *arg, struct argp_state *state);
+static void          ctrlms_signal_handler(int signum);
 
 const char *argp_program_version     =  "controlServer " CTRLMS_VERSION;
 const char *argp_program_bug_address = "<david_wolaver@cable.comcast.com>";
@@ -41,10 +43,21 @@ static ctrlms_options_t g_ctrlms_opts = { .silent            = false,
                                           .verbose           = false
                                         };
 
+void ctrlms_signal_handler(int signum) {
+   if(signum == SIGTERM) {
+      ctrlms_ws_term();
+   }
+}
+
 int main(int argc, char* argv[]) {
+   int result = -1;
+   if(signal(SIGTERM, ctrlms_signal_handler) == SIG_ERR) {
+      XLOGD_ERROR("ctrlms_main: failed to set SIGTERM handler <%s>", strerror(errno));
+   }
+
    // Parse command line arguments
    if(!ctrlms_cmdline_args(argc, argv)) {
-      return(-1);
+      return(result);
    }
 
    xlog_level_t level = XLOG_LEVEL_WARN;
@@ -64,17 +77,17 @@ int main(int argc, char* argv[]) {
       if(!ctrlms_ws_init(CTRLMS_WS_PORT_INT, true)) {
          XLOGD_ERROR("ctrlms_main: ws init failed");
       } else {
+         result = 0;
          XLOGD_INFO("Notifying systemd of successful initialization");
          sd_notifyf(0, "READY=1\nSTATUS=ctrlm-server has successfully initialized\nMAINPID=%lu", (unsigned long)getpid());
          ctrlms_ws_listen();
-         ctrlms_ws_term();
       }
       XLOGD_INFO("ctrlms_main: main loop ended");
    }
    ctrlms_term();
    XLOGD_INFO("ctrlms_main: return");
 
-   return(0);
+   return(result);
 }
 
 error_t ctrlms_parse_opt(int key, char *arg, struct argp_state *state) {

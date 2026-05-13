@@ -188,13 +188,13 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
             XLOGD_ERROR("failed to remove temp cert <%s>", strerror(errsv));
          }
       }
-      if(g_ctrlms_ws.app_handle != NULL) {
-         dlclose(g_ctrlms_ws.app_handle);
-         g_ctrlms_ws.app_handle = NULL;
-      }
       if(g_ctrlms_ws.app_interface != NULL) {
          delete g_ctrlms_ws.app_interface;
          g_ctrlms_ws.app_interface = NULL;
+      }
+      if(g_ctrlms_ws.app_handle != NULL) {
+         dlclose(g_ctrlms_ws.app_handle);
+         g_ctrlms_ws.app_handle = NULL;
       }
    }
 

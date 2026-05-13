@@ -221,13 +221,13 @@ bool ctrlms_ws_listen(void) {
       }
    }
 
-   if(g_ctrlms_ws.app_handle != NULL) {
-      dlclose(g_ctrlms_ws.app_handle);
-      g_ctrlms_ws.app_handle = NULL;
-   }
    if(g_ctrlms_ws.app_interface != NULL) {
       delete g_ctrlms_ws.app_interface;
       g_ctrlms_ws.app_interface = NULL;
+   }
+   if(g_ctrlms_ws.app_handle != NULL) {
+      dlclose(g_ctrlms_ws.app_handle);
+      g_ctrlms_ws.app_handle = NULL;
    }
    return(true);
 }
@@ -236,7 +236,7 @@ void ctrlms_ws_term(void) {
    g_ctrlms_ws.term_requested = 1;
 }
 
-nopoll_bool ctrlms_ws_on_accept(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
+static nopoll_bool ctrlms_ws_on_accept(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
    ctrlms_ws_global_t *state = (ctrlms_ws_global_t *)user_data;
 
    if(state == NULL) {
@@ -250,7 +250,7 @@ nopoll_bool ctrlms_ws_on_accept(noPollCtx *ctx, noPollConn *conn, noPollPtr user
    return(nopoll_true);
 }
 
-nopoll_bool ctrlms_ws_on_ready(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
+static nopoll_bool ctrlms_ws_on_ready(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
    ctrlms_ws_global_t *state = (ctrlms_ws_global_t *)user_data;
 
    if(state == NULL) {
@@ -267,7 +267,7 @@ nopoll_bool ctrlms_ws_on_ready(noPollCtx *ctx, noPollConn *conn, noPollPtr user_
    return(nopoll_true);
 }
 
-void ctrlms_ws_on_message(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPollPtr user_data) {
+static void ctrlms_ws_on_message(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPollPtr user_data) {
    ctrlms_ws_global_t *state = (ctrlms_ws_global_t *)user_data;
 
    if(state == NULL) {
@@ -320,7 +320,7 @@ void ctrlms_ws_on_message(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPo
    }
 }
 
-void ctrlms_ws_on_ping(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPollPtr user_data) {
+static void ctrlms_ws_on_ping(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPollPtr user_data) {
    ctrlms_ws_global_t *state = (ctrlms_ws_global_t *)user_data;
    if(state == NULL) {
       XLOGD_ERROR("invalid params");
@@ -331,7 +331,7 @@ void ctrlms_ws_on_ping(noPollCtx *ctx, noPollConn *conn, noPollMsg *msg, noPollP
    // Do nothing, we don't care about this event
 }
 
-void ctrlms_ws_on_close(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
+static void ctrlms_ws_on_close(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
    ctrlms_ws_global_t *state = (ctrlms_ws_global_t *)user_data;
    
    if(state == NULL) {
@@ -345,7 +345,7 @@ void ctrlms_ws_on_close(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
 }
 
 #ifdef CTRLMS_WSS_ENABLED
-bool ctrlms_ws_cert_config(FILE* cert_key_fp) {
+static bool ctrlms_ws_cert_config(FILE* cert_key_fp) {
    bool ret = false;
    
    rdkcertselector_h cert_selector  = NULL;
@@ -443,7 +443,7 @@ bool ctrlms_ws_cert_config(FILE* cert_key_fp) {
    return ret;
 }
 
-bool ctrlms_ws_add_chain(FILE *cert_key_fp, STACK_OF(X509) *additional_certs) {
+static bool ctrlms_ws_add_chain(FILE *cert_key_fp, STACK_OF(X509) *additional_certs) {
    if(cert_key_fp == NULL) {
       XLOGD_ERROR("null file pointer");
       return false;
@@ -465,7 +465,7 @@ bool ctrlms_ws_add_chain(FILE *cert_key_fp, STACK_OF(X509) *additional_certs) {
 }
 #endif
 
-void ctrlms_ws_nopoll_log(noPollCtx * ctx, noPollDebugLevel level, const char * log_msg, noPollPtr user_data) {
+static void ctrlms_ws_nopoll_log(noPollCtx * ctx, noPollDebugLevel level, const char * log_msg, noPollPtr user_data) {
    xlog_args_t args;
    args.options  = XLOG_OPTS_DEFAULT;
    args.color    = XLOG_COLOR_NONE;
@@ -487,7 +487,7 @@ void ctrlms_ws_nopoll_log(noPollCtx * ctx, noPollDebugLevel level, const char * 
 
 typedef ctrlms_app_interface_t *(*ctrlms_app_interface_create_t)(void);
 
-bool ctrlms_ws_load_app(ctrlms_ws_global_t *state, bool use_stub, void **handle) {
+static bool ctrlms_ws_load_app(ctrlms_ws_global_t *state, bool use_stub, void **handle) {
    if(handle == NULL) {
       XLOGD_ERROR("invalid params");
       return(false);

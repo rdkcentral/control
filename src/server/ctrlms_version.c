@@ -4,6 +4,7 @@
 #include <ctrlm_log.h>
 #include <rdkx_logger.h>
 #include <rdkversion.h>
+#include <ctrlms_version.h>
 
 typedef struct {
    bool initialized;
@@ -21,6 +22,7 @@ bool ctrlms_init(xlog_level_t level) {
 
    if(ret_val != 0) {
       XLOGD_ERROR("parse error <%s>\n", info.parse_error == NULL ? "" : info.parse_error);
+      rdk_version_object_free(&info);
       return(false);
    }
    

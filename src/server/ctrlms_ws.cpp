@@ -109,6 +109,10 @@ bool ctrlms_ws_init(uint16_t port, bool log_enable) {
          if(cert_key_fp == NULL) {
             err_store = errno;
             XLOGD_ERROR("fdopen failed: <%s>", strerror(err_store));
+            if(0 != close(cert_key_fd)) {
+               errsv = errno;
+               XLOGD_ERROR("failed to close cert/key file descriptor <%s>", strerror(errsv));
+            }
             if(0 != unlink(g_ctrlms_ws.tmp_cert)) {
                err_store = errno;
                XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
@@ -496,12 +500,12 @@ bool ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state, bool use_stub, void **h
    }
 
    dlerror(); // Clear any existing error
-   ctrlms_app_interface_create_t app_interface = (ctrlms_app_interface_create_t)dlsym(handle, "ctrlms_app_interface_create");
+   ctrlms_app_interface_create_t app_interface = (ctrlms_app_interface_create_t)dlsym(*handle, "ctrlms_app_interface_create");
    char *error = dlerror();
 
    if(error != NULL) {
       XLOGD_ERROR("failed to find plugin interface, error <%s>", error);
-      dlclose(handle);
+      dlclose(*handle);
 
       if(use_stub) {
          XLOGD_INFO("Using stub implementation of app interface");
@@ -516,7 +520,7 @@ bool ctrlms_ws_load_app(ctrlms_ws_thread_state_t *state, bool use_stub, void **h
 
    if(NULL == state->app_interface) {
       XLOGD_ERROR("failed to create plugin app interface");
-      dlclose(handle);
+      dlclose(*handle);
       if(use_stub) {
          XLOGD_INFO("Using stub implementation of app interface");
          state->app_interface = new ctrlms_app_interface_t();

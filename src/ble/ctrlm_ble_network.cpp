@@ -428,16 +428,13 @@ void ctrlm_obj_network_ble_t::start(GMainLoop* main_loop)
       }
    }
 
-   XLOGD_INFO("====================================================================");
-   XLOGD_INFO("                        %u Bound BLE Controllers", controllers_.size());
+   XLOGD_INFO("%u bound BLE controllers", controllers_.size());
    for(auto &controller : controllers_) {
       if (controller.second->is_stale(this->stale_remote_time_threshold_get())) {
          XLOGD_TELEMETRY("Stale remote suspected: <%s>", controller.second->ieee_address_get().to_string().c_str());
       }
    }
-   XLOGD_INFO("====================================================================");
 
-   // Print out pairing table in a couple seconds to allow callbacks from bluez to finish
    schedule_status_print();
 
    // Read IR RF Database from database
@@ -1994,6 +1991,7 @@ void ctrlm_obj_network_ble_t::schedule_status_print(bool immediately) {
    THREAD_ID_VALIDATE();
    ctrlm_timeout_destroy(&g_ctrlm_ble_network.print_status_timer_tag);
    if (immediately || print_status_defer_count_ > CTRLM_BLE_PRINT_STATUS_DEFER_MAX) {
+      print_status_defer_count_ = 0;
       ctrlm_main_queue_msg_header_t msg;
       errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
       ERR_CHK(safec_rc);
@@ -2009,6 +2007,7 @@ void ctrlm_obj_network_ble_t::schedule_status_event(bool immediately) {
    THREAD_ID_VALIDATE();
    ctrlm_timeout_destroy(&g_ctrlm_ble_network.event_status_timer_tag);
    if (immediately || event_status_defer_count_ > CTRLM_BLE_EVENT_STATUS_DEFER_MAX) {
+      event_status_defer_count_ = 0;
       ctrlm_main_queue_msg_header_t msg;
       errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
       ERR_CHK(safec_rc);

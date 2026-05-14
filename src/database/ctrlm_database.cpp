@@ -2183,7 +2183,7 @@ void ctrlm_db_controller_create(ctrlm_network_id_t network_id, ctrlm_controller_
    char table_name_controller_entry[CONTROLLER_TABLE_NAME_MAX_LEN];
    char key[3];
 
-   XLOGD_INFO("network id %u controller id %u", network_id, controller_id);
+   XLOGD_DEBUG("network id %u controller id %u", network_id, controller_id);
 
    switch(ctrlm_network_type_get(network_id)) {
       case CTRLM_NETWORK_TYPE_IP:

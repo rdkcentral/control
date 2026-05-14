@@ -43,15 +43,15 @@ ctrlm_obj_controller_t::ctrlm_obj_controller_t(ctrlm_controller_id_t controller_
    voice_metrics_(std::make_shared<ctrlm_voice_metrics_t>(&network, controller_id)),
    ota_failure_cnt_from_last_success_(std::make_shared<ctrlm_uint64_db_attr_t>("OTA Failure Count From Last Success", 0, &network, controller_id, "ota_failure_cnt_last_success"))
 {
-   XLOGD_INFO("constructor - %u", controller_id_);
+   XLOGD_DEBUG("constructor - %u", controller_id_);
 }
 
 ctrlm_obj_controller_t::ctrlm_obj_controller_t() {
-   XLOGD_INFO("constructor - default");
+   XLOGD_DEBUG("constructor - default");
 }
 
 ctrlm_obj_controller_t::~ctrlm_obj_controller_t() {
-   XLOGD_INFO("deconstructor - %u", controller_id_);
+   XLOGD_DEBUG("deconstructor - %u", controller_id_);
 }
 
 void ctrlm_obj_controller_t::db_load() {

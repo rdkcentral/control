@@ -1422,7 +1422,7 @@ std::vector<uint64_t> ctrlm_ble_rcu_interface_t::getManagedDevices()
         return ret;
     }
 
-    XLOGD_INFO("Get list of currently managed devices");
+    XLOGD_DEBUG("Get list of currently managed devices");
     auto devices = m_controller->managedDevices();
 
     for (auto const &device : devices) {
@@ -1507,8 +1507,8 @@ static int OpenKeyInputDevice(uint64_t ieee_address)
 
                         uint64_t evdev_macaddr = ctrlm_convert_mac_string_to_long(libevdev_get_uniq(evdev));
                         if (evdev_macaddr == ieee_address) {
-                            XLOGD_INFO("Input Dev Node (%s) for device (0x%llX) FOUND, returning file descriptor: <%d>", 
-                                    keyInputFilename.c_str(), ieee_address, input_fd);
+                            XLOGD_INFO("Input Dev Node (%s) for device: <%s> (0x%llX) FOUND, returning file descriptor: <%d>", 
+                                    keyInputFilename.c_str(), libevdev_get_name(evdev), ieee_address, input_fd);
 
                             libevdev_free(evdev);
                             evdev = NULL;

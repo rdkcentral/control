@@ -239,11 +239,9 @@ void GattDeviceInfoService::onEnteredState(int state)
  */
 void GattDeviceInfoService::onExitedState(int state)
 {
-    // on exiting the initialising state we should have all the required
-    // device info fields, so at this point log a milestone message with all
-    // the details
+    // on exiting the initialising state we should have all the required device info fields
     if (state == InitialisingState) {
-        XLOGD_INFO("bluetooth rcu device info [ %s / %s / hw:%s / fw:%s / sw:%s ]",
+        XLOGD_DEBUG("bluetooth rcu device info [ %s / %s / hw:%s / fw:%s / sw:%s ]",
                  m_manufacturerName.c_str(), m_modelNumber.c_str(),
                  m_hardwareRevision.c_str(), m_firmwareVersion.c_str(),
                  m_softwareVersion.c_str());
@@ -380,7 +378,7 @@ void GattDeviceInfoService::setManufacturerName(const std::vector<uint8_t> &valu
 
     if (name != m_manufacturerName) {
         m_manufacturerName = name;
-        XLOGD_INFO("manufacturer name: %s", m_manufacturerName.c_str());
+        XLOGD_DEBUG("manufacturer name: %s", m_manufacturerName.c_str());
 
         m_manufacturerNameChangedSlots.invoke(m_manufacturerName);
     }
@@ -401,7 +399,7 @@ void GattDeviceInfoService::setModelNumber(const std::vector<uint8_t> &value)
 
     if (model != m_modelNumber) {
         m_modelNumber = model;
-        XLOGD_INFO("model number: %s", m_modelNumber.c_str());
+        XLOGD_DEBUG("model number: %s", m_modelNumber.c_str());
 
         m_modelNumberChangedSlots.invoke(m_modelNumber);
     }
@@ -422,7 +420,7 @@ void GattDeviceInfoService::setSerialNumber(const std::vector<uint8_t> &value)
 
     if (serial != m_serialNumber) {
         m_serialNumber = serial;
-        XLOGD_INFO("serial number: %s", m_serialNumber.c_str());
+        XLOGD_DEBUG("serial number: %s", m_serialNumber.c_str());
 
         m_serialNumberChangedSlots.invoke(m_serialNumber);
     }
@@ -443,7 +441,7 @@ void GattDeviceInfoService::setHardwareRevision(const std::vector<uint8_t> &valu
 
     if (hwVersion != m_hardwareRevision) {
         m_hardwareRevision = hwVersion;
-        XLOGD_INFO("hardware revision: %s", m_hardwareRevision.c_str());
+        XLOGD_DEBUG("hardware revision: %s", m_hardwareRevision.c_str());
 
         m_hardwareRevisionChangedSlots.invoke(m_hardwareRevision);
     }
@@ -465,7 +463,7 @@ void GattDeviceInfoService::setFirmwareVersion(const std::vector<uint8_t> &value
     if (fwVersion != m_firmwareVersion) {
 
         m_firmwareVersion = fwVersion;
-        XLOGD_INFO("firmware version: %s", m_firmwareVersion.c_str());
+        XLOGD_DEBUG("firmware version: %s", m_firmwareVersion.c_str());
 
         m_firmwareVersionChangedSlots.invoke(m_firmwareVersion);
     }
@@ -487,7 +485,7 @@ void GattDeviceInfoService::setSoftwareVersion(const std::vector<uint8_t> &value
     if (swVersion != m_softwareVersion) {
 
         m_softwareVersion = swVersion;
-        XLOGD_INFO("software version: %s", m_softwareVersion.c_str());
+        XLOGD_DEBUG("software version: %s", m_softwareVersion.c_str());
 
         m_softwareVersionChangedSlots.invoke(m_softwareVersion);
     }
@@ -518,7 +516,7 @@ void GattDeviceInfoService::setSystemId(const std::vector<uint8_t> &value)
                  (((uint64_t)value[6]) <<  8) |
                  (((uint64_t)value[7]) <<  0);
 
-    XLOGD_INFO("system id: 0x%016llx", m_systemId);
+    XLOGD_DEBUG("system id: 0x%016llx", m_systemId);
 }
 
 // -----------------------------------------------------------------------------

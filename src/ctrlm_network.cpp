@@ -882,6 +882,14 @@ void ctrlm_obj_network_t::req_process_upgrade_controllers(void *data, int size) 
    XLOGD_WARN("not implemented for %s network", name_get());
 }
 
+void ctrlm_obj_network_t::req_process_print_status(void *data, int size) {
+   XLOGD_WARN("not implemented for %s network", name_get());
+}
+
+void ctrlm_obj_network_t::req_process_event_status(void *data, int size) {
+   XLOGD_WARN("not implemented for %s network", name_get());
+}
+
 void ctrlm_obj_network_t::req_process_start_controller_upgrade(void *data, int size) {
    ctrlm_main_queue_msg_start_controller_upgrade_t *dqm = (ctrlm_main_queue_msg_start_controller_upgrade_t *)data;
 

@@ -143,7 +143,7 @@ bool ctrlm_ir_controller_t::read_config() {
       string substr;
       getline( ss, substr, ',' );
       if (!substr.empty()) {
-         XLOGD_INFO("Adding IR input device name: <%s>", substr.c_str());
+         XLOGD_DEBUG("Adding IR input device name: <%s>", substr.c_str());
          input_device_names_.push_back(substr);
       }
    }

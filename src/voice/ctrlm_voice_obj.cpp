@@ -3959,7 +3959,8 @@ xrsr_power_mode_t voice_xrsr_power_map(ctrlm_power_state_t ctrlm_power_state) {
 
 void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
     bool enabled = true;
-    bool reroute = false;
+
+    XLOGD_INFO("processing RFC values");
 
     attr.get_rfc_value(JSON_INT_NAME_VOICE_VREX_REQUEST_TIMEOUT,         this->prefs.timeout_vrex_connect,0);
     attr.get_rfc_value(JSON_INT_NAME_VOICE_VREX_RESPONSE_TIMEOUT,        this->prefs.timeout_vrex_session,0);
@@ -4007,22 +4008,34 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
     }
 
     attr.get_rfc_value(JSON_INT_NAME_VOICE_PACKET_LOSS_THRESHOLD,        this->packet_loss_threshold, 0);
-    if(attr.get_rfc_value(JSON_INT_NAME_VOICE_AUDIO_MODE, this->audio_mode) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_AUDIO_TIMING, this->audio_timing) |
-       attr.get_rfc_value(JSON_FLOAT_NAME_VOICE_AUDIO_CONFIDENCE_THRESHOLD, this->audio_confidence_threshold, 0.0, 1.0) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_AUDIO_DUCKING_TYPE, this->audio_ducking_type, CTRLM_VOICE_AUDIO_DUCKING_TYPE_ABSOLUTE, CTRLM_VOICE_AUDIO_DUCKING_TYPE_RELATIVE) |
-       attr.get_rfc_value(JSON_FLOAT_NAME_VOICE_AUDIO_DUCKING_LEVEL, this->audio_ducking_level, 0.0, 1.0) |
-       attr.get_rfc_value(JSON_BOOL_NAME_VOICE_AUDIO_DUCKING_BEEP, this->audio_ducking_beep_enabled)) {
+
+    bool audio_mode_updated = false;
+    audio_mode_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_AUDIO_MODE, this->audio_mode);
+    audio_mode_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_AUDIO_TIMING, this->audio_timing);
+    audio_mode_updated |= attr.get_rfc_value(JSON_FLOAT_NAME_VOICE_AUDIO_CONFIDENCE_THRESHOLD, this->audio_confidence_threshold, 0.0, 1.0);
+    audio_mode_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_AUDIO_DUCKING_TYPE, this->audio_ducking_type, CTRLM_VOICE_AUDIO_DUCKING_TYPE_ABSOLUTE, CTRLM_VOICE_AUDIO_DUCKING_TYPE_RELATIVE);
+    audio_mode_updated |= attr.get_rfc_value(JSON_FLOAT_NAME_VOICE_AUDIO_DUCKING_LEVEL, this->audio_ducking_level, 0.0, 1.0);
+    
+    // JSON_BOOL_NAME_VOICE_AUDIO_DUCKING_BEEP is updated via Voice Control plugin so it cannot be overridden via RFC
+
+    XLOGD_INFO("audio mode updated <%s>", audio_mode_updated ? "YES" : "NO");
+
+    if(audio_mode_updated) {
         ctrlm_voice_audio_settings_t audio_settings = {this->audio_mode, this->audio_timing, this->audio_confidence_threshold, this->audio_ducking_type, this->audio_ducking_level, this->audio_ducking_beep_enabled};
         this->set_audio_mode(&audio_settings);
     }
 
     // All attributes that need capture configuration to be set
-    if(attr.get_rfc_value(JSON_ARRAY_NAME_VOICE_SAVE_LAST_UTTERANCE,   this->prefs.utterance_save, ctrlm_is_production_build() ? CTRLM_JSON_ARRAY_INDEX_PRD : CTRLM_JSON_ARRAY_INDEX_DEV) |
-       attr.get_rfc_value(JSON_BOOL_NAME_VOICE_UTTERANCE_USE_CURTAIL,  this->prefs.utterance_use_curtail) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_UTTERANCE_FILE_QTY_MAX,  this->prefs.utterance_file_qty_max, 1, 100000) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_UTTERANCE_FILE_SIZE_MAX, this->prefs.utterance_file_size_max, 4 * 1024) |
-       attr.get_rfc_value(JSON_STR_NAME_VOICE_UTTERANCE_PATH,          this->prefs.utterance_path)) {
+    bool capture_config_updated = false;
+    capture_config_updated |= attr.get_rfc_value(JSON_ARRAY_NAME_VOICE_SAVE_LAST_UTTERANCE,   this->prefs.utterance_save, ctrlm_is_production_build() ? CTRLM_JSON_ARRAY_INDEX_PRD : CTRLM_JSON_ARRAY_INDEX_DEV);
+    capture_config_updated |= attr.get_rfc_value(JSON_BOOL_NAME_VOICE_UTTERANCE_USE_CURTAIL,  this->prefs.utterance_use_curtail);
+    capture_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_UTTERANCE_FILE_QTY_MAX,  this->prefs.utterance_file_qty_max, 1, 100000);
+    capture_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_UTTERANCE_FILE_SIZE_MAX, this->prefs.utterance_file_size_max, 4 * 1024);
+    capture_config_updated |= attr.get_rfc_value(JSON_STR_NAME_VOICE_UTTERANCE_PATH,          this->prefs.utterance_path);
+
+    XLOGD_INFO("capture config updated <%s>", capture_config_updated ? "YES" : "NO");
+
+    if(capture_config_updated) {
         xrsr_capture_config_t capture_config = {
            .delete_files  = !this->prefs.utterance_save,
            .enable        = this->prefs.utterance_save,
@@ -4045,22 +4058,21 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
     }
 
     // All attributes that need a re-route to apply
-    if(attr.get_rfc_value(JSON_INT_NAME_VOICE_MINIMUM_DURATION,                              this->prefs.utterance_duration_min) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL,     this->prefs.dst_params_standby.connect_check_interval) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,            this->prefs.dst_params_standby.timeout_connect) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,         this->prefs.dst_params_standby.timeout_inactivity) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_SESSION,            this->prefs.dst_params_standby.timeout_session) |
-       attr.get_rfc_value(JSON_BOOL_NAME_VOICE_DST_PARAMS_STANDBY_IPV4_FALLBACK,             this->prefs.dst_params_standby.ipv4_fallback) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_BACKOFF_DELAY,              this->prefs.dst_params_standby.backoff_delay) |
+    bool routing_config_updated = false;
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_MINIMUM_DURATION,                              this->prefs.utterance_duration_min);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL,     this->prefs.dst_params_standby.connect_check_interval);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,            this->prefs.dst_params_standby.timeout_connect);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,         this->prefs.dst_params_standby.timeout_inactivity);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_SESSION,            this->prefs.dst_params_standby.timeout_session);
+    routing_config_updated |= attr.get_rfc_value(JSON_BOOL_NAME_VOICE_DST_PARAMS_STANDBY_IPV4_FALLBACK,             this->prefs.dst_params_standby.ipv4_fallback);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_BACKOFF_DELAY,              this->prefs.dst_params_standby.backoff_delay);
     
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_CONNECT_CHECK_INTERVAL, this->prefs.dst_params_low_latency.connect_check_interval) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_CONNECT,        this->prefs.dst_params_low_latency.timeout_connect) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_INACTIVITY,     this->prefs.dst_params_low_latency.timeout_inactivity) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_SESSION,        this->prefs.dst_params_low_latency.timeout_session) |
-       attr.get_rfc_value(JSON_BOOL_NAME_VOICE_DST_PARAMS_LOW_LATENCY_IPV4_FALLBACK,         this->prefs.dst_params_low_latency.ipv4_fallback) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_BACKOFF_DELAY,          this->prefs.dst_params_low_latency.backoff_delay)) {
-        reroute = true;
-    }
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_CONNECT_CHECK_INTERVAL, this->prefs.dst_params_low_latency.connect_check_interval);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_CONNECT,        this->prefs.dst_params_low_latency.timeout_connect);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_INACTIVITY,     this->prefs.dst_params_low_latency.timeout_inactivity);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_SESSION,        this->prefs.dst_params_low_latency.timeout_session);
+    routing_config_updated |= attr.get_rfc_value(JSON_BOOL_NAME_VOICE_DST_PARAMS_LOW_LATENCY_IPV4_FALLBACK,         this->prefs.dst_params_low_latency.ipv4_fallback);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_BACKOFF_DELAY,          this->prefs.dst_params_low_latency.backoff_delay);
 
     std::vector<std::string> obj_server_hosts;
     if(attr.get_rfc_value(JSON_ARRAY_NAME_VOICE_SERVER_HOSTS, obj_server_hosts)) {
@@ -4078,9 +4090,12 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
                 this->voice_device_disable((ctrlm_voice_device_t)i, true, NULL);
             }
         }
-        reroute = true;
+        routing_config_updated = true;
     }
-    if(reroute) {
+
+    XLOGD_INFO("routing config updated <%s>", routing_config_updated ? "YES" : "NO");
+
+    if(routing_config_updated) {
         this->voice_sdk_update_routes();
     }
 }

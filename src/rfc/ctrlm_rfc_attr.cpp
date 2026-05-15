@@ -99,9 +99,11 @@ bool ctrlm_rfc_attr_t::check_config_file(const std::string &path) const {
     bool ret = false;
     ctrlm_config_t *config = ctrlm_config_t::get_instance();
     if(config) {
-        ret = config->path_exists(this->config_key + std::string(JSON_PATH_SEPERATOR) + path);
-        if(ret) {
-            XLOGD_DEBUG("%s exists in the config file", path.c_str());
+        if(config->has_local_config()) {
+            ret = config->path_exists(this->config_key + std::string(JSON_PATH_SEPERATOR) + path);
+            if(ret) {
+                XLOGD_WARN("%s exists in the config file", path.c_str());
+            }
         }
     } else {
         XLOGD_ERROR("config object is NULL");

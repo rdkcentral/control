@@ -2146,7 +2146,6 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::controller_add(ctrlm_hal_ble_rcu_
       controller->db_store();
    }
 
-   // Print out pairing table in a couple seconds to allow callbacks from bluez to finish
    schedule_status_print();
    schedule_status_event();
 

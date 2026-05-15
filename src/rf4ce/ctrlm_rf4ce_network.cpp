@@ -303,7 +303,7 @@ ctrlm_obj_network_rf4ce_t::ctrlm_obj_network_rf4ce_t() {
 }
 
 ctrlm_obj_network_rf4ce_t::~ctrlm_obj_network_rf4ce_t() {
-   XLOGD_INFO("deconstructor");
+   XLOGD_INFO("destructor");
    for (auto timeout : bind_validation_failed_timeout_) {
        ctrlm_timeout_destroy(&timeout->timer_id);
        if (controller_exists(timeout->controller_id)){

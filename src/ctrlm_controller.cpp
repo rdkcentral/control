@@ -51,7 +51,7 @@ ctrlm_obj_controller_t::ctrlm_obj_controller_t() {
 }
 
 ctrlm_obj_controller_t::~ctrlm_obj_controller_t() {
-   XLOGD_DEBUG("deconstructor - %u", controller_id_);
+   XLOGD_DEBUG("destructor - %u", controller_id_);
 }
 
 void ctrlm_obj_controller_t::db_load() {

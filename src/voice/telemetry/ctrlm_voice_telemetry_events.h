@@ -75,7 +75,7 @@ public:
     void reset_events();
     void update_on_session_begin(const std::string &device_type, const std::string &device_version, const std::string &encoding, bool press_and_release, bool end_of_speech_detection);
     void update_on_key_release(int32_t time_start_lag, int32_t time_stream_len_exp, rdkx_timestamp_t *time_key_down, rdkx_timestamp_t *time_key_up);
-    void update_on_stream_end(uint32_t time_stream_len_act, uint32_t packets_total, uint32_t packets_lost, uint32_t samples_total, uint32_t samples_lost, uint32_t decoder_failures, uint32_t samples_buffered_max);
+    void update_on_stream_end(uint32_t time_stream_len_act, uint32_t packets_total, uint32_t packets_lost, uint32_t samples_total, uint32_t samples_lost, uint32_t decoder_failures, uint32_t samples_buffered_max, int32_t voice_detected, uint32_t peak_confidence, int32_t peak_rms_level);
     bool update_on_session_end(bool result, int32_t end_reason_rcu, int32_t end_reason_session, int32_t server_return_code, const std::string &server_message, int32_t time_stream_len_exp, int32_t ret_code_protocol, int32_t stream_end_reason);
 
 private:
@@ -110,6 +110,10 @@ private:
     bool        m_result;               // flag to indicate if session was successful
     int32_t     m_ret_code_protocol;    // protocol return code
     int32_t     m_end_reason_stream;    // reason for ending the stream as reported by speech router
+
+    int32_t     m_voice_detected;       // flag to indicate if voice was detected (-1 = not reported, 0 = no voice detected, 1 = voice detected)
+    uint32_t    m_peak_confidence;      // peak confidence level when voice detection is reported
+    int32_t     m_peak_rms_level;       // peak RMS level when voice detection is reported
 
     bool        m_has_key_release;      // flag to indicate if key release event has been received
 

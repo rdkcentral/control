@@ -1719,7 +1719,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
          XLOGD_TELEMETRY("BLE remote RF pairing state changed to <%s>", ctrlm_rf_pair_state_str(dqm->state));
          state_ = dqm->state;
          if (state_ == CTRLM_RF_PAIR_STATE_COMPLETE || state_ == CTRLM_RF_PAIR_STATE_IDLE) {
-            // report status in a couple seconds to allow remote data to be received from bluez
+            // allow some time for all remote data to be received before sending the event to avoid multiple events
             schedule_status_event();
          } else {
             // for any other states, send event immediately.

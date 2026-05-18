@@ -4095,7 +4095,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
     }
 
     // All attributes that need a re-route to apply
-        bool routing_config_updated = false;
+    bool routing_config_updated = false;
     routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_MINIMUM_DURATION,                              this->prefs.utterance_duration_min);
     routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL,     this->prefs.dst_params_standby.connect_check_interval);
     routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,            this->prefs.dst_params_standby.timeout_connect);
@@ -4116,7 +4116,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
     if(attr.get_rfc_value(JSON_STR_NAME_VOICE_VOICE_ACTIVITY_DETECTION_MODE, voice_activity_detection_mode)) {
        this->prefs.voice_activity_detection_mode = this->voice_activity_detection_mode_to_xrsr(voice_activity_detection_mode);
        XLOGD_INFO("voice activity detection mode <%s>", xrsr_stream_voice_activity_mode_str(this->prefs.voice_activity_detection_mode));
-       reroute = true;
+       routing_config_updated = true;
     }
 
     std::vector<std::string> obj_server_hosts;

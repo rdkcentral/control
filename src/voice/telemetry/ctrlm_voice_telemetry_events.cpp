@@ -212,7 +212,10 @@ bool ctrlm_voice_telemetry_session_t::event() {
     ss << "\"" << m_server_message << "\",";
     ss << m_result << ",";
     ss << m_end_reason_stream << ",";
-    ss << m_ret_code_protocol << "]]";
+    ss << m_ret_code_protocol << ",";
+    ss << m_voice_detected << ",";
+    ss << m_peak_confidence << ",";
+    ss << m_peak_rms_level << "]]";
 
     if(m_event_list.length() + ss.str().length() > m_event_list_max_size) { // Maximum data size exceeded
         XLOGD_WARN("telemetry event exceeds max size <%s,%s>", val_marker.c_str(), ss.str().c_str());
@@ -267,7 +270,7 @@ void ctrlm_voice_telemetry_session_t::update_on_key_release(int32_t time_start_l
     m_has_key_release       = true;
 }
 
-void ctrlm_voice_telemetry_session_t::update_on_stream_end(uint32_t time_stream_len_act, uint32_t packets_total, uint32_t packets_lost, uint32_t samples_total, uint32_t samples_lost, uint32_t decoder_failures, uint32_t samples_buffered_max) {
+void ctrlm_voice_telemetry_session_t::update_on_stream_end(uint32_t time_stream_len_act, uint32_t packets_total, uint32_t packets_lost, uint32_t samples_total, uint32_t samples_lost, uint32_t decoder_failures, uint32_t samples_buffered_max, int32_t voice_detected, uint32_t peak_confidence, int32_t peak_rms_level) {
     m_time_stream_len_act  = time_stream_len_act;
     m_packets_total        = packets_total;
     m_packets_lost         = packets_lost;
@@ -275,6 +278,12 @@ void ctrlm_voice_telemetry_session_t::update_on_stream_end(uint32_t time_stream_
     m_samples_lost         = samples_lost;
     m_decoder_failures     = decoder_failures;
     m_samples_buffered_max = samples_buffered_max;
+
+    if(voice_detected >= 0) {
+        m_voice_detected        = voice_detected;
+        m_peak_confidence       = peak_confidence;
+        m_peak_rms_level        = peak_rms_level;
+    }
 
     if(m_has_key_release) {
         m_time_stream_delta = m_time_stream_len_act - m_time_stream_len_exp;
@@ -319,6 +328,10 @@ void ctrlm_voice_telemetry_session_t::reset_stats() {
     m_end_reason_server    = 0;
     m_result               = false;
     m_ret_code_protocol    = 0;
+
+    m_voice_detected        = -1;
+    m_peak_confidence       = 0;
+    m_peak_rms_level        = 0;
 
     m_server_message.clear();
     m_device_type.clear();

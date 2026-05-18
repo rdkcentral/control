@@ -697,31 +697,6 @@ bool ctrlm_ble_rcu_interface_t::pairWithCode(unsigned int code)
             XLOGD_ERROR("controller failed to start pairing, %s: %s", error.name().c_str(), error.message().c_str());
         }
         return false;
-    } else {
-        XLOGD_INFO("started pairing with code %hhu", code);
-    }
-    return true;
-}
-
-bool ctrlm_ble_rcu_interface_t::pairWithMacHash(unsigned int code)
-{
-    if (!m_controller) {
-        XLOGD_ERROR("m_controller is NULL!!!");
-        return false;
-    }
-
-    if (!m_controller->startPairingWithMacHash((uint8_t) code)) {
-        BleRcuError error = m_controller->lastError();
-
-        // Remote will continually send out IR pairing signals until the BLE pair request
-        // has been received.  This means that the "Already in pairing state" error is normal.
-        // Let's omit this error print because it only serves to confuse those analyzing the logs.
-        if (error.message() != "Already in pairing state") {
-            XLOGD_ERROR("controller failed to start pairing, %s: %s", error.name().c_str(), error.message().c_str());
-        }
-        return false;
-    } else {
-        XLOGD_INFO("started pairing with MAC hash 0x%X", code);
     }
     return true;
 }

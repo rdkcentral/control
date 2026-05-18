@@ -70,14 +70,12 @@ public:
 
 public:
     bool isRunning() const;
-    bool isAutoPairing() const;
+    bool isScanningForAutoPair() const;
     int pairingCode() const;
 
 // public slots:
-    void start(const BleAddress &target, const std::string &name);
     void startAutoWithTimeout(int timeoutMs);
     void startWithCode(uint8_t pairingCode);
-    void startWithMacHash(uint8_t macHash);
     void startWithMacList(const std::vector<BleAddress> &macList);
     void stop();
 

@@ -1325,7 +1325,7 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_F16,           {"Plus",                 "Plus"}},
    {KEY_F13,           {"Option",               "Option"}},
    {KEY_F4,            {"Netflix App",          "Netflix App"}},
-   {KEY_INSERT,        {"Peacock App",          "Peakcock App"}},
+   {KEY_INSERT,        {"Peacock App",          "Peacock App"}},
    {KEY_END,           {"Disney+ App",          "Disney+ App"}},
    {KEY_DELETE,        {"Prime Video App",      "Prime Video App"}},
    {KEY_PAGEUP,        {"Channel+",             "Channel+"}},

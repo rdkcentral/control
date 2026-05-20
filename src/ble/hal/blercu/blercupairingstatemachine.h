@@ -52,7 +52,6 @@ public:
         AUTO_TIMEOUT,
         MAC_LIST,
         IR_CODE,
-        MAC_HASH
     };
 
     enum FailureReason {

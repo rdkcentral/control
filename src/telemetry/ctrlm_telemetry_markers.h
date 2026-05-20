@@ -141,12 +141,14 @@
 // <version>       - version of the marker format.
 // <type>          - type of network the marker is coming from
 // <method>        - enum representing pairing method (see PairingMethod)
-// <discovered>    - number of discovered devices from pairing attempt
 // <result>        - enum that represents "success" or failure reason (see FailureReason)
+// <discovered>    - number of discovered devices from pairing attempt
 // <name>          - name of paired remote, empty string on failure
 // <bluez_retries> - number of bluez pair() retries made before success or final error
-// <bluez_msg>     - error message of bluez layer, empty if no errors
-#define MARKER_RCU_PAIRING_ATTEMPT "ctrlm.rcu.pairing.attempt"
+// <bluez_msg1>    - error message 1 from bluez layer or null if no error
+// <bluez_msg2>    - error message 2 from bluez layer or null if no error
+// <bluez_msg3>    - error message 3 from bluez layer or null if no error
+#define MARKER_RCU_PAIRING_ATTEMPT "ctrlm.rcu.pairing.attempt_accum"
 #define MARKER_RCU_PAIRING_ATTEMPT_VERSION 1
 
 //

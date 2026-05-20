@@ -89,6 +89,17 @@
 #endif
 #include<features.h>
 
+#ifdef USE_AC_RMF
+#include "rmfAudioCapture.h"
+#endif
+
+#ifdef USE_ACM
+#include "libIBus.h"
+#include "libIARM.h"
+
+#include "audiocapturemgr_iarm.h"
+#endif
+
 using namespace std;
 
 #ifndef CTRLM_VERSION
@@ -414,6 +425,91 @@ static bool ctrlm_minidump_callback(const google_breakpad::MinidumpDescriptor& d
 gboolean ctrlm_is_production_build(void) {
    return(g_ctrlm.production_build);
 }
+
+#ifdef USE_AC_RMF
+// ---------------------------------------------------------------------------
+// Example: open the RMF primary audio capture interface, retrieve default
+// settings, start capture, then stop and close.  The data-ready callback
+// receives decoded PCM buffers from the platform HAL.
+// ---------------------------------------------------------------------------
+static rmf_Error ctrlm_rmf_ac_buffer_ready_cb(void *pContext,
+                                               void *pInDataBuf,
+                                               size_t inDataSize)
+{
+    // pContext is the user pointer passed to RMF_AudioCapture_Start.
+    // pInDataBuf points to inDataSize bytes of interleaved PCM audio.
+    // Process or forward the buffer here; return RMF_SUCCESS to continue.
+    (void)pContext;
+    (void)pInDataBuf;
+    (void)inDataSize;
+    return RMF_SUCCESS;
+}
+
+static void ctrlm_rmf_audio_capture_example(void)
+{
+    RMF_AudioCaptureHandle    hAcHandle  = NULL;
+    RMF_AudioCapture_Settings stSettings;
+    rmf_Error                 eRet;
+
+    // 1. Open the primary audio capture interface.
+    eRet = RMF_AudioCapture_Open(&hAcHandle);
+    if (eRet != RMF_SUCCESS) {
+        XLOGD_ERROR("RMF_AudioCapture_Open failed: %d", eRet);
+        return;
+    }
+    XLOGD_INFO("RMF_AudioCapture_Open succeeded");
+
+    // 2. Retrieve default settings so we know the platform's preferred
+    //    format (sample rate, bit depth, channel count, FIFO size).
+    eRet = RMF_AudioCapture_GetDefaultSettings(&stSettings);
+    if (eRet != RMF_SUCCESS) {
+        XLOGD_ERROR("RMF_AudioCapture_GetDefaultSettings failed: %d", eRet);
+        RMF_AudioCapture_Close(hAcHandle);
+        return;
+    }
+    XLOGD_INFO("RMF AC default – fifoSize: %zu  threshold: %zu",
+               stSettings.fifoSize, stSettings.threshold);
+
+    // 3. Install callbacks and tune buffer geometry before starting.
+    stSettings.cbBufferReady     = ctrlm_rmf_ac_buffer_ready_cb;
+    stSettings.cbBufferReadyParm = NULL;   // passed back as pContext
+    stSettings.cbStatusChange    = NULL;   // optional status-change callback
+    stSettings.cbStatusParm      = NULL;
+    // threshold: bytes delivered per cbBufferReady invocation.
+    // fifoSize : must be a multiple of threshold and large enough to
+    //            absorb platform jitter (bluetooth_mgr uses 8 × threshold).
+    stSettings.threshold  = stSettings.threshold ? stSettings.threshold : 4096;
+    stSettings.fifoSize   = 8 * stSettings.threshold;
+
+    // 4. Start capture – the HAL begins filling the FIFO and fires
+    //    cbBufferReady each time 'threshold' bytes are available.
+    eRet = RMF_AudioCapture_Start(hAcHandle, &stSettings);
+    if (eRet != RMF_SUCCESS) {
+        XLOGD_ERROR("RMF_AudioCapture_Start failed: %d", eRet);
+        RMF_AudioCapture_Close(hAcHandle);
+        return;
+    }
+    XLOGD_INFO("RMF audio capture started");
+
+    // ... audio flows through ctrlm_rmf_ac_buffer_ready_cb ...
+
+    // 5. Stop capture (drains the FIFO; no more callbacks after this).
+    eRet = RMF_AudioCapture_Stop(hAcHandle);
+    if (eRet != RMF_SUCCESS) {
+        XLOGD_ERROR("RMF_AudioCapture_Stop failed: %d", eRet);
+    }
+    XLOGD_INFO("RMF audio capture stopped");
+
+    // 6. Release the interface handle.
+    eRet = RMF_AudioCapture_Close(hAcHandle);
+    if (eRet != RMF_SUCCESS) {
+        XLOGD_ERROR("RMF_AudioCapture_Close failed: %d", eRet);
+        return;
+    }
+    hAcHandle = NULL;
+    XLOGD_INFO("RMF_AudioCapture_Close succeeded");
+}
+#endif // RMF_AUDIO_CAPTURE
 
 int main(int argc, char *argv[]) {
    // Set stdout to be line buffered
@@ -743,6 +839,8 @@ int main(int argc, char *argv[]) {
    // Device update components needs to be initialized after controllers are loaded
    XLOGD_INFO("init device update");
    ctrlm_device_update_init(json_obj_device_update);
+
+   ctrlm_rmf_audio_capture_example();
 
    // Initialize semaphore
    sem_init(&g_ctrlm.semaphore, 0, 0);

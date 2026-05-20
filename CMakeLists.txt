@@ -52,6 +52,8 @@ option(XRSR_SDT "Enable XRSR_SDT" OFF)
 option(ENABLE_ASYNC_SRVR_MSG "Enable Asynchronous Server Messaging Feature" OFF)
 option(ENABLE_AVS_WITH_SDT "Enable SDT Based AVS Support" OFF)
 option(USE_DEPRECATED_HDMI_INPUT_PLUGIN "Use deprecated HDMI Input plugin instead of AV Input plugin" OFF)
+option(RMF_AUDIO_CAPTURE "Enable RMF Audio Capture via librmfAudioCapture" ON)
+option(AUDIO_CAPTURE_MANAGER "Enable Audio Capture Manager (ACM) IARM interface" ON)
 
 # BUILD SYSTEM
 set(STAGING_BINDIR_NATIVE, "invalid" CACHE PATH "staging bin dir native")
@@ -178,6 +180,38 @@ if(BLE_ENABLED)
       add_compile_definitions(CTRLM_BLE_SERVICES)
       target_link_libraries(controlMgr ctrlm-ble-services.a)
    endif()
+endif()
+
+# RMF Audio Capture – mirrors USE_RMF_AC / USE_ACM flags in bluetooth_mgr
+if(RMF_AUDIO_CAPTURE)
+   add_compile_definitions(USE_AC_RMF)
+   # Use pkg-config as the primary mechanism so that rmfAudioCapture.h's own
+   # transitive sub-includes (e.g. rmf_error.h / rmf_osal_error.h that define
+   # rmf_Error) are pulled in automatically via the .pc Requires/Cflags fields.
+   find_package(PkgConfig)
+   if(PKG_CONFIG_FOUND)
+      pkg_check_modules(RMFAUDIOCAPTURE rmfAudioCapture)
+   endif()
+   if(RMFAUDIOCAPTURE_FOUND)
+      target_include_directories(controlMgr PRIVATE ${RMFAUDIOCAPTURE_INCLUDE_DIRS})
+      target_link_libraries(controlMgr ${RMFAUDIOCAPTURE_LINK_LIBRARIES})
+   else()
+      # Fallback: hard-coded sysroot paths for distributions without a .pc file
+      message(WARNING "pkg-config could not find rmfAudioCapture; using fallback sysroot paths")
+      target_include_directories(controlMgr PRIVATE
+         ${CMAKE_SYSROOT}/usr/include/media-utils
+         ${CMAKE_SYSROOT}/usr/include/media-utils/audioCapture
+      )
+      target_link_libraries(controlMgr rmfAudioCapture)
+   endif()
+endif()
+
+if(AUDIO_CAPTURE_MANAGER)
+   add_compile_definitions(USE_ACM)
+   target_include_directories(controlMgr PRIVATE
+      ${CMAKE_SYSROOT}/usr/include/audiocapturemgr
+   )
+   target_link_libraries(controlMgr IARMBus)
 endif()
 
 if(BREAKPAD)

@@ -877,26 +877,34 @@ void ctrlm_main_ir_last_keypress_get(ctrlm_ir_last_keypress_t *last_key_info) {
    }
 }
 
-void ctrlm_main_network_ready_list_get(std::vector<ctrlm_obj_network_t *> *networks) {
-   if (NULL == networks) {
-      XLOGD_ERROR("NULL parameter");
-      return;
+static void ctrlm_main_network_handler_execute_for_all(ctrlm_msg_handler_network_t handler, void *data, int size) {
+   for (auto const &network_it : g_ctrlm.networks) {
+      if (network_it.second) {
+         (network_it.second->*handler)(data, size);
+      }
    }
+}
 
+std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> ctrlm_main_network_rcu_status_map_get() {
    if (g_ctrlm.main_thread != g_thread_self ()) {
       XLOGD_ERROR("not called from ctrlm_main_thread!!!!!");
       if(!ctrlm_is_production_build()) {
          g_assert(0);
       }
-      return;
+      return {};
    }
 
-   networks->clear();
-   for (auto const &network_it : g_ctrlm.networks) {
-      if (network_it.second && network_it.second->is_ready()) {
-         networks->push_back(network_it.second);
-      }
-   }
+   std::shared_ptr<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>> params = std::make_shared<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>>();
+   params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
+
+   ctrlm_main_queue_msg_get_rcu_status_t msg = {};
+   msg.params = params;
+
+   ctrlm_main_network_handler_execute_for_all((ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_get_rcu_status,
+                                              &msg,
+                                              sizeof(msg));
+
+   return params->get_reply();
 }
 
 void ctrlm_utils_sem_wait(){

@@ -120,7 +120,7 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_status(const ctrlm_rcp_ipc_net_status_t &n
     json_t *status             = json_object();
     json_t *net_type_supported = json_array();
     json_t *remote_array       = json_array();
-    std::vector<ctrlm_obj_network_t *> networks;
+    std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> status_map = ctrlm_main_network_rcu_status_map_get();
     std::vector<ctrlm_rcp_ipc_controller_status_t> remotes;
 
     ctrlm_network_type_t  type = CTRLM_NETWORK_TYPE_INVALID;
@@ -128,27 +128,20 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_status(const ctrlm_rcp_ipc_net_status_t &n
     ctrlm_rf_pair_state_t rf_pair_state = CTRLM_RF_PAIR_STATE_UNKNOWN;
     int err = 0;
 
-    ctrlm_main_network_ready_list_get(&networks);
-
     for (auto const &it : ctrlm_network_types_get()) {
         err |= json_array_append_new(net_type_supported, json_integer(it));
     }
-    for (auto *network : networks) {
-        ctrlm_rcp_ipc_net_status_t network_status;
-        network_status.populate_status(*network);
-        network_status.get_controller_status_list(remotes);
+    for (auto &it : status_map) {
+        it.second.get_controller_status_list(remotes);
     }
     for (const auto &remote : remotes) {
         err |= json_array_append_new(remote_array, remote.to_json());
     }
     // For now default to RF4CE network reporting if available
-    for (auto *network : networks) {
-        ctrlm_rcp_ipc_net_status_t network_status;
-        network_status.populate_status(*network);
-
-        ir_prog_state = network_status.get_ir_prog_state();
-        rf_pair_state = network_status.get_rf_pair_state();
-        type          = network_status.get_type();
+    for (auto &it : status_map) {
+        ir_prog_state = it.second.get_ir_prog_state();
+        rf_pair_state = it.second.get_rf_pair_state();
+        type          = it.second.get_type();
 
         if (type == CTRLM_NETWORK_TYPE_RF4CE) {
             break;

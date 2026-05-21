@@ -19,6 +19,7 @@
 
 #include "algorithm"
 #include "ctrlm_rcp_ipc_iarm_thunder.h"
+#include "ctrlm.h"
 #include "ctrlm_network.h"
 #include "ctrlm_log.h"
 #include <uuid/uuid.h>
@@ -115,10 +116,52 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_status(const ctrlm_rcp_ipc_net_status_t &n
         return(false);
     }
 
-    json_t *ret = json_object();
+    json_t *ret                = json_object();
+    json_t *status             = json_object();
+    json_t *net_type_supported = json_array();
+    json_t *remote_array       = json_array();
+    std::vector<ctrlm_obj_network_t *> networks;
+    std::vector<ctrlm_rcp_ipc_controller_status_t> remotes;
+
+    ctrlm_network_type_t  type = CTRLM_NETWORK_TYPE_INVALID;
+    ctrlm_ir_state_t      ir_prog_state = CTRLM_IR_STATE_UNKNOWN;
+    ctrlm_rf_pair_state_t rf_pair_state = CTRLM_RF_PAIR_STATE_UNKNOWN;
     int err = 0;
 
-    err |= json_object_set_new_nocheck(ret, STATUS, net_status.to_json());
+    ctrlm_main_network_ready_list_get(&networks);
+
+    for (auto const &it : ctrlm_network_types_get()) {
+        err |= json_array_append_new(net_type_supported, json_integer(it));
+    }
+    for (auto *network : networks) {
+        ctrlm_rcp_ipc_net_status_t network_status;
+        network_status.populate_status(*network);
+        network_status.get_controller_status_list(remotes);
+    }
+    for (const auto &remote : remotes) {
+        err |= json_array_append_new(remote_array, remote.to_json());
+    }
+    // For now default to RF4CE network reporting if available
+    for (auto *network : networks) {
+        ctrlm_rcp_ipc_net_status_t network_status;
+        network_status.populate_status(*network);
+
+        ir_prog_state = network_status.get_ir_prog_state();
+        rf_pair_state = network_status.get_rf_pair_state();
+        type          = network_status.get_type();
+
+        if (type == CTRLM_NETWORK_TYPE_RF4CE) {
+            break;
+        }
+    }
+
+    err |= json_object_set_new_nocheck(status, REMOTE_DATA,         remote_array);
+    err |= json_object_set_new_nocheck(status, NET_TYPES_SUPPORTED, net_type_supported);
+    err |= json_object_set_new_nocheck(status, NET_TYPE,            json_integer(type));
+    err |= json_object_set_new_nocheck(status, IR_PROG_STATE,       json_string(ctrlm_ir_state_str(ir_prog_state)));
+    err |= json_object_set_new_nocheck(status, PAIRING_STATE,       json_string(ctrlm_rf_pair_state_str(rf_pair_state)));
+
+    err |= json_object_set_new_nocheck(ret, STATUS, status);
 
     if (err) {
         XLOGD_ERROR("JSON object set error");

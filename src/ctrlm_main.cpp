@@ -877,6 +877,28 @@ void ctrlm_main_ir_last_keypress_get(ctrlm_ir_last_keypress_t *last_key_info) {
    }
 }
 
+void ctrlm_main_network_ready_list_get(std::vector<ctrlm_obj_network_t *> *networks) {
+   if (NULL == networks) {
+      XLOGD_ERROR("NULL parameter");
+      return;
+   }
+
+   if (g_ctrlm.main_thread != g_thread_self ()) {
+      XLOGD_ERROR("not called from ctrlm_main_thread!!!!!");
+      if(!ctrlm_is_production_build()) {
+         g_assert(0);
+      }
+      return;
+   }
+
+   networks->clear();
+   for (auto const &network_it : g_ctrlm.networks) {
+      if (network_it.second && network_it.second->is_ready()) {
+         networks->push_back(network_it.second);
+      }
+   }
+}
+
 void ctrlm_utils_sem_wait(){
    sem_wait(&g_ctrlm.ctrlm_utils_sem);
 }

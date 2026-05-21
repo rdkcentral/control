@@ -39,6 +39,7 @@
 #include <memory>
 #include <regex>
 #include <vector>
+#include <map>
 
 class BleRcuAdapter;
 class ConfigSettings;

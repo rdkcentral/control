@@ -48,6 +48,7 @@
 #include <unordered_map>
 #include "ctrlm_rcp_ipc_iarm_thunder.h"
 #include "ctrlm_telemetry.h"
+#include <sstream>
 
 using namespace std;
 
@@ -1699,7 +1700,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int si
    }
 
 #ifdef TELEMETRY_SUPPORT
-   // Serialize to array for ctrlm.rcu.pairing.attempt T2 marker
+   // Serialize to array for ctrlm.rcu.pairing.attempt_accum T2 marker
    std::stringstream ss;
    ss << "[";
    ss         << MARKER_RCU_PAIRING_ATTEMPT_VERSION << ",";

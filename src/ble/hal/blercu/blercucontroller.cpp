@@ -613,6 +613,7 @@ void BleRcuControllerImpl::onFinishedPairing()
     outcome.result          = BleRcuPairingStateMachine::SUCCESS;
     outcome.bluezRetries    = m_pairingStateMachine.bluezRetries();
     outcome.maxBluezRetries = MAX_PAIRING_RETRIES;
+    outcome.bluezError      = m_pairingStateMachine.bluezError();
     outcome.name            = m_pairingStateMachine.pairedName();
     outcome.discovered      = m_pairingStateMachine.discoveredDevices();
     m_pairingOutcomeSlots.invoke(outcome);

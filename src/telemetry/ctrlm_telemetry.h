@@ -28,7 +28,8 @@
  */
 typedef enum {
     GLOBAL,
-    RCU,
+    RF4CE,
+    BLE,
     IP,
     VOICE
 } ctrlm_telemetry_report_t;

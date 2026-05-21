@@ -323,13 +323,6 @@ ctrlm_obj_network_ble_t::ctrlm_obj_network_ble_t(ctrlm_network_type_t type, ctrl
    if(rfc) {
       rfc->add_changed_listener(ctrlm_rfc_t::attrs::BLE, std::bind(&ctrlm_obj_network_ble_t::rfc_retrieved_handler, this, std::placeholders::_1));
    }
-
-   #ifdef TELEMETRY_SUPPORT
-   ctrlm_telemetry_t *telemetry = ctrlm_get_telemetry_obj();
-   if(telemetry) {
-       telemetry->add_listener(ctrlm_telemetry_report_t::RCU, std::bind(&ctrlm_obj_network_ble_t::telemetry_report_handler, this));
-   }
-   #endif
 }
 
 ctrlm_obj_network_ble_t::ctrlm_obj_network_ble_t() {
@@ -1733,7 +1726,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int si
    ss << "]";
 
    ctrlm_telemetry_event_t<std::string> ev(MARKER_RCU_PAIRING_ATTEMPT, ss.str());
-   ctrlm_telemetry_t::get_instance()->event(ctrlm_telemetry_report_t::RCU, ev);
+   ev.event();
 #endif // TELEMETRY_SUPPORT
 }
 
@@ -2824,10 +2817,4 @@ void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start
 
 bool ctrlm_obj_network_ble_t::is_managed_by_network(ctrlm_controller_id_t id) {
     return (id >= BLE_RCU_ID_RANGE_MIN && id < BLE_RCU_ID_RANGE_MAX);
-}
-
-void ctrlm_obj_network_ble_t::telemetry_report_handler() {
-    #ifndef TELEMETRY_SUPPORT
-    XLOGD_WARN("telemetry is not enabled");
-    #endif
 }

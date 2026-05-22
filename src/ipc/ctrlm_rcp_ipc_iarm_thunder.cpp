@@ -137,16 +137,10 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_status(const ctrlm_rcp_ipc_net_status_t &n
     for (const auto &remote : remotes) {
         err |= json_array_append_new(remote_array, remote.to_json());
     }
-    // For now default to RF4CE network reporting if available
-    for (auto &it : status_map) {
-        ir_prog_state = it.second.get_ir_prog_state();
-        rf_pair_state = it.second.get_rf_pair_state();
-        type          = it.second.get_type();
-
-        if (type == CTRLM_NETWORK_TYPE_RF4CE) {
-            break;
-        }
-    }
+    
+    ir_prog_state = net_status.get_ir_prog_state();
+    rf_pair_state = net_status.get_rf_pair_state();
+    type          = net_status.get_type();
 
     err |= json_object_set_new_nocheck(status, REMOTE_DATA,         remote_array);
     err |= json_object_set_new_nocheck(status, NET_TYPES_SUPPORTED, net_type_supported);

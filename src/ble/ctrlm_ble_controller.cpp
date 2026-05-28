@@ -31,6 +31,7 @@
 #include "ctrlm_controller.h"
 #include "ctrlm_hal_ip.h"
 #include "blercu/bleservices/blercuupgradeservice.h"
+#include "ctrlm_telemetry_event.h"
 
 #include <sstream>
 #include <iterator>
@@ -534,28 +535,53 @@ void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmas
 
    if (irdb == NULL) {
       XLOGD_ERROR("IRDB interface is NULL!!!");
+#ifdef TELEMETRY_SUPPORT
+      char t2_buf[256];
+      snprintf(t2_buf, sizeof(t2_buf), "0,0x%02X,unknown,0x00,0", vendor_support_bitmask);
+      t2_event_s((char*)MARKER_IRDB_VENDOR_SET, t2_buf);
+#endif
       return;
    }
 
    ctrlm_irdb_vendor_info_t rcu_vendor_info{};
    rcu_vendor_info.rcu_support_bitmask = vendor_support_bitmask;
-   if (!irdb->set_vendor(rcu_vendor_info)) {
+   bool set_result = irdb->set_vendor(rcu_vendor_info);
+   if (!set_result) {
       XLOGD_ERROR("Failed to set IRDB vendor info for controller <%s> with bitmask <0x%X>.", 
             ieee_address_get().to_string().c_str(), vendor_support_bitmask);
    }
 
    ctrlm_irdb_vendor_info_t vendor_info{};
    if (irdb->get_vendor_info(vendor_info)) {
-      if (isSupportedIrdb(vendor_info)) {
+      bool supported = isSupportedIrdb(vendor_info);
+      if (supported) {
          XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>, which DOES support the loaded IRDB plugin vendor <%s>", 
                ieee_address_get().to_string().c_str(), vendor_support_bitmask, vendor_info.name.c_str());
       } else {
          XLOGD_ERROR("Controller <%s> IRDBs supported bitmask = <0x%X>, which does NOT support the loaded IRDB plugin vendor <%s>", 
                ieee_address_get().to_string().c_str(), vendor_support_bitmask, vendor_info.name.c_str());
       }
+#ifdef TELEMETRY_SUPPORT
+      {
+          char t2_buf[256];
+          snprintf(t2_buf, sizeof(t2_buf), "%d,0x%02X,%s,0x%02X,%d",
+                   (int)set_result, vendor_support_bitmask,
+                   vendor_info.name.c_str(), vendor_info.rcu_support_bitmask,
+                   (int)supported);
+          t2_event_s((char*)MARKER_IRDB_VENDOR_SET, t2_buf);
+      }
+#endif
    } else {
       XLOGD_WARN("Controller <%s> IRDBs supported bitmask = <0x%X>, couldn't retrieve IRDB plugin vendor info.", 
             ieee_address_get().to_string().c_str(), vendor_support_bitmask);
+#ifdef TELEMETRY_SUPPORT
+      {
+          char t2_buf[256];
+          snprintf(t2_buf, sizeof(t2_buf), "%d,0x%02X,unknown,0x00,0",
+                   (int)set_result, vendor_support_bitmask);
+          t2_event_s((char*)MARKER_IRDB_VENDOR_SET, t2_buf);
+      }
+#endif
    }
 }
 

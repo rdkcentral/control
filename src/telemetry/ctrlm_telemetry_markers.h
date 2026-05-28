@@ -153,6 +153,35 @@
 
 //
 // End RCU Markers
+
+// IRDB Markers
+//
+
+// Autolookup Markers
+// All _accum markers are aggregated by the T2 platform within each reporting window.
+
+#define MARKER_IRDB_AUTOLOOKUP_RESULT        "ctrlm.irdb.autolookup.result_accum"       // format: <irdb_name>,<ir_ctrl_byte>,<sources>,<tv_code_count>,<avr_code_count>; sources: none|edid|cec|edid+cec
+#define MARKER_IRDB_AUTOLOOKUP_NO_DATA       "ctrlm.irdb.autolookup.no_data_accum"      // value: 1 (count); fires when neither EDID nor CEC discovery data is available
+#define MARKER_IRDB_AUTOLOOKUP_EDID_NO_CODES "ctrlm.irdb.autolookup.edid.no_codes_accum" // value: 1 (count); EDID present but plugin returned empty code list
+#define MARKER_IRDB_AUTOLOOKUP_EDID_ERROR    "ctrlm.irdb.autolookup.edid.error_accum"   // value: 1 (count); pluginGetCodesByEdid returned false
+#define MARKER_IRDB_AUTOLOOKUP_CEC_NO_CODES  "ctrlm.irdb.autolookup.cec.no_codes_accum" // payload: OSD device name; plugin returned empty list for this CEC device
+#define MARKER_IRDB_AUTOLOOKUP_CEC_ERROR     "ctrlm.irdb.autolookup.cec.error_accum"    // payload: OSD device name; pluginGetCodesByCec returned false for this CEC device
+
+// Manual Lookup Markers
+#define MARKER_IRDB_MANUAL_MFR_ERROR         "ctrlm.irdb.manual.mfr.error_accum"        // format: <irdb_name>,<ir_ctrl_byte>; get_manufacturers plugin returned false
+#define MARKER_IRDB_MANUAL_MODEL_ERROR       "ctrlm.irdb.manual.model.error_accum"      // format: <irdb_name>,<ir_ctrl_byte>; get_models plugin returned false
+#define MARKER_IRDB_MANUAL_CODES_ERROR       "ctrlm.irdb.manual.codes.error_accum"      // format: <irdb_name>,<ir_ctrl_byte>; get_irdb_entry_ids plugin returned false
+
+// Programming Markers
+#define MARKER_IRDB_PROGRAM_SUCCESS          "ctrlm.irdb.program.success_accum"         // format: <irdb_name>,<ir_ctrl_byte>
+#define MARKER_IRDB_PROGRAM_FAIL             "ctrlm.irdb.program.fail_accum"            // format: <irdb_name>,<ir_ctrl_byte>,<fail_reason>
+#define MARKER_IRDB_PROGRAM_UNSUPPORTED      "ctrlm.irdb.program.unsupported_accum"     // format: <rcu_bitmask>,<stb_vendor>,<stb_bitmask>
+
+// Vendor Set Marker
+#define MARKER_IRDB_VENDOR_SET               "ctrlm.irdb.vendor_set_accum"              // format: <set_result>,<rcu_bitmask>,<stb_vendor>,<stb_bitmask>,<supported>
+
+//
+// End IRDB Markers
 //
 
 #endif

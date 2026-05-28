@@ -128,6 +128,7 @@ typedef struct {
 typedef struct {
    ctrlm_rf_pair_state_t         state;
    ctrlm_ir_state_t              ir_state;
+   char                          ir_fail_reason[CTRLM_MAX_PARAM_STR_LEN];
    bool                          is_pairing;
    int                           pairing_code;
    ctrlm_hal_ble_RcuProperty_t   property_updated;

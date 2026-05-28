@@ -1179,9 +1179,12 @@ bool ctrlm_ble_rcu_interface_t::programIrSignalWaveforms(uint64_t ieee_address,
                 success = true;
             }
 
-            ctrlm_hal_ble_RcuStatusData_t params;
+            ctrlm_hal_ble_RcuStatusData_t params = {};
             params.property_updated = CTRLM_HAL_BLE_PROPERTY_IR_STATE;
             params.ir_state = success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED;
+            if (!success) {
+                snprintf(params.ir_fail_reason, CTRLM_MAX_PARAM_STR_LEN, "%s", reply->errorMessage().c_str());
+            }
             m_rcuStatusChangedSlots.invoke(&params);
         };
 
@@ -1247,7 +1250,7 @@ bool ctrlm_ble_rcu_interface_t::programIrSignalWaveforms(uint64_t ieee_address,
         success = false;
     }
 
-    ctrlm_hal_ble_RcuStatusData_t params;
+    ctrlm_hal_ble_RcuStatusData_t params = {};
     params.property_updated = CTRLM_HAL_BLE_PROPERTY_IR_STATE;
     params.ir_state = success ? CTRLM_IR_STATE_WAITING : CTRLM_IR_STATE_FAILED;
     m_rcuStatusChangedSlots.invoke(&params);
@@ -1271,7 +1274,7 @@ bool ctrlm_ble_rcu_interface_t::eraseIrSignals(uint64_t ieee_address)
                 success = true;
             }
 
-            ctrlm_hal_ble_RcuStatusData_t params;
+            ctrlm_hal_ble_RcuStatusData_t params = {};
             params.property_updated = CTRLM_HAL_BLE_PROPERTY_IR_STATE;
             params.ir_state = success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED;
             m_rcuStatusChangedSlots.invoke(&params);
@@ -1295,7 +1298,7 @@ bool ctrlm_ble_rcu_interface_t::eraseIrSignals(uint64_t ieee_address)
         success = false;
     }
 
-    ctrlm_hal_ble_RcuStatusData_t params;
+    ctrlm_hal_ble_RcuStatusData_t params = {};
     params.property_updated = CTRLM_HAL_BLE_PROPERTY_IR_STATE;
     params.ir_state = success ? CTRLM_IR_STATE_WAITING : CTRLM_IR_STATE_FAILED;
     m_rcuStatusChangedSlots.invoke(&params);

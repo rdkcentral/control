@@ -92,7 +92,7 @@ mkdir -p "${HEADERS_DIR}/rdk/iarmbus"
 mkdir -p "${HEADERS_DIR}/rdk/ds"
 mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
 
-# CI workaround: symlink to match expected include path for audio_processing.h
+# Symlink to match expected include path for audio_processing.h
 mkdir -p /usr/include/webrtc/modules/audio_processing/include/
 ln -sf /usr/include/webrtc_audio_processing/webrtc/modules/audio_processing/include/audio_processing.h /usr/include/webrtc/modules/audio_processing/include/audio_processing.h
 

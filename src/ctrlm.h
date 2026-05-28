@@ -26,6 +26,7 @@
 #include <string>
 #include <memory>
 #include <string.h>
+#include <map>
 #include "ctrlm_hal.h"
 #include "ctrlm_hal_rf4ce.h"
 #include "ctrlm_hal_ble.h"

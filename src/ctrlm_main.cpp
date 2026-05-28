@@ -879,7 +879,7 @@ void ctrlm_main_ir_last_keypress_get(ctrlm_ir_last_keypress_t *last_key_info) {
 
 static void ctrlm_main_network_handler_execute_for_all(ctrlm_msg_handler_network_t handler, void *data, int size) {
    for (auto const &network_it : g_ctrlm.networks) {
-      if (network_it.second) {
+      if (network_it.second && network_it.second->is_ready()) {
          (network_it.second->*handler)(data, size);
       }
    }

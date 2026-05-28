@@ -63,6 +63,10 @@ private:
     static bool                                          thunder_device_update_enabled_;
 
     void configure(void);
+    json_t *build_rcu_status_json(const std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> &status_map,
+                                  ctrlm_ir_state_t      ir_prog_state,
+                                  ctrlm_rf_pair_state_t rf_pair_state,
+                                  ctrlm_network_type_t  type) const;
 
 public:
     ~ctrlm_rcp_ipc_iarm_thunder_t();

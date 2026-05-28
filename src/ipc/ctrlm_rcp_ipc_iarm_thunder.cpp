@@ -104,6 +104,42 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::is_thunder_device_update_enabled() const
     return (thunder_device_update_enabled_);
 }
 
+json_t *ctrlm_rcp_ipc_iarm_thunder_t::build_rcu_status_json(
+    const std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> &status_map,
+    ctrlm_ir_state_t      ir_prog_state,
+    ctrlm_rf_pair_state_t rf_pair_state,
+    ctrlm_network_type_t  type) const
+{
+    json_t *status             = json_object();
+    json_t *net_type_supported = json_array();
+    json_t *remote_array       = json_array();
+    std::vector<ctrlm_rcp_ipc_controller_status_t> remotes;
+    int err = 0;
+
+    for (auto const &it : ctrlm_network_types_get()) {
+        err |= json_array_append_new(net_type_supported, json_integer(it));
+    }
+    for (auto &it : status_map) {
+        it.second.get_controller_status_list(remotes);
+    }
+    for (const auto &remote : remotes) {
+        err |= json_array_append_new(remote_array, remote.to_json());
+    }
+
+    err |= json_object_set_new_nocheck(status, REMOTE_DATA,         remote_array);
+    err |= json_object_set_new_nocheck(status, NET_TYPES_SUPPORTED, net_type_supported);
+    err |= json_object_set_new_nocheck(status, NET_TYPE,            json_integer(type));
+    err |= json_object_set_new_nocheck(status, IR_PROG_STATE,       json_string(ctrlm_ir_state_str(ir_prog_state)));
+    err |= json_object_set_new_nocheck(status, PAIRING_STATE,       json_string(ctrlm_rf_pair_state_str(rf_pair_state)));
+
+    if (err) {
+        XLOGD_ERROR("JSON object set error");
+        json_decref(status);
+        return nullptr;
+    }
+    return status;
+}
+
 bool ctrlm_rcp_ipc_iarm_thunder_t::on_status(const ctrlm_rcp_ipc_net_status_t &net_status) const
 {
     if (!is_running(atomic_running_)) {
@@ -116,40 +152,15 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_status(const ctrlm_rcp_ipc_net_status_t &n
         return(false);
     }
 
-    json_t *ret                = json_object();
-    json_t *status             = json_object();
-    json_t *net_type_supported = json_array();
-    json_t *remote_array       = json_array();
-    std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> status_map = ctrlm_main_network_rcu_status_map_get();
-    std::vector<ctrlm_rcp_ipc_controller_status_t> remotes;
+    const std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> status_map = ctrlm_main_network_rcu_status_map_get();
 
-    ctrlm_network_type_t  type = CTRLM_NETWORK_TYPE_INVALID;
-    ctrlm_ir_state_t      ir_prog_state = CTRLM_IR_STATE_UNKNOWN;
-    ctrlm_rf_pair_state_t rf_pair_state = CTRLM_RF_PAIR_STATE_UNKNOWN;
-    int err = 0;
-
-    for (auto const &it : ctrlm_network_types_get()) {
-        err |= json_array_append_new(net_type_supported, json_integer(it));
+    json_t *status = build_rcu_status_json(status_map, net_status.get_ir_prog_state(), net_status.get_rf_pair_state(), net_status.get_type());
+    if (status == nullptr) {
+        return(false);
     }
-    for (auto &it : status_map) {
-        it.second.get_controller_status_list(remotes);
-    }
-    for (const auto &remote : remotes) {
-        err |= json_array_append_new(remote_array, remote.to_json());
-    }
-    
-    ir_prog_state = net_status.get_ir_prog_state();
-    rf_pair_state = net_status.get_rf_pair_state();
-    type          = net_status.get_type();
 
-    err |= json_object_set_new_nocheck(status, REMOTE_DATA,         remote_array);
-    err |= json_object_set_new_nocheck(status, NET_TYPES_SUPPORTED, net_type_supported);
-    err |= json_object_set_new_nocheck(status, NET_TYPE,            json_integer(type));
-    err |= json_object_set_new_nocheck(status, IR_PROG_STATE,       json_string(ctrlm_ir_state_str(ir_prog_state)));
-    err |= json_object_set_new_nocheck(status, PAIRING_STATE,       json_string(ctrlm_rf_pair_state_str(rf_pair_state)));
-
-    err |= json_object_set_new_nocheck(ret, STATUS, status);
-
+    json_t *ret = json_object();
+    int err = json_object_set_new_nocheck(ret, STATUS, status);
     if (err) {
         XLOGD_ERROR("JSON object set error");
         json_decref(ret);
@@ -157,6 +168,84 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_status(const ctrlm_rcp_ipc_net_status_t &n
     }
 
     return broadcast_iarm_event<ctrlm_main_iarm_event_json_t>(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_RCU_IARM_EVENT_RCU_STATUS, ret);
+}
+
+
+IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_net_status(void *arg)
+{
+    XLOGD_INFO("");
+
+    if (!is_running(atomic_running_)) {
+        XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state");
+        return(IARM_RESULT_INVALID_STATE);
+    }
+
+    ctrlm_main_iarm_call_json_t *call_data = static_cast<ctrlm_main_iarm_call_json_t *>(arg);
+
+    if (!call_data || call_data->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
+        XLOGD_ERROR("NULL parameter");
+        return(IARM_RESULT_INVALID_PARAM);
+    }
+
+    json_t *payload = json_loads(call_data->payload, JSON_DECODE_ANY, NULL);
+    json_config config(payload);
+
+    if (!payload || !config.current_object_get()) {
+        XLOGD_ERROR("Bad payload from call data");
+        return(IARM_RESULT_INVALID_PARAM);
+    }
+
+
+    std::shared_ptr<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>> params = std::make_shared<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>>();
+    params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
+
+    sync_send_netw_handler_to_main_queue_new<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>,
+                                             ctrlm_main_queue_msg_get_rcu_status_t>
+                                             (params,
+                                             (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_get_rcu_status);
+
+
+    std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> status_map = params->get_reply();
+    
+    
+    ctrlm_network_type_t  type = CTRLM_NETWORK_TYPE_INVALID;
+    ctrlm_ir_state_t      ir_prog_state = CTRLM_IR_STATE_UNKNOWN;
+    ctrlm_rf_pair_state_t rf_pair_state = CTRLM_RF_PAIR_STATE_UNKNOWN;
+
+    // For now default to RF4CE network reporting if available
+    for (auto &it : status_map) {
+        ir_prog_state = it.second.get_ir_prog_state();
+        rf_pair_state = it.second.get_rf_pair_state();
+        type          = it.second.get_type();
+
+        if (type == CTRLM_NETWORK_TYPE_RF4CE) {
+            break;
+        }
+    }
+
+    json_t *status = build_rcu_status_json(status_map, ir_prog_state, rf_pair_state, type);
+    if (status == nullptr) {
+        return(IARM_RESULT_INVALID_STATE);
+    }
+
+    json_t *ret = json_object();
+
+    int err = 0;
+    err |= json_object_set_new_nocheck(ret, STATUS, status);
+    err |= json_object_set_new_nocheck(ret, SUCCESS, json_boolean(params->get_result()));
+
+    if (err) {
+        XLOGD_ERROR("JSON object set error");
+        json_decref(ret);
+        return(IARM_RESULT_INVALID_STATE);
+    }
+
+    if (!ctrlm_json_to_iarm_call_data_result(ret, call_data)) {
+        json_decref(ret);
+        return(IARM_RESULT_INVALID_STATE);
+    }
+
+    return(IARM_RESULT_SUCCESS);
 }
 
 bool ctrlm_rcp_ipc_iarm_thunder_t::on_validation_status(const ctrlm_rcp_ipc_validation_status_t &validation_status) const
@@ -403,94 +492,6 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::stop_pairing(void *arg)
     return(IARM_RESULT_SUCCESS);
 }
 
-IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_net_status(void *arg)
-{
-    XLOGD_INFO("");
-
-    if (!is_running(atomic_running_)) {
-        XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state");
-        return(IARM_RESULT_INVALID_STATE);
-    }
-
-    ctrlm_main_iarm_call_json_t *call_data = static_cast<ctrlm_main_iarm_call_json_t *>(arg);
-
-    if (!call_data || call_data->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-        XLOGD_ERROR("NULL parameter");
-        return(IARM_RESULT_INVALID_PARAM);
-    }
-
-    json_t *payload = json_loads(call_data->payload, JSON_DECODE_ANY, NULL);
-    json_config config(payload);
-
-    if (!payload || !config.current_object_get()) {
-        XLOGD_ERROR("Bad payload from call data");
-        return(IARM_RESULT_INVALID_PARAM);
-    }
-
-
-    std::shared_ptr<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>> params = std::make_shared<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>>();
-    params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
-
-    sync_send_netw_handler_to_main_queue_new<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>,
-                                             ctrlm_main_queue_msg_get_rcu_status_t>
-                                             (params,
-                                             (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_get_rcu_status);
-
-    json_t *ret                = json_object();
-    json_t *status             = json_object();
-    json_t *net_type_supported = json_array();
-    json_t *remote_array       = json_array();
-
-    std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> status_map = params->get_reply();
-    std::vector<ctrlm_rcp_ipc_controller_status_t> remotes;
-
-    ctrlm_network_type_t  type = CTRLM_NETWORK_TYPE_INVALID;
-    ctrlm_ir_state_t      ir_prog_state = CTRLM_IR_STATE_UNKNOWN;
-    ctrlm_rf_pair_state_t rf_pair_state = CTRLM_RF_PAIR_STATE_UNKNOWN;
-    int err = 0;
-
-    for (auto const &it : ctrlm_network_types_get()) {
-        err |= json_array_append_new(net_type_supported, json_integer(it));
-    }
-    for (auto &it : status_map) {
-        it.second.get_controller_status_list(remotes);
-    }
-    for (const auto &remote : remotes) {
-        err |= json_array_append_new(remote_array, remote.to_json());
-    }
-    // For now default to RF4CE network reporting if available
-    for (auto &it : status_map) {
-        ir_prog_state = it.second.get_ir_prog_state();
-        rf_pair_state = it.second.get_rf_pair_state();
-        type          = it.second.get_type();
-
-        if (type == CTRLM_NETWORK_TYPE_RF4CE) {
-            break;
-        }
-    }
-
-    err |= json_object_set_new_nocheck(status, REMOTE_DATA,         remote_array);
-    err |= json_object_set_new_nocheck(status, NET_TYPES_SUPPORTED, net_type_supported);
-    err |= json_object_set_new_nocheck(status, NET_TYPE,            json_integer(type));
-    err |= json_object_set_new_nocheck(status, IR_PROG_STATE,       json_string(ctrlm_ir_state_str(ir_prog_state)));
-    err |= json_object_set_new_nocheck(status, PAIRING_STATE,       json_string(ctrlm_rf_pair_state_str(rf_pair_state)));
-
-    err |= json_object_set_new_nocheck(ret, STATUS, status);
-    err |= json_object_set_new_nocheck(ret, SUCCESS, json_boolean(params->get_result()));
-
-    if (err) {
-        XLOGD_ERROR("JSON object set error");
-        json_decref(ret);
-        return(IARM_RESULT_INVALID_STATE);
-    }
-
-    if (!ctrlm_json_to_iarm_call_data_result(ret, call_data)) {
-        json_decref(ret);
-        return(IARM_RESULT_INVALID_STATE);
-    }
-
-    return(IARM_RESULT_SUCCESS);
-}
 
 IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_last_keypress(void *arg)
 {

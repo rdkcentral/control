@@ -28,9 +28,6 @@ git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 # #############################
 # 1. Install Dependencies and packages
 echo "======================================================================================"
-# CI workaround: symlink to match expected include path for audio_processing.h
-mkdir -p /usr/include/webrtc/modules/audio_processing/include/
-ln -sf /usr/include/webrtc_audio_processing/webrtc/modules/audio_processing/include/audio_processing.h /usr/include/webrtc/modules/audio_processing/include/audio_processing.h
 
 apt update
 apt install -y \
@@ -94,6 +91,10 @@ mkdir -p "${HEADERS_DIR}"
 mkdir -p "${HEADERS_DIR}/rdk/iarmbus"
 mkdir -p "${HEADERS_DIR}/rdk/ds"
 mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
+
+# CI workaround: symlink to match expected include path for audio_processing.h
+mkdir -p /usr/include/webrtc/modules/audio_processing/include/
+ln -sf /usr/include/webrtc_audio_processing/webrtc/modules/audio_processing/include/audio_processing.h /usr/include/webrtc/modules/audio_processing/include/audio_processing.h
 
 # Use the Yocto safec_lib.h sysroot header for CI builds without libsafec.
 # Add include guards because the upstream header does not provide them.

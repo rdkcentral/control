@@ -190,8 +190,12 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_net_status(void *arg)
     json_t *payload = json_loads(call_data->payload, JSON_DECODE_ANY, NULL);
     json_config config(payload);
 
-    if (!payload || !config.current_object_get()) {
+    if (!payload) {
+        XLOGD_ERROR("payload NULL");
+        return(IARM_RESULT_INVALID_PARAM);
+    } else if (!config.current_object_get()) {
         XLOGD_ERROR("Bad payload from call data");
+        json_decref(payload);
         return(IARM_RESULT_INVALID_PARAM);
     }
 

@@ -35,6 +35,7 @@
 #include "ctrlm_ipc_rcu.h"
 #include "ctrlm_ipc_voice.h"
 #include "ctrlm_ipc_device_update.h"
+#include "ctrlm_rcp_ipc_event.h"
 #include "ctrlm_irdb_interface.h"
 #include "libIBus.h"
 #include "safec_lib.h"

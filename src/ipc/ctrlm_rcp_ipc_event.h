@@ -122,7 +122,7 @@ public:
     void                  populate_status(const ctrlm_obj_network_t &network);
     ctrlm_ir_state_t      get_ir_prog_state(void) const;
     ctrlm_rf_pair_state_t get_rf_pair_state(void) const;
-    void                  get_controller_status_list(std::vector<ctrlm_rcp_ipc_controller_status_t> &list);
+    void                  get_controller_status_list(std::vector<ctrlm_rcp_ipc_controller_status_t> &list) const;
 
 private:
     uint8_t                  api_revision_   = 0;

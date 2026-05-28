@@ -27,6 +27,10 @@ git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
 # #############################
 # 1. Install Dependencies and packages
+echo "======================================================================================"
+# CI workaround: symlink to match expected include path for audio_processing.h
+mkdir -p /usr/include/webrtc/modules/audio_processing/include/
+ln -sf /usr/include/webrtc_audio_processing/webrtc/modules/audio_processing/include/audio_processing.h /usr/include/webrtc/modules/audio_processing/include/audio_processing.h
 
 apt update
 apt install -y \
@@ -45,7 +49,9 @@ apt install -y \
     libdrm-dev \
     libbsd-dev \
     gperf \
-    python3-pip
+    python3-pip \
+    libwebrtc-audio-processing-dev
+
 python3 -m pip install jsonref
 
 ###########################################

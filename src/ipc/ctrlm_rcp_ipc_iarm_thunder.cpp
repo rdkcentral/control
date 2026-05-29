@@ -845,7 +845,7 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_fw_update(void *arg)
         XLOGD_INFO("%s parameter was omitted", FILETYPE);
     }
 
-    uint8_t percent_increment = 0;
+    int percent_increment = 0;
     if (!config.config_value_get(PERCENT_INCREMENT, percent_increment)) {
         XLOGD_INFO("%s parameter was omitted", PERCENT_INCREMENT);
     } else if (percent_increment < 0 || percent_increment > 100) {
@@ -860,7 +860,7 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_fw_update(void *arg)
 
     params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
     params->ieee_address      = ieee_address;
-    params->percent_increment = percent_increment;
+    params->percent_increment = (uint8_t)percent_increment;
     params->filetype          = filetype;
     params->filename          = filename;
     params->upgrade_sessions  = upgrade_sessions;

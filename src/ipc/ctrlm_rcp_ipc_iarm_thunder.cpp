@@ -238,13 +238,8 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_net_status(void *arg)
     err |= json_object_set_new_nocheck(ret, STATUS, status);
     err |= json_object_set_new_nocheck(ret, SUCCESS, json_boolean(params->get_result()));
 
-    if (err) {
+    if (err || !ctrlm_json_to_iarm_call_data_result(ret, call_data)) {
         XLOGD_ERROR("JSON object set error");
-        json_decref(ret);
-        return(IARM_RESULT_INVALID_STATE);
-    }
-
-    if (!ctrlm_json_to_iarm_call_data_result(ret, call_data)) {
         json_decref(ret);
         return(IARM_RESULT_INVALID_STATE);
     }

@@ -23,6 +23,7 @@
 #include <semaphore.h>
 #include <mutex>
 #include <memory>
+#include <map>
 #include "ctrlm_ipc_iarm.h"
 #include "ctrlm_ipc.h"
 #include "ctrlm_utils.h"

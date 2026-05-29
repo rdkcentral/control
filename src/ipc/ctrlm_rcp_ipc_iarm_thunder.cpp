@@ -187,19 +187,6 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_net_status(void *arg)
         return(IARM_RESULT_INVALID_PARAM);
     }
 
-    json_t *payload = json_loads(call_data->payload, JSON_DECODE_ANY, NULL);
-    json_config config(payload);
-
-    if (!payload) {
-        XLOGD_ERROR("payload NULL");
-        return(IARM_RESULT_INVALID_PARAM);
-    } else if (!config.current_object_get()) {
-        XLOGD_ERROR("Bad payload from call data");
-        json_decref(payload);
-        return(IARM_RESULT_INVALID_PARAM);
-    }
-
-
     std::shared_ptr<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>> params = std::make_shared<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>>();
     params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
 
@@ -341,6 +328,7 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_pairing(void *arg)
 
     if (!payload || !config.current_object_get()) {
         XLOGD_ERROR("Bad payload from call data");
+        json_decref(payload);
         return(IARM_RESULT_INVALID_PARAM);
     }
 
@@ -368,17 +356,20 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_pairing(void *arg)
         json_array_foreach(mac_addr_array, index, value) {
             if (!json_is_string(value)) {
                 XLOGD_ERROR("An element of the %s array is not a string", MAC_ADDRESS_LIST);
+                json_decref(payload);
                 return(IARM_RESULT_INVALID_PARAM);
             }
 
             uint64_t mac_addr = ctrlm_convert_mac_string_to_long(json_string_value(value));
             if (mac_addr == 0) {
                 XLOGD_ERROR("An invalid mac address was provided <%s>", json_string_value(value));
+                json_decref(payload);
                 return(IARM_RESULT_INVALID_PARAM);
             }
             mac_addr_list.push_back(mac_addr);
         }
     }
+    json_decref(payload);
 
     if(!scanEnable && mac_addr_list.size() > 0) {
         XLOGD_WARN("scanEnable is false but macAddressList is not empty.  Ignoring macAddressList.");
@@ -443,6 +434,7 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::stop_pairing(void *arg)
 
     if (!payload || !config.current_object_get()) {
         XLOGD_ERROR("Bad payload from call data");
+        json_decref(payload);
         return(IARM_RESULT_INVALID_PARAM);
     }
 
@@ -455,6 +447,8 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::stop_pairing(void *arg)
     if (!config.config_value_get(SCAN_DISABLE, scanDisable)) {
         XLOGD_INFO("Missing %s parameter - defaulting to %s", SCAN_DISABLE, scanDisable ? "true" : "false");
     }
+    json_decref(payload);
+
 
     bool result = true;
     if(!screenBindDisable && !scanDisable) {
@@ -505,14 +499,6 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_last_keypress(void *arg)
 
     if (!call_data || call_data->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
         XLOGD_ERROR("NULL parameter");
-        return(IARM_RESULT_INVALID_PARAM);
-    }
-
-    json_t *payload = json_loads(call_data->payload, JSON_DECODE_ANY, NULL);
-    json_config config(payload);
-
-    if (!payload || !config.current_object_get()) {
-        XLOGD_ERROR("Bad payload from call data");
         return(IARM_RESULT_INVALID_PARAM);
     }
 
@@ -584,14 +570,17 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::find_my_remote(void *arg)
 
     if (!payload || !config.current_object_get()) {
         XLOGD_ERROR("Bad payload from call data");
+        json_decref(payload);
         return(IARM_RESULT_INVALID_PARAM);
     }
 
     std::string level;
     if(!config.config_value_get(LEVEL, level)) {
         XLOGD_ERROR("Missing %s parameter", LEVEL);
+        json_decref(payload);
         return(IARM_RESULT_INVALID_PARAM);
     }
+    json_decref(payload);
 
     std::shared_ptr<ctrlm_iarm_call_FindMyRemote_params_t> params = std::make_shared<ctrlm_iarm_call_FindMyRemote_params_t>();
     params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
@@ -680,6 +669,7 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::write_rcu_wakeup_config(void *arg)
 
     if (!payload || !config.current_object_get()) {
          XLOGD_ERROR("Bad payload from call data");
+         json_decref(payload);
          return(IARM_RESULT_INVALID_PARAM);
     }
 
@@ -687,6 +677,7 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::write_rcu_wakeup_config(void *arg)
     std::string wakeup_config;
     if(!config.config_value_get(WAKEUP_CONFIG, wakeup_config)) {
          XLOGD_ERROR("Missing %s parameter", WAKEUP_CONFIG);
+         json_decref(payload);
          return(IARM_RESULT_INVALID_PARAM);
     }
 
@@ -694,9 +685,11 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::write_rcu_wakeup_config(void *arg)
     if (ctrlm_utils_str_to_wakeup_config(wakeup_config) == CTRLM_RCU_WAKEUP_CONFIG_CUSTOM) {
         if(!config.config_value_get(CUSTOM_KEYS, custom_keys)) {
             XLOGD_ERROR("Missing %s parameter", CUSTOM_KEYS);
+            json_decref(payload);
             return(IARM_RESULT_INVALID_PARAM);
         }
     }
+    json_decref(payload);
 
     ctrlm_iarm_call_WriteRcuWakeupConfig_params_t params = {};
     params.network_id     = CTRLM_MAIN_NETWORK_ID_ALL;
@@ -746,6 +739,7 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::unpair(void *arg)
 
     if (!payload || !config.current_object_get()) {
         XLOGD_ERROR("Bad payload from call data");
+        json_decref(payload);
         return(IARM_RESULT_INVALID_PARAM);
     }
 
@@ -758,17 +752,20 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::unpair(void *arg)
         json_array_foreach(mac_addr_array, index, value) {
             if (!json_is_string(value)) {
                 XLOGD_ERROR("An element of the %s array is not a string", MAC_ADDRESS_LIST);
+                json_decref(payload);
                 return(IARM_RESULT_INVALID_PARAM);
             }
 
             uint64_t mac_addr = ctrlm_convert_mac_string_to_long(json_string_value(value));
             if (mac_addr == 0) {
                 XLOGD_ERROR("An invalid mac address was provided <%s>", json_string_value(value));
+                json_decref(payload);
                 return(IARM_RESULT_INVALID_PARAM);
             }
             mac_addr_list.push_back(mac_addr);
         }
     }
+    json_decref(payload);
 
     std::shared_ptr<ctrlm_iarm_call_Unpair_params_t> params = std::make_shared<ctrlm_iarm_call_Unpair_params_t>();
     params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
@@ -824,6 +821,7 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_fw_update(void *arg)
 
     if (!payload || !config.current_object_get()) {
         XLOGD_ERROR("Bad payload from call data");
+        json_decref(payload);
         return(IARM_RESULT_INVALID_PARAM);
     }
 
@@ -838,6 +836,7 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_fw_update(void *arg)
     std::string filename;
     if (!config.config_value_get(FILENAME, filename)) {
         XLOGD_ERROR("Missing %s parameter", FILENAME);
+        json_decref(payload);
         return(IARM_RESULT_INVALID_PARAM);
     }
 
@@ -851,8 +850,10 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::start_fw_update(void *arg)
         XLOGD_INFO("%s parameter was omitted", PERCENT_INCREMENT);
     } else if (percent_increment < 0 || percent_increment > 100) {
         XLOGD_ERROR("%s parameter out of bounds", PERCENT_INCREMENT);
+        json_decref(payload);
         return(IARM_RESULT_INVALID_PARAM);
     }
+    json_decref(payload);
 
     std::shared_ptr<ctrlm_iarm_call_StartUpgrade_params_t> params = std::make_shared<ctrlm_iarm_call_StartUpgrade_params_t>();
     std::shared_ptr<std::vector<std::string>>              upgrade_sessions = std::make_shared<std::vector<std::string>>();
@@ -920,14 +921,17 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::cancel_fw_update(void *arg)
 
     if (!payload || !config.current_object_get()) {
         XLOGD_ERROR("Bad payload from call data");
+        json_decref(payload);
         return(IARM_RESULT_INVALID_PARAM);
     }
 
     std::string session_id;
     if (!config.config_value_get(SESSION_ID, session_id) || !ctrlm_utils_is_valid_uuid(session_id)) {
         XLOGD_ERROR("Missing or bad %s parameter", SESSION_ID);
+        json_decref(payload);
         return(IARM_RESULT_INVALID_PARAM);
     }
+    json_decref(payload);
 
     std::shared_ptr<ctrlm_iarm_call_CancelUpgrade_params_t> params = std::make_shared<ctrlm_iarm_call_CancelUpgrade_params_t>();
     params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
@@ -983,14 +987,17 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::status_fw_update(void *arg)
 
     if (!payload || !config.current_object_get()) {
         XLOGD_ERROR("Bad payload from call data");
+        json_decref(payload);
         return(IARM_RESULT_INVALID_PARAM);
     }
 
     std::string session_id;
     if (!config.config_value_get(SESSION_ID, session_id) || !ctrlm_utils_is_valid_uuid(session_id)) {
         XLOGD_ERROR("Missing or bad %s parameter", SESSION_ID);
+        json_decref(payload);
         return(IARM_RESULT_INVALID_PARAM);
     }
+    json_decref(payload);
 
     std::shared_ptr<ctrlm_rcp_ipc_upgrade_status_t> params = std::make_shared<ctrlm_rcp_ipc_upgrade_status_t>();
     params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);

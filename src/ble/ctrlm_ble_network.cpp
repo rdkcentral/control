@@ -56,6 +56,11 @@ using namespace std;
 #define CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT    (MINUTE_IN_MILLISECONDS * 5)    // 5 minutes
 #define CTRLM_BLE_UPGRADE_PAUSE_TIMEOUT       (MINUTE_IN_MILLISECONDS * 2)    // 2 minutes
 
+#define CTRLM_BLE_PRINT_STATUS_TIMEOUT        (1000 * 6)    // 6 seconds
+#define CTRLM_BLE_EVENT_STATUS_TIMEOUT        (1000 * 6)    // 6 seconds
+#define CTRLM_BLE_PRINT_STATUS_DEFER_MAX      (20)
+#define CTRLM_BLE_EVENT_STATUS_DEFER_MAX      (20)
+
 #define CTRLM_VENDOR_BLE_NETWORK_DISABLE_FILE  "/etc/vendor/input/ble_network_disable"
 #define CTRLM_VENDOR_BLE_REMOTE_WHITELIST_FILE "/etc/vendor/input/ble_remote_whitelist.json"
 #define CTRLM_VENDOR_BLE_NETWORK_OPTIONS_FILE  "/etc/vendor/input/ble_network_options.json"
@@ -64,6 +69,8 @@ using namespace std;
 typedef struct {
    guint upgrade_controllers_timer_tag;
    guint upgrade_pause_timer_tag;
+   guint print_status_timer_tag;
+   guint event_status_timer_tag;
 } ctrlm_ble_network_t;
 
 static ctrlm_ble_network_t g_ctrlm_ble_network;
@@ -77,8 +84,11 @@ static const vector<ctrlm_key_code_t> ctrlm_ble_ir_key_names {
 };
 
 
-static gboolean ctrlm_ble_upgrade_controllers(gpointer user_data);
-static gboolean ctrlm_ble_upgrade_resume(gpointer user_data);
+static gboolean ctrlm_ble_print_status_timer_cb(gpointer user_data);
+static gboolean ctrlm_ble_event_status_timer_cb(gpointer user_data);
+
+static gboolean ctrlm_ble_upgrade_controllers_timer_cb(gpointer user_data);
+static gboolean ctrlm_ble_upgrade_resume_timer_cb(gpointer user_data);
 static bool ctrlm_ble_parse_upgrade_image_info(const std::string &filename, ctrlm_ble_upgrade_image_info_t &image_info);
 
 ctrlm_ble_unpair_metrics_t::ctrlm_ble_unpair_metrics_t()
@@ -288,6 +298,8 @@ ctrlm_obj_network_ble_t::ctrlm_obj_network_ble_t(ctrlm_network_type_t type, ctrl
    init_result_                 = CTRLM_HAL_RESULT_ERROR;
    ready_                       = false;
    voice_disabled_              = false;
+   print_status_defer_count_    = 0;
+   event_status_defer_count_    = 0;
 
    g_ctrlm_ble_network.upgrade_controllers_timer_tag = 0;
    g_ctrlm_ble_network.upgrade_pause_timer_tag = 0;
@@ -325,6 +337,8 @@ ctrlm_obj_network_ble_t::~ctrlm_obj_network_ble_t() {
 
    ctrlm_timeout_destroy(&g_ctrlm_ble_network.upgrade_controllers_timer_tag);
    ctrlm_timeout_destroy(&g_ctrlm_ble_network.upgrade_pause_timer_tag);
+   ctrlm_timeout_destroy(&g_ctrlm_ble_network.event_status_timer_tag);
+   ctrlm_timeout_destroy(&g_ctrlm_ble_network.print_status_timer_tag);
 
    ctrlm_ble_iarm_terminate();
 
@@ -414,20 +428,18 @@ void ctrlm_obj_network_ble_t::start(GMainLoop* main_loop)
       }
    }
 
-   // Print out pairing table
-   XLOGD_INFO("====================================================================");
-   XLOGD_INFO("                        %u Bound Controllers", controllers_.size());
-   XLOGD_INFO("====================================================================");
+   XLOGD_INFO("%u bound BLE controllers", controllers_.size());
    for(auto &controller : controllers_) {
       if (controller.second->is_stale(this->stale_remote_time_threshold_get())) {
          XLOGD_TELEMETRY("Stale remote suspected: <%s>", controller.second->ieee_address_get().to_string().c_str());
       }
-      controller.second->print_status();
    }
+
+   schedule_status_print();
 
    // Read IR RF Database from database
    ir_rf_database_.load_db();
-   XLOGD_INFO("\n%s", this->ir_rf_database_.to_string(true).c_str());
+   XLOGD_INFO("\n%s", this->ir_rf_database_.to_string(false).c_str());
 }
 
 
@@ -782,7 +794,8 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
             
             // First add IR Codes to the IR RF Database (this contains all of the logic for maintaining TV vs AVR codes)
             ir_rf_database_.add_irdb_codes(dqm->ir_codes);
-            XLOGD_INFO("\n%s", this->ir_rf_database_.to_string(true).c_str());
+            XLOGD_INFO("\n%s", this->ir_rf_database_.to_string(false).c_str());
+            XLOGD_DEBUG("\n%s", this->ir_rf_database_.to_string(true).c_str());
             // Now get the IR codes for the BLE IR slots
             for(auto key : ctrlm_ble_ir_key_names) {
                if(ir_rf_database_.has_entry(key)) {
@@ -846,7 +859,7 @@ void ctrlm_obj_network_ble_t::req_process_ir_clear_codes(void *data, int size) {
             } else {
                success = true;
                ir_rf_database_.clear_ir_codes();
-               XLOGD_INFO("\n%s", ir_rf_database_.to_string(true).c_str());
+               XLOGD_INFO("\n%s", ir_rf_database_.to_string(false).c_str());
                controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, "0");
                controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, "0");
             }
@@ -1272,7 +1285,7 @@ void ctrlm_obj_network_ble_t::clearUpgradeImages() {
    upgrade_images_.clear();
 }
 
-static gboolean ctrlm_ble_upgrade_controllers(gpointer user_data) {
+static gboolean ctrlm_ble_upgrade_controllers_timer_cb(gpointer user_data) {
    ctrlm_network_id_t* net_id =  (ctrlm_network_id_t*) user_data;
    if (net_id != NULL) {
       // Allocate a message and send it to Control Manager's queue
@@ -1287,7 +1300,7 @@ static gboolean ctrlm_ble_upgrade_controllers(gpointer user_data) {
    return false;
 }
 
-static gboolean ctrlm_ble_upgrade_resume(gpointer user_data) {
+static gboolean ctrlm_ble_upgrade_resume_timer_cb(gpointer user_data) {
    ctrlm_network_id_t* net_id =  (ctrlm_network_id_t*) user_data;
    if (net_id != NULL) {
       // Allocate a message and send it to Control Manager's queue
@@ -1371,7 +1384,7 @@ void ctrlm_obj_network_ble_t::req_process_upgrade_controllers(void *data, int si
                      // simply will not take the reboot and the software revision will remain unchanged.
                      XLOGD_DEBUG("Upgrading one remote at a time, setting timer for %d minutes to check if other remotes need upgrades.", CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT / MINUTE_IN_MILLISECONDS);
                      ctrlm_timeout_destroy(&g_ctrlm_ble_network.upgrade_controllers_timer_tag);
-                     g_ctrlm_ble_network.upgrade_controllers_timer_tag = ctrlm_timeout_create(CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT, ctrlm_ble_upgrade_controllers, &id_);
+                     g_ctrlm_ble_network.upgrade_controllers_timer_tag = ctrlm_timeout_create(CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT, ctrlm_ble_upgrade_controllers_timer_cb, &id_);
                      return;
                   } else {
                      XLOGD_INFO("Software upgrade not required for controller %s.", controller.second->ieee_address_get().to_string().c_str());
@@ -1403,7 +1416,7 @@ void ctrlm_obj_network_ble_t::req_process_upgrade_controllers(void *data, int si
    } else {
       XLOGD_INFO("Upgrade currently in progress, setting timer for %d minutes to check if other remotes need upgrades.", CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT / MINUTE_IN_MILLISECONDS);
       ctrlm_timeout_destroy(&g_ctrlm_ble_network.upgrade_controllers_timer_tag);
-      g_ctrlm_ble_network.upgrade_controllers_timer_tag = ctrlm_timeout_create(CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT, ctrlm_ble_upgrade_controllers, &id_);
+      g_ctrlm_ble_network.upgrade_controllers_timer_tag = ctrlm_timeout_create(CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT, ctrlm_ble_upgrade_controllers_timer_cb, &id_);
    }
 }
 
@@ -1667,10 +1680,7 @@ void ctrlm_obj_network_ble_t::ind_rcu_status(ctrlm_hal_ble_RcuStatusData_t *para
 }
    
 void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
-   // XLOGD_DEBUG("Enter...");
    THREAD_ID_VALIDATE();
-   bool report_status = true;
-   bool print_status = true;
 
    ctrlm_hal_ble_RcuStatusData_t *dqm = (ctrlm_hal_ble_RcuStatusData_t *)data;
    g_assert(dqm);
@@ -1687,19 +1697,25 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
       // These properties are associated with the network, not a specific RCU
       case CTRLM_HAL_BLE_PROPERTY_IS_PAIRING:
          // don't send up status event for this since CTRLM_HAL_BLE_PROPERTY_STATE handles all pairing states.
-         report_status = false;
-         print_status = false;
          break;
       case CTRLM_HAL_BLE_PROPERTY_PAIRING_CODE:
-         report_status = false;  // don't send up status event for this.
          break;
       case CTRLM_HAL_BLE_PROPERTY_STATE:
          XLOGD_TELEMETRY("BLE remote RF pairing state changed to <%s>", ctrlm_rf_pair_state_str(dqm->state));
          state_ = dqm->state;
+         if (state_ == CTRLM_RF_PAIR_STATE_COMPLETE || state_ == CTRLM_RF_PAIR_STATE_IDLE) {
+            // allow some time for all remote data to be received before sending the event to avoid multiple events
+            schedule_status_event();
+         } else {
+            // for any other states, send event immediately.
+            schedule_status_event(true);
+         }
          break;
       case CTRLM_HAL_BLE_PROPERTY_IR_STATE:
          XLOGD_TELEMETRY("BLE remote IR programming state changed to <%s>", ctrlm_ir_state_str(dqm->ir_state));
          ir_state_ = dqm->ir_state;
+         // send event immediately.
+         schedule_status_event(true);
          break;
       default:
       {
@@ -1708,35 +1724,58 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
          if (false == getControllerId(dqm->rcu_data.ieee_address, &controller_id)) {
             XLOGD_ERROR("Controller <%s> NOT found in the network!!", 
                   ctrlm_convert_mac_long_to_string(dqm->rcu_data.ieee_address).c_str());
-            report_status = false;
-            print_status = false;
          } else {
             auto controller = controllers_[controller_id];
 
             switch (dqm->property_updated) {
                case CTRLM_HAL_BLE_PROPERTY_DEVICE_ID:
                   controller->set_device_minor_id(dqm->rcu_data.device_minor_id);
+                  XLOGD_INFO("Controller <%s> device minor ID changed to <%d>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.device_minor_id);
+                  //report this immediately since listeners use this to find the input device path for the remote
+                  schedule_status_event(true);
                   break;
                case CTRLM_HAL_BLE_PROPERTY_NAME:
                   controller->setName(string(dqm->rcu_data.name), true);
+                  XLOGD_INFO("Controller <%s> name changed to <%s>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.name);
+                  schedule_status_print();
+                  schedule_status_event();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_MANUFACTURER:
                   controller->setManufacturer(string(dqm->rcu_data.manufacturer), true);
+                  XLOGD_INFO("Controller <%s> manufacturer changed to <%s>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.manufacturer);
+                  schedule_status_print();
+                  schedule_status_event();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_MODEL:
                   controller->setModel(string(dqm->rcu_data.model), true);
+                  XLOGD_INFO("Controller <%s> model changed to <%s>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.model);
+                  schedule_status_print();
+                  schedule_status_event();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_SERIAL_NUMBER:
                   controller->setSerialNumber(string(dqm->rcu_data.serial_number), true);
+                  XLOGD_INFO("Controller <%s> serial number changed to <%s>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.serial_number);
+                  schedule_status_print();
+                  schedule_status_event();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_HW_REVISION:
                   controller->setHwRevision(string(dqm->rcu_data.hw_revision), true);
+                  XLOGD_INFO("Controller <%s> hardware revision changed to <%s>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.hw_revision);
+                  schedule_status_print();
+                  schedule_status_event();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_FW_REVISION:
                   controller->setFwRevision(string(dqm->rcu_data.fw_revision), true);
+                  XLOGD_INFO("Controller <%s> firmware revision changed to <%s>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.fw_revision);
+                  schedule_status_print();
+                  schedule_status_event();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_SW_REVISION: {
                   controller->setSwRevision(string(dqm->rcu_data.sw_revision), true);
+                  XLOGD_INFO("Controller <%s> software revision changed to <%s>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.sw_revision);
+                  schedule_status_print();
+                  schedule_status_event();
+
                   // SW Rev updated, make sure xconf config file is updated
                   ctrlm_main_queue_msg_header_t *msg = (ctrlm_main_queue_msg_header_t *)g_malloc(sizeof(ctrlm_main_queue_msg_header_t));
                   if(msg == NULL) {
@@ -1749,26 +1788,33 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                }
                case CTRLM_HAL_BLE_PROPERTY_IR_CODE:
                   controller->setIrCode(dqm->rcu_data.ir_code);
+                  XLOGD_INFO("Controller <%s> IR code changed to <%d>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.ir_code);
                   break;
                case CTRLM_HAL_BLE_PROPERTY_TOUCH_MODE:
                   controller->setTouchMode(dqm->rcu_data.touch_mode);
-                  print_status = false;
-                  report_status = false;
+                  XLOGD_INFO("Controller <%s> touch mode changed to <%u>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.touch_mode);
                   break;
                case CTRLM_HAL_BLE_PROPERTY_TOUCH_MODE_SETTABLE:
                   controller->setTouchModeSettable(dqm->rcu_data.touch_mode_settable);
-                  print_status = false;
-                  report_status = false;
+                  XLOGD_INFO("Controller <%s> touch mode settable changed to <%s>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.touch_mode_settable ? "TRUE" : "FALSE");
                   break;
                case CTRLM_HAL_BLE_PROPERTY_BATTERY_LEVEL:
                   controller->setBatteryPercent(dqm->rcu_data.battery_level, true);
-                  print_status = false;
+                  XLOGD_INFO("Controller <%s> battery level changed to <%u%%>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.battery_level);
+                  schedule_status_print();
+                  schedule_status_event();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_CONNECTED:
                   controller->setConnected(dqm->rcu_data.connected);
+                  XLOGD_INFO("Controller <%s> connected changed to <%s>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.connected ? "TRUE" : "FALSE");
+                  
+                  schedule_status_print();
+                  // send event immediately.
+                  schedule_status_event(true);
                   break;
                case CTRLM_HAL_BLE_PROPERTY_AUDIO_STREAMING:
                   controller->setAudioStreaming(dqm->rcu_data.audio_streaming);
+                  XLOGD_INFO("Controller <%s> audio streaming changed to <%s>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.audio_streaming ? "TRUE" : "FALSE");
 
                   if(!dqm->rcu_data.audio_streaming) { // report end of stream stats
                      if (ble_rcu_interface_) {
@@ -1797,19 +1843,14 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                         }
                      }
                   }
-               
-                  report_status = false;
-                  print_status = false;
                   break;
                case CTRLM_HAL_BLE_PROPERTY_AUDIO_GAIN_LEVEL:
                   controller->setAudioGainLevel(dqm->rcu_data.audio_gain_level);
-                  report_status = false;
-                  print_status = false;
+                  XLOGD_INFO("Controller <%s> audio gain level changed to <%u>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.audio_gain_level);
                   break;
                case CTRLM_HAL_BLE_PROPERTY_AUDIO_CODECS:
                   controller->setAudioCodecs(dqm->rcu_data.audio_codecs);
-                  report_status = false;
-                  print_status = false;
+                  XLOGD_INFO("Controller <%s> audio codecs changed to <0x%X>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.audio_codecs);
                   break;
                case CTRLM_HAL_BLE_PROPERTY_IS_UPGRADING:
                   XLOGD_AUTOMATION_INFO("Controller <%s> firmware upgrading = %s", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.is_upgrading ? "TRUE" : "FALSE");
@@ -1819,8 +1860,6 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                      // flag to TRUE based on this property.  Controller upgrade progress flag should only be set to true if packets are actively being sent
                      controller->setUpgradeInProgress(false);
                   }
-                  report_status = false;
-                  print_status = false;
                   break;
                case CTRLM_HAL_BLE_PROPERTY_UPGRADE_PROGRESS:
                   XLOGD_AUTOMATION_INFO("Controller <%s> firmware upgrade %d%% complete...", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.upgrade_progress);
@@ -1830,21 +1869,17 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   controller->set_upgrade_progress(dqm->rcu_data.upgrade_progress);
 
                   if (controller->is_upgrade_progress_at_increment()) {
-                      iarm_event_rcu_firmware_status(*controller);
+                     iarm_event_rcu_firmware_status(*controller);
                   }
-                  report_status = false;
-                  print_status = false;
                   break;
                case CTRLM_HAL_BLE_PROPERTY_UPGRADE_ERROR:
                   XLOGD_AUTOMATION_ERROR("Controller <%s> firmware upgrade FAILED with error <%s>.", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.upgrade_error);
-                  report_status = false;
-                  print_status = false;
                   controller->set_upgrade_error(dqm->rcu_data.upgrade_error);
                   if (controller->retry_ota()) {
                      controller->setUpgradeAttempted(false);
                      XLOGD_WARN("Upgrade failed, setting timer for %d minutes to retry.", CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT / MINUTE_IN_MILLISECONDS);
                      ctrlm_timeout_destroy(&g_ctrlm_ble_network.upgrade_controllers_timer_tag);
-                     g_ctrlm_ble_network.upgrade_controllers_timer_tag = ctrlm_timeout_create(CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT, ctrlm_ble_upgrade_controllers, &id_);
+                     g_ctrlm_ble_network.upgrade_controllers_timer_tag = ctrlm_timeout_create(CTRLM_BLE_UPGRADE_CONTINUE_TIMEOUT, ctrlm_ble_upgrade_controllers_timer_cb, &id_);
                      controller->set_upgrade_state(CTRLM_RCU_UPGRADE_STATE_RETRYING);
                   } else {
                      controller->check_upgrade_error();
@@ -1871,8 +1906,6 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                case CTRLM_HAL_BLE_PROPERTY_UNPAIR_REASON:
                   XLOGD_AUTOMATION_INFO("Controller <%s> notified reason for unpairing = <%s>", controller->ieee_address_get().to_string().c_str(), ctrlm_ble_unpair_reason_str(dqm->rcu_data.unpair_reason));
                   last_rcu_unpair_metrics_.write_rcu_unpair_event(controller->ieee_address_get().get_value(), string(ctrlm_ble_unpair_reason_str(dqm->rcu_data.unpair_reason)));
-                  report_status = false;
-                  print_status = false;
                   if (this->unpair_on_remote_request_ && 
                      (dqm->rcu_data.unpair_reason == CTRLM_BLE_RCU_UNPAIR_REASON_SFM ||
                       dqm->rcu_data.unpair_reason == CTRLM_BLE_RCU_UNPAIR_REASON_FACTORY_RESET ||
@@ -1891,8 +1924,6 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                         dqm->rcu_data.reboot_reason == CTRLM_BLE_RCU_REBOOT_REASON_ASSERT ? dqm->rcu_data.assert_report : "" ,
                         dqm->rcu_data.reboot_reason == CTRLM_BLE_RCU_REBOOT_REASON_ASSERT ? "\"" : "");
 
-                  report_status = false;
-                  print_status = false;
                   if (dqm->rcu_data.reboot_reason == CTRLM_BLE_RCU_REBOOT_REASON_FW_UPDATE) {
                      controller->ota_clear_all_failure_counters();
 
@@ -1910,48 +1941,114 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   XLOGD_INFO("Controller <%s> notified last wakeup key = %u (%s key)", controller->ieee_address_get().to_string().c_str(),
                         dqm->rcu_data.last_wakeup_key, ctrlm_linux_key_code_str(dqm->rcu_data.last_wakeup_key, false));
                   controller->setLastWakeupKey(dqm->rcu_data.last_wakeup_key);
-                  print_status = false;
+                  
+                  // send event immediately.
+                  schedule_status_event(true);
                   break;
                case CTRLM_HAL_BLE_PROPERTY_WAKEUP_CONFIG:
                   controller->setWakeupConfig(dqm->rcu_data.wakeup_config);
                   XLOGD_INFO("Controller <%s> notified wakeup config = <%s>", controller->ieee_address_get().to_string().c_str(), ctrlm_rcu_wakeup_config_str(controller->get_wakeup_config()));
-                  if (controller->get_wakeup_config() == CTRLM_RCU_WAKEUP_CONFIG_CUSTOM) {
-                     // Don't report status yet if its a custom config.  Do that after we receive the custom list
-                     report_status = false;
-                     print_status = false;
-                  }
+                  schedule_status_print();
+                  schedule_status_event();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_WAKEUP_CUSTOM_LIST:
                   controller->setWakeupCustomList(dqm->rcu_data.wakeup_custom_list, dqm->rcu_data.wakeup_custom_list_size);
                   XLOGD_INFO("Controller <%s> notified wakeup custom list = <%s>", controller->ieee_address_get().to_string().c_str(), controller->wakeupCustomListToString().c_str());
-                  if (controller->get_wakeup_config() != CTRLM_RCU_WAKEUP_CONFIG_CUSTOM) {
-                     // Only report status if the config is set to custom
-                     report_status = false;
-                     print_status = false;
-                  }
+                  schedule_status_print();
+                  schedule_status_event();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_IRDBS_SUPPORTED:
                   controller->setSupportedIrdbs(dqm->rcu_data.irdbs_supported);
-                  report_status = false;
-                  print_status = false;
+                  schedule_status_print();
                   break;
                default:
                   XLOGD_WARN("Unhandled Property: %d !!!!!!!!!!!!!!!!!!!!!!!!", dqm->property_updated);
-                  report_status = false;
-                  print_status = false;
                   break;
             }
          }
          break;
       }
    }
+}
 
-   if (true == print_status) {
-      printStatus();
+void ctrlm_obj_network_ble_t::schedule_status_print(bool immediately) {
+   XLOGD_DEBUG("immediately = <%s>, print_status_defer_count_ = <%d>", immediately ? "TRUE" : "FALSE", print_status_defer_count_);
+   THREAD_ID_VALIDATE();
+   ctrlm_timeout_destroy(&g_ctrlm_ble_network.print_status_timer_tag);
+   if (immediately || print_status_defer_count_ > CTRLM_BLE_PRINT_STATUS_DEFER_MAX) {
+      print_status_defer_count_ = 0;
+      ctrlm_main_queue_msg_header_t msg;
+      errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
+      ERR_CHK(safec_rc);
+      ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_print_status, &msg, sizeof(msg), NULL, id_);
+   } else {
+      print_status_defer_count_++;
+      g_ctrlm_ble_network.print_status_timer_tag = ctrlm_timeout_create(CTRLM_BLE_PRINT_STATUS_TIMEOUT, ctrlm_ble_print_status_timer_cb, &id_);
    }
-   if (true == report_status) {
-      iarm_event_rcu_status();
+}
+
+void ctrlm_obj_network_ble_t::schedule_status_event(bool immediately) {
+   XLOGD_DEBUG("immediately = <%s>, event_status_defer_count_ = <%d>", immediately ? "TRUE" : "FALSE", event_status_defer_count_);
+   THREAD_ID_VALIDATE();
+   ctrlm_timeout_destroy(&g_ctrlm_ble_network.event_status_timer_tag);
+   if (immediately || event_status_defer_count_ > CTRLM_BLE_EVENT_STATUS_DEFER_MAX) {
+      event_status_defer_count_ = 0;
+      ctrlm_main_queue_msg_header_t msg;
+      errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
+      ERR_CHK(safec_rc);
+      ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_event_status, &msg, sizeof(msg), NULL, id_);
+   } else {
+      event_status_defer_count_++;
+      g_ctrlm_ble_network.event_status_timer_tag = ctrlm_timeout_create(CTRLM_BLE_EVENT_STATUS_TIMEOUT, ctrlm_ble_event_status_timer_cb, &id_);
    }
+}
+
+
+void ctrlm_obj_network_ble_t::req_process_print_status(void *data, int size) {
+   XLOGD_DEBUG("Enter...");
+   THREAD_ID_VALIDATE();
+
+   print_status_defer_count_ = 0;
+   printStatus();
+}
+
+void ctrlm_obj_network_ble_t::req_process_event_status(void *data, int size) {
+   XLOGD_DEBUG("Enter...");
+   THREAD_ID_VALIDATE();
+
+   event_status_defer_count_ = 0;
+   iarm_event_rcu_status();
+}
+
+
+static gboolean ctrlm_ble_print_status_timer_cb(gpointer user_data) {
+   XLOGD_DEBUG("Enter...");
+   ctrlm_network_id_t* net_id =  (ctrlm_network_id_t*) user_data;
+   if (net_id != NULL) {
+      // Allocate a message and send it to Control Manager's queue
+      ctrlm_main_queue_msg_header_t msg;
+      errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
+      ERR_CHK(safec_rc);
+
+      ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_print_status, &msg, sizeof(msg), NULL, *net_id);
+   }
+   g_ctrlm_ble_network.print_status_timer_tag = 0;
+   return false;
+}
+
+static gboolean ctrlm_ble_event_status_timer_cb(gpointer user_data) {
+   XLOGD_DEBUG("Enter...");
+   ctrlm_network_id_t* net_id =  (ctrlm_network_id_t*) user_data;
+   if (net_id != NULL) {
+      // Allocate a message and send it to Control Manager's queue
+      ctrlm_main_queue_msg_header_t msg;
+      errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
+      ERR_CHK(safec_rc);
+
+      ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_event_status, &msg, sizeof(msg), NULL, *net_id);
+   }
+   g_ctrlm_ble_network.event_status_timer_tag = 0;
+   return false;
 }
 
 void ctrlm_obj_network_ble_t::populate_rcu_status_message(ctrlm_iarm_RcuStatus_params_t *msg) {
@@ -2033,6 +2130,10 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::controller_add(ctrlm_hal_ble_rcu_
 
       controller->db_store();
    }
+
+   schedule_status_print();
+   schedule_status_event();
+
    return id;
 }
 
@@ -2060,13 +2161,9 @@ void ctrlm_obj_network_ble_t::ind_process_paired(void *data, int size) {
       return;
    }
 
-   ctrlm_controller_id_t id = controller_add(dqm->rcu_data);
-   if (controller_exists(id)) {
-      controllers_[id]->print_status();
-   }
+   controller_add(dqm->rcu_data);
 
    // Sync currently connected devices with the HAL
-
    if (ble_rcu_interface_) {
       auto devices = ble_rcu_interface_->getManagedDevices();
 
@@ -2130,9 +2227,9 @@ void ctrlm_obj_network_ble_t::ind_process_unpaired(void *data, int size) {
 
       controller_remove(id);
       controllers_.erase(id);
-      // report updated controller status to the plugin
-      printStatus();
-      iarm_event_rcu_status();
+
+      schedule_status_print();
+      schedule_status_event();
 
       // Update xconf config file
       ctrlm_main_queue_msg_header_t *msg = (ctrlm_main_queue_msg_header_t *)g_malloc(sizeof(ctrlm_main_queue_msg_header_t));
@@ -2227,7 +2324,7 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
             XLOGD_INFO("Upgrade cancelled since remote is being used.  Setting timer to resume upgrade in %d minutes.", CTRLM_BLE_UPGRADE_PAUSE_TIMEOUT / MINUTE_IN_MILLISECONDS);
             //delete existing timer and start again
             ctrlm_timeout_destroy(&g_ctrlm_ble_network.upgrade_pause_timer_tag);
-            g_ctrlm_ble_network.upgrade_pause_timer_tag = ctrlm_timeout_create(CTRLM_BLE_UPGRADE_PAUSE_TIMEOUT, ctrlm_ble_upgrade_resume, &id_);
+            g_ctrlm_ble_network.upgrade_pause_timer_tag = ctrlm_timeout_create(CTRLM_BLE_UPGRADE_PAUSE_TIMEOUT, ctrlm_ble_upgrade_resume_timer_cb, &id_);
 
          } else if (controller->getUpgradeStuck() && !upgrade_in_progress_) {
 
@@ -2235,7 +2332,7 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
                   controller->ieee_address_get().to_string().c_str());
             //delete existing timer and immediately kick off another upgrade
             ctrlm_timeout_destroy(&g_ctrlm_ble_network.upgrade_pause_timer_tag);
-            g_ctrlm_ble_network.upgrade_pause_timer_tag = ctrlm_timeout_create(500, ctrlm_ble_upgrade_resume, &id_);
+            g_ctrlm_ble_network.upgrade_pause_timer_tag = ctrlm_timeout_create(500, ctrlm_ble_upgrade_resume_timer_cb, &id_);
          }
 
       } else if (key_status == CTRLM_KEY_STATUS_UP) {
@@ -2380,8 +2477,7 @@ bool ctrlm_obj_network_ble_t::getControllerId(unsigned long long ieee_address, c
       }
    }
    if ( !found ) {
-      XLOGD_WARN("Controller matching ieee_address (%s) NOT FOUND.", 
-            ctrlm_convert_mac_long_to_string(ieee_address).c_str());
+      XLOGD_DEBUG("Controller matching ieee_address (%s) NOT FOUND.", ctrlm_convert_mac_long_to_string(ieee_address).c_str());
    }
    return found;
 }
@@ -2430,7 +2526,7 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::controller_id_assign() {
    // Get the next available controller id
    for(ctrlm_controller_id_t index = BLE_RCU_ID_RANGE_MIN; index < BLE_RCU_ID_RANGE_MAX; index++) {
       if(!controller_exists(index)) {
-         XLOGD_INFO("controller id %u", index);
+         XLOGD_DEBUG("controller id %u", index);
          return(index);
       }
    }

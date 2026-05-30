@@ -168,6 +168,11 @@ public:
    virtual void                  req_process_cancel_controller_upgrade(void *data, int size);
    virtual void                  req_process_status_controller_upgrade(void *data, int size);
 
+   void                          schedule_status_print(bool immediately = false);
+   void                          schedule_status_event(bool immediately = false);
+   virtual void                  req_process_print_status(void *data, int size);
+   virtual void                  req_process_event_status(void *data, int size);
+
    virtual json_t *              xconf_export_controllers();
    void                          addUpgradeImage(const ctrlm_ble_upgrade_image_info_t &image_info);
    void                          clearUpgradeImages();
@@ -215,6 +220,8 @@ private:
    bool                                      upgrade_in_progress_       = false;
    bool                                      unpair_on_remote_request_  = true;
    ctrlm_ble_unpair_metrics_t                last_rcu_unpair_metrics_;
+   int                                       print_status_defer_count_  = 0;
+   int                                       event_status_defer_count_  = 0;
 
    std::map <ctrlm_controller_id_t, ctrlm_obj_controller_ble_t *> controllers_;
    std::map <std::string, ctrlm_ble_upgrade_image_info_t>         upgrade_images_;

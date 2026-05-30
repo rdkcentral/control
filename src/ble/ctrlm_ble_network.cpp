@@ -809,9 +809,10 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
             }
       
             if (ble_rcu_interface_) {
-               if (!ble_rcu_interface_->programIrSignalWaveforms(controllers_[controller_id]->ieee_address_get().get_value(), 
+               if (ir_codes.empty()) {
+                  XLOGD_ERROR("Provided IR waveforms are empty!");
+               } else if (!ble_rcu_interface_->programIrSignalWaveforms(controllers_[controller_id]->ieee_address_get().get_value(), 
                                                                 std::move(ir_codes), dqm->vendor_info.rcu_support_bitmask)) {
-
                   XLOGD_ERROR("failed to program IR signal waveforms on remote");
                } else {
                   success = true;

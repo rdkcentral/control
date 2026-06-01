@@ -27,7 +27,6 @@ git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
 # #############################
 # 1. Install Dependencies and packages
-echo "======================================================================================"
 
 apt update
 apt install -y \

@@ -84,6 +84,8 @@
 #include "ctrlm_voice_obj_generic.h"
 #include "ctrlm_voice_endpoint.h"
 #include "ctrlm_irdb_interface.h"
+#include "ctrlm_rcp_ipc_event.h"
+
 #ifdef FDC_ENABLED
 #include "xr_fdc.h"
 #endif
@@ -885,16 +887,18 @@ static void ctrlm_main_network_handler_execute_for_all(ctrlm_msg_handler_network
    }
 }
 
-std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> ctrlm_main_network_rcu_status_map_get() {
+std::shared_ptr<void> ctrlm_main_all_network_rcu_status_get() {
    if (g_ctrlm.main_thread != g_thread_self ()) {
       XLOGD_ERROR("not called from ctrlm_main_thread!!!!!");
       if(!ctrlm_is_production_build()) {
          g_assert(0);
       }
-      return {};
+      return nullptr;
    }
 
-   std::shared_ptr<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>> params = std::make_shared<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>>();
+   std::shared_ptr<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>> params = 
+         std::make_shared<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>>();
+
    params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
 
    ctrlm_main_queue_msg_get_rcu_status_t msg = {};
@@ -904,7 +908,7 @@ std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> ctrlm_main_network_rcu_
                                               &msg,
                                               sizeof(msg));
 
-   return params->get_reply();
+   return params;
 }
 
 void ctrlm_utils_sem_wait(){

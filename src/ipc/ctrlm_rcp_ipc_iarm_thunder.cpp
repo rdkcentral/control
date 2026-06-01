@@ -108,7 +108,7 @@ json_t *ctrlm_rcp_ipc_iarm_thunder_t::build_rcu_status_json(
     const std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> &status_map,
     ctrlm_ir_state_t      ir_prog_state,
     ctrlm_rf_pair_state_t rf_pair_state,
-    ctrlm_network_type_t  type) const
+    ctrlm_network_type_t  type)
 {
     json_t *status             = json_object();
     json_t *net_type_supported = json_array();
@@ -152,7 +152,15 @@ bool ctrlm_rcp_ipc_iarm_thunder_t::on_status(const ctrlm_rcp_ipc_net_status_t &n
         return(false);
     }
 
-    const std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> status_map = ctrlm_main_network_rcu_status_map_get();
+    std::shared_ptr<void> ptr = ctrlm_main_all_network_rcu_status_get();
+    if (ptr == nullptr) {
+        XLOGD_ERROR("Failed to get RCU status from main thread");
+        return false;
+    }
+    std::shared_ptr<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>> params =
+        std::static_pointer_cast<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>>(ptr);
+
+    const std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> status_map = params->get_reply();
 
     json_t *status = build_rcu_status_json(status_map, net_status.get_ir_prog_state(), net_status.get_rf_pair_state(), net_status.get_type());
     if (status == nullptr) {

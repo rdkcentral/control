@@ -45,8 +45,7 @@ apt install -y \
     libdrm-dev \
     libbsd-dev \
     gperf \
-    python3-pip \
-    libwebrtc-audio-processing-dev
+    python3-pip
 
 python3 -m pip install jsonref
 
@@ -91,10 +90,6 @@ mkdir -p "${HEADERS_DIR}/rdk/iarmbus"
 mkdir -p "${HEADERS_DIR}/rdk/ds"
 mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
 
-# Symlink to match expected include path for audio_processing.h
-mkdir -p /usr/include/webrtc/modules/audio_processing/include/
-ln -sf /usr/include/webrtc_audio_processing/webrtc/modules/audio_processing/include/audio_processing.h /usr/include/webrtc/modules/audio_processing/include/audio_processing.h
-
 # Use the Yocto safec_lib.h sysroot header for CI builds without libsafec.
 # Add include guards because the upstream header does not provide them.
 cp "$SAFEC_WRAPPER_DIR/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
@@ -123,6 +118,7 @@ cmake -G Ninja \
     -DCMAKE_C_FLAGS="-I${HEADERS_DIR} -DSAFEC_DUMMY_API" \
     -DSTAGING_BINDIR_NATIVE="/usr/bin" \
     -DCMAKE_PROJECT_VERSION="${XRSDK_REF}" \
+    -DVAD_ENABLED=OFF \
     -DINSTALL_INTERNAL_HEADERS=ON
 
 cmake --build "$GITHUB_WORKSPACE/build/xr-voice-sdk"

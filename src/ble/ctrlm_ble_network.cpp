@@ -47,6 +47,8 @@
 #include <time.h>
 #include <unordered_map>
 #include "ctrlm_rcp_ipc_iarm_thunder.h"
+#include "ctrlm_telemetry.h"
+#include <sstream>
 
 using namespace std;
 
@@ -383,6 +385,9 @@ ctrlm_hal_result_t ctrlm_obj_network_ble_t::hal_init_request(GThread *ctrlm_main
 
          ble_rcu_interface_->addRcuKeypressHandler(Slot<ctrlm_hal_ble_IndKeypress_params_t*>(is_alive_, 
                std::bind(&ctrlm_obj_network_ble_t::ind_keypress, this, std::placeholders::_1)));
+
+         ble_rcu_interface_->addRcuPairingOutcomeHandler(Slot<const BleRcuPairingOutcome&>(is_alive_,
+               std::bind(&ctrlm_obj_network_ble_t::ind_rcu_pairing_outcome, this, std::placeholders::_1)));
 
 
          ble_rcu_interface_->startKeyMonitorThread();
@@ -1670,6 +1675,61 @@ void ctrlm_obj_network_ble_t::req_process_unpair(void *data, int size) {
 // ==================================================================================================================================================================
 // BEGIN - Process Indications from HAL to the network in CTRLM Main thread context
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void ctrlm_obj_network_ble_t::ind_rcu_pairing_outcome(const BleRcuPairingOutcome &outcome) {
+   // Queue to the ctrlm main thread for duration computation and telemetry emission
+   auto copy = std::make_shared<BleRcuPairingOutcome>(outcome);
+   ctrlm_main_queue_handler_push_new<ctrlm_msg_handler_network_t, BleRcuPairingOutcome>(
+         CTRLM_HANDLER_NETWORK,
+         (ctrlm_msg_handler_network_t)&ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome,
+         copy,
+         NULL,
+         id_);
+}
+
+void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int size) {
+   THREAD_ID_VALIDATE();
+   const BleRcuPairingOutcome *outcome = static_cast<const BleRcuPairingOutcome *>(data);
+   if (sizeof(BleRcuPairingOutcome) != size) {
+      XLOGD_ERROR("Invalid size!");
+      return;
+   }
+   if (!outcome) {
+      XLOGD_ERROR("pairing outcome data is NULL");
+      return;
+   }
+
+#ifdef TELEMETRY_SUPPORT
+   // Serialize to array for ctrlm.rcu.pairing.attempt_accum T2 marker
+   std::stringstream ss;
+   ss << "[";
+   ss         << MARKER_RCU_PAIRING_ATTEMPT_VERSION << ",";
+   ss << "\"" << name_get()                         << "\",";
+   ss         << outcome->method                    << ",";
+   ss         << outcome->result                    << ",";
+   ss         << outcome->discovered                << ",";
+   ss << "\"" << outcome->name                      << "\",";
+   ss         << outcome->bluezRetries              << ",";
+
+   for (uint8_t i = 0; i < outcome->maxBluezRetries; i++) {
+      if (i >= outcome->bluezRetries || i >= outcome->bluezError.size()) {
+          ss << "\"null\"";
+      } else {
+          std::string msg = outcome->bluezError.at(i);
+          auto pos = msg.rfind(": ");
+          msg = (pos != std::string::npos) ? msg.substr(pos + 2) : msg;
+          ss << "\"" << msg << "\"";
+      }
+      if (i != (outcome->maxBluezRetries-1)) {
+          ss << ",";
+      }
+   }
+   ss << "]";
+
+   ctrlm_telemetry_event_t<std::string> ev(MARKER_RCU_PAIRING_ATTEMPT, ss.str());
+   ev.event();
+#endif // TELEMETRY_SUPPORT
+}
 
 void ctrlm_obj_network_ble_t::ind_rcu_status(ctrlm_hal_ble_RcuStatusData_t *params) {
 

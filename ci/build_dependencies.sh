@@ -104,6 +104,16 @@ perl -0pi -e 's{#define strcpy_s\(dst,max,src\) \(src != NULL\)\?\(\(max > strle
 # -Wstringop-truncation in CI even though ctrlm manually terminates the destination buffer.
 perl -0pi -e 's{#define strncpy_s\(dst,max,src,len\) \(src != NULL\)\?\(\(len <= max\)\?EOK:ESLEMAX\):ESNULLP; \\\n if\(\(src != NULL\) && \(len <= max\)\) strncpy\(dst,src,len\);}{#define strncpy_s(dst,max,src,len) (src != NULL)?((len <= max)?EOK:ESLEMAX):ESNULLP; \\\n if((src != NULL) && (len <= max)) { size_t copy_len = strnlen(src, len); memcpy(dst, src, copy_len); if(copy_len < (size_t)(max)) memset((char *)(dst) + copy_len, 0, (size_t)(max) - copy_len); }}s or die "failed to patch strncpy_s in safec_lib.h\n"' "$HEADERS_DIR/safec_lib.h"
 
+# Testing to verify CI macro rewrites so Coverity runs do not silently use the original dummy macros, as coverity alerts are still present
+if ! grep -q 'ctrlm_ci_src__' "$HEADERS_DIR/safec_lib.h"; then
+    echo "ERROR: strcpy_s rewrite missing in safec_lib.h"
+    exit 1
+fi
+if grep -q '^#define strcpy_s(dst,max,src) (src != NULL)' "$HEADERS_DIR/safec_lib.h"; then
+    echo "ERROR: original strcpy_s dummy macro still present in safec_lib.h"
+    exit 1
+fi
+
 # Stage rdkversion.h before building xr-voice-sdk.
 cp "$RDKVERSION_DIR/src/rdkversion.h" "$HEADERS_DIR/rdkversion.h"
 

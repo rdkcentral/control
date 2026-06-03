@@ -537,8 +537,9 @@ void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmas
       XLOGD_ERROR("IRDB interface is NULL!!!");
 #ifdef TELEMETRY_SUPPORT
       char t2_buf[256];
-      snprintf(t2_buf, sizeof(t2_buf), "0,0x%02X,unknown,0x00,0", vendor_support_bitmask);
-      t2_event_s((char*)MARKER_IRDB_VENDOR_SET, t2_buf);
+      snprintf(t2_buf, sizeof(t2_buf), "[0,0x%02X,\"unknown\",0x00,0]", vendor_support_bitmask);
+      ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_VENDOR_SET, t2_buf);
+      ev.event();
 #endif
       return;
    }
@@ -552,8 +553,11 @@ void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmas
    }
 
    ctrlm_irdb_vendor_info_t vendor_info{};
+   vendor_info.name = "unknown";
+   vendor_info.rcu_support_bitmask = 0xFF;
+   bool supported = false;
    if (irdb->get_vendor_info(vendor_info)) {
-      bool supported = isSupportedIrdb(vendor_info);
+      supported = isSupportedIrdb(vendor_info);
       if (supported) {
          XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>, which DOES support the loaded IRDB plugin vendor <%s>", 
                ieee_address_get().to_string().c_str(), vendor_support_bitmask, vendor_info.name.c_str());
@@ -561,28 +565,19 @@ void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmas
          XLOGD_ERROR("Controller <%s> IRDBs supported bitmask = <0x%X>, which does NOT support the loaded IRDB plugin vendor <%s>", 
                ieee_address_get().to_string().c_str(), vendor_support_bitmask, vendor_info.name.c_str());
       }
-#ifdef TELEMETRY_SUPPORT
-      {
-          char t2_buf[256];
-          snprintf(t2_buf, sizeof(t2_buf), "%d,0x%02X,%s,0x%02X,%d",
-                   (int)set_result, vendor_support_bitmask,
-                   vendor_info.name.c_str(), vendor_info.rcu_support_bitmask,
-                   (int)supported);
-          t2_event_s((char*)MARKER_IRDB_VENDOR_SET, t2_buf);
-      }
-#endif
    } else {
       XLOGD_WARN("Controller <%s> IRDBs supported bitmask = <0x%X>, couldn't retrieve IRDB plugin vendor info.", 
             ieee_address_get().to_string().c_str(), vendor_support_bitmask);
-#ifdef TELEMETRY_SUPPORT
-      {
-          char t2_buf[256];
-          snprintf(t2_buf, sizeof(t2_buf), "%d,0x%02X,unknown,0x00,0",
-                   (int)set_result, vendor_support_bitmask);
-          t2_event_s((char*)MARKER_IRDB_VENDOR_SET, t2_buf);
-      }
-#endif
    }
+#ifdef TELEMETRY_SUPPORT
+   char t2_buf[256];
+   snprintf(t2_buf, sizeof(t2_buf), "[%d,0x%02X,\"%s\",0x%02X,%d]",
+            (int)set_result,vendor_support_bitmask,
+            vendor_info.name.c_str(), vendor_info.rcu_support_bitmask,
+            (int)supported);
+   ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_VENDOR_SET, t2_buf);
+   ev.event();
+#endif
 }
 
 uint8_t ctrlm_obj_controller_ble_t::getSupportedIrdbs() const {

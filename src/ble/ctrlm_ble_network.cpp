@@ -794,14 +794,14 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
       } else if (!controllers_[controller_id]->isSupportedIrdb(dqm->vendor_info)) {
          XLOGD_ERROR("Unsupported IRDB - not continuing with ir code download!");
 #ifdef TELEMETRY_SUPPORT
-         {
-             char t2_buf[256];
-             snprintf(t2_buf, sizeof(t2_buf), "0x%02X,%s,0x%02X",
-                      controllers_[controller_id]->getSupportedIrdbs(),
-                      dqm->vendor_info.name.c_str(),
-                      dqm->vendor_info.rcu_support_bitmask);
-             t2_event_s((char*)MARKER_IRDB_PROGRAM_UNSUPPORTED, t2_buf);
-         }
+         char t2_buf[256];
+         snprintf(t2_buf, sizeof(t2_buf), "[%d,\"unsupported\",0x%02X,\"%s\",0x%02X]",
+                  (int)CTRLM_IR_STATE_FAILED,
+                  controllers_[controller_id]->getSupportedIrdbs(),
+                  dqm->vendor_info.name.c_str(),
+                  dqm->vendor_info.rcu_support_bitmask);
+         ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_PROGRAM_RESULT, t2_buf);
+         ev.event();
 #endif
       } else {
          if(dqm->ir_codes) {
@@ -1789,19 +1789,32 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
          schedule_status_event(true);
 #ifdef TELEMETRY_SUPPORT
          {
-             ctrlm_irdb_interface_t *irdb = ctrlm_main_irdb_get();
              ctrlm_irdb_vendor_info_t vendor_info{};
+             vendor_info.name = "unknown";
+             vendor_info.rcu_support_bitmask = 0xFF;
+
+             ctrlm_irdb_interface_t *irdb = ctrlm_main_irdb_get();
              if (irdb) { irdb->get_vendor_info(vendor_info); }
              char t2_buf[256];
-             if (dqm->ir_state == CTRLM_IR_STATE_COMPLETE) {
-                 snprintf(t2_buf, sizeof(t2_buf), "%s,0x%02X",
-                          vendor_info.name.c_str(), vendor_info.rcu_support_bitmask);
-                 t2_event_s((char*)MARKER_IRDB_PROGRAM_SUCCESS, t2_buf);
-             } else if (dqm->ir_state == CTRLM_IR_STATE_FAILED) {
-                 snprintf(t2_buf, sizeof(t2_buf), "%s,0x%02X,%s",
-                          vendor_info.name.c_str(), vendor_info.rcu_support_bitmask,
-                          dqm->ir_fail_reason);
-                 t2_event_s((char*)MARKER_IRDB_PROGRAM_FAIL, t2_buf);
+             if (dqm->ir_state == CTRLM_IR_STATE_COMPLETE || dqm->ir_state == CTRLM_IR_STATE_FAILED) {
+                 ctrlm_controller_id_t controller_id;
+                 uint8_t rcu_bitmask = 0xFF;
+                 if (false == getControllerId(dqm->rcu_data.ieee_address, &controller_id)) {
+                    XLOGD_ERROR("Controller <%s> NOT found in the network!!",
+                          ctrlm_convert_mac_long_to_string(dqm->rcu_data.ieee_address).c_str());
+                 } else {
+                     auto controller = controllers_[controller_id];
+                     rcu_bitmask = controller->getSupportedIrdbs();
+                 }
+
+                 snprintf(t2_buf, sizeof(t2_buf), "[%d,\"%s\",0x%02X,\"%s\",0x%02X]",
+                          (int)dqm->ir_state,
+                          dqm->ir_fail_reason,
+                          rcu_bitmask,
+                          vendor_info.name.c_str(),
+                          vendor_info.rcu_support_bitmask);
+                 ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_PROGRAM_RESULT, t2_buf);
+                 ev.event();
              }
          }
 #endif

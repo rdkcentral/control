@@ -135,7 +135,10 @@ touch rdk/iarmbus/libIBus.h
 touch rdk/iarmbus/libIBusDaemon.h
 
 # IARM manager headers
-# sysMgr.h conflicts with the forced Iarm.h mock, so use a shim instead.
+# sysMgr.h conflicts with the forced Iarm.h mock, which already provides the
+# needed SYSMgr types. Use a shim here. To remove it later, either stop
+# force-including those overlapping Iarm.h declarations or drop sysMgr.h from
+# ctrlm source.
 cat > rdk/iarmmgrs-hal/sysMgr.h <<'EOF'
 #ifndef CTRLM_CI_SYSMGR_SHIM_H
 #define CTRLM_CI_SYSMGR_SHIM_H
@@ -175,7 +178,7 @@ touch rfcapi.h
 find "$IARMMGRS_DIR" -name comcastIrKeyCodes.h -print -quit | xargs -r -I{} cp "{}" comcastIrKeyCodes.h
 [ -f comcastIrKeyCodes.h ]
 
-# rdkversion.h (used by ctrlm_main.cpp and xr-voice-sdk)
+# rdkversion.h (used by ctrlm_main.cpp)
 [ -f rdkversion.h ]
 
 # secure_wrapper (types provided via empty stub — no v_secure_* calls in core)

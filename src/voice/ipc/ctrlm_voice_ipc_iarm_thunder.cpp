@@ -62,6 +62,7 @@
 #define JSON_SESSION_END_RESULT_ERROR                 "error"
 #define JSON_SESSION_END_RESULT_ABORT                 "abort"
 #define JSON_SESSION_END_RESULT_SHORT                 "shortUtterance"
+#define JSON_SESSION_END_RESULT_SILENT                "silentUtterance"
 #define JSON_SESSION_END_TRANSCRIPTION                "transcription"
 #define JSON_SESSION_END_PROTOCOL_ERROR               "protocolErrorCode"
 #define JSON_SESSION_END_PROTOCOL_LIBRARY_ERROR       "protocolLibraryErrorCode"
@@ -71,6 +72,7 @@
 #define JSON_SESSION_END_ERROR_REASON                 "reason"
 #define JSON_SESSION_END_ABORT_REASON                 "reason"
 #define JSON_SESSION_END_SHORT_REASON                 "reason"
+#define JSON_SESSION_END_SILENT_REASON                "reason"
 #define JSON_SESSION_END_STB_STATS                    "stbStats"
 #define JSON_SESSION_END_STB_STATS_TYPE               "type"
 #define JSON_SESSION_END_STB_STATS_FIRMWARE           "firmware"
@@ -288,6 +290,20 @@ bool ctrlm_voice_ipc_iarm_thunder_t::session_end(const ctrlm_voice_ipc_event_ses
                 JSON_DEREFERENCE(event_result);
             } else {
                 rc |= json_object_set_new_nocheck(event_data, JSON_SESSION_END_RESULT_SHORT, event_result);
+            }
+            break;
+        }
+        case SESSION_END_SILENT_UTTERANCE: {
+            int rc_silent;
+            rc |= json_object_set_new_nocheck(event_data, JSON_SESSION_END_RESULT, json_string(JSON_SESSION_END_RESULT_SILENT));
+
+            // Add Audio Silent Data to result object
+            rc_silent  = json_object_set_new_nocheck(event_result, JSON_SESSION_END_SILENT_REASON, json_integer(session_end.reason));
+            if(0 != rc_silent) {
+                XLOGD_ERROR("Error creating audio silent JSON subobject");
+                JSON_DEREFERENCE(event_result);
+            } else {
+                rc |= json_object_set_new_nocheck(event_data, JSON_SESSION_END_RESULT_SILENT, event_result);
             }
             break;
         }

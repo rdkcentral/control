@@ -634,7 +634,7 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
        << "," << std::dec << (int)m_platform_tv
        << "," << tv_count
        << "," << avr_count
-       << "," << results << "]";
+       << "," << (results.empty() ? "\"\"" : results) << "]";
     ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_AUTOLOOKUP_RESULT, ss.str());
     ev.event();
 #endif

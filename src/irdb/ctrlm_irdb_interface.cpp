@@ -408,6 +408,11 @@ bool ctrlm_irdb_interface_t::get_irdb_entry_ids(ctrlm_irdb_entry_id_list_t &code
     if (g_irdb.pluginGetEntryIds) {
         ret = (*g_irdb.pluginGetEntryIds)(codes, type, manufacturer, model);
     }
+    if(ret) {
+        m_last_entry_id_manufacturer = manufacturer;
+        m_last_entry_id_model        = model;
+        m_last_entry_ids             = codes;
+    }
     return ret;
 }
 
@@ -563,8 +568,15 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
 bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_dev_type_t type, const std::string &id) {
     std::unique_lock<std::mutex> guard(m_mutex);
     bool ret = false;
+    std::string manufacturer;
+    std::string model;
 
     XLOGD_INFO("Programming IR codes for (%u, %u) with database id <%s>", network_id, controller_id, id.c_str());
+
+    if(std::find(m_last_entry_ids.begin(), m_last_entry_ids.end(), id) != m_last_entry_ids.end()) {
+        manufacturer = m_last_entry_id_manufacturer;
+        model        = m_last_entry_id_model;
+    }
 
     ctrlm_irdb_ir_code_set_t code_set;
     if (g_irdb.pluginGetCodeSet) {
@@ -572,14 +584,14 @@ bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctr
             XLOGD_ERROR("Failed getting IR code set");
         } else {
             guard.unlock();
-            ret = this->_program_ir_codes(network_id, controller_id, &code_set);
+            ret = this->_program_ir_codes(network_id, controller_id, &code_set, manufacturer, model);
         }
     }
     return(ret);
 }
 
 
-bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes) {
+bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes, const std::string &manufacturer, const std::string &model) {
     bool ret = false;
     vector<char> success_vec;
 
@@ -587,6 +599,8 @@ bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ct
     msg->network_id         = network_id;
     msg->controller_id      = controller_id;
     msg->ir_codes           = ir_codes;
+    msg->manufacturer       = manufacturer;
+    msg->model              = model;
     msg->success            = &success_vec;
 
     if (false == get_vendor_info(msg->vendor_info)) {

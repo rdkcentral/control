@@ -781,7 +781,7 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
             std::map<ctrlm_key_code_t, std::vector<uint8_t>> ir_codes;
             
             // First add IR Codes to the IR RF Database (this contains all of the logic for maintaining TV vs AVR codes)
-            ir_rf_database_.add_irdb_codes(dqm->ir_codes);
+            ir_rf_database_.add_irdb_codes(dqm->ir_codes, dqm->manufacturer, dqm->model);
             XLOGD_INFO("\n%s", this->ir_rf_database_.to_string(true).c_str());
             // Now get the IR codes for the BLE IR slots
             for(auto key : ctrlm_ble_ir_key_names) {
@@ -804,7 +804,8 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
                   success = true;
                   controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, ir_rf_database_.get_tv_ir_code_id());
                   controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, ir_rf_database_.get_avr_ir_code_id());
-                  XLOGD_INFO("irdb_entry_id_name = <%s>", dqm->ir_codes->id.c_str());
+                  controllers_[controller_id]->irdb_manufacturer_model_set(dqm->ir_codes->type, dqm->manufacturer, dqm->model);
+                  XLOGD_INFO("irdb_entry_id_name = <%s>, manufacturer/model = <%s / %s>", dqm->ir_codes->id.c_str(), dqm->manufacturer.c_str(), dqm->model.c_str());
                }
             }
             // Store the IR codes in the database

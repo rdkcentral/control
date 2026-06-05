@@ -665,7 +665,9 @@ void ctrlm_obj_controller_ble_t::print_status() {
       XLOGD_INFO("IR Database Support          : N/A");
    }
    XLOGD_INFO("Programmed TV IRDB Code      : %s", irdb_entry_id_name_tv_->to_string().c_str());
+   XLOGD_INFO("Programmed TV IRDB Manufacturer/Model: %s / %s", irdb_manufacturer_tv_->to_string().c_str(), irdb_model_tv_->to_string().c_str());
    XLOGD_INFO("Programmed AVR IRDB Code     : %s", irdb_entry_id_name_avr_->to_string().c_str());
+   XLOGD_INFO("Programmed AVR IRDB Manufacturer/Model: %s / %s", irdb_manufacturer_avr_->to_string().c_str(), irdb_model_avr_->to_string().c_str());
    XLOGD_INFO("");
    voice_metrics_->print(__FUNCTION__);
    XLOGD_WARN("------------------------------------------------------------");

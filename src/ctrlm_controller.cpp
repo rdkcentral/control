@@ -40,6 +40,10 @@ ctrlm_obj_controller_t::ctrlm_obj_controller_t(ctrlm_controller_id_t controller_
    last_key_code_(std::make_shared<ctrlm_uint64_db_attr_t>("Last Keypress Code", CTRLM_KEY_CODE_INVALID, &network, controller_id, "last_key_code")),
    irdb_entry_id_name_tv_(std::make_shared<ctrlm_string_db_attr_t>("TV IRDB Code", "0", &network, controller_id, "irdb_entry_id_name_tv")),
    irdb_entry_id_name_avr_(std::make_shared<ctrlm_string_db_attr_t>("AVR IRDB Code", "0", &network, controller_id, "irdb_entry_id_name_avr")),
+   irdb_manufacturer_tv_(std::make_shared<ctrlm_string_db_attr_t>("TV IRDB Manufacturer", "", &network, controller_id, "irdb_manufacturer_tv")),
+   irdb_model_tv_(std::make_shared<ctrlm_string_db_attr_t>("TV IRDB Model", "", &network, controller_id, "irdb_model_tv")),
+   irdb_manufacturer_avr_(std::make_shared<ctrlm_string_db_attr_t>("AVR IRDB Manufacturer", "", &network, controller_id, "irdb_manufacturer_avr")),
+   irdb_model_avr_(std::make_shared<ctrlm_string_db_attr_t>("AVR IRDB Model", "", &network, controller_id, "irdb_model_avr")),
    voice_metrics_(std::make_shared<ctrlm_voice_metrics_t>(&network, controller_id)),
    ota_failure_cnt_from_last_success_(std::make_shared<ctrlm_uint64_db_attr_t>("OTA Failure Count From Last Success", 0, &network, controller_id, "ota_failure_cnt_last_success"))
 {
@@ -69,6 +73,10 @@ void ctrlm_obj_controller_t::db_load() {
    ctrlm_db_attr_read(last_key_code_.get());
    ctrlm_db_attr_read(irdb_entry_id_name_tv_.get());
    ctrlm_db_attr_read(irdb_entry_id_name_avr_.get());
+   ctrlm_db_attr_read(irdb_manufacturer_tv_.get());
+   ctrlm_db_attr_read(irdb_model_tv_.get());
+   ctrlm_db_attr_read(irdb_manufacturer_avr_.get());
+   ctrlm_db_attr_read(irdb_model_avr_.get());
    ctrlm_db_attr_read(voice_metrics_.get());
 
    ctrlm_db_attr_read(ota_failure_cnt_from_last_success_.get());
@@ -85,6 +93,10 @@ void ctrlm_obj_controller_t::db_store() {
    ctrlm_db_attr_write(last_key_code_);
    ctrlm_db_attr_write(irdb_entry_id_name_tv_);
    ctrlm_db_attr_write(irdb_entry_id_name_avr_);
+   ctrlm_db_attr_write(irdb_manufacturer_tv_);
+   ctrlm_db_attr_write(irdb_model_tv_);
+   ctrlm_db_attr_write(irdb_manufacturer_avr_);
+   ctrlm_db_attr_write(irdb_model_avr_);
    ctrlm_db_attr_write(voice_metrics_);
 }
 
@@ -201,6 +213,34 @@ void ctrlm_obj_controller_t::irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, 
             ctrlm_db_attr_write(irdb_entry_id_name_avr_);
          }
          XLOGD_INFO("AVR IRDB Code <%s>", irdb_entry_id_name_avr_->to_string().c_str());
+         break;
+      default:
+         XLOGD_WARN("Invalid type <%d>", type);
+         break;
+   }
+}
+
+void ctrlm_obj_controller_t::irdb_manufacturer_model_set(ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model) {
+   switch(type) {
+      case CTRLM_IRDB_DEV_TYPE_TV:
+         if (irdb_manufacturer_tv_->to_string() != manufacturer) {
+            irdb_manufacturer_tv_->set_value(manufacturer);
+            ctrlm_db_attr_write(irdb_manufacturer_tv_);
+         }
+         if (irdb_model_tv_->to_string() != model) {
+            irdb_model_tv_->set_value(model);
+            ctrlm_db_attr_write(irdb_model_tv_);
+         }
+         break;
+      case CTRLM_IRDB_DEV_TYPE_AVR:
+         if (irdb_manufacturer_avr_->to_string() != manufacturer) {
+            irdb_manufacturer_avr_->set_value(manufacturer);
+            ctrlm_db_attr_write(irdb_manufacturer_avr_);
+         }
+         if (irdb_model_avr_->to_string() != model) {
+            irdb_model_avr_->set_value(model);
+            ctrlm_db_attr_write(irdb_model_avr_);
+         }
          break;
       default:
          XLOGD_WARN("Invalid type <%d>", type);
@@ -427,6 +467,10 @@ void ctrlm_obj_controller_t::update_controller_id_and_db_entry(std::string db_na
     last_key_code_->set_table(new_table);
     irdb_entry_id_name_tv_->set_table(new_table);
     irdb_entry_id_name_avr_->set_table(new_table);
+   irdb_manufacturer_tv_->set_table(new_table);
+   irdb_model_tv_->set_table(new_table);
+   irdb_manufacturer_avr_->set_table(new_table);
+   irdb_model_avr_->set_table(new_table);
     voice_metrics_->set_table(new_table);
     ota_failure_cnt_from_last_success_->set_table(new_table);
 }

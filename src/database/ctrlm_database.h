@@ -81,6 +81,14 @@ void ctrlm_db_tv_ir_code_id_write(const std::string id);
 void ctrlm_db_tv_ir_code_id_read(std::string &id);
 void ctrlm_db_avr_ir_code_id_write(const std::string id);
 void ctrlm_db_avr_ir_code_id_read(std::string &id);
+void ctrlm_db_tv_manufacturer_write(const std::string manufacturer);
+void ctrlm_db_tv_manufacturer_read(std::string &manufacturer);
+void ctrlm_db_tv_model_write(const std::string model);
+void ctrlm_db_tv_model_read(std::string &model);
+void ctrlm_db_avr_manufacturer_write(const std::string manufacturer);
+void ctrlm_db_avr_manufacturer_read(std::string &manufacturer);
+void ctrlm_db_avr_model_write(const std::string model);
+void ctrlm_db_avr_model_read(std::string &model);
 
 void ctrlm_db_rf4ce_networks_list(std::vector<ctrlm_network_id_t> *network_ids);
 void ctrlm_db_rf4ce_controllers_list(ctrlm_network_id_t network_id, std::vector<ctrlm_controller_id_t> *controller_ids);

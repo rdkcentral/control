@@ -55,6 +55,7 @@ public:
 
    void                    send_to(unsigned long delay, unsigned long length, char *data);
    virtual void            irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, const std::string &irdb_ir_entry_id);
+   virtual void            irdb_manufacturer_model_set(ctrlm_irdb_dev_type_t type, const std::string &manufacturer, const std::string &model);
    std::string             get_irdb_entry_id_name_tv() const;
    std::string             get_irdb_entry_id_name_avr() const;
 
@@ -125,6 +126,10 @@ protected:
 
    std::shared_ptr<ctrlm_string_db_attr_t> irdb_entry_id_name_tv_;
    std::shared_ptr<ctrlm_string_db_attr_t> irdb_entry_id_name_avr_;
+   std::shared_ptr<ctrlm_string_db_attr_t> irdb_manufacturer_tv_;
+   std::shared_ptr<ctrlm_string_db_attr_t> irdb_model_tv_;
+   std::shared_ptr<ctrlm_string_db_attr_t> irdb_manufacturer_avr_;
+   std::shared_ptr<ctrlm_string_db_attr_t> irdb_model_avr_;
 
    std::shared_ptr<ctrlm_voice_metrics_t>  voice_metrics_;
 

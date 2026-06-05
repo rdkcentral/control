@@ -41,6 +41,8 @@ typedef struct {
    ctrlm_network_id_t         network_id;
    ctrlm_controller_id_t      controller_id;
    ctrlm_irdb_ir_code_set_t * ir_codes;
+   std::string                manufacturer;
+   std::string                model;
    std::vector<char> *        success;
    sem_t *                    semaphore;
    ctrlm_irdb_vendor_info_t   vendor_info;
@@ -91,7 +93,7 @@ private:
    bool open_plugin();
    bool close_plugin();
 
-   bool _program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes);
+   bool _program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes, const std::string &manufacturer = "", const std::string &model = "");
    bool _clear_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id);
 
    void *m_irdbPluginHandle;
@@ -99,6 +101,9 @@ private:
    ctrlm_irdb_mode_t mode;
    bool              m_platform_tv;
    std::mutex        m_mutex;
+   std::string       m_last_entry_id_manufacturer;
+   std::string       m_last_entry_id_model;
+   ctrlm_irdb_entry_id_list_t m_last_entry_ids;
 };
 
 #endif

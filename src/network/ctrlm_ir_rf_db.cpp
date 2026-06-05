@@ -43,6 +43,10 @@ ctrlm_ir_rf_db_t::ctrlm_ir_rf_db_t(bool power_toggle_favor_tv, bool power_discre
     this->power_discrete_favor_tv = power_discrete_favor_tv;
     this->tv_ir_code_id_ = "0";
     this->avr_ir_code_id_ = "0";
+    this->tv_manufacturer_ = "";
+    this->tv_model_ = "";
+    this->avr_manufacturer_ = "";
+    this->avr_model_ = "";
 }
 
 ctrlm_ir_rf_db_t::~ctrlm_ir_rf_db_t() {
@@ -174,17 +178,21 @@ ctrlm_key_code_t to_ctrlm_keycode(ctrlm_irdb_key_code_t irdb_code) {
     }
 }
 
-bool ctrlm_ir_rf_db_t::add_irdb_codes(ctrlm_irdb_ir_code_set_t *ir_codes) {
+bool ctrlm_ir_rf_db_t::add_irdb_codes(ctrlm_irdb_ir_code_set_t *ir_codes, const std::string &manufacturer, const std::string &model) {
     bool ret = false;
     if(ir_codes) {
         ctrlm_ir_rf_db_dev_type_t type = ctrlm_ir_rf_db_entry_t::type_from_irdb(ir_codes->type);
         switch(type) {
             case CTRLM_IR_RF_DB_DEV_TV: {
                 this->tv_ir_code_id_ = ir_codes->id;
+                this->tv_manufacturer_ = manufacturer;
+                this->tv_model_ = model;
                 break;
             }
             case CTRLM_IR_RF_DB_DEV_AVR: {
                 this->avr_ir_code_id_ = ir_codes->id;
+                this->avr_manufacturer_ = manufacturer;
+                this->avr_model_ = model;
                 break;
             }
             default: {
@@ -227,6 +235,8 @@ void ctrlm_ir_rf_db_t::clear_tv_ir_codes() {
 
     this->fix_common_slots_and_ir_flags();
     this->tv_ir_code_id_ = "0";
+    this->tv_manufacturer_ = "";
+    this->tv_model_ = "";
 }
 
 void ctrlm_ir_rf_db_t::clear_avr_ir_codes() {
@@ -251,6 +261,8 @@ void ctrlm_ir_rf_db_t::clear_avr_ir_codes() {
 
     this->fix_common_slots_and_ir_flags();
     this->avr_ir_code_id_ = "0";
+    this->avr_manufacturer_ = "";
+    this->avr_model_ = "";
 }
 
 void ctrlm_ir_rf_db_t::clear_ir_codes() {
@@ -260,6 +272,10 @@ void ctrlm_ir_rf_db_t::clear_ir_codes() {
     }
     this->tv_ir_code_id_ = "0";
     this->avr_ir_code_id_ = "0";
+    this->tv_manufacturer_ = "";
+    this->tv_model_ = "";
+    this->avr_manufacturer_ = "";
+    this->avr_model_ = "";
 }
 
 ctrlm_ir_rf_db_entry_t *ctrlm_ir_rf_db_t::get_ir_code(ctrlm_key_code_t key) {
@@ -274,7 +290,11 @@ std::string ctrlm_ir_rf_db_t::to_string(bool debug) const {
     std::stringstream ss;
     ss << "IR RF Database: "<< std::endl;
     ss << "\tTV  IR Code ID <" << tv_ir_code_id_ << ">" << std::endl;
+    ss << "\tTV  Manufacturer <" << tv_manufacturer_ << ">" << std::endl;
+    ss << "\tTV  Model <" << tv_model_ << ">" << std::endl;
     ss << "\tAVR IR Code ID <" << avr_ir_code_id_ << ">" << std::endl;
+    ss << "\tAVR Manufacturer <" << avr_manufacturer_ << ">" << std::endl;
+    ss << "\tAVR Model <" << avr_model_ << ">" << std::endl;
     for(auto itr = this->ir_rf_db.begin(); itr != this->ir_rf_db.end(); itr++) {
         if(itr->second != NULL) {
             ss << "\tKeySlot <" << ctrlm_key_code_str(itr->first) << ">, " << itr->second->to_string(debug) << std::endl;
@@ -375,6 +395,10 @@ void ctrlm_ir_rf_db_t::load_db() {
     }
     ctrlm_db_tv_ir_code_id_read(tv_ir_code_id_);
     ctrlm_db_avr_ir_code_id_read(avr_ir_code_id_);
+    ctrlm_db_tv_manufacturer_read(tv_manufacturer_);
+    ctrlm_db_tv_model_read(tv_model_);
+    ctrlm_db_avr_manufacturer_read(avr_manufacturer_);
+    ctrlm_db_avr_model_read(avr_model_);
 }
 
 bool ctrlm_ir_rf_db_t::store_db() {
@@ -383,6 +407,10 @@ bool ctrlm_ir_rf_db_t::store_db() {
     }
     ctrlm_db_tv_ir_code_id_write(tv_ir_code_id_);
     ctrlm_db_avr_ir_code_id_write(avr_ir_code_id_);
+    ctrlm_db_tv_manufacturer_write(tv_manufacturer_);
+    ctrlm_db_tv_model_write(tv_model_);
+    ctrlm_db_avr_manufacturer_write(avr_manufacturer_);
+    ctrlm_db_avr_model_write(avr_model_);
 
     return(true); // TODO, maybe change to void
 }

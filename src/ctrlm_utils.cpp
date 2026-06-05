@@ -1362,10 +1362,10 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_CONFIG,        {"Config",               "Config"}},
    {KEY_POWER,         {"Power",                "Power"}},
    {KEY_MUTE,          {"Mute",                 "Mute"}},
-   {KEY_FN_F9,         {"Sports",               "Sports"}},
-   {KEY_BOOKMARKS,     {"Playlist/Library",     "Playlist/Library"}},
-   {KEY_TV,            {"Live TV",              "Live TV"}},
-   {KEY_FN_F8,         {"Best Of",              "Best Of"}}
+   {KEY_EQUAL,         {"Sports",               "Sports"}},
+   {KEY_RIGHTBRACE,    {"Playlist/Library",     "Playlist/Library"}},
+   {KEY_LEFTBRACE,     {"Live TV",              "Live TV"}},
+   {KEY_MINUS,         {"Best Of",              "Best Of"}}
 };
 
 

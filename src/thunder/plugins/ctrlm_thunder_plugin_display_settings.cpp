@@ -118,7 +118,7 @@ bool ctrlm_thunder_plugin_display_settings_t::_get_edid() {
                         }
                     }
                     ret = true;
-                    XLOGD_DEBUG("EDID data <%d> bytes: \n<%s>", edid_size, ss.str().c_str());
+                    XLOGD_INFO("EDID data <%d> bytes: \n<%s>", edid_size, ss.str().c_str());
                 } else {
                     XLOGD_ERROR("Failed to decode EDID base64!");
                 }

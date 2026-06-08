@@ -66,7 +66,7 @@ ctrlm_obj_network_t::ctrlm_obj_network_t() {
 }
 
 ctrlm_obj_network_t::~ctrlm_obj_network_t() {
-   XLOGD_INFO("deconstructor - Type (%u) Id (%u) Name (%s)", type_, id_, name_.c_str());
+   XLOGD_INFO("destructor - Type (%u) Id (%u) Name (%s)", type_, id_, name_.c_str());
    if(NULL != hal_api_term_) {
       ctrlm_network_term_hal_t *term_data;
 
@@ -879,6 +879,14 @@ void ctrlm_obj_network_t::req_process_network_managed_upgrade(void *data, int si
 }
 
 void ctrlm_obj_network_t::req_process_upgrade_controllers(void *data, int size) {
+   XLOGD_WARN("not implemented for %s network", name_get());
+}
+
+void ctrlm_obj_network_t::req_process_print_status(void *data, int size) {
+   XLOGD_WARN("not implemented for %s network", name_get());
+}
+
+void ctrlm_obj_network_t::req_process_event_status(void *data, int size) {
    XLOGD_WARN("not implemented for %s network", name_get());
 }
 

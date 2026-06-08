@@ -153,6 +153,18 @@
 
 //
 // End RCU Markers
+
+// IRDB Markers
+//
+
+// All _accum markers are aggregated by the T2 platform within each reporting window.
+#define MARKER_IRDB_AUTOLOOKUP_RESULT "ctrlm.irdb.autolookup.result_accum" // format: <stb_vendor>,<stb_bitmask>,<tv>,<tv_code_count>,<avr_code_count>,<result>
+#define MARKER_IRDB_MANUAL_RESULT     "ctrlm.irdb.manual.result_accum"     // format: <stb_vendor>,<stb_bitmask>,<method>,<result>
+#define MARKER_IRDB_PROGRAM_RESULT    "ctrlm.irdb.program.result_accum"    // format: <result>,<fail_reason>,<rcu_bitmask>,<vendor_name>,<vendor_bitmask>
+#define MARKER_IRDB_VENDOR_SET        "ctrlm.irdb.vendor_set_accum"        // format: <set_result>,<rcu_bitmask>,<vendor_name>,<vendor_bitmask>,<supported>
+
+//
+// End IRDB Markers
 //
 
 #endif

@@ -58,7 +58,7 @@ ctrlm_obj_controller_ble_t::ctrlm_obj_controller_ble_t(ctrlm_controller_id_t con
    wakeup_custom_list_(),
    irdbs_supported_(0)
 {
-   XLOGD_INFO("constructor - controller id <%u>", controller_id);
+   XLOGD_DEBUG("constructor - controller id <%u>", controller_id);
 
    voice_metrics_->read_config();
    ieee_address_->set_num_bytes(6);
@@ -66,7 +66,7 @@ ctrlm_obj_controller_ble_t::ctrlm_obj_controller_ble_t(ctrlm_controller_id_t con
 }
 
 ctrlm_obj_controller_ble_t::ctrlm_obj_controller_ble_t() {
-   XLOGD_INFO("default constructor");
+   XLOGD_DEBUG("default constructor");
 }
 
 void ctrlm_obj_controller_ble_t::db_create() {

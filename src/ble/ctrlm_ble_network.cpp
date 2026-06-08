@@ -806,10 +806,29 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
       } else {
          if(dqm->ir_codes) {
 
+            if (dqm->ir_codes->type == CTRLM_IRDB_DEV_TYPE_TV && (ir_rf_database_.get_avr_ir_vendor_id() != 0 && ir_rf_database_.get_avr_ir_vendor_id() != dqm->vendor_info.rcu_support_bitmask) ) {
+                // if we are programming TV codes but the previous AVR codes are from a different IRDB vendor, then clear out the AVR codes.
+                // the remote cannot send different codes from different IRDB vendors at the same time.
+                XLOGD_INFO("Programming TV codes from vendor %s(0x%X), but currently have AVR codes from %s(0x%X).  Clearing AVR codes.", 
+                     dqm->vendor_info.name.c_str(), (unsigned int)dqm->vendor_info.rcu_support_bitmask, 
+                     ir_rf_database_.get_avr_ir_vendor_name().c_str(), (unsigned int)ir_rf_database_.get_avr_ir_vendor_id());
+               
+               ir_rf_database_.clear_avr_ir_codes();
+
+            } else if (dqm->ir_codes->type == CTRLM_IRDB_DEV_TYPE_AVR && (ir_rf_database_.get_tv_ir_vendor_id() != 0 && ir_rf_database_.get_tv_ir_vendor_id() != dqm->vendor_info.rcu_support_bitmask) ) {
+                // if we are programming AVR codes but the previous TV codes are from a different IRDB vendor, then clear out the TV codes.
+                // the remote cannot send different codes from different IRDB vendors at the same time.
+                XLOGD_INFO("Programming AVR codes from vendor %s(0x%X), but currently have TV codes from %s(0x%X).  Clearing TV codes.", 
+                     dqm->vendor_info.name.c_str(), (unsigned int)dqm->vendor_info.rcu_support_bitmask, 
+                     ir_rf_database_.get_tv_ir_vendor_name().c_str(), (unsigned int)ir_rf_database_.get_tv_ir_vendor_id());
+               
+               ir_rf_database_.clear_tv_ir_codes();
+            }
+
             std::map<ctrlm_key_code_t, std::vector<uint8_t>> ir_codes;
             
             // First add IR Codes to the IR RF Database (this contains all of the logic for maintaining TV vs AVR codes)
-            ir_rf_database_.add_irdb_codes(dqm->ir_codes);
+            ir_rf_database_.add_irdb_codes(dqm->ir_codes, dqm->vendor_info.rcu_support_bitmask, dqm->vendor_info.name);
             XLOGD_INFO("\n%s", this->ir_rf_database_.to_string(false).c_str());
             XLOGD_DEBUG("\n%s", this->ir_rf_database_.to_string(true).c_str());
             // Now get the IR codes for the BLE IR slots

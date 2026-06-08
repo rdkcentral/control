@@ -85,6 +85,8 @@
 #include "ctrlm_voice_obj_generic.h"
 #include "ctrlm_voice_endpoint.h"
 #include "ctrlm_irdb_interface.h"
+#include "ctrlm_rcp_ipc_event.h"
+
 #ifdef FDC_ENABLED
 #include "xr_fdc.h"
 #endif
@@ -875,6 +877,38 @@ void ctrlm_main_ir_last_keypress_get(ctrlm_ir_last_keypress_t *last_key_info) {
       last_key_info->last_key_time = g_ctrlm.ir_controller->last_key_time_get();
       last_key_info->last_key_code = g_ctrlm.ir_controller->last_key_code_get();
    }
+}
+
+static void ctrlm_main_network_handler_execute_for_all(ctrlm_msg_handler_network_t handler, void *data, int size) {
+   for (auto const &network_it : g_ctrlm.networks) {
+      if (network_it.second && network_it.second->is_ready()) {
+         (network_it.second->*handler)(data, size);
+      }
+   }
+}
+
+std::shared_ptr<void> ctrlm_main_all_network_rcu_status_get() {
+   if (g_ctrlm.main_thread != g_thread_self ()) {
+      XLOGD_ERROR("not called from ctrlm_main_thread!!!!!");
+      if(!ctrlm_is_production_build()) {
+         g_assert(0);
+      }
+      return nullptr;
+   }
+
+   std::shared_ptr<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>> params = 
+         std::make_shared<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>>();
+
+   params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
+
+   ctrlm_main_queue_msg_get_rcu_status_t msg = {};
+   msg.params = params;
+
+   ctrlm_main_network_handler_execute_for_all((ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_get_rcu_status,
+                                              &msg,
+                                              sizeof(msg));
+
+   return params;
 }
 
 void ctrlm_utils_sem_wait(){

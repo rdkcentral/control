@@ -23,8 +23,11 @@
 #include <sys/sysinfo.h>
 #include <poll.h>
 #include <glib.h>
+#include <glib-unix.h>
 #include <string.h>
 #include <semaphore.h>
+#include <unistd.h>
+#include <errno.h>
 #include <dlfcn.h>
 #include <memory>
 #include <algorithm>
@@ -82,6 +85,8 @@
 #include "ctrlm_voice_obj_generic.h"
 #include "ctrlm_voice_endpoint.h"
 #include "ctrlm_irdb_interface.h"
+#include "ctrlm_rcp_ipc_event.h"
+
 #ifdef FDC_ENABLED
 #include "xr_fdc.h"
 #endif
@@ -347,6 +352,7 @@ static gboolean ctrlm_authservice_expired(gpointer user_data);
 static gboolean ctrlm_ntp_check(gpointer user_data);
 static void     ctrlm_signals_register(void);
 static void     ctrlm_signal_handler(int signal);
+static gboolean ctrlm_unix_signal_terminate(gpointer user_data);
 
 static void     ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *status);
 static void     ctrlm_main_iarm_call_property_get_(ctrlm_main_iarm_call_property_t *property);
@@ -873,6 +879,38 @@ void ctrlm_main_ir_last_keypress_get(ctrlm_ir_last_keypress_t *last_key_info) {
    }
 }
 
+static void ctrlm_main_network_handler_execute_for_all(ctrlm_msg_handler_network_t handler, void *data, int size) {
+   for (auto const &network_it : g_ctrlm.networks) {
+      if (network_it.second && network_it.second->is_ready()) {
+         (network_it.second->*handler)(data, size);
+      }
+   }
+}
+
+std::shared_ptr<void> ctrlm_main_all_network_rcu_status_get() {
+   if (g_ctrlm.main_thread != g_thread_self ()) {
+      XLOGD_ERROR("not called from ctrlm_main_thread!!!!!");
+      if(!ctrlm_is_production_build()) {
+         g_assert(0);
+      }
+      return nullptr;
+   }
+
+   std::shared_ptr<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>> params = 
+         std::make_shared<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>>();
+
+   params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
+
+   ctrlm_main_queue_msg_get_rcu_status_t msg = {};
+   msg.params = params;
+
+   ctrlm_main_network_handler_execute_for_all((ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_get_rcu_status,
+                                              &msg,
+                                              sizeof(msg));
+
+   return params;
+}
+
 void ctrlm_utils_sem_wait(){
    sem_wait(&g_ctrlm.ctrlm_utils_sem);
 }
@@ -1098,47 +1136,62 @@ gboolean ctrlm_authservice_poll(gpointer user_data) {
 }
 #endif
 
+// GLib main-loop callbacks for Unix signals — run in the main loop context so
+// they are safe to call g_main_loop_quit() and other non-async-signal-safe APIs.
+static gboolean ctrlm_unix_signal_terminate(gpointer user_data) {
+   int sig = GPOINTER_TO_INT(user_data);
+   XLOGD_INFO("Received %s", sig == SIGINT ? "SIGINT" : "SIGTERM");
+   ctrlm_quit_main_loop();
+   return G_SOURCE_CONTINUE;
+}
+
 void ctrlm_signals_register(void) {
-   // Handle these signals
+   // Use g_unix_signal_add() so callbacks run inside the GLib main loop context
+   // rather than from an async signal handler, avoiding undefined behavior from
+   // calling non-async-signal-safe functions (e.g. g_main_loop_quit).
    XLOGD_INFO("Registering SIGINT...");
-   if(signal(SIGINT, ctrlm_signal_handler) == SIG_ERR) {
+   if(0 == g_unix_signal_add(SIGINT,  ctrlm_unix_signal_terminate, GINT_TO_POINTER(SIGINT))) {
       XLOGD_ERROR("Unable to register for SIGINT.");
    }
    XLOGD_INFO("Registering SIGTERM...");
-   if(signal(SIGTERM, ctrlm_signal_handler) == SIG_ERR) {
+   if(0 == g_unix_signal_add(SIGTERM, ctrlm_unix_signal_terminate, GINT_TO_POINTER(SIGTERM))) {
       XLOGD_ERROR("Unable to register for SIGTERM.");
    }
-   XLOGD_INFO("Registering SIGQUIT...");
-   if(signal(SIGQUIT, ctrlm_signal_handler) == SIG_ERR) {
-      XLOGD_ERROR("Unable to register for SIGQUIT.");
+   bool interactive = isatty(STDIN_FILENO);
+   if(!interactive) {
+      XLOGD_INFO("Skipping SIGQUIT registration.");
+   } else {
+      XLOGD_INFO("Registering SIGQUIT...");
+      if(signal(SIGQUIT, ctrlm_signal_handler) == SIG_ERR) { // SIGQUIT is not supported by g_unix_signal_add, so use signal() with a direct handler
+         int errsv = errno;
+         XLOGD_ERROR("Unable to register for SIGQUIT <%s>", strerror(errsv));
+      }
    }
-   XLOGD_INFO("Registering SIGPIPE...");
-   if(signal(SIGPIPE, ctrlm_signal_handler) == SIG_ERR) {
-      XLOGD_ERROR("Unable to register for SIGPIPE.");
+   // Ignore SIGPIPE — broken-pipe errors are handled at the call site via errno.
+   XLOGD_INFO("Ignoring SIGPIPE...");
+   errno = 0;
+   if(SIG_ERR == signal(SIGPIPE, SIG_IGN)) {
+      int errsv = errno;
+      XLOGD_ERROR("Unable to ignore SIGPIPE <%s>", strerror(errsv));
    }
 }
 
-void ctrlm_signal_handler(int signal) {
+// Registered as an OS signal handler (must use async-signal-safe calls only).
+static void ctrlm_signal_handler(int signal) {
    switch(signal) {
-      case SIGTERM:
-      case SIGINT: {
-         XLOGD_INFO("Received %s", signal == SIGINT ? "SIGINT" : "SIGTERM");
-         ctrlm_quit_main_loop();
-         break;
-      }
       case SIGQUIT: {
-         XLOGD_INFO("Received SIGQUIT");
-#ifdef BREAKPAD_SUPPORT
+         XLOGD_SAFE_INFO("Received SIGQUIT");
+         #ifdef BREAKPAD_SUPPORT
          ctrlm_crash();
-#endif
+         #endif
          break;
       }
       case SIGPIPE: {
-         XLOGD_ERROR("Received SIGPIPE. Pipe is broken");
+         XLOGD_SAFE_ERROR("Received SIGPIPE. Pipe is broken");
          break;
       }
       default:
-         XLOGD_ERROR("Received unhandled signal %d", signal);
+         XLOGD_SAFE_ERROR("Received unhandled signal");
          break;
    }
 }
@@ -1233,9 +1286,18 @@ void ctrlm_on_network_assert(ctrlm_network_id_t network_id) {
        // Invalidate main thread so terminate does not attempt to terminate it
        g_ctrlm.main_thread = NULL;
    }
-   // g_main_loop_quit() will be called in ctrlm_signal_handler(SIGTERM)
+   // g_main_loop_quit() will be called when the SIGTERM GLib source fires,
+   // or directly in the kill() fallback below.
    g_ctrlm.return_code = -1;
-   ctrlm_signal_handler(SIGTERM);
+
+   errno = 0;
+   int rc = kill(getpid(), SIGTERM);
+   if(rc != 0) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to send SIGTERM to self <%s> - invoking shutdown handler directly", strerror(errsv));
+      ctrlm_quit_main_loop();
+   }
+   
    // give main() time to clean up
    sleep(5);
    // Exit here in case main fails to exit
@@ -1586,16 +1648,17 @@ gboolean ctrlm_load_config(json_t **json_obj_root, json_t **json_obj_net_rf4ce, 
 
    // Check for OPT config file override
    if(opt_append) {
+      bool local_config = true;
       if(!oem_append) {
          XLOGD_INFO("Loading OPT configuration from <%s>", config_fn_opt.c_str());
-         if(!ctrlm_config->load_config(config_fn_opt)) {
+         if(!ctrlm_config->load_config(config_fn_opt, local_config)) {
             XLOGD_ERROR("Failed to load OPT configuration from <%s>", config_fn_opt.c_str());
             return(false);
          }
       } else {
          XLOGD_INFO("Appending OPT configuration from <%s>", config_fn_opt.c_str());
       
-         if(!ctrlm_config->append_config(config_fn_opt)) {
+         if(!ctrlm_config->append_config(config_fn_opt, local_config)) {
             XLOGD_ERROR("Failed to append OPT configuration from <%s>", config_fn_opt.c_str());
             return(false);
          }
@@ -1938,7 +2001,15 @@ void ctrlm_global_rfc_values_retrieved(const ctrlm_rfc_attr_t &attr) {
    attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_TIMEOUT_ONE_TOUCH_AUTOBIND, g_ctrlm.one_touch_autobind_timeout_val, 0);
    attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_CRASH_RECOVERY_THRESHOLD, g_ctrlm.crash_recovery_threshold, 0);
    if(attr.get_rfc_value(JSON_ARRAY_NAME_CTRLM_GLOBAL_MASK_PII, g_ctrlm.mask_pii, ctrlm_is_production_build() ? CTRLM_JSON_ARRAY_INDEX_PRD : CTRLM_JSON_ARRAY_INDEX_DEV)) {
-      g_ctrlm.voice_session->voice_stb_data_pii_mask_set(g_ctrlm.mask_pii);
+      if(g_ctrlm.voice_session != NULL) {
+         g_ctrlm.voice_session->voice_stb_data_pii_mask_set(g_ctrlm.mask_pii);
+      }
+      if(g_ctrlm.ir_controller != NULL) {
+         g_ctrlm.ir_controller->mask_key_codes_set(g_ctrlm.mask_pii);
+      }
+      for(auto const &itr : g_ctrlm.networks) {
+         itr.second->mask_key_codes_set(g_ctrlm.mask_pii);
+      }
    }
    attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_AUTHSERVICE_FAST_POLL_PERIOD, g_ctrlm.authservice_fast_poll_val);
    attr.get_rfc_value(JSON_INT_NAME_CTRLM_GLOBAL_AUTHSERVICE_FAST_MAX_RETRIES, g_ctrlm.authservice_fast_retries_max);   

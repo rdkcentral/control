@@ -43,7 +43,7 @@ public:
     ctrlm_ir_rf_db_t(bool power_toggle_favor_tv = true, bool power_discrete_favor_tv = false);
 
     /**
-     * Default Deconstructor
+     * Default destructor
      */
     virtual ~ctrlm_ir_rf_db_t();
 

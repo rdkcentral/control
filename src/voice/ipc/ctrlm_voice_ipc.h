@@ -92,7 +92,8 @@ typedef enum {
     SESSION_END_SUCCESS,
     SESSION_END_FAILURE,
     SESSION_END_ABORT,
-    SESSION_END_SHORT_UTTERANCE
+    SESSION_END_SHORT_UTTERANCE,
+    SESSION_END_SILENT_UTTERANCE
 } ctrlm_voice_ipc_event_session_end_result_t;
 
 typedef struct {

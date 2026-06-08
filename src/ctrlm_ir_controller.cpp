@@ -143,7 +143,7 @@ bool ctrlm_ir_controller_t::read_config() {
       string substr;
       getline( ss, substr, ',' );
       if (!substr.empty()) {
-         XLOGD_INFO("Adding IR input device name: <%s>", substr.c_str());
+         XLOGD_DEBUG("Adding IR input device name: <%s>", substr.c_str());
          input_device_names_.push_back(substr);
       }
    }
@@ -206,7 +206,6 @@ void ctrlm_ir_controller_t::process_event_key(uint16_t key_code) {
       XLOGD_INFO("received IR key for BLE pairing (scan code 0x%06x : pairCode=%hhu)", scan_code_, commandCode);
 
       ctrlm_iarm_call_StartPairWithCode_params_t params;
-      params.key_code = key_code;
       params.pair_code = commandCode;
 
       ctrlm_main_queue_msg_pair_with_code_t msg;

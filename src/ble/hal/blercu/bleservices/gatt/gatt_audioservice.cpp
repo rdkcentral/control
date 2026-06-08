@@ -620,7 +620,7 @@ void GattAudioService::stopStreaming(uint32_t audioDuration, PendingReply<> &&re
         }
 
         if(m_missedSequences >= frameCountMax) {
-            XLOGD_ERROR("missed frames greater than frame count max");
+            XLOGD_ERROR("missed frames <%u> greater than frame count max <%u>", m_missedSequences, frameCountMax);
         } else {
             frameCountMax -= m_missedSequences; // compensate for missed frames
 

@@ -449,7 +449,7 @@ void GattInfraredService::requestIrSupport()
 
                 if (value.size() == 1) {
                     uint8_t irSupport_ = value[0];
-                    XLOGD_INFO("IR support value = 0x%x", irSupport_);
+                    XLOGD_DEBUG("IR support value = 0x%x", irSupport_);
                     if (irSupport_ != m_irSupport) {
                         m_irSupport = irSupport_;
                         m_irSupportChangedSlots.invoke(m_irSupport);
@@ -500,7 +500,7 @@ void GattInfraredService::requestCodeId()
                                       (int32_t(value[2]) << 16) |
                                       (int32_t(value[3]) << 24);
 
-                    XLOGD_INFO("IR code ID = %d", codeId_);
+                    XLOGD_DEBUG("IR code ID = %d", codeId_);
 
                     if (codeId_ != m_codeId) {
                         m_codeId = codeId_;

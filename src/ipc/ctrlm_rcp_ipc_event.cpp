@@ -135,17 +135,17 @@ void ctrlm_rcp_ipc_net_status_t::populate_status(const ctrlm_obj_network_t &netw
     }
 }
 
-ctrlm_ir_state_t ctrlm_rcp_ipc_net_status_t::get_ir_prog_state(void)
+ctrlm_ir_state_t ctrlm_rcp_ipc_net_status_t::get_ir_prog_state(void) const
 {
     return irdb_state_;
 }
 
-ctrlm_rf_pair_state_t ctrlm_rcp_ipc_net_status_t::get_rf_pair_state(void)
+ctrlm_rf_pair_state_t ctrlm_rcp_ipc_net_status_t::get_rf_pair_state(void) const
 {
     return pair_state_;
 }
 
-void ctrlm_rcp_ipc_net_status_t::get_controller_status_list(std::vector<ctrlm_rcp_ipc_controller_status_t> &list)
+void ctrlm_rcp_ipc_net_status_t::get_controller_status_list(std::vector<ctrlm_rcp_ipc_controller_status_t> &list) const
 {
     for (const auto &status : controller_status_list_) {
         list.push_back(status);

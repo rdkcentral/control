@@ -79,7 +79,6 @@ ${GLIB_CFLAGS} \
 -include ${MOCK_DIR}/devicesettings.h \
 -include ${MOCK_DIR}/Rfc.h \
 -Wall -Wno-error \
--DSAFEC_DUMMY_API \
 -DDISABLE_SECURITY_TOKEN" \
 -DCMAKE_C_FLAGS=" \
 -I ${XRSDK_REAL_HEADERS} \
@@ -92,7 +91,6 @@ ${GLIB_CFLAGS} \
 -I /usr/include/libdrm \
 ${GLIB_CFLAGS} \
 -Wall -Wno-error \
--DSAFEC_DUMMY_API \
 -DDISABLE_SECURITY_TOKEN" \
 -DCMAKE_EXE_LINKER_FLAGS="-L${GITHUB_WORKSPACE}/install/usr/lib -Wl,--unresolved-symbols=ignore-all"
 

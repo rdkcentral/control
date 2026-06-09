@@ -405,6 +405,7 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
     ctrlm_voice_iarm_call_settings_t *voice_settings     = NULL;
     uint32_t                          voice_settings_len = 0;
     std::string                       init;
+    (void)local_conf;
 
     XLOGD_INFO("Configuring voice");
     ctrlm_voice_audio_settings_t audio_settings = {this->audio_mode, this->audio_timing, this->audio_confidence_threshold, this->audio_ducking_type, this->audio_ducking_level, this->audio_ducking_beep_enabled};

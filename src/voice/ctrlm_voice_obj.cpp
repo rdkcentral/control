@@ -566,7 +566,6 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
     }
 
     this->set_audio_mode(&audio_settings);
-    this->process_xconf(&json_obj_vsdk, local_conf);
 
     // Disable muting/ducking to recover in case ctrlm restarts while muted/ducked.
     this->audio_state_set(false);
@@ -935,118 +934,6 @@ bool ctrlm_voice_t::voice_init_set(const char *init, bool db_write) {
         }
     }
     return(ret);
-}
-
-void ctrlm_voice_t::process_xconf(json_t **json_obj_vsdk, bool local_conf) {
-   XLOGD_INFO("Voice XCONF Settings");
-   int result;
-
-   char vsdk_config_str[CTRLM_RFC_MAX_PARAM_LEN] = {0}; //MAX_PARAM_LEN from rfcapi.h is 2048
-
-   if(ctrlm_is_rf4ce_enabled()) {
-      char encoder_params_str[CTRLM_RCU_RIB_ATTR_LEN_OPUS_ENCODING_PARAMS * 2 + 1] = {0};
-
-      result  = ctrlm_tr181_string_get(CTRLM_RF4CE_TR181_RF4CE_OPUS_ENCODER_PARAMS, encoder_params_str, sizeof(encoder_params_str));
-      if(result == CTRLM_TR181_RESULT_SUCCESS) {
-         std::string opus_encoder_params_str = encoder_params_str;
-         this->voice_params_opus_encoder_validate(opus_encoder_params_str);
-
-         XLOGD_INFO("opus encoder params <%s>", this->prefs.opus_encoder_params_str.c_str());
-      }
-   }
-
-   ctrlm_voice_audio_settings_t audio_settings = {this->audio_mode, this->audio_timing, this->audio_confidence_threshold, this->audio_ducking_type, this->audio_ducking_level, this->audio_ducking_beep_enabled};
-   bool changed = false;
-
-   result = ctrlm_tr181_int_get(CTRLM_TR181_VOICE_PARAMS_AUDIO_MODE, (int*)&audio_settings.mode);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-       changed = true;
-   }
-   result = ctrlm_tr181_int_get(CTRLM_TR181_VOICE_PARAMS_AUDIO_TIMING, (int *)&audio_settings.timing);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-       changed = true;
-   }
-   result = ctrlm_tr181_real_get(CTRLM_TR181_VOICE_PARAMS_AUDIO_CONFIDENCE_THRESHOLD, &audio_settings.confidence_threshold);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-       changed = true;
-   }
-   result = ctrlm_tr181_int_get(CTRLM_TR181_VOICE_PARAMS_AUDIO_DUCKING_TYPE, (int *)&audio_settings.ducking_type);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-       changed = true;
-   }
-   result = ctrlm_tr181_real_get(CTRLM_TR181_VOICE_PARAMS_AUDIO_DUCKING_LEVEL, &audio_settings.ducking_level);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-       changed = true;
-   }
-
-   // CTRLM_TR181_VOICE_PARAMS_AUDIO_DUCKING_BEEP doesn't exist because this is a user configurable setting via configureVoice thunder api
-
-   result = ctrlm_tr181_string_get(CTRLM_TR181_VOICE_PARAMS_VSDK_CONFIGURATION, &vsdk_config_str[0], CTRLM_RFC_MAX_PARAM_LEN);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-      json_error_t jerror;
-      json_t *jvsdk;
-      char *decoded_buf = NULL;
-      size_t decoded_buf_len = 0;
-
-      decoded_buf = (char *)g_base64_decode((const gchar*)vsdk_config_str, &decoded_buf_len);
-      if(decoded_buf) {
-         if(decoded_buf_len > 0 && decoded_buf_len < CTRLM_RFC_MAX_PARAM_LEN) {
-            XLOGD_INFO("VSDK configuration taken from XCONF");
-            XLOGD_INFO("%s", decoded_buf);
-
-            jvsdk = json_loads(&decoded_buf[0], 0, &jerror);
-            do {
-               if(NULL == jvsdk) {
-                  XLOGD_ERROR("XCONF has VSDK params but json_loads() failed, line %d: %s ", jerror.line, jerror.text );
-                  break;
-               }
-               if(!json_is_object(jvsdk))
-               {
-                  XLOGD_ERROR("found VSDK in text but invalid object");
-                  break;
-               }
-
-               //If execution reaches here we have XCONF settings to use. If developer has used local conf settings, keep them.
-               if(local_conf) {
-                  if(!json_object_update(jvsdk, *json_obj_vsdk)) {
-                     XLOGD_ERROR("failed to update json_obj_vsdk");
-                     break;
-                  }
-               }
-
-               *json_obj_vsdk = json_deep_copy(jvsdk);
-               if(NULL == *json_obj_vsdk)
-               {
-                  XLOGD_ERROR("found VSDK object but failed to copy. We have lost any /opt file VSDK parameters");
-                  /* Nothing to do about this unlikely error. If I copy to a temp pointer to protect the input,
-                   * then I have to copy from temp to real, and check that copy for failure. Where would it end?
-                   */
-                  break;
-               }
-            }while(0);
-         } else {
-            XLOGD_WARN("incorrect length");
-         }
-         free(decoded_buf);
-      } else {
-         XLOGD_WARN("failed to decode base64");
-      }
-   }
-
-   int value = 0;
-   result = ctrlm_tr181_int_get(CTRLM_RF4CE_TR181_PRESS_AND_RELEASE_EOS_TIMEOUT, &value, 0, UINT16_MAX);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-      this->prefs.par_voice_eos_timeout = value;
-   }
-
-   result = ctrlm_tr181_int_get(CTRLM_RF4CE_TR181_PRESS_AND_RELEASE_EOS_METHOD, &value, 0, UINT8_MAX);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-      this->prefs.par_voice_eos_method = value;
-   }
-
-   if(changed) {
-       this->set_audio_mode(&audio_settings);
-   }
 }
 
 void ctrlm_voice_t::query_strings_updated() {

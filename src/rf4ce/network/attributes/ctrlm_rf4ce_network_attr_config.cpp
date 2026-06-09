@@ -62,51 +62,6 @@ unsigned int ctrlm_rf4ce_rsp_time_t::get_us(uint8_t profile_id) const {
     return(1000 * this->get_ms(profile_id));
 }
 
-// TODO: remove once generic RFC is approved for use
-void ctrlm_rf4ce_rsp_time_t::legacy_rfc() {
-    unsigned int value = 0;
-    bool changed = false;
-    int rsp_time_min = (ctrlm_is_production_build() ? RESPONSE_TIME_MIN : RESPONSE_TIME_CONFIG_VBN_MIN);
-    int rsp_time_max = (ctrlm_is_production_build() ? RESPONSE_TIME_MAX : RESPONSE_TIME_CONFIG_VBN_MAX);
-    ctrlm_tr181_result_t result = ctrlm_tr181_int_get(CTRLM_RF4CE_TR181_RSP_TIME_XRC, &value, rsp_time_min, rsp_time_max);
-    if(result != CTRLM_TR181_RESULT_SUCCESS) {
-        XLOGD_INFO("XRC Response Time not present");
-    } else {
-        if(value != this->rsp_times[RESPONSE_TIME_PROFILE_XRC]) {
-            changed = true;
-        }
-        this->rsp_times[RESPONSE_TIME_PROFILE_XRC] = value;
-        XLOGD_INFO("XRC Response Time %ums", this->rsp_times[RESPONSE_TIME_PROFILE_XRC]);
-    }
-
-    result = ctrlm_tr181_int_get(CTRLM_RF4CE_TR181_RSP_TIME_XVP, &value, rsp_time_min, rsp_time_max);
-    if(result != CTRLM_TR181_RESULT_SUCCESS) {
-        XLOGD_INFO("XVP Response Time not present");
-    } else {
-        if(value != this->rsp_times[RESPONSE_TIME_PROFILE_XVP]) {
-            changed = true;
-        }
-        this->rsp_times[RESPONSE_TIME_PROFILE_XVP] = value;
-        XLOGD_INFO("XVP Response Time %ums", this->rsp_times[RESPONSE_TIME_PROFILE_XVP]);
-    }
-
-    result = ctrlm_tr181_int_get(CTRLM_RF4CE_TR181_RSP_TIME_XDIU, &value, rsp_time_min, rsp_time_max);
-    if(result != CTRLM_TR181_RESULT_SUCCESS) {
-        XLOGD_INFO("XDIU Response Time not present");
-    } else {
-        if(value != this->rsp_times[RESPONSE_TIME_PROFILE_XDIU]) {
-            changed = true;
-        }
-        this->rsp_times[RESPONSE_TIME_PROFILE_XDIU] = value;
-        XLOGD_INFO("XDIU Response Time %ums", this->rsp_times[RESPONSE_TIME_PROFILE_XDIU]);
-    }
-
-    if(changed && this->updated_listener) {
-        XLOGD_INFO("calling updated listener for %s", this->get_name().c_str());
-        this->updated_listener(*this);
-    }
-}
-
 std::string ctrlm_rf4ce_rsp_time_t::to_string() const {
     std::stringstream ss;
     ss << "XRC <"  << this->rsp_times.at(RESPONSE_TIME_PROFILE_XRC)   << "ms> ";

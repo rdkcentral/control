@@ -54,7 +54,6 @@ public:
 public:
     unsigned int get_ms(uint8_t profile_id) const;
     unsigned int get_us(uint8_t profile_id) const;
-    void         legacy_rfc();
 
 public:
     /**

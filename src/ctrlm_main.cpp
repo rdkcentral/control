@@ -938,12 +938,6 @@ void ctrlm_thread_monitor_init(void) {
 
    g_ctrlm.monitor_threads.shrink_to_fit();
 
-   if(CTRLM_TR181_RESULT_SUCCESS != ctrlm_tr181_bool_get(CTRLM_RF4CE_TR181_THREAD_MONITOR_MINIDUMP_ENABLE, &g_ctrlm.thread_monitor_minidump)) {
-      XLOGD_INFO("Thread Monitor Minidump is <%s> (TR181 not present)", (g_ctrlm.thread_monitor_minidump ? "ENABLED" : "DISABLED"));
-   } else {
-      XLOGD_INFO("Thread Monitor Minidump is <%s>", (g_ctrlm.thread_monitor_minidump ? "ENABLED" : "DISABLED"));
-   }
-
    // Run once to kick off the first poll
    ctrlm_thread_monitor(NULL);
 }

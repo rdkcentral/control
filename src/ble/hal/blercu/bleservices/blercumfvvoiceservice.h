@@ -33,8 +33,8 @@
 #include "utils/pendingreply.h"
 #include "utils/slot.h"
 
+#include <cstdint>
 #include <vector>
-#include <map>
 
 
 class BleRcuMfvVoiceService
@@ -51,56 +51,75 @@ public:
         FullPower=0x01,
         Aad=0x02,
         BelowThreshold=0x03,
-    }
+    };
 
     struct DetectionData {
         uint16_t start;
         uint16_t end;
-        uint16_t confidence;
+        uint16_t confidence_x10;
     };
 
     struct ModelVersion {
         uint8_t major;
         uint8_t minor;
-        uint8_t patch;
     };
 
-    void writePrivacy(bool enabled, PendingReply<> &&reply) {}
-    void writeModelConfiguration(uint8_t sensitivity, uint8_t secondary, uint8_t aad, PendingReply<> &&reply) {}
+    struct StreamStatsRaw {
+        std::vector<uint8_t> bytes;
+    };
+
+    enum Capabilities {
+        MidfieldVoiceCapable = (1 << 0),
+        SoftwarePrivacyControl = (1 << 1),
+        SowwEowwTimingAvailable = (1 << 2),
+        AadSensitivityControlAvailable = (1 << 3)
+    };
+
+public:
+    virtual DetectionType detectionType() const = 0;
+    virtual DetectionData detectionData() const = 0;
+    virtual ModelVersion wakeWordModelVersion() const = 0;
+    virtual bool privacyEnabled() const = 0;
+    virtual std::vector<uint8_t> modelConfiguration() const = 0;
+    virtual uint8_t capabilities() const = 0;
+    virtual StreamStatsRaw streamStats() const = 0;
+
+    virtual void writePrivacy(bool enabled, PendingReply<> &&reply) = 0;
+    virtual void writeModelConfiguration(uint8_t sensitivity, uint8_t secondary, uint8_t aad, PendingReply<> &&reply) = 0;
 
 // signals:
-    inline void addDetectionTypeChangedSlot(const Slot<int32_t> &func)
+    inline void addDetectionTypeChangedSlot(const Slot<DetectionType> &func)
     {
         m_detectionTypeChangedSlots.addSlot(func);
     }
-    inline void addDetectionDataChangedSlot(const Slot<int32_t> &func)
+    inline void addDetectionDataChangedSlot(const Slot<const DetectionData &> &func)
     {
         m_detectionDataChangedSlots.addSlot(func);
     }
-    inline void addPrivacyChangedSlot(const Slot<int32_t> &func)
+    inline void addPrivacyChangedSlot(const Slot<bool> &func)
     {
         m_privacyChangedSlots.addSlot(func);
     }
-    inline void addCapabilitiesChangedSlot(const Slot<int32_t> &func)
+    inline void addCapabilitiesChangedSlot(const Slot<uint8_t> &func)
     {
         m_capabilitiesChangedSlots.addSlot(func);
     }
-    inline void addStreamStatsChangedSlot(const Slot<int32_t> &func)
+    inline void addStreamStatsChangedSlot(const Slot<const StreamStatsRaw &> &func)
     {
         m_streamStatsChangedSlots.addSlot(func);
     }
-    inline void addReadySlot(const Slot<int32_t> &func) 
+    inline void addReadySlot(const Slot<> &func)
     {
         m_readySlots.addSlot(func);
     }
 
 protected:
-    Slots<int32_t> m_detectionTypeChangedSlots;
-    Slots<int32_t> m_detectionDataChangedSlots;
-    Slots<int32_t> m_privacyChangedSlots;
-    Slots<int32_t> m_capabilitiesChangedSlots;
-    Slots<int32_t> m_streamStatsChangedSlots;
-    Slots<int32_t> m_readySlots;
+    Slots<DetectionType> m_detectionTypeChangedSlots;
+    Slots<const DetectionData &> m_detectionDataChangedSlots;
+    Slots<bool> m_privacyChangedSlots;
+    Slots<uint8_t> m_capabilitiesChangedSlots;
+    Slots<const StreamStatsRaw &> m_streamStatsChangedSlots;
+    Slots<> m_readySlots;
 
 };
 

@@ -43,6 +43,7 @@ class BleRcuFindMeService;
 class BleRcuInfraredService;
 class BleRcuUpgradeService;
 class BleRcuRemoteControlService;
+class BleRcuMfvVoiceService;
 
 
 class BleRcuServices
@@ -69,6 +70,7 @@ public:
     virtual std::shared_ptr<BleRcuInfraredService> infraredService() const = 0;
     virtual std::shared_ptr<BleRcuUpgradeService> upgradeService() const = 0;
     virtual std::shared_ptr<BleRcuRemoteControlService> remoteControlService() const = 0;
+    virtual std::shared_ptr<BleRcuMfvVoiceService> mfvVoiceService() const = 0;
 
 
     inline void addReadySlot(const Slot<> &func)

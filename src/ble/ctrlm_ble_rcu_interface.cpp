@@ -21,6 +21,7 @@
 #include "ctrlm_ble_rcu_interface.h"
 #include "ctrlm_ble_utils.h"
 #include "ctrlm_voice_obj.h"
+#include "blercu/bleservices/blercumfvvoiceservice.h"
 
 
 #define CTRLM_BLE_KEY_MSG_QUEUE_MSG_MAX         (10)
@@ -482,6 +483,62 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
             m_rcuStatusChangedSlots.invoke(&params);
         };
     device->addAdvConfigCustomListChangedSlot(Slot<const std::vector<uint8_t> &>(m_isAlive, advConfigCustomListChangedSlot));
+
+
+    // MFV Voice Service slots
+    auto mfvService = device->mfvVoiceService();
+    if (mfvService) {
+        auto mfvDetectionTypeSlot = [this, address](BleRcuMfvVoiceService::DetectionType type)
+            {
+                XLOGD_INFO("BLE RCU %s MFV detection type = 0x%02X", address.toString().c_str(), static_cast<uint8_t>(type));
+
+                ctrlm_hal_ble_RcuStatusData_t params;
+                params.property_updated = CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_TYPE;
+                params.rcu_data.ieee_address = address.toUInt64();
+                params.rcu_data.mfv_detection_type = static_cast<uint8_t>(type);
+                m_rcuStatusChangedSlots.invoke(&params);
+            };
+        mfvService->addDetectionTypeChangedSlot(Slot<BleRcuMfvVoiceService::DetectionType>(m_isAlive, mfvDetectionTypeSlot));
+
+        auto mfvDetectionDataSlot = [this, address](const BleRcuMfvVoiceService::DetectionData &data)
+            {
+                XLOGD_INFO("BLE RCU %s MFV detection data: start=%u end=%u confidence=%.1f%%",
+                    address.toString().c_str(), data.start, data.end, data.confidence_x10 / 10.0);
+
+                ctrlm_hal_ble_RcuStatusData_t params;
+                params.property_updated = CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_DATA;
+                params.rcu_data.ieee_address = address.toUInt64();
+                params.rcu_data.mfv_ww_start = data.start;
+                params.rcu_data.mfv_ww_end = data.end;
+                params.rcu_data.mfv_confidence_x10 = data.confidence_x10;
+                m_rcuStatusChangedSlots.invoke(&params);
+            };
+        mfvService->addDetectionDataChangedSlot(Slot<const BleRcuMfvVoiceService::DetectionData &>(m_isAlive, mfvDetectionDataSlot));
+
+        auto mfvPrivacySlot = [this, address](bool enabled)
+            {
+                XLOGD_INFO("BLE RCU %s MFV privacy = %s", address.toString().c_str(), enabled ? "enabled" : "disabled");
+
+                ctrlm_hal_ble_RcuStatusData_t params;
+                params.property_updated = CTRLM_HAL_BLE_PROPERTY_MFV_PRIVACY;
+                params.rcu_data.ieee_address = address.toUInt64();
+                params.rcu_data.mfv_privacy_enabled = enabled;
+                m_rcuStatusChangedSlots.invoke(&params);
+            };
+        mfvService->addPrivacyChangedSlot(Slot<bool>(m_isAlive, mfvPrivacySlot));
+
+        auto mfvCapabilitiesSlot = [this, address](uint8_t caps)
+            {
+                XLOGD_INFO("BLE RCU %s MFV capabilities = 0x%02X", address.toString().c_str(), caps);
+
+                ctrlm_hal_ble_RcuStatusData_t params;
+                params.property_updated = CTRLM_HAL_BLE_PROPERTY_MFV_CAPABILITIES;
+                params.rcu_data.ieee_address = address.toUInt64();
+                params.rcu_data.mfv_capabilities = caps;
+                m_rcuStatusChangedSlots.invoke(&params);
+            };
+        mfvService->addCapabilitiesChangedSlot(Slot<uint8_t>(m_isAlive, mfvCapabilitiesSlot));
+    }
 
 
     auto audioStreamingChangedSlot = [this, address](bool streaming)

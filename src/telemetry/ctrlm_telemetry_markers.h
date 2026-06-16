@@ -93,7 +93,7 @@
 // The Voice Session Statistics Marker reports statistics for the voice session(s). The format of the marker is a json array of arrays with each event in the format below:
 //
 // [[event1], [event2], [event3], ...]
-// [<version>,<device_type>,<device_version>,<encoding>,<interaction_mode>,<time_prev_session>,<time_start_lag>,<time_stream_len_exp>,<time_stream_len_act>,<time_stream_delta>,<packets_total>,<packets_lost>,<samples_total>,<samples_lost>,<decoder_failures>,<samples_buffered_max>,<stream_ret_code>,<protocol_ret_code>,<server_ret_code>,<server_message>,<result>]
+// [<version>,<device_type>,<device_version>,<encoding>,<interaction_mode>,<time_prev_session>,<time_start_lag>,<time_stream_len_exp>,<time_stream_len_act>,<time_stream_delta>,<packets_total>,<packets_lost>,<samples_total>,<samples_lost>,<decoder_failures>,<samples_buffered_max>,<end_reason_rcu>,<end_reason_session>,<end_reason_server>,<server_message>,<result>,<end_reason_stream>,<ret_code_protocol>,<voice_detected>,<peak_confidence>,<peak_rms_level>]
 //
 // <version>              - Version of the marker format.
 // <device_type>          - Name of the device that started the session.
@@ -111,18 +111,60 @@
 // <samples_lost>         - lost samples.
 // <decoder_failures>     - decoder failure count.
 // <samples_buffered_max> - sample buffer high watermark.
-// <stream_ret_code>      - audio stream success/error code.
-// <protocol_ret_code>    - protocol success/error code.
-// <server_ret_code>      - server success/error code.
+// <end_reason_rcu>       - audio stream success/error code.
+// <end_reason_session>   - session success/error code.
+// <end_reason_server>    - server success/error code.
 // <server_message>       - server message.
 // <result>               - flag to indicate if session was successful.
+// <end_reason_stream>    - reason why the stream ended (if available).
+// <ret_code_protocol>    - protocol return code.
+// <voice_detected>       - flag to indicate if voice was detected.
+// <peak_confidence>      - peak confidence level.
+// <peak_rms_level>       - peak RMS level.
+
 #define MARKER_VOICE_SESSION_STATS                 "ctrlm.voice.session.stats"
-#define MARKER_VOICE_SESSION_STATS_VERSION         "2"
+#define MARKER_VOICE_SESSION_STATS_VERSION         "3"
 
 // End Voice Session Statistics
 
 //
 // End Voice Markers
+//
+
+//
+// RCU Markers
+//
+
+// BLE RCU Pairing Attempt Marker
+// Value format: Array of comma separated integers or string with the fields below.
+// [<version>,<type>,<method>,<result>,<discovered>,<name>,<bluez_retries>,<bluez_msg1>,<bluez_msg2>,<bluez_msg3>]
+// <version>       - version of the marker format.
+// <type>          - type of network the marker is coming from
+// <method>        - enum representing pairing method (see PairingMethod)
+// <result>        - enum that represents "success" or failure reason (see FailureReason)
+// <discovered>    - number of discovered devices from pairing attempt
+// <name>          - name of paired remote, empty string on failure
+// <bluez_retries> - number of bluez pair() retries made before success or final error
+// <bluez_msg1>    - error message 1 from bluez layer or null if no error
+// <bluez_msg2>    - error message 2 from bluez layer or null if no error
+// <bluez_msg3>    - error message 3 from bluez layer or null if no error
+#define MARKER_RCU_PAIRING_ATTEMPT "ctrlm.rcu.pairing.attempt_accum"
+#define MARKER_RCU_PAIRING_ATTEMPT_VERSION 1
+
+//
+// End RCU Markers
+
+// IRDB Markers
+//
+
+// All _accum markers are aggregated by the T2 platform within each reporting window.
+#define MARKER_IRDB_AUTOLOOKUP_RESULT "ctrlm.irdb.autolookup.result_accum" // format: <stb_vendor>,<stb_bitmask>,<tv>,<tv_code_count>,<avr_code_count>,<result>
+#define MARKER_IRDB_MANUAL_RESULT     "ctrlm.irdb.manual.result_accum"     // format: <stb_vendor>,<stb_bitmask>,<method>,<result>
+#define MARKER_IRDB_PROGRAM_RESULT    "ctrlm.irdb.program.result_accum"    // format: <result>,<fail_reason>,<rcu_bitmask>,<vendor_name>,<vendor_bitmask>
+#define MARKER_IRDB_VENDOR_SET        "ctrlm.irdb.vendor_set_accum"        // format: <set_result>,<rcu_bitmask>,<vendor_name>,<vendor_bitmask>,<supported>
+
+//
+// End IRDB Markers
 //
 
 #endif

@@ -21,6 +21,7 @@
 #include "ctrlm_network.h"
 #include "ctrlm_log.h"
 #include "ctrlm_irdb_stub.h"
+#include "ctrlm_telemetry_event.h"
 
 #include "ctrlm_ipc_iarm.h"
 #include "ctrlm_irdb_ipc_iarm_thunder.h"
@@ -41,10 +42,36 @@
 
 #include <chrono>
 #include <dlfcn.h>
+#include <iomanip>
 #include <memory>
+#include <sstream>
 
 using namespace std;
 
+typedef enum {
+    CTRLM_IRDB_AUTOLOOKUP_SOURCE_EDID = 0,
+    CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC,
+    CTRLM_IRDB_AUTOLOOKUP_SOURCE_INFOFRAME,
+    CTRLM_IRDB_AUTOLOOKUP_SOURCE_UNKNOWN
+} ctrlm_irdb_autolookup_source_t;
+
+typedef enum {
+    CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS = 0,
+    CTRLM_IRDB_AUTOLOOKUP_RESULT_NULL,
+    CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_SOURCE_DATA,
+    CTRLM_IRDB_AUTOLOOKUP_RESULT_FAILED,
+    CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_CODES_FOR_SOURCE,
+    CTRLM_IRDB_AUTOLOOKUP_RESULT_DEV_TYPE_INVALID,
+    CTRLM_IRDB_AUTOLOOKUP_RESULT_UNKNOWN,
+} ctrlm_irdb_autolookup_result_t;
+
+class ctrlm_irdb_t2_autolookup_entry_t {
+public:
+    ctrlm_irdb_t2_autolookup_entry_t(int p, ctrlm_irdb_autolookup_source_t s, ctrlm_irdb_autolookup_result_t r): port(p), source(s), result(r) {}
+    int port = -1;
+    ctrlm_irdb_autolookup_source_t source = CTRLM_IRDB_AUTOLOOKUP_SOURCE_UNKNOWN;
+    ctrlm_irdb_autolookup_result_t result = CTRLM_IRDB_AUTOLOOKUP_RESULT_UNKNOWN;
+};
 
 static ctrlm_irdb_interface_t *_instance = NULL;
 
@@ -420,6 +447,13 @@ bool comp_autolookup_ranked_list (ctrlm_irdb_autolookup_entry_ranked_t i, ctrlm_
 bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_list_by_type_t &codes) {
     std::unique_lock<std::mutex> guard(m_mutex);
     bool ret = false;
+    std::vector<ctrlm_irdb_t2_autolookup_entry_t> t2_info;
+
+    // Retrieve vendor info now while mutex is held (avoids recursive lock via get_vendor_info())
+    ctrlm_irdb_vendor_info_t t2_vendor_info{};
+    if (g_irdb.pluginGetVendorInfo) {
+        (*g_irdb.pluginGetVendorInfo)(t2_vendor_info);
+    }
 
     #if defined(CTRLM_THUNDER)
     if(m_platform_tv == false) {
@@ -436,20 +470,26 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                         if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                             codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
                             ret = true;
+                            t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS);
                         } else {
                             XLOGD_ERROR("edid dev type invalid");
+                            t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_DEV_TYPE_INVALID);
                         }
                     } else {
                         XLOGD_ERROR("no codes for edid data");
+                        t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_CODES_FOR_SOURCE);
                     }
                 } else {
                     XLOGD_ERROR("Failed getting codes by edid");
+                    t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_FAILED);
                 }
             } else {
                 XLOGD_ERROR("No EDID data");
+                t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_SOURCE_DATA);
             }
         } else {
             XLOGD_ERROR("display_settings is NULL");
+            t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_NULL);
         }
         if(g_irdb.cec_source) {
             // Check CEC data
@@ -465,21 +505,27 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                             if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                                 codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
                                 ret = true;
+                                t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS);
                             } else {
                                 XLOGD_ERROR("cec dev type invalid");
+                                t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_DEV_TYPE_INVALID);
                             }
                         } else {
                             XLOGD_WARN("no code for cec device <%s>", itr.osd.c_str());
+                            t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_CODES_FOR_SOURCE);
                         }
                     } else {
                         XLOGD_WARN("Failed to get codes for cec device <%s>", itr.osd.c_str());
+                        t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_FAILED);
                     }
                 }
             } else {
                 XLOGD_ERROR("No CEC device data");
+                t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_SOURCE_DATA);
             }
         } else {
             XLOGD_ERROR("cec is NULL");
+            t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NULL);
         }
     } else {
         if(g_irdb.av_input) {
@@ -495,21 +541,27 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                             if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                                 codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
                                 ret = true;
+                                t2_info.emplace_back(itr.first, CTRLM_IRDB_AUTOLOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS);
                             } else {
                                 XLOGD_ERROR("port %d infoframe dev type invalid", itr.first);
+                                t2_info.emplace_back(itr.first, CTRLM_IRDB_AUTOLOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_DEV_TYPE_INVALID);
                             }
                         } else {
                             XLOGD_WARN("no code for port %d infoframe", itr.first);
+                            t2_info.emplace_back(itr.first, CTRLM_IRDB_AUTOLOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_CODES_FOR_SOURCE);
                         }
                     } else {
                         XLOGD_WARN("Failed to get codes for port %d infoframe", itr.first);
+                        t2_info.emplace_back(itr.first, CTRLM_IRDB_AUTOLOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_FAILED);
                     }
                 } else {
                     XLOGD_WARN("no infoframe for port %d", itr.first);
+                    t2_info.emplace_back(itr.first, CTRLM_IRDB_AUTOLOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_SOURCE_DATA);
                 }
             }
         } else {
             XLOGD_ERROR("hdmi is NULL");
+            t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_NULL);
         }
         if(g_irdb.cec_sink) {
             // Check CEC data
@@ -524,21 +576,27 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                             if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                                 codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
                                 ret = true;
+                                t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS);
                             } else {
                                 XLOGD_ERROR("cec dev type invalid");
+                                t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_DEV_TYPE_INVALID);
                             }
                         } else {
                             XLOGD_WARN("no code for cec device <%s>", itr.osd.c_str());
+                            t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_CODES_FOR_SOURCE);
                         }
                     } else {
                         XLOGD_WARN("Failed to get codes for cec device <%s>", itr.osd.c_str());
+                        t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_FAILED);
                     }
                 }
             } else {
                 XLOGD_ERROR("No CEC device data");
+                t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_SOURCE_DATA);
             }
         } else {
-            XLOGD_ERROR("cec_sink is NULL");
+            XLOGD_ERROR("cec is NULL");
+            t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NULL);
         }
     }
     #endif
@@ -556,6 +614,30 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
         // delete duplicate entries
         codes[CTRLM_IRDB_DEV_TYPE_AVR].erase( unique( codes[CTRLM_IRDB_DEV_TYPE_AVR].begin(), codes[CTRLM_IRDB_DEV_TYPE_AVR].end() ), codes[CTRLM_IRDB_DEV_TYPE_AVR].end() );
     }
+
+#ifdef TELEMETRY_SUPPORT
+    size_t tv_count  = codes.count(CTRLM_IRDB_DEV_TYPE_TV)  ? codes.at(CTRLM_IRDB_DEV_TYPE_TV).size()  : 0;
+    size_t avr_count = codes.count(CTRLM_IRDB_DEV_TYPE_AVR) ? codes.at(CTRLM_IRDB_DEV_TYPE_AVR).size() : 0;
+    std::stringstream ss;
+    bool first = true;
+    for (const auto &entry : t2_info) {
+        if (!first) {
+            ss << ",";
+        }
+        ss << entry.port << "," << static_cast<int>(entry.source) << "," << static_cast<int>(entry.result);
+        first = false;
+    }
+    std::string results = ss.str();
+    ss.str("");
+    ss << "[\"" << t2_vendor_info.name << "\""
+       << ",0x" << std::hex << std::setfill('0') << std::setw(2) << (int)t2_vendor_info.rcu_support_bitmask
+       << "," << std::dec << (int)m_platform_tv
+       << "," << tv_count
+       << "," << avr_count
+       << "," << (results.empty() ? "\"\"" : results) << "]";
+    ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_AUTOLOOKUP_RESULT, ss.str());
+    ev.event();
+#endif
 
     return(ret);
 }

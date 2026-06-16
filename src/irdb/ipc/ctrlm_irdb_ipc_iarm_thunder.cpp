@@ -23,6 +23,7 @@
 #include "ctrlm_log.h"
 #include "json_config.h"
 #include "ctrlm_utils.h"
+#include "ctrlm_telemetry_event.h"
 
 namespace {
     constexpr char const* NET_TYPE      = "netType";
@@ -152,6 +153,17 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_manufacturers(void *arg) {
         }
     }
 
+#ifdef TELEMETRY_SUPPORT
+    ctrlm_irdb_vendor_info_t vendor_info{};
+    if (irdb) {
+        irdb->get_vendor_info(vendor_info);
+    }
+    char t2_buf[128];
+    snprintf(t2_buf, sizeof(t2_buf), "[\"%s\",0x%02X,\"%s\",%d]", vendor_info.name.c_str(), vendor_info.rcu_support_bitmask, CTRLM_MAIN_IARM_CALL_IR_MANUFACTURERS, (int)success);
+    ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_MANUAL_RESULT, t2_buf);
+    ev.event();
+#endif
+
     // Assemble the return
     json_object_set_new(ret, SUCCESS, json_boolean(success));
     if(success) {
@@ -225,6 +237,17 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_models(void *arg) {
             }
         }
     }
+
+#ifdef TELEMETRY_SUPPORT
+    ctrlm_irdb_vendor_info_t vendor_info{};
+    if(irdb) {
+        irdb->get_vendor_info(vendor_info);
+    }
+    char t2_buf[128];
+    snprintf(t2_buf, sizeof(t2_buf), "[\"%s\",0x%02X,\"%s\",%d]", vendor_info.name.c_str(), vendor_info.rcu_support_bitmask, CTRLM_MAIN_IARM_CALL_IR_MODELS, (int)success);
+    ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_MANUAL_RESULT, t2_buf);
+    ev.event();
+#endif
 
     // Assemble the return
     json_object_set_new(ret, SUCCESS, json_boolean(success));
@@ -365,6 +388,17 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_irdb_entry_ids(void *arg) {
             }
         }
     }
+
+#ifdef TELEMETRY_SUPPORT
+    ctrlm_irdb_vendor_info_t vendor_info{};
+    if (irdb) {
+        irdb->get_vendor_info(vendor_info);
+    }
+    char t2_buf[128];
+    snprintf(t2_buf, sizeof(t2_buf), "[\"%s\",0x%02X,\"%s\",%d]", vendor_info.name.c_str(), vendor_info.rcu_support_bitmask, CTRLM_MAIN_IARM_CALL_IR_CODES, (int)success);
+    ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_MANUAL_RESULT, t2_buf);
+    ev.event();
+#endif
 
     // Assemble the return
     json_object_set_new(ret, SUCCESS, json_boolean(success));

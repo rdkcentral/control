@@ -304,7 +304,7 @@ ctrlm_obj_network_rf4ce_t::ctrlm_obj_network_rf4ce_t() {
 }
 
 ctrlm_obj_network_rf4ce_t::~ctrlm_obj_network_rf4ce_t() {
-   XLOGD_INFO("deconstructor");
+   XLOGD_INFO("destructor");
    for (auto timeout : bind_validation_failed_timeout_) {
        ctrlm_timeout_destroy(&timeout->timer_id);
        if (controller_exists(timeout->controller_id)){
@@ -416,7 +416,7 @@ ctrlm_hal_result_t ctrlm_obj_network_rf4ce_t::hal_init_request(GThread *ctrlm_ma
 
    int sem_result = 0;
    errno = 0;
-   int rc = clock_gettime(CLOCK_REALTIME, &timeout);
+   int rc = clock_gettime(CLOCK_MONOTONIC, &timeout);
    if(rc != 0) {
       int errsv = errno;
       // If we fail to get the current time, we should still wait on the semaphore, but we will wait indefinitely instead of timing out
@@ -427,7 +427,7 @@ ctrlm_hal_result_t ctrlm_obj_network_rf4ce_t::hal_init_request(GThread *ctrlm_ma
       timeout.tv_sec += 60;  // this operation has been tested to complete in about 6 seconds in worst case scenario (set the timeout to 10x)
       
       errno = 0;
-      sem_result = sem_timedwait(&semaphore_, &timeout);
+      sem_result = sem_clockwait(&semaphore_, CLOCK_MONOTONIC, &timeout);
    }
 
    if(sem_result == -1) {

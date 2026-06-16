@@ -45,6 +45,7 @@ void ctrlm_config_t::destroy_instance() {
 
 ctrlm_config_t::ctrlm_config_t() {
     this->root = NULL;
+    this->local_config = false;
 }
 
 ctrlm_config_t::~ctrlm_config_t() {
@@ -52,9 +53,10 @@ ctrlm_config_t::~ctrlm_config_t() {
         json_decref(this->root);
         this->root = NULL;
     }
+    this->local_config = false;
 }
 
-bool ctrlm_config_t::load_config(const std::string &file_path, bool verbose) {
+bool ctrlm_config_t::load_config(const std::string &file_path, bool local_config, bool verbose) {
     bool ret = false;
     std::string contents = file_to_string(file_path);
     if(this->root) {
@@ -73,6 +75,7 @@ bool ctrlm_config_t::load_config(const std::string &file_path, bool verbose) {
             if(verbose) {
                XLOGD_INFO("config loaded successfully as JSON for <%s>", file_path.c_str());
             }
+            this->local_config = local_config;
             ret = true;
         } else {
             XLOGD_ERROR("JSON ERROR: Line <%u> Column <%u> Text <%s> Contents <%s>", json_error.line, json_error.column, json_error.text, contents.c_str());
@@ -83,7 +86,7 @@ bool ctrlm_config_t::load_config(const std::string &file_path, bool verbose) {
     return(ret);
 }
 
-bool ctrlm_config_t::append_config(const std::string &file_path, bool verbose) {
+bool ctrlm_config_t::append_config(const std::string &file_path, bool local_config, bool verbose) {
     if(this->root == NULL) {
         XLOGD_ERROR("no config file loaded");
         return(false);
@@ -109,6 +112,7 @@ bool ctrlm_config_t::append_config(const std::string &file_path, bool verbose) {
                 if(verbose) {
                     XLOGD_INFO("config appended successfully as JSON for <%s>", file_path.c_str());
                 }
+                this->local_config |= local_config;
                 ret = true;
             }
             json_decref(append_root);
@@ -119,6 +123,10 @@ bool ctrlm_config_t::append_config(const std::string &file_path, bool verbose) {
 
 bool ctrlm_config_t::path_exists(const std::string &path) {
     return(ctrlm_utils_json_from_path(this->root, path, false) != NULL ? true : false);
+}
+
+bool ctrlm_config_t::has_local_config() const {
+    return(this->local_config);
 }
 
 json_t *ctrlm_config_t::json_from_path(const std::string &path, bool add_ref) {

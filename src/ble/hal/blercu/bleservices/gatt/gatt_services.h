@@ -46,6 +46,7 @@ class GattFindMeService;
 class GattInfraredService;
 class GattUpgradeService;
 class GattRemoteControlService;
+class GattMfvVoiceService;
 
 
 
@@ -72,6 +73,7 @@ public:
     std::shared_ptr<BleRcuInfraredService> infraredService() const override;
     std::shared_ptr<BleRcuUpgradeService> upgradeService() const override;
     std::shared_ptr<BleRcuRemoteControlService> remoteControlService() const override;
+    std::shared_ptr<BleRcuMfvVoiceService> mfvVoiceService() const override;
 
 private:
     template <typename T>
@@ -94,6 +96,7 @@ private:
             StartingTouchServiceState,
             StartingUpgradeServiceState,
             StartingRemoteControlServiceState,
+            StartingMfvVoiceServiceState,
             ReadyState,
         StoppingState
     };
@@ -131,6 +134,7 @@ private:
     std::size_t m_upgradeServiceIndex = 0;
 
     std::shared_ptr<GattRemoteControlService> m_remoteControlService;
+    std::shared_ptr<GattMfvVoiceService> m_mfvVoiceService;
 
 private:
     static const Event::Type StartServicesRequestEvent      = Event::Type(Event::User + 1);
@@ -144,7 +148,8 @@ private:
     static const Event::Type InfraredServiceReadyEvent      = Event::Type(Event::User + 8);
     static const Event::Type UpgradeServiceReadyEvent       = Event::Type(Event::User + 9);
     static const Event::Type RemoteControlServiceReadyEvent = Event::Type(Event::User + 10);
-    static const Event::Type ServicesStoppedEvent           = Event::Type(Event::User + 11);
+    static const Event::Type MfvVoiceServiceReadyEvent      = Event::Type(Event::User + 11);
+    static const Event::Type ServicesStoppedEvent           = Event::Type(Event::User + 12);
 };
 
 

@@ -94,6 +94,7 @@ include_directories( ${CMAKE_CURRENT_BINARY_DIR}
                      src/rf4ce/rib
                      src/irdb
                      src/irdb/ipc
+                     src/tv_audio
                      src/voice
                      src/voice/endpoints
                      src/voice/ipc

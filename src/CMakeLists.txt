@@ -211,6 +211,12 @@ if(THUNDER)
   endif()
 endif()
 
+if(RMF_AUDIO_CAPTURE OR AUDIO_CAPTURE_MANAGER)
+   target_sources(controlMgr PRIVATE
+      tv_audio/ctrlm_tv_audio_cap.cpp
+   )
+endif()
+
 if(XRSR_HTTP)
    target_sources(controlMgr PRIVATE
       voice/endpoints/ctrlm_voice_endpoint_http.cpp

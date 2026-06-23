@@ -1934,6 +1934,23 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   report_status = false;
                   print_status = false;
                   break;
+               case CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_TYPE:
+                  controller->setMfvDetectionType(dqm->rcu_data.mfv_detection_type);
+                  XLOGD_INFO("Controller <%s> MFV detection type = 0x%02X", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.mfv_detection_type);
+                  break;
+               case CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_DATA:
+                  controller->setMfvDetectionData(dqm->rcu_data.mfv_ww_start, dqm->rcu_data.mfv_ww_end, dqm->rcu_data.mfv_confidence_x10);
+                  XLOGD_INFO("Controller <%s> MFV detection data: start=%u end=%u confidence=%.1f%%",
+                        controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.mfv_ww_start, dqm->rcu_data.mfv_ww_end, dqm->rcu_data.mfv_confidence_x10 / 10.0);
+                  break;
+               case CTRLM_HAL_BLE_PROPERTY_MFV_PRIVACY:
+                  controller->setMfvPrivacy(dqm->rcu_data.mfv_privacy_enabled);
+                  XLOGD_INFO("Controller <%s> MFV privacy = %s", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.mfv_privacy_enabled ? "enabled" : "disabled");
+                  break;
+               case CTRLM_HAL_BLE_PROPERTY_MFV_CAPABILITIES:
+                  controller->setMfvCapabilities(dqm->rcu_data.mfv_capabilities);
+                  XLOGD_INFO("Controller <%s> MFV capabilities = 0x%02X", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.mfv_capabilities);
+                  break;
                default:
                   XLOGD_WARN("Unhandled Property: %d !!!!!!!!!!!!!!!!!!!!!!!!", dqm->property_updated);
                   report_status = false;

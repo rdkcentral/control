@@ -264,7 +264,7 @@ install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json DESTINATION ${CMAKE_INSTALL_
 # GENERATED FILES
 add_custom_command( OUTPUT ctrlm_version_build.h
    COMMAND echo -n "#define CTRLM_MAIN_BRANCH    \"" >> ctrlm_version_build.h
-   COMMAND sh -c "git -C \"${CMAKE_CURRENT_SOURCE_DIR}\" tag --points-at HEAD 2>/dev/null | head -1 | grep -q . && git -C \"${CMAKE_CURRENT_SOURCE_DIR}\" tag --points-at HEAD | head -1 || (git -C \"${CMAKE_CURRENT_SOURCE_DIR}\" branch --all --contains | sed -n -e 's/^[[:space:]]*//' -e 's/^remotes\\/origin\\///' -e '2p')" | tr -d "\\n" >> ctrlm_version_build.h
+   COMMAND sh -c "git -C \"${CMAKE_CURRENT_SOURCE_DIR}\" tag --points-at HEAD 2>/dev/null | head -1 | grep -q . && git -C \"${CMAKE_CURRENT_SOURCE_DIR}\" tag --points-at HEAD | head -1 || (git -C \"${CMAKE_CURRENT_SOURCE_DIR}\" branch --all --contains | sed -n -e 's/^[[:space:]]*//' -e '/^\\*/d' -e 's/^remotes\\/origin\\///' -e '/->/d' -e 'p;q')" | tr -d "\\n" >> ctrlm_version_build.h
    COMMAND echo "\"" >> ctrlm_version_build.h
    COMMAND echo -n "#define CTRLM_MAIN_COMMIT_ID " >> ctrlm_version_build.h
    COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} log --format=\"%H\" -n 1 >> ctrlm_version_build.h

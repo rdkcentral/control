@@ -53,7 +53,6 @@ public:
         RdkInfrared = 0xf801,
         RdkFirmwareUpgrade = 0xf802,
         RdkRemoteControl = 0xf803,
-        MfvVoice = 0xEA08,
     };
 
 

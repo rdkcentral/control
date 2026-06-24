@@ -108,7 +108,6 @@ public:
     std::shared_ptr<BleRcuInfraredService> infraredService() const override;
     std::shared_ptr<BleRcuUpgradeService> upgradeService() const override;
     std::shared_ptr<BleRcuRemoteControlService> remoteControlService() const override;
-    std::shared_ptr<BleRcuMfvVoiceService> mfvVoiceService() const override;
 
     void onDeviceConnectedChanged(bool connected);
     void onDevicePairedChanged(bool paired);
@@ -152,10 +151,6 @@ public:
     void addLastKeypressChangedSlot(const Slot<uint8_t> &func) override;
     void addAdvConfigChangedSlot(const Slot<uint8_t> &func) override;
     void addAdvConfigCustomListChangedSlot(const Slot<const std::vector<uint8_t> &> &func) override;
-
-    // MFV Voice Service
-    void addMfvDetectionTypeChangedSlot(const Slot<uint8_t> &func) override;
-    void addMfvPrivacyChangedSlot(const Slot<bool> &func) override;
 
     // Voice Service
     uint8_t audioGainLevel() const override;

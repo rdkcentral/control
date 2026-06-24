@@ -113,7 +113,6 @@ bool ble_uuid_names_init(void)
     BleUuid(BleUuid::PeripheralPreferredConnectionParameters, std::string("Peripheral Preferred Connection Parameters"));
     BleUuid(BleUuid::ClientCharacteristicConfiguration,       std::string("Client Characteristic Configuration"));
     BleUuid(BleUuid::ReportReference,                         std::string("Report Reference"));
-    BleUuid(BleUuid::MfvVoice,                                std::string("MFV Voice"));
     BleUuid(BleUuid::SessionStart,                            std::string("Session Start"));
     BleUuid(BleUuid::DetectionData,                           std::string("Detection Data"));
     BleUuid(BleUuid::WakeWordModelVersion,                    std::string("Wake Word Model Version"));

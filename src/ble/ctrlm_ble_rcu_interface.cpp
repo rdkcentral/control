@@ -548,6 +548,9 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
             };
 
         mfvService->addReadySlot(Slot<>(m_isAlive, publishMfvSnapshot));
+        if (mfvService->isReady()) {
+            publishMfvSnapshot();
+        }
     }
 
 

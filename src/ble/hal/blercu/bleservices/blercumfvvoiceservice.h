@@ -76,6 +76,8 @@ public:
     };
 
 public:
+    virtual bool isReady() const = 0;
+
     virtual DetectionType detectionType() const = 0;
     virtual DetectionData detectionData() const = 0;
     virtual ModelVersion wakeWordModelVersion() const = 0;

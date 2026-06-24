@@ -2,7 +2,7 @@
  * If not stated otherwise in this file or this component's license file the
  * following copyright and licenses apply:
  *
- * Copyright 2026 RDK Management
+ * Copyright 2014 RDK Management
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,28 +15,23 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
+*/
+#ifndef _CTRLMS_WS_H_
+#define _CTRLMS_WS_H_
 
-/*
- * CI compatibility shim.
- *
- * The production rdkx_logger.h is included transitively everywhere via
- * ctrlm_log.h.  In the Yocto build the SDK headers pull several std:: names
- * into the global namespace.  A handful of ctrlm TUs (e.g. ctrlm_utils.cpp)
- * rely on those names being globally visible.  This tiny header replicates
- * that behaviour for the CI native build.
- */
-#ifndef CTRLM_CI_XLOG_COMPAT_H_
-#define CTRLM_CI_XLOG_COMPAT_H_
+#include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
-#include <string>
-#include <map>
-#include <tuple>
-using std::get;
-using std::map;
-using std::string;
-using std::tuple;
+extern "C" {
 #endif
 
-#endif /* CTRLM_CI_XLOG_COMPAT_H_ */
+bool ctrlms_ws_init(uint16_t port, bool log_enable);
+bool ctrlms_ws_listen(void);
+void ctrlms_ws_term(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

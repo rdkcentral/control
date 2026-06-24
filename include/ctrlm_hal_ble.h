@@ -142,6 +142,7 @@ typedef struct {
    int                           pairing_code;
    ctrlm_hal_ble_RcuProperty_t   property_updated;
    ctrlm_hal_ble_rcu_data_t      rcu_data;
+   char                          ir_fail_reason[CTRLM_MAX_PARAM_STR_LEN];
 } ctrlm_hal_ble_RcuStatusData_t;
 
 typedef struct {

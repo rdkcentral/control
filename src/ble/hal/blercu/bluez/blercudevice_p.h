@@ -92,7 +92,7 @@ public:
 public:
     std::string bluezObjectPath() const;
 
-    void pair(int timeout);
+    void pair(int timeout, int retries);
     void cancelPairing();
     void connect();
 

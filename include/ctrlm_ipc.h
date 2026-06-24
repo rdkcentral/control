@@ -302,7 +302,8 @@ typedef enum {
    CTRLM_RCU_IARM_EVENT_RF4CE_PAIRING_WINDOW_TIMEOUT = 35, ///< Indicates that a battery milestone event occured
    CTRLM_RCU_IARM_EVENT_FIRMWARE_UPDATE_PROGRESS    = 36, ///< Generated when an milestone is reached for remote firmware upgrade 
    CTRLM_RCU_IARM_EVENT_VALIDATION_STATUS           = 37, ///< Generated when the validation status changes
-   CTRLM_MAIN_IARM_EVENT_MAX                        = 38  ///< Placeholder for the last event (used in registration)
+   CTRLM_VOICE_IARM_EVENT_SESSION_SILENT            = 38, ///< Voice session was silent (no speech detected)
+   CTRLM_MAIN_IARM_EVENT_MAX                        = 39  ///< Placeholder for the last event (used in registration)
 } ctrlm_main_iarm_event_t;
 
 /// @brief Remote Control Key Status

@@ -186,6 +186,12 @@ void ctrlm_ble_rcu_interface_t::initialize()
                 m_rcuUnpairedSlots.invoke(&params);
             };
         m_controller->addManagedDeviceRemovedSlot(Slot<const BleAddress &>(m_isAlive, deviceRemovedSlot));
+
+        auto pairingOutcomeSlot = [this](const BleRcuPairingOutcome &outcome)
+            {
+                m_rcuPairingOutcomeSlots.invoke(outcome);
+            };
+        m_controller->addPairingOutcomeSlot(Slot<const BleRcuPairingOutcome&>(m_isAlive, pairingOutcomeSlot));
     }
 
     voice_params_par_t params;
@@ -1242,7 +1248,7 @@ bool ctrlm_ble_rcu_interface_t::programIrSignalWaveforms(uint64_t ieee_address,
                                                          uint8_t vendor)
 {
     // lambda invoked when the request returns
-    auto replyHandler = [this](PendingReply<> *reply) mutable
+    auto replyHandler = [this, ieee_address](PendingReply<> *reply) mutable
         {
             bool success = false;
 
@@ -1255,9 +1261,13 @@ bool ctrlm_ble_rcu_interface_t::programIrSignalWaveforms(uint64_t ieee_address,
                 success = true;
             }
 
-            ctrlm_hal_ble_RcuStatusData_t params;
+            ctrlm_hal_ble_RcuStatusData_t params = {};
             params.property_updated = CTRLM_HAL_BLE_PROPERTY_IR_STATE;
             params.ir_state = success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED;
+            params.rcu_data.ieee_address = ieee_address;
+            if (!success) {
+                snprintf(params.ir_fail_reason, CTRLM_MAX_PARAM_STR_LEN, "%s", reply->errorMessage().c_str());
+            }
             m_rcuStatusChangedSlots.invoke(&params);
         };
 
@@ -1323,9 +1333,10 @@ bool ctrlm_ble_rcu_interface_t::programIrSignalWaveforms(uint64_t ieee_address,
         success = false;
     }
 
-    ctrlm_hal_ble_RcuStatusData_t params;
+    ctrlm_hal_ble_RcuStatusData_t params = {};
     params.property_updated = CTRLM_HAL_BLE_PROPERTY_IR_STATE;
     params.ir_state = success ? CTRLM_IR_STATE_WAITING : CTRLM_IR_STATE_FAILED;
+    params.rcu_data.ieee_address = ieee_address;
     m_rcuStatusChangedSlots.invoke(&params);
 
     return success;
@@ -1334,7 +1345,7 @@ bool ctrlm_ble_rcu_interface_t::programIrSignalWaveforms(uint64_t ieee_address,
 bool ctrlm_ble_rcu_interface_t::eraseIrSignals(uint64_t ieee_address)
 {
     // lambda invoked when the request returns
-    auto replyHandler = [this](PendingReply<> *reply) mutable
+    auto replyHandler = [this, ieee_address](PendingReply<> *reply) mutable
         {
             bool success = false;
 
@@ -1347,9 +1358,13 @@ bool ctrlm_ble_rcu_interface_t::eraseIrSignals(uint64_t ieee_address)
                 success = true;
             }
 
-            ctrlm_hal_ble_RcuStatusData_t params;
+            ctrlm_hal_ble_RcuStatusData_t params = {};
             params.property_updated = CTRLM_HAL_BLE_PROPERTY_IR_STATE;
             params.ir_state = success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED;
+            params.rcu_data.ieee_address = ieee_address;
+            if (!success) {
+                snprintf(params.ir_fail_reason, CTRLM_MAX_PARAM_STR_LEN, "%s", reply->errorMessage().c_str());
+            }
             m_rcuStatusChangedSlots.invoke(&params);
         };
 
@@ -1371,9 +1386,10 @@ bool ctrlm_ble_rcu_interface_t::eraseIrSignals(uint64_t ieee_address)
         success = false;
     }
 
-    ctrlm_hal_ble_RcuStatusData_t params;
+    ctrlm_hal_ble_RcuStatusData_t params = {};
     params.property_updated = CTRLM_HAL_BLE_PROPERTY_IR_STATE;
     params.ir_state = success ? CTRLM_IR_STATE_WAITING : CTRLM_IR_STATE_FAILED;
+    params.rcu_data.ieee_address = ieee_address;
     m_rcuStatusChangedSlots.invoke(&params);
 
     return success;
@@ -1479,7 +1495,7 @@ std::vector<uint64_t> ctrlm_ble_rcu_interface_t::getManagedDevices()
         return ret;
     }
 
-    XLOGD_INFO("Get list of currently managed devices");
+    XLOGD_DEBUG("Get list of currently managed devices");
     auto devices = m_controller->managedDevices();
 
     for (auto const &device : devices) {
@@ -1564,8 +1580,8 @@ static int OpenKeyInputDevice(uint64_t ieee_address)
 
                         uint64_t evdev_macaddr = ctrlm_convert_mac_string_to_long(libevdev_get_uniq(evdev));
                         if (evdev_macaddr == ieee_address) {
-                            XLOGD_INFO("Input Dev Node (%s) for device (0x%llX) FOUND, returning file descriptor: <%d>", 
-                                    keyInputFilename.c_str(), ieee_address, input_fd);
+                            XLOGD_INFO("Input Dev Node (%s) for device: <%s> (0x%llX) FOUND, returning file descriptor: <%d>", 
+                                    keyInputFilename.c_str(), libevdev_get_name(evdev), ieee_address, input_fd);
 
                             libevdev_free(evdev);
                             evdev = NULL;

@@ -25,6 +25,7 @@
 #include <archive.h>
 #include <algorithm>
 #include <cctype>
+#include <tuple>
 #include "ctrlm.h"
 #include "ctrlm_utils.h"
 #include <xr_mq.h>
@@ -46,6 +47,11 @@
 #include "dsDisplay.h"
 #include <regex>
 // end dsMgr includes
+
+using std::get;
+using std::map;
+using std::string;
+using std::tuple;
 
 #define BLOCK_SIZE     (1024 * 4 * 10) /* bytes */
 #define MAX_RECURSE_DEPTH 20
@@ -1324,10 +1330,10 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_BATTERY,       {"Battery Low",          "Battery Low"}},
    {KEY_F16,           {"Plus",                 "Plus"}},
    {KEY_F13,           {"Option",               "Option"}},
-   {KEY_F4,            {"Netflix App",          "Netflix App"}},  // APP key for PLATCO
-   {KEY_INSERT,        {"Peacock App",          "Peakcock App"}},  // APP key for PLATCO
-   {KEY_END,           {"Disney+ App",          "Disney+ App"}},  // APP key for PLATCO
-   {KEY_DELETE,        {"Prime Video App",      "Prime Video App"}},  // APP key for PLATCO
+   {KEY_F4,            {"Netflix App",          "Netflix App"}},
+   {KEY_INSERT,        {"Peacock App",          "Peacock App"}},
+   {KEY_END,           {"Disney+ App",          "Disney+ App"}},
+   {KEY_DELETE,        {"Prime Video App",      "Prime Video App"}},
    {KEY_PAGEUP,        {"Channel+",             "Channel+"}},
    {KEY_PAGEDOWN,      {"Channel-",             "Channel-"}},
    {KEY_SCROLLUP,      {"Page+",                "Page+"}},
@@ -1342,9 +1348,9 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_F6,            {"Provider",             "Provider"}},
    {KEY_KPDOT,         {"App A",                "App A"}},        // A key for RF4CE remotes (also asterisk key)
    {KEY_F14,           {"Quick Access",         "Quick Access"}}, // B key for RF4CE remotes (C and D are not defined yet)
-   {KEY_KPRIGHTPAREN,  {"App 1",                "App 1"}}, // APP key for LLAMA
-   {KEY_KPLEFTPAREN,   {"App 2",                "App 2"}}, // APP key for LLAMA
-   {KEY_KPCOMMA,       {"App 3",                "App 3"}}, // APP key for LLAMA
+   {KEY_KPRIGHTPAREN,  {"App 1",                "App 1"}},
+   {KEY_KPLEFTPAREN,   {"App 2",                "App 2"}},
+   {KEY_KPCOMMA,       {"App 3",                "App 3"}},
    {KEY_CONNECT,       {"US BLE Pairing",       "US BLE Pairing"}},
    {KEY_BLUETOOTH,     {"EU BLE Pairing",       "EU BLE Pairing"}},
    {KEY_VOLUMEDOWN,    {"Vol Down",             "Vol Down"}},
@@ -1361,7 +1367,11 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_PLAYPAUSE,     {"Play/Pause",           "Play/Pause"}},
    {KEY_CONFIG,        {"Config",               "Config"}},
    {KEY_POWER,         {"Power",                "Power"}},
-   {KEY_MUTE,          {"Mute",                 "Mute"}}
+   {KEY_MUTE,          {"Mute",                 "Mute"}},
+   {KEY_EQUAL,         {"Sports",               "Sports"}},
+   {KEY_RIGHTBRACE,    {"Playlist/Library",     "Playlist/Library"}},
+   {KEY_LEFTBRACE,     {"Live TV",              "Live TV"}},
+   {KEY_MINUS,         {"Best Of",              "Best Of"}}
 };
 
 

@@ -141,6 +141,10 @@ if(BUILD_FACTORY_TEST)
    add_subdirectory(factory)
 endif()
 
+if(BUILD_CTRLM_SERVER)
+   add_subdirectory(server)
+endif()
+
 if(USE_IARM_POWER_MANAGER)
    target_sources(controlMgr PRIVATE
       ipc/ctrlm_ipc_iarm_powermanager.cpp

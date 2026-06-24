@@ -34,7 +34,6 @@
 #include "gatt_deviceinfoservice.h"
 #include "gatt_findmeservice.h"
 #include "gatt_infraredservice.h"
-#include "gatt_mfvvoiceservice.h"
 #include "gatt_upgradeservice.h"
 #include "gatt_remotecontrolservice.h"
 
@@ -70,7 +69,6 @@ GattServices::GattServices(const BleAddress &address,
     , m_batteryService(make_shared<GattBatteryService>(mainLoop))
     , m_findMeService(make_shared<GattFindMeService>(mainLoop))
     , m_remoteControlService(make_shared<GattRemoteControlService>(mainLoop))
-    , m_mfvVoiceService(make_shared<GattMfvVoiceService>(mainLoop))
 {
     
     // Add the built-in services to the list of services available
@@ -128,7 +126,6 @@ void GattServices::init()
     m_stateMachine.addState(ResolvedServicesSuperState, StartingInfraredServiceState, string("StartingInfraredService"));
     m_stateMachine.addState(ResolvedServicesSuperState, StartingUpgradeServiceState, string("StartingUpgradeServiceState"));
     m_stateMachine.addState(ResolvedServicesSuperState, StartingRemoteControlServiceState, string("StartingRemoteControlServiceState"));
-    m_stateMachine.addState(ResolvedServicesSuperState, StartingMfvVoiceServiceState, string("StartingMfvVoiceServiceState"));
     m_stateMachine.addState(ResolvedServicesSuperState, ReadyState, string("Ready"));
 
     m_stateMachine.addState(StoppingState, string("Stopping"));
@@ -145,8 +142,7 @@ void GattServices::init()
     // Need to start RemoteControl service first so that we read the last keypress characterisitic as soon as possible
     m_stateMachine.addTransition(GettingGattServicesState,          GotGattServicesEvent,           StartingRemoteControlServiceState);
 
-    m_stateMachine.addTransition(StartingRemoteControlServiceState, RemoteControlServiceReadyEvent, StartingMfvVoiceServiceState);
-    m_stateMachine.addTransition(StartingMfvVoiceServiceState, MfvVoiceServiceReadyEvent, StartingDeviceInfoServiceState);
+    m_stateMachine.addTransition(StartingRemoteControlServiceState, RemoteControlServiceReadyEvent, StartingDeviceInfoServiceState);
     m_stateMachine.addTransition(StartingDeviceInfoServiceState,    DeviceInfoServiceReadyEvent,    StartingBatteryServiceState);
 
     m_stateMachine.addTransition(StartingBatteryServiceState,       BatteryServiceReadyEvent,       StartingFindMeServiceState);
@@ -274,17 +270,12 @@ void GattServices::onEnteredState(int state)
             serviceOk = startService(m_remoteControlService, RemoteControlServiceReadyEvent, serviceNotUsed);
             break;
 
-        case StartingMfvVoiceServiceState:
-            serviceOk = startService(m_mfvVoiceService, MfvVoiceServiceReadyEvent, serviceNotUsed);
-            break;
-
         case ReadyState:
             m_readySlots.invoke();
             break;
 
         case StoppingState:
             m_remoteControlService->stop();
-            m_mfvVoiceService->stop();
             m_deviceInfoService->stop();
             m_batteryService->stop();
             m_findMeService->stop();
@@ -522,14 +513,4 @@ shared_ptr<BleRcuUpgradeService> GattServices::upgradeService() const
 shared_ptr<BleRcuRemoteControlService> GattServices::remoteControlService() const
 {
     return m_remoteControlService;
-}
-
-// -----------------------------------------------------------------------------
-/*!
-    \overload
-
- */
-shared_ptr<BleRcuMfvVoiceService> GattServices::mfvVoiceService() const
-{
-    return m_mfvVoiceService;
 }

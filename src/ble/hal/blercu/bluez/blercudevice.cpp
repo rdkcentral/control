@@ -43,7 +43,7 @@
 #include "blercu/bleservices/blercuupgradeservice.h"
 #include "blercu/bleservices/blercufindmeservice.h"
 #include "blercu/bleservices/blercuremotecontrolservice.h"
-#include "blercu/bleservices/blercumfvvoiceservice.h"
+#include "blercu/bleservices/blercuaudioservice.h"
 
 #include "interfaces/bluezdeviceinterface.h"
 
@@ -832,14 +832,6 @@ std::shared_ptr<BleRcuRemoteControlService> BleRcuDeviceBluez::remoteControlServ
     }
 }
 
-std::shared_ptr<BleRcuMfvVoiceService> BleRcuDeviceBluez::mfvVoiceService() const
-{
-    if (m_services && m_services->isValid()) {
-        return m_services->mfvVoiceService();
-    } else {
-        return nullptr;
-    }
-}
 // -----------------------------------------------------------------------------
 /*!
     \fn bool BleRcuDevice::isValid() const
@@ -1109,26 +1101,6 @@ void BleRcuDeviceBluez::addAdvConfigChangedSlot(const Slot<uint8_t> &func)
 void BleRcuDeviceBluez::addAdvConfigCustomListChangedSlot(const Slot<const std::vector<uint8_t> &> &func)
 {
     remoteControlService()->addAdvConfigCustomListChangedSlot(func);
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-// MFV Voice Service
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BleRcuDeviceBluez::addMfvDetectionTypeChangedSlot(const Slot<uint8_t> &func)
-{
-    (void)func;
-    // MFV detection type slots are registered directly via mfvVoiceService()
-    // in ctrlm_ble_rcu_interface.cpp
-}
-
-void BleRcuDeviceBluez::addMfvPrivacyChangedSlot(const Slot<bool> &func)
-{
-    auto svc = mfvVoiceService();
-    if (svc) {
-        svc->addPrivacyChangedSlot(func);
-    }
 }
 
 

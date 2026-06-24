@@ -48,7 +48,6 @@ class BleRcuFindMeService;
 class BleRcuInfraredService;
 class BleRcuUpgradeService;
 class BleRcuRemoteControlService;
-class BleRcuMfvVoiceService;
 
 
 
@@ -98,7 +97,6 @@ public:
     virtual std::shared_ptr<BleRcuInfraredService> infraredService() const = 0;
     virtual std::shared_ptr<BleRcuUpgradeService> upgradeService() const = 0;
     virtual std::shared_ptr<BleRcuRemoteControlService> remoteControlService() const = 0;
-    virtual std::shared_ptr<BleRcuMfvVoiceService> mfvVoiceService() const = 0;
 
     // Device Info Service
     virtual std::string firmwareRevision() const = 0;
@@ -134,10 +132,6 @@ public:
     virtual void addLastKeypressChangedSlot(const Slot<uint8_t> &func) = 0;
     virtual void addAdvConfigChangedSlot(const Slot<uint8_t> &func) = 0;
     virtual void addAdvConfigCustomListChangedSlot(const Slot<const std::vector<uint8_t> &> &func) = 0;
-
-    // MFV Voice Service
-    virtual void addMfvDetectionTypeChangedSlot(const Slot<uint8_t> &func) = 0;
-    virtual void addMfvPrivacyChangedSlot(const Slot<bool> &func) = 0;
 
     // Voice Service
     virtual uint8_t audioGainLevel() const = 0;
@@ -234,10 +228,6 @@ inline std::shared_ptr<BleRcuUpgradeService> BleRcuDevice::service() const
 template<>
 inline std::shared_ptr<BleRcuRemoteControlService> BleRcuDevice::service() const
 { return remoteControlService(); }
-
-template<>
-inline std::shared_ptr<BleRcuMfvVoiceService> BleRcuDevice::service() const
-{ return mfvVoiceService(); }
 
 
 #endif // !defined(BLERCUDEVICE_H)

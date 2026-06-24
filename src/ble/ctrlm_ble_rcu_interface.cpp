@@ -21,7 +21,7 @@
 #include "ctrlm_ble_rcu_interface.h"
 #include "ctrlm_ble_utils.h"
 #include "ctrlm_voice_obj.h"
-#include "blercu/bleservices/blercumfvvoiceservice.h"
+#include "blercu/bleservices/blercuaudioservice.h"
 
 
 #define CTRLM_BLE_KEY_MSG_QUEUE_MSG_MAX         (10)
@@ -485,10 +485,10 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
     device->addAdvConfigCustomListChangedSlot(Slot<const std::vector<uint8_t> &>(m_isAlive, advConfigCustomListChangedSlot));
 
 
-    // MFV Voice Service slots
-    auto mfvService = device->mfvVoiceService();
-    if (mfvService) {
-        auto mfvDetectionTypeSlot = [this, address](BleRcuMfvVoiceService::DetectionType type)
+    // MFV Voice characteristics (part of the RDK Voice / audio service)
+    auto audioSvc = device->audioService();
+    if (audioSvc) {
+        auto mfvDetectionTypeSlot = [this, address](BleRcuAudioService::DetectionType type)
             {
                 XLOGD_INFO("BLE RCU %s MFV detection type = 0x%02X", address.toString().c_str(), static_cast<uint8_t>(type));
 
@@ -498,9 +498,9 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
                 params.rcu_data.mfv_detection_type = static_cast<uint8_t>(type);
                 m_rcuStatusChangedSlots.invoke(&params);
             };
-        mfvService->addDetectionTypeChangedSlot(Slot<BleRcuMfvVoiceService::DetectionType>(m_isAlive, mfvDetectionTypeSlot));
+        audioSvc->addMfvDetectionTypeChangedSlot(Slot<BleRcuAudioService::DetectionType>(m_isAlive, mfvDetectionTypeSlot));
 
-        auto mfvDetectionDataSlot = [this, address](const BleRcuMfvVoiceService::DetectionData &data)
+        auto mfvDetectionDataSlot = [this, address](const BleRcuAudioService::DetectionData &data)
             {
                 XLOGD_INFO("BLE RCU %s MFV detection data: start=%u end=%u confidence=%.1f%%",
                     address.toString().c_str(), data.start, data.end, data.confidence_x10 / 10.0);
@@ -513,7 +513,7 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
                 params.rcu_data.mfv_confidence_x10 = data.confidence_x10;
                 m_rcuStatusChangedSlots.invoke(&params);
             };
-        mfvService->addDetectionDataChangedSlot(Slot<const BleRcuMfvVoiceService::DetectionData &>(m_isAlive, mfvDetectionDataSlot));
+        audioSvc->addMfvDetectionDataChangedSlot(Slot<const BleRcuAudioService::DetectionData &>(m_isAlive, mfvDetectionDataSlot));
 
         auto mfvPrivacySlot = [this, address](bool enabled)
             {
@@ -525,7 +525,7 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
                 params.rcu_data.mfv_privacy_enabled = enabled;
                 m_rcuStatusChangedSlots.invoke(&params);
             };
-        mfvService->addPrivacyChangedSlot(Slot<bool>(m_isAlive, mfvPrivacySlot));
+        audioSvc->addMfvPrivacyChangedSlot(Slot<bool>(m_isAlive, mfvPrivacySlot));
 
         auto mfvCapabilitiesSlot = [this, address](uint8_t caps)
             {
@@ -537,20 +537,7 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
                 params.rcu_data.mfv_capabilities = caps;
                 m_rcuStatusChangedSlots.invoke(&params);
             };
-        mfvService->addCapabilitiesChangedSlot(Slot<uint8_t>(m_isAlive, mfvCapabilitiesSlot));
-
-        auto publishMfvSnapshot = [mfvService, mfvDetectionTypeSlot, mfvDetectionDataSlot, mfvPrivacySlot, mfvCapabilitiesSlot]()
-            {
-                mfvDetectionTypeSlot(mfvService->detectionType());
-                mfvDetectionDataSlot(mfvService->detectionData());
-                mfvPrivacySlot(mfvService->privacyEnabled());
-                mfvCapabilitiesSlot(mfvService->capabilities());
-            };
-
-        mfvService->addReadySlot(Slot<>(m_isAlive, publishMfvSnapshot));
-        if (mfvService->isReady()) {
-            publishMfvSnapshot();
-        }
+        audioSvc->addMfvCapabilitiesChangedSlot(Slot<uint8_t>(m_isAlive, mfvCapabilitiesSlot));
     }
 
 
@@ -746,16 +733,16 @@ ctrlm_hal_ble_rcu_data_t ctrlm_ble_rcu_interface_t::getAllDeviceProperties(uint6
     ret.audio_codecs = device->audioCodecs();
     ret.audio_gain_level = device->audioGainLevel();
 
-    // MFV Voice Service
-    auto mfvService = device->mfvVoiceService();
-    if (mfvService) {
-        auto detectionData = mfvService->detectionData();
-        ret.mfv_detection_type = static_cast<uint8_t>(mfvService->detectionType());
+    // MFV data (part of the RDK Voice / audio service)
+    auto audioSvc = device->audioService();
+    if (audioSvc) {
+        auto detectionData = audioSvc->mfvDetectionData();
+        ret.mfv_detection_type = static_cast<uint8_t>(audioSvc->mfvDetectionType());
         ret.mfv_ww_start = detectionData.start;
         ret.mfv_ww_end = detectionData.end;
         ret.mfv_confidence_x10 = detectionData.confidence_x10;
-        ret.mfv_privacy_enabled = mfvService->privacyEnabled();
-        ret.mfv_capabilities = mfvService->capabilities();
+        ret.mfv_privacy_enabled = audioSvc->mfvPrivacyEnabled();
+        ret.mfv_capabilities = audioSvc->mfvCapabilities();
     }
 
 

@@ -104,7 +104,6 @@ if(BLE_ENABLED)
       ble/hal/blercu/bleservices/gatt/gatt_findmeservice.cpp
       ble/hal/blercu/bleservices/gatt/gatt_infraredservice.cpp
       ble/hal/blercu/bleservices/gatt/gatt_infraredsignal.cpp
-      ble/hal/blercu/bleservices/gatt/gatt_mfvvoiceservice.cpp
       ble/hal/blercu/bleservices/gatt/gatt_remotecontrolservice.cpp
       ble/hal/blercu/bleservices/gatt/gatt_services.cpp
       ble/hal/blercu/bleservices/gatt/gatt_upgradeservice.cpp

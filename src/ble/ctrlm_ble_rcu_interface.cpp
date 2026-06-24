@@ -538,6 +538,19 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
                 m_rcuStatusChangedSlots.invoke(&params);
             };
         mfvService->addCapabilitiesChangedSlot(Slot<uint8_t>(m_isAlive, mfvCapabilitiesSlot));
+
+        auto publishMfvSnapshot = [mfvService, mfvDetectionTypeSlot, mfvDetectionDataSlot, mfvPrivacySlot, mfvCapabilitiesSlot]()
+            {
+                mfvDetectionTypeSlot(mfvService->detectionType());
+                mfvDetectionDataSlot(mfvService->detectionData());
+                mfvPrivacySlot(mfvService->privacyEnabled());
+                mfvCapabilitiesSlot(mfvService->capabilities());
+            };
+
+        mfvService->addReadySlot(Slot<>(m_isAlive, publishMfvSnapshot));
+        if (mfvService->isReady()) {
+            publishMfvSnapshot();
+        }
     }
 
 
@@ -733,6 +746,17 @@ ctrlm_hal_ble_rcu_data_t ctrlm_ble_rcu_interface_t::getAllDeviceProperties(uint6
     ret.audio_codecs = device->audioCodecs();
     ret.audio_gain_level = device->audioGainLevel();
 
+    // MFV Voice Service
+    auto mfvService = device->mfvVoiceService();
+    if (mfvService) {
+        auto detectionData = mfvService->detectionData();
+        ret.mfv_detection_type = static_cast<uint8_t>(mfvService->detectionType());
+        ret.mfv_ww_start = detectionData.start;
+        ret.mfv_ww_end = detectionData.end;
+        ret.mfv_confidence_x10 = detectionData.confidence_x10;
+        ret.mfv_privacy_enabled = mfvService->privacyEnabled();
+        ret.mfv_capabilities = mfvService->capabilities();
+    }
 
     return ret;
 }

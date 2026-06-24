@@ -20,7 +20,7 @@ public:
     static BleUuid uuid();
 
 public:
-    bool isReady() const;
+    bool isReady() const override;
 
     DetectionType detectionType() const override;
     DetectionData detectionData() const override;

@@ -18,21 +18,13 @@
 */
 #include <cstddef>
 #include "ctrlm_powermanager.h"
-#ifdef USE_IARM_POWER_MANAGER
-#include "ctrlm_ipc_iarm_powermanager.h"
-#else
 #include "ctrlm_thunder_powermanager.h"
-#endif
 
 static ctrlm_powermanager_t *instance = NULL;
 
 ctrlm_powermanager_t* ctrlm_powermanager_t::get_instance() {
    if(instance == NULL) {
-      #ifdef USE_IARM_POWER_MANAGER
-      instance = new ctrlm_ipc_iarm_powermanager_t();
-      #else
       instance = new ctrlm_thunder_powermanager_t();
-      #endif
    }
 
    return(instance);

@@ -107,6 +107,7 @@ bool GattAudioServiceRdk::start(const shared_ptr<const BleGattService> &gattServ
     // Discover MFV characteristics (optional - not all remotes support MFV)
     if (getMfvCharacteristics(gattService)) {
         m_mfvSupported = true;
+        m_mfvInitialReadsComplete = false;
         m_mfvInitialReadsRemaining = 4;
         requestMfvCapabilities();
         requestMfvModelVersion();
@@ -158,6 +159,7 @@ void GattAudioServiceRdk::onEnteredIdle() {
     m_mfvModelConfigCharacteristic.reset();
     m_mfvCapabilitiesCharacteristic.reset();
     m_mfvSupported = false;
+    m_mfvInitialReadsComplete = false;
 
     GattAudioService::onEnteredIdle();
 }
@@ -218,6 +220,14 @@ void GattAudioServiceRdk::onEnteredEnableNotificationsState()
     }
 
     GattAudioService::onEnteredEnableNotificationsState();
+
+    // Enable MFV notifications here if initial reads have already completed,
+    // otherwise onMfvInitialReadComplete() will enable them when they finish.
+    if (m_mfvSupported && m_mfvInitialReadsComplete) {
+        requestStartMfvSessionStartNotify();
+        requestStartMfvDetectionDataNotify();
+        requestStartMfvPrivacyNotify();
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -695,13 +705,20 @@ bool GattAudioServiceRdk::getMfvCharacteristics(const shared_ptr<const BleGattSe
  */
 void GattAudioServiceRdk::onMfvInitialReadComplete()
 {
-    requestStartMfvSessionStartNotify();
-    requestStartMfvDetectionDataNotify();
-    requestStartMfvPrivacyNotify();
+    m_mfvInitialReadsComplete = true;
 
     // Publish initial values via changed slots
     m_mfvCapabilitiesChangedSlots.invoke(m_mfvCapabilitiesValue);
     m_mfvPrivacyChangedSlots.invoke(m_mfvPrivacyEnabled);
+
+    // Enable notifications now only if the audio state machine has already passed
+    // through EnableNotificationsState (i.e. the service is already ready/streaming).
+    // If not, onEnteredEnableNotificationsState() will handle it when the time comes.
+    if (!stateMachineIsIdle()) {
+        requestStartMfvSessionStartNotify();
+        requestStartMfvDetectionDataNotify();
+        requestStartMfvPrivacyNotify();
+    }
 }
 
 // -----------------------------------------------------------------------------

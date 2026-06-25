@@ -20,22 +20,29 @@
 #include "ctrlm_powermanager.h"
 #include "ctrlm_thunder_powermanager.h"
 
+#ifdef CTRLM_THUNDER
 static ctrlm_powermanager_t *instance = NULL;
+#endif
 
 ctrlm_powermanager_t* ctrlm_powermanager_t::get_instance() {
+   #ifdef CTRLM_THUNDER
    if(instance == NULL) {
       instance = new ctrlm_thunder_powermanager_t();
    }
-
+   
    return(instance);
+   #else
+   return(NULL);
+   #endif
 }
 
 void ctrlm_powermanager_t::destroy_instance() {
-
+   #ifdef CTRLM_THUNDER
    if(instance != NULL) {
       delete instance;
       instance = NULL;
    }
+   #endif
 }
 
 ctrlm_powermanager_t::~ctrlm_powermanager_t() {

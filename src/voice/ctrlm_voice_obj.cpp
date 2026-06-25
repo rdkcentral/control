@@ -67,7 +67,9 @@ static void ctrlm_voice_data_post_processing_cb(int bytes_sent, void *user_data)
 
 static ctrlm_voice_session_group_t voice_device_to_session_group(ctrlm_voice_device_t device_type);
 
+#ifdef CTRLM_THUNDER
 static void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t event, void *user_data);
+#endif
 
 static xrsr_power_mode_t voice_xrsr_power_map(ctrlm_power_state_t ctrlm_power_state);
 
@@ -268,12 +270,18 @@ ctrlm_voice_t::ctrlm_voice_t() {
     sem_init(&this->vsr_semaphore, 0, 0);
 
     if(this->beep_on_kwd_supported) {
+        #ifdef CTRLM_THUNDER
         this->obj_sap = Thunder::SystemAudioPlayer::ctrlm_thunder_plugin_system_audio_player_t::getInstance();
         this->obj_sap->add_event_handler(ctrlm_voice_system_audio_player_event_handler, this);
         this->sap_opened = this->obj_sap->open(SYSTEM_AUDIO_PLAYER_AUDIO_TYPE_WAV, SYSTEM_AUDIO_PLAYER_SOURCE_TYPE_FILE, SYSTEM_AUDIO_PLAYER_PLAY_MODE_SYSTEM);
         if(!this->sap_opened) {
             XLOGD_WARN("unable to open system audio player");
         }
+        #else
+        this->obj_sap    = NULL;
+        this->sap_opened = false;
+        XLOGD_WARN("beep on keyword is not supported without Thunder");
+        #endif
     }
 
     // Set audio mode to default
@@ -313,12 +321,14 @@ ctrlm_voice_t::~ctrlm_voice_t() {
         }
     }
 
+    #ifdef CTRLM_THUNDER
     if(this->beep_on_kwd_supported && this->sap_opened) {
         if(!this->obj_sap->close()) {
             XLOGD_WARN("unable to close system audio player");
         }
         this->sap_opened = false;
     }
+    #endif
 
     /* Close Voice SDK */
 
@@ -3027,6 +3037,7 @@ void ctrlm_voice_t::voice_action_keyword_verification_callback(const uuid_t uuid
 }
 
 void ctrlm_voice_t::voice_keyword_verified_action(void) {
+   #ifdef CTRLM_THUNDER
    if(this->beep_on_kwd_supported && (this->beep_on_kwd_file != NULL) && this->audio_ducking_beep_enabled) { // play beep audio before ducking audio
       if(this->audio_ducking_beep_in_progress) {
          XLOGD_WARN("audio ducking beep already in progress!");
@@ -3068,6 +3079,7 @@ void ctrlm_voice_t::voice_keyword_verified_action(void) {
       } while(retry >= 0);
    }
    this->audio_state_set(true);
+   #endif
 }
 
 void ctrlm_voice_t::voice_keyword_beep_completed_normal(void *data, int size) {
@@ -3861,6 +3873,7 @@ void ctrlm_voice_t::voice_device_disable(ctrlm_voice_device_t device, bool db_wr
     sem_post(&this->device_status_semaphore);
 }
 
+#ifdef CTRLM_THUNDER
 void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t event, void *user_data) {
    if(user_data == NULL) {
       return;
@@ -3900,6 +3913,7 @@ void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t e
       }
    }
 }
+#endif
 
 void ctrlm_voice_t::voice_nsm_session_request(void) {
     ctrlm_network_id_t network_id = CTRLM_MAIN_NETWORK_ID_DSP;

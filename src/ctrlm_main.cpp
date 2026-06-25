@@ -2721,7 +2721,7 @@ gpointer ctrlm_main_thread(gpointer param) {
 
                g_ctrlm.wake_with_voice_allowed = false;
 
-               if((wake_with_voice_allowed == true) && (g_ctrlm.power_manager->get_wakeup_reason_voice())) {
+               if((wake_with_voice_allowed == true) && (g_ctrlm.power_manager != NULL) && (g_ctrlm.power_manager->get_wakeup_reason_voice())) {
                   if( g_ctrlm.voice_session->nsm_voice_session == true ) {
                      XLOGD_INFO("Handling NSM voice session, ignore ON");
                   } else {
@@ -5876,7 +5876,11 @@ gboolean ctrlm_main_get_networked_standby_mode(void) {
    bool networked_standby_mode = false;
 
    if(g_ctrlm.networked_standby_supported && (g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP)) {
-      networked_standby_mode = g_ctrlm.power_manager->get_networked_standby_mode();
+      if(g_ctrlm.power_manager == NULL) {
+         XLOGD_ERROR("power_manager is invalid, defaulting to OFF");
+      } else {
+         networked_standby_mode = g_ctrlm.power_manager->get_networked_standby_mode();
+      }
    }
 
    return networked_standby_mode ? true : false;

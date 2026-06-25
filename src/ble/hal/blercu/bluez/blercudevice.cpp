@@ -831,7 +831,6 @@ std::shared_ptr<BleRcuRemoteControlService> BleRcuDeviceBluez::remoteControlServ
         return nullptr;
     }
 }
-
 // -----------------------------------------------------------------------------
 /*!
     \fn bool BleRcuDevice::isValid() const

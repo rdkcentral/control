@@ -84,7 +84,7 @@ public:
 
     virtual void status(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs) = 0;
 
-// MFV (Mic-Free Voice) types
+// MFV types
 public:
     enum DetectionType {
         FullPower = 0x01,

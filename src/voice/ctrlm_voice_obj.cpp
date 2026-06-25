@@ -278,8 +278,10 @@ ctrlm_voice_t::ctrlm_voice_t() {
             XLOGD_WARN("unable to open system audio player");
         }
         #else
-        this->obj_sap    = NULL;
-        this->sap_opened = false;
+        this->obj_sap               = NULL;
+        this->sap_opened            = false;
+        this->beep_on_kwd_supported = false;
+        this->beep_on_kwd_file      = NULL;
         XLOGD_WARN("beep on keyword is not supported without Thunder");
         #endif
     }

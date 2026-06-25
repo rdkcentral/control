@@ -60,13 +60,17 @@ bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback, bool requires
 
    if(requires_audio_playback) {
       #ifdef CTRLMF_THUNDER
+      bool audio_playback_available = true;
       if(!ctrlmf_audio_playback_init()) {
          XLOGD_ERROR("failed to init audio playback");
+         audio_playback_available = false;
+      }
       #else
-      if(true) {
-         XLOGD_ERROR("audio playback is disabled");
+      bool audio_playback_available = false;
+      XLOGD_ERROR("audio playback is disabled");
       #endif
 
+      if(!audio_playback_available) {
          if(requires_audio_control) {
             ctrlmf_audio_control_term();
          }

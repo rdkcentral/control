@@ -127,6 +127,7 @@ private:
 
     // MFV characteristics and data
     bool m_mfvSupported = false;
+    bool m_mfvInitialReadsComplete = false;
     int  m_mfvInitialReadsRemaining = 0;
 
     DetectionType m_mfvDetectionType = FullPower;

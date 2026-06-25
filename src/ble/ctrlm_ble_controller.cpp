@@ -535,10 +535,10 @@ uint8_t ctrlm_obj_controller_ble_t::getMfvDetectionType() const {
    return mfv_detection_type_;
 }
 
-void ctrlm_obj_controller_ble_t::setMfvDetectionData(uint16_t start, uint16_t end, uint16_t confidence_x10) {
+void ctrlm_obj_controller_ble_t::setMfvDetectionData(uint16_t start, uint16_t end, uint16_t confidence) {
    mfv_ww_start_ = start;
    mfv_ww_end_ = end;
-   mfv_confidence_x10_ = confidence_x10;
+   mfv_confidence_ = confidence;
 }
 
 uint16_t ctrlm_obj_controller_ble_t::getMfvWwStart() const {
@@ -550,7 +550,11 @@ uint16_t ctrlm_obj_controller_ble_t::getMfvWwEnd() const {
 }
 
 uint16_t ctrlm_obj_controller_ble_t::getMfvConfidence() const {
-   return mfv_confidence_x10_;
+   return mfv_confidence_;
+}
+
+float ctrlm_obj_controller_ble_t::getMfvConfidencePercent() const {
+   return mfv_confidence_ / 10.0f;
 }
 
 void ctrlm_obj_controller_ble_t::setMfvPrivacy(bool enabled) {
@@ -714,7 +718,7 @@ void ctrlm_obj_controller_ble_t::print_status() {
    XLOGD_INFO("MFV Detection Type           : 0x%02X", mfv_detection_type_);
    XLOGD_INFO("MFV WW Start                 : %u", mfv_ww_start_);
    XLOGD_INFO("MFV WW End                   : %u", mfv_ww_end_);
-   XLOGD_INFO("MFV Confidence               : %.1f%%", mfv_confidence_x10_ / 10.0);
+   XLOGD_INFO("MFV Confidence               : %.1f%%", mfv_confidence_ / 10.0);
    XLOGD_INFO("MFV Privacy                  : %s", mfv_privacy_enabled_ ? "enabled" : "disabled");
    XLOGD_INFO("MFV Capabilities             : 0x%02X", mfv_capabilities_);
    XLOGD_WARN("------------------------------------------------------------");

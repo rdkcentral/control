@@ -149,10 +149,11 @@ public:
 
    void                             setMfvDetectionType(uint8_t type);
    uint8_t                          getMfvDetectionType() const;
-   void                             setMfvDetectionData(uint16_t start, uint16_t end, uint16_t confidence_x10);
+   void                             setMfvDetectionData(uint16_t start, uint16_t end, uint16_t confidence);
    uint16_t                         getMfvWwStart() const;
    uint16_t                         getMfvWwEnd() const;
-   uint16_t                         getMfvConfidence() const;
+   uint16_t                         getMfvConfidence() const;        // returns raw value encoded as integer * 10 (e.g. 953 = 95.3%)
+   float                            getMfvConfidencePercent() const; // returns confidence as a percentage (e.g. 95.3)
    void                             setMfvPrivacy(bool enabled);
    bool                             getMfvPrivacy() const;
    void                             setMfvCapabilities(uint8_t caps);
@@ -211,7 +212,7 @@ private:
    uint8_t                                 mfv_detection_type_   = 0;
    uint16_t                                mfv_ww_start_         = 0;
    uint16_t                                mfv_ww_end_           = 0;
-   uint16_t                                mfv_confidence_x10_   = 0;
+   uint16_t                                mfv_confidence_       = 0;    // encoded as integer * 10 (e.g. 953 = 95.3%)
    bool                                    mfv_privacy_enabled_  = false;
    uint8_t                                 mfv_capabilities_     = 0;
 

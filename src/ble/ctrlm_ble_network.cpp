@@ -1934,10 +1934,37 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   report_status = false;
                   print_status = false;
                   break;
-               case CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_TYPE:
+               case CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_TYPE: {
                   controller->setMfvDetectionType(dqm->rcu_data.mfv_detection_type);
                   XLOGD_INFO("Controller <%s> MFV detection type = 0x%02X", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.mfv_detection_type);
+
+                  // Start a voice session for FullPower (0x01) and AAD (0x02) detections.
+                  // BelowThreshold (0x03) is a low-confidence secondary detection - do not start a session.
+                  // TODO: Get clarity on if BelowThreshold detections should start a sessions (assume not for now)
+                  uint8_t detection_type = dqm->rcu_data.mfv_detection_type;
+                  if (detection_type == 0x01 || detection_type == 0x02) {
+                     rdkx_timestamp_t detectionTime;
+                     rdkx_timestamp_get(&detectionTime);
+                     controller->setVoiceStartTime(detectionTime);
+
+                     XLOGD_INFO("------------------------------------------------------------------------");
+                     XLOGD_INFO("MFV wake word detected (%s) for device: %s",
+                        detection_type == 0x01 ? "FullPower" : "AAD",
+                        controller->ieee_address_get().to_string().c_str());
+                     XLOGD_INFO("------------------------------------------------------------------------");
+
+                     ctrlm_voice_iarm_call_voice_session_t v_params;
+                     v_params.ieee_address = dqm->rcu_data.ieee_address;
+
+                     ctrlm_main_queue_msg_voice_session_t msg;
+                     errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
+                     ERR_CHK(safec_rc);
+                     msg.params = &v_params;
+
+                     req_process_voice_session_begin(&msg, sizeof(msg));
+                  }
                   break;
+               }
                case CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_DATA:
                   controller->setMfvDetectionData(dqm->rcu_data.mfv_ww_start, dqm->rcu_data.mfv_ww_end, dqm->rcu_data.mfv_confidence_x10);
                   XLOGD_INFO("Controller <%s> MFV detection data: start=%u end=%u confidence=%.1f%%",

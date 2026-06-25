@@ -7,7 +7,9 @@
 #include <rdkx_logger.h>
 #include <rdkversion.h>
 #include <ctrlmf_utils.h>
+#ifdef CTRLMF_THUNDER
 #include <ctrlmf_audio_playback.h>
+#endif
 #include <ctrlmf_audio_capture.h>
 #include <ctrlm_fta_lib.h>
 
@@ -56,12 +58,24 @@ bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback, bool requires
       return(false);
    }
 
-   if(requires_audio_playback && !ctrlmf_audio_playback_init()) {
-      XLOGD_ERROR("failed to init audio playback");
-      if(requires_audio_control) {
-         ctrlmf_audio_control_term();
+   if(requires_audio_playback) {
+      #ifdef CTRLMF_THUNDER
+      bool audio_playback_available = true;
+      if(!ctrlmf_audio_playback_init()) {
+         XLOGD_ERROR("failed to init audio playback");
+         audio_playback_available = false;
       }
-      return(false);
+      #else
+      bool audio_playback_available = false;
+      XLOGD_ERROR("audio playback is disabled");
+      #endif
+
+      if(!audio_playback_available) {
+         if(requires_audio_control) {
+            ctrlmf_audio_control_term();
+         }
+         return(false);
+      }
    }
 
    g_ctrlmf.handle_audio_analysis = ctrlmf_load_plugin_audio_analysis(audio_analyze_func);
@@ -74,7 +88,9 @@ bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback, bool requires
 void ctrlmf_term(void) {
 
    if(g_ctrlmf.audio_playback_init) {
+      #ifdef CTRLMF_THUNDER
       ctrlmf_audio_playback_term();
+      #endif
    }
 
    if(g_ctrlmf.audio_control_init) {

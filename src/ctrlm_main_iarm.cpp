@@ -30,7 +30,6 @@
 #include "ctrlm.h"
 #include "ctrlm_log.h"
 #include "ctrlm_ipc.h"
-#include "ctrlm_ipc_iarm_powermanager.h"
 #include "ctrlm_network.h"
 #include "ctrlm_tr181.h"
 #include "ctrlm_utils.h"
@@ -59,9 +58,6 @@ static IARM_Result_t ctrlm_main_iarm_call_start_pair_with_code(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_chip_status_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_audio_capture_start(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_audio_capture_stop(void *arg);
-#if CTRLM_HAL_RF4CE_API_VERSION >= 10  && !defined(CTRLM_DPI_CONTROL_NOT_SUPPORTED)
-extern IARM_Result_t ctrlm_iarm_powermanager_event_handler_power_pre_change(void* pArgs);
-#endif
 
 typedef struct {
    const char *   name;
@@ -95,11 +91,6 @@ ctrlm_iarm_call_t ctrlm_iarm_calls[] = {
    {CTRLM_MAIN_IARM_CALL_CHIP_STATUS_GET,                    ctrlm_main_iarm_call_chip_status_get                    },
    {CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_START,                ctrlm_main_iarm_call_audio_capture_start                },
    {CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_STOP,                 ctrlm_main_iarm_call_audio_capture_stop                 },
-   #if USE_IARM_POWER_MANAGER      
-   #if CTRLM_HAL_RF4CE_API_VERSION >= 10 && !defined(CTRLM_DPI_CONTROL_NOT_SUPPORTED)
-   {IARM_BUS_COMMON_API_PowerPreChange,                      ctrlm_iarm_powermanager_event_handler_power_pre_change  },
-   #endif
-   #endif
 };
 
 

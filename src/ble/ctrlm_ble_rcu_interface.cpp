@@ -486,8 +486,7 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
 
 
     // MFV Voice characteristics (part of the RDK Voice / audio service)
-    auto audioSvc = device->audioService();
-    if (audioSvc) {
+    if (auto audioSvc = device->audioService()) {
         auto mfvDetectionTypeSlot = [this, address](BleRcuAudioService::DetectionType type)
             {
                 XLOGD_INFO("BLE RCU %s MFV detection type = 0x%02X", address.toString().c_str(), static_cast<uint8_t>(type));
@@ -734,8 +733,7 @@ ctrlm_hal_ble_rcu_data_t ctrlm_ble_rcu_interface_t::getAllDeviceProperties(uint6
     ret.audio_gain_level = device->audioGainLevel();
 
     // MFV data (part of the RDK Voice / audio service)
-    auto audioSvc = device->audioService();
-    if (audioSvc) {
+    if (auto audioSvc = device->audioService()) {
         auto detectionData = audioSvc->mfvDetectionData();
         ret.mfv_detection_type = static_cast<uint8_t>(audioSvc->mfvDetectionType());
         ret.mfv_ww_start = detectionData.start;

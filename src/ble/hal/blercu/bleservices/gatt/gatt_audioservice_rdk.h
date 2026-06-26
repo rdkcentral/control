@@ -95,6 +95,7 @@ private:
     void requestMfvModelVersion();
     void requestMfvPrivacy();
     void requestMfvModelConfig();
+    bool areMfvInitialReadsComplete() const;
     void onMfvInitialReadComplete();
 
     // MFV notification enable
@@ -127,7 +128,6 @@ private:
 
     // MFV characteristics and data
     bool m_mfvSupported = false;
-    bool m_mfvInitialReadsComplete = false;
     int  m_mfvInitialReadsRemaining = 0;
 
     DetectionType m_mfvDetectionType = FullPower;

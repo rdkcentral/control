@@ -42,6 +42,7 @@
 #define AUDIO_PACKET_DURATION_USEC (12000)
 
 #define AUDIO_FRAME_SIZE           (100)
+#define MFV_INITIAL_READ_COUNT     (4)
 
 #define AUDIO_SEQ_NUM_MAX          (0xFF)
 
@@ -107,8 +108,7 @@ bool GattAudioServiceRdk::start(const shared_ptr<const BleGattService> &gattServ
     // Discover MFV characteristics (optional - not all remotes support MFV)
     if (getMfvCharacteristics(gattService)) {
         m_mfvSupported = true;
-        m_mfvInitialReadsComplete = false;
-        m_mfvInitialReadsRemaining = 4;
+        m_mfvInitialReadsRemaining = MFV_INITIAL_READ_COUNT;
         requestMfvCapabilities();
         requestMfvModelVersion();
         requestMfvPrivacy();
@@ -159,7 +159,7 @@ void GattAudioServiceRdk::onEnteredIdle() {
     m_mfvModelConfigCharacteristic.reset();
     m_mfvCapabilitiesCharacteristic.reset();
     m_mfvSupported = false;
-    m_mfvInitialReadsComplete = false;
+    m_mfvInitialReadsRemaining = 0;
 
     GattAudioService::onEnteredIdle();
 }
@@ -223,7 +223,7 @@ void GattAudioServiceRdk::onEnteredEnableNotificationsState()
 
     // Enable MFV notifications here if initial reads have already completed,
     // otherwise onMfvInitialReadComplete() will enable them when they finish.
-    if (m_mfvSupported && m_mfvInitialReadsComplete) {
+    if (areMfvInitialReadsComplete()) {
         requestStartMfvSessionStartNotify();
         requestStartMfvDetectionDataNotify();
         requestStartMfvPrivacyNotify();
@@ -526,6 +526,11 @@ void GattAudioServiceRdk::requestGainLevel()
     m_audioGainCharacteristic->readValue(PendingReply<std::vector<uint8_t>>(getIsAlivePtr(), replyHandler));
 }
 
+bool GattAudioServiceRdk::areMfvInitialReadsComplete() const
+{
+    return m_mfvSupported && (m_mfvInitialReadsRemaining == 0);
+}
+
 // -----------------------------------------------------------------------------
 /*!
     \internal
@@ -705,8 +710,6 @@ bool GattAudioServiceRdk::getMfvCharacteristics(const shared_ptr<const BleGattSe
  */
 void GattAudioServiceRdk::onMfvInitialReadComplete()
 {
-    m_mfvInitialReadsComplete = true;
-
     // Publish initial values via changed slots
     m_mfvCapabilitiesChangedSlots.invoke(m_mfvCapabilitiesValue);
     m_mfvPrivacyChangedSlots.invoke(m_mfvPrivacyEnabled);

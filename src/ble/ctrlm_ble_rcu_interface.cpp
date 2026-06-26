@@ -502,14 +502,14 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
         auto mfvDetectionDataSlot = [this, address](const BleRcuAudioService::DetectionData &data)
             {
                 XLOGD_INFO("BLE RCU %s MFV detection data: start=%u end=%u confidence=%.1f%%",
-                    address.toString().c_str(), data.start, data.end, data.confidence_x10 / 10.0);
+                    address.toString().c_str(), data.start, data.end, data.confidence / 10.0);
 
                 ctrlm_hal_ble_RcuStatusData_t params;
                 params.property_updated = CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_DATA;
                 params.rcu_data.ieee_address = address.toUInt64();
                 params.rcu_data.mfv_ww_start = data.start;
                 params.rcu_data.mfv_ww_end = data.end;
-                params.rcu_data.mfv_confidence_x10 = data.confidence_x10;
+                params.rcu_data.mfv_confidence_x10 = data.confidence;
                 m_rcuStatusChangedSlots.invoke(&params);
             };
         audioSvc->addMfvDetectionDataChangedSlot(Slot<const BleRcuAudioService::DetectionData &>(m_isAlive, mfvDetectionDataSlot));
@@ -738,7 +738,7 @@ ctrlm_hal_ble_rcu_data_t ctrlm_ble_rcu_interface_t::getAllDeviceProperties(uint6
         ret.mfv_detection_type = static_cast<uint8_t>(audioSvc->mfvDetectionType());
         ret.mfv_ww_start = detectionData.start;
         ret.mfv_ww_end = detectionData.end;
-        ret.mfv_confidence_x10 = detectionData.confidence_x10;
+        ret.mfv_confidence_x10 = detectionData.confidence;
         ret.mfv_privacy_enabled = audioSvc->mfvPrivacyEnabled();
         ret.mfv_capabilities = audioSvc->mfvCapabilities();
     }

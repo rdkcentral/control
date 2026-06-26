@@ -947,7 +947,7 @@ void GattAudioServiceRdk::onMfvSessionStartChanged(const std::vector<uint8_t> &n
     \internal
 
     Called when a Detection Data notification is received from the RCU.
-    Payload: 6 bytes, little-endian (start, end, confidence_x10).
+    Payload: 6 bytes, little-endian (start, end, confidence).
  */
 void GattAudioServiceRdk::onMfvDetectionDataChanged(const std::vector<uint8_t> &newValue)
 {
@@ -956,13 +956,13 @@ void GattAudioServiceRdk::onMfvDetectionDataChanged(const std::vector<uint8_t> &
         return;
     }
 
-    m_mfvDetectionData.start          = static_cast<uint16_t>(newValue[0]) | (static_cast<uint16_t>(newValue[1]) << 8);
-    m_mfvDetectionData.end            = static_cast<uint16_t>(newValue[2]) | (static_cast<uint16_t>(newValue[3]) << 8);
-    m_mfvDetectionData.confidence_x10 = static_cast<uint16_t>(newValue[4]) | (static_cast<uint16_t>(newValue[5]) << 8);
+    m_mfvDetectionData.start      = static_cast<uint16_t>(newValue[0]) | (static_cast<uint16_t>(newValue[1]) << 8);
+    m_mfvDetectionData.end        = static_cast<uint16_t>(newValue[2]) | (static_cast<uint16_t>(newValue[3]) << 8);
+    m_mfvDetectionData.confidence = static_cast<uint16_t>(newValue[4]) | (static_cast<uint16_t>(newValue[5]) << 8);
 
     XLOGD_INFO("MFV Detection Data: start=%u end=%u confidence=%.1f%%",
         m_mfvDetectionData.start, m_mfvDetectionData.end,
-        m_mfvDetectionData.confidence_x10 / 10.0);
+        m_mfvDetectionData.confidence / 10.0);
 
     m_mfvDetectionDataChangedSlots.invoke(m_mfvDetectionData);
 }

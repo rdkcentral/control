@@ -27,7 +27,7 @@ dir_out      = "./output/"
 def docs_gen_all(build_release=False):
    release_version = '1'
    release_name    = 'ctrlm_all_release_' + release_version
-   header_files = ['ctrlm_hal.h', 'ctrlm_hal_rf4ce.h', 'ctrlm_hal_btle.h', 'ctrlm_hal_ip.h', 'ctrlm_ipc.h', 'ctrlm_ipc_rcu.h', 'ctrlm_ipc_voice.h', 'ctrlm_ipc_key_codes.h', 'ctrlm_ipc_device_update.h']
+   header_files = ['ctrlm_hal.h', 'ctrlm_hal_rf4ce.h', 'ctrlm_hal_btle.h', 'ctrlm_ipc.h', 'ctrlm_ipc_rcu.h', 'ctrlm_ipc_voice.h', 'ctrlm_ipc_key_codes.h', 'ctrlm_ipc_device_update.h']
    cmd = ["doxygen", "ctrlm_api_all"]
    ret = call(cmd)
    if build_release:
@@ -39,8 +39,8 @@ def docs_gen_all(build_release=False):
 def docs_gen_hal(build_release=False):
    release_version = '1'
    release_name    = 'ctrlm_hal_release_' + release_version
-   header_files = ['ctrlm_hal.h', 'ctrlm_hal_rf4ce.h', 'ctrlm_hal_btle.h', 'ctrlm_hal_ip.h']
-   cmd = ["doxygen", "ctrlm_api_hal", "ctrlm_hal_rf4ce.h", "ctrlm_hal_btle.h", "ctrlm_hal_ip.h" ]
+   header_files = ['ctrlm_hal.h', 'ctrlm_hal_rf4ce.h', 'ctrlm_hal_btle.h']
+   cmd = ["doxygen", "ctrlm_api_hal", "ctrlm_hal_rf4ce.h", "ctrlm_hal_btle.h" ]
    ret = call(cmd)
    if build_release:
       build_pdf()
@@ -65,18 +65,6 @@ def docs_gen_hal_btle(build_release=False):
    release_name    = 'ctrlm_hal_btle_release_' + release_version
    header_files = ['ctrlm_hal.h', 'ctrlm_hal_btle.h']
    cmd = ["doxygen", "ctrlm_api_hal_btle" ]
-   ret = call(cmd)
-   if build_release:
-      build_pdf()
-      package_release(release_name, header_files)
-   else:
-      launch_html()
-
-def docs_gen_hal_ip(build_release=False):
-   release_version = '1'
-   release_name    = 'ctrlm_hal_ip_release_' + release_version
-   header_files = ['ctrlm_hal.h', 'ctrlm_hal_ip.h']
-   cmd = ["doxygen", "ctrlm_api_hal_ip" ]
    ret = call(cmd)
    if build_release:
       build_pdf()
@@ -196,7 +184,6 @@ def release_version_get(filename, key):
 #docs_gen_hal()
 docs_gen_hal_rf4ce(True) 
 #docs_gen_hal_btle()
-#docs_gen_hal_ip()
 #docs_gen_ipc()
 #docs_gen_ipc_device_update(False)
 #docs_gen_ipc_voice()

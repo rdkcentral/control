@@ -804,7 +804,6 @@ EXCLUDE_PATTERNS       = ctrlm_dox_all.h \
                          ctrlm_dox_hal_btle.h \
                          ctrlm_hal.h \
                          ctrlm_hal_rf4ce.h \
-                         ctrlm_hal_ip.h \
                          ctrlm_hal_btle.h \
                          ctrlm_ipc_rcu.h \
                          ctrlm_ipc_device_update.h

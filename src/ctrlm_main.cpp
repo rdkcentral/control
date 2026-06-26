@@ -48,7 +48,6 @@
 #include "ctrlm_version_build.h"
 #include "ctrlm_hal_rf4ce.h"
 #include "ctrlm_hal_ble.h"
-#include "ctrlm_hal_ip.h"
 #include "ctrlm.h"
 #include "ctrlm_log.h"
 #include "ctrlm_utils.h"

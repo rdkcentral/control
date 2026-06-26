@@ -95,7 +95,7 @@ public:
     struct DetectionData {
         uint16_t start = 0;
         uint16_t end = 0;
-        uint16_t confidence_x10 = 0;
+        uint16_t confidence = 0; // encoded as percentage * 10 (e.g. 953 = 95.3%)
     };
 
     struct ModelVersion {

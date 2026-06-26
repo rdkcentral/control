@@ -2621,6 +2621,7 @@ guchar ctrlm_obj_network_rf4ce_t::target_irdb_status_flags_get() {
 }
 
 void ctrlm_obj_network_rf4ce_t::ir_prog_state_set(ctrlm_ir_state_t state) {
+   THREAD_ID_VALIDATE();
    XLOGD_INFO("RF4CE remote IR programming state changed to <%s>", ctrlm_ir_state_str(state));
    ir_state_ = state;
    iarm_event_rcu_status();

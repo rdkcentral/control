@@ -635,10 +635,6 @@ private:
    static gboolean       binding_in_progress_timeout(gpointer user_data);
    void                  default_polling_configuration();
    void                  polling_config_read(json_config *conf);
-   void                  polling_config_tr181_read();
-   void                  process_xconf();
-
-   void                  dsp_configuration_xconf();
 
    gboolean              is_asb_active(ctrlm_hal_rf4ce_ieee_address_t ieee_address);
    static gboolean       asb_link_validation_timeout(gpointer user_data);

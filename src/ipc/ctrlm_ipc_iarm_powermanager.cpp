@@ -70,7 +70,7 @@ bool ctrlm_ipc_iarm_powermanager_t::get_wakeup_reason_voice() {
    bool wakeup_reason_voice = false;
    bool pwrmgr2 = false;
 
-   if(CTRLM_TR181_RESULT_SUCCESS != ctrlm_tr181_bool_get(CTRLM_RT181_POWER_RFC_PWRMGR2, &pwrmgr2)) {
+   if(CTRLM_TR181_RESULT_SUCCESS != ctrlm_tr181_bool_get(CTRLM_TR181_POWER_RFC_PWRMGR2, &pwrmgr2)) {
       XLOGD_INFO("failed to determine Power Manager revision, defaulting to 1");
    }
 

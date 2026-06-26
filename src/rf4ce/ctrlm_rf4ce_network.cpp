@@ -2620,6 +2620,12 @@ guchar ctrlm_obj_network_rf4ce_t::target_irdb_status_flags_get() {
    return(target_irdb_status_.flags);
 }
 
+void ctrlm_obj_network_rf4ce_t::ir_prog_state_set(ctrlm_ir_state_t state) {
+   XLOGD_INFO("RF4CE remote IR programming state changed to <%s>", ctrlm_ir_state_str(state));
+   ir_state_ = state;
+   iarm_event_rcu_status();
+}
+
 ctrlm_rf4ce_controller_irdb_status_t ctrlm_obj_network_rf4ce_t::most_recent_controller_irdb_status_get(void) {
    THREAD_ID_VALIDATE();
    ctrlm_rf4ce_controller_irdb_status_t most_recent_controller_irdb_status;
@@ -4452,8 +4458,7 @@ void ctrlm_obj_network_rf4ce_t::req_process_program_ir_codes(void *data, int siz
       XLOGD_ERROR("Controller %u doesn't exist", dqm->controller_id);
    }
 
-   ir_state_ = success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED;
-   iarm_event_rcu_status();
+   ir_prog_state_set(success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED);
 
    if(dqm->success) dqm->success->push_back(success);
    // post the semaphore
@@ -4485,8 +4490,7 @@ void ctrlm_obj_network_rf4ce_t::req_process_ir_clear_codes(void *data, int size)
       XLOGD_ERROR("Controller %u doesn't exist", dqm->controller_id);
    }
 
-   ir_state_ = success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED;
-   iarm_event_rcu_status();
+   ir_prog_state_set(success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED);
 
    if(dqm->success) dqm->success->push_back(success);
    // post the semaphore

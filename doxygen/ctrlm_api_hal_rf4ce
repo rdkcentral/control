@@ -802,7 +802,6 @@ EXCLUDE_PATTERNS       = ctrlm_dox_all.h \
                          ctrlm_dox_hal.h \
                          ctrlm_dox_hal_ip.h \
                          ctrlm_dox_hal_btle.h \
-                         ctrlm_hal_ip.h \
                          ctrlm_hal_btle.h \
                          ctrlm_ipc.h \
                          ctrlm_ipc_rcu.h \

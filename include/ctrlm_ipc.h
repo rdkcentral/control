@@ -47,7 +47,6 @@
 /// - @subpage CTRL_MGR
 /// - @subpage CTRL_MGR_HAL
 /// - @subpage CTRL_MGR_HAL_RF4CE
-/// - @subpage CTRL_MGR_HAL_IP
 /// - @subpage CTRL_MGR_HAL_BLE
 ///
 /// @page CTRLM_IPC_MAIN_INTRO Introduction

@@ -485,7 +485,6 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
     device->addAdvConfigCustomListChangedSlot(Slot<const std::vector<uint8_t> &>(m_isAlive, advConfigCustomListChangedSlot));
 
 
-    // MFV Voice characteristics (part of the RDK Voice / audio service)
     if (auto audioSvc = device->audioService()) {
         auto mfvDetectionTypeSlot = [this, address](BleRcuAudioService::DetectionType type)
             {

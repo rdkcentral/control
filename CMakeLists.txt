@@ -41,7 +41,6 @@ option(BREAKPAD "Enable BREAKPAD" OFF)
 option(BUILD_CTRLM_FACTORY "Build Control Factory Test" OFF)
 option(BUILD_CTRLM_SERVER "Build Control Server Daemon" OFF)
 option(FDC_ENABLED "Enable FDC" OFF)
-option(IP_ENABLED "Enable IP" OFF)
 option(RF4CE_ENABLED "Enable RF4CE" ON)
 option(TELEMETRY_SUPPORT "Enable TELEMETRY_SUPPORT" OFF)
 option(THUNDER "Enable THUNDER" ON)
@@ -196,10 +195,6 @@ endif()
 
 if(FDC_ENABLED)
    add_compile_definitions(FDC_ENABLED)
-endif()
-
-if(IP_ENABLED)
-   add_compile_definitions(CTRLM_NETWORK_IP CTRLM_IP_HAL_LOG_ENABLED)
 endif()
 
 # RF4CE options

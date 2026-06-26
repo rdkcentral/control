@@ -386,6 +386,7 @@ public:
    gboolean                             target_irdb_status_read_from_db();
    void                                 target_irdb_status_set(ctrlm_rf4ce_controller_irdb_status_t controller_irdb_status);
    guchar                               target_irdb_status_flags_get();
+   void                                 ir_prog_state_set(ctrlm_ir_state_t state);
    ctrlm_rf4ce_controller_irdb_status_t most_recent_controller_irdb_status_get();
    virtual void                         disable_hal_calls();
 

@@ -43,22 +43,19 @@ apt install -y \
     uuid-dev \
     libevdev-dev \
     libdrm-dev \
-    libsafec-dev \
+    libbsd-dev \
+    gperf \
     python3-pip
 python3 -m pip install jsonref
 
 ###########################################
 # 2. Clone the required repositories
 
-XRSDK_REF="1.0.13"
-git clone --depth 1 --filter=blob:none --branch "${XRSDK_REF}" https://github.com/rdkcentral/xr-voice-sdk.git
+# Will uncomment the following lines and update the branch to main once the changes in feature/RDKEMW-18082 are merged and released.
+# git clone --depth 1 --filter=blob:none https://github.com/rdkcentral/xr-voice-sdk.git
+git clone --depth 1 --filter=blob:none --branch feature/RDKEMW-18082 https://github.com/rdkcentral/xr-voice-sdk.git
 
-git clone --depth 1 --filter=blob:none --branch develop https://github.com/rdkcentral/entservices-testframework.git
-
-# Patch the upstream testframework devicesettings.h with ctrlm-specific
-# additions (ducking types, setAudioDucking, Manager::IsInitialized).
-# We can remove this if added to upstream testframework
-git -C entservices-testframework apply "$GITHUB_WORKSPACE/ci/mocks/devicesettings_ctrlm.patch"
+git clone --depth 1 --filter=blob:none https://github.com/rdkcentral/entservices-testframework.git
 
 git clone --depth 1 --filter=blob:none --sparse --branch develop https://github.com/rdkcentral/iarmmgrs.git
 git -C iarmmgrs sparse-checkout set hal
@@ -72,10 +69,14 @@ git -C rdk-halif-power_manager sparse-checkout set include
 git clone --depth 1 --filter=blob:none --sparse --branch develop https://github.com/rdkcentral/rdkversion.git
 git -C rdkversion sparse-checkout set src
 
+git clone --depth 1 --filter=blob:none --sparse https://github.com/rdkcentral/meta-rdk-oss-reference.git
+git -C meta-rdk-oss-reference sparse-checkout set recipes-common/safec-common-wrapper/files
+
 IARMMGRS_DIR="$GITHUB_WORKSPACE/iarmmgrs"
 DEEPSLEEP_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-deepsleep_manager"
 POWER_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-power_manager"
 RDKVERSION_DIR="$GITHUB_WORKSPACE/rdkversion"
+SAFEC_WRAPPER_DIR="$GITHUB_WORKSPACE/meta-rdk-oss-reference/recipes-common/safec-common-wrapper/files"
 
 ############################
 # 3. Create stub/empty headers for external dependencies
@@ -83,30 +84,49 @@ echo "==========================================================================
 echo "Creating stub headers"
 
 HEADERS_DIR="$GITHUB_WORKSPACE/ci/headers"
-XRSDK_HEADERS_DIR="$HEADERS_DIR/xr-voice-sdk"
 mkdir -p "${HEADERS_DIR}"
 mkdir -p "${HEADERS_DIR}/rdk/iarmbus"
 mkdir -p "${HEADERS_DIR}/rdk/ds"
 mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
-mkdir -p "${XRSDK_HEADERS_DIR}"
 
-# Copy real xr-voice-sdk headers.
-# xr_fdc.h is NOT copied: only needed when FDC_ENABLED=ON
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv.h" "${XRSDK_HEADERS_DIR}/"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-router/xrsr.h" "${XRSDK_HEADERS_DIR}/"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-mq/xr_mq.h" "${XRSDK_HEADERS_DIR}/"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv_http/xrsv_http.h" "${XRSDK_HEADERS_DIR}/"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-speech-vrex/xrsv_ws_nextgen/xrsv_ws_nextgen.h" "${XRSDK_HEADERS_DIR}/"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-timestamp/xr_timestamp.h" "${XRSDK_HEADERS_DIR}/"
+# Use the Yocto safec_lib.h sysroot header for CI builds without libsafec.
+# Add include guards because the upstream header does not provide them.
+cp "$SAFEC_WRAPPER_DIR/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
+sed -i '1s/^/#ifndef CTRLM_CI_SAFEC_LIB_H\n#define CTRLM_CI_SAFEC_LIB_H\n/' "$HEADERS_DIR/safec_lib.h"
+printf '\n#endif /* CTRLM_CI_SAFEC_LIB_H */\n' >> "$HEADERS_DIR/safec_lib.h"
+# patching parseFormat to avoid -Wmaybe-uninitialized warnings in ctrlm_database.cpp from the safec wrapper's dummy implementation
+sed -i 's/static inline int parseFormat(const char \*dst,/static inline int parseFormat(char *dst,/' "$HEADERS_DIR/safec_lib.h"
+# patching strcpy_s to avoid Coverity's array-vs-NULL warning on string literals while
+# preserving the dummy wrapper's null and bounds checks in CI builds.
+perl -0pi -e 's{#define strcpy_s\(dst,max,src\) \(src != NULL\)\?\(\(max > strlen\(src\)\)\?EOK:ESLEMAX\):ESNULLP; \\\n if\(\(src != NULL\) && \(max > strlen\(src\)\)\) strcpy\(dst,src\);}{#define strcpy_s(dst,max,src) ({ const char *ctrlm_ci_src__ = (src); ctrlm_ci_src__ != NULL ? (((max) > strlen(ctrlm_ci_src__)) ? (strcpy((dst), ctrlm_ci_src__), EOK) : ESLEMAX) : ESNULLP; })}s or die "failed to patch strcpy_s in safec_lib.h\n"' "$HEADERS_DIR/safec_lib.h"
+# patching strncpy_s to avoid the wrapper's raw strncpy expansion, which triggers
+# -Wstringop-truncation in CI even though ctrlm manually terminates the destination buffer.
+perl -0pi -e 's{#define strncpy_s\(dst,max,src,len\) \(src != NULL\)\?\(\(len <= max\)\?EOK:ESLEMAX\):ESNULLP; \\\n if\(\(src != NULL\) && \(len <= max\)\) strncpy\(dst,src,len\);}{#define strncpy_s(dst,max,src,len) (src != NULL)?((len <= max)?EOK:ESLEMAX):ESNULLP; \\\n if((src != NULL) && (len <= max)) { size_t copy_len = strnlen(src, len); memcpy(dst, src, copy_len); if(copy_len < (size_t)(max)) memset((char *)(dst) + copy_len, 0, (size_t)(max) - copy_len); }}s or die "failed to patch strncpy_s in safec_lib.h\n"' "$HEADERS_DIR/safec_lib.h"
 
-# Generate rdkx_logger_modules.h from xr-voice-sdk's module configuration,
-# then copy the real rdkx_logger and xr_voice_sdk headers.
-# This replaces the hand-written ci/mocks/control/ stubs.
-python3 "$GITHUB_WORKSPACE/xr-voice-sdk/scripts/rdkx_logger_modules_to_c.py" \
-    "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-logger/rdkv/rdkx_logger_modules.json" \
-    "${XRSDK_HEADERS_DIR}/rdkx_logger_modules" "mw"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr-logger/rdkx_logger_mw.h" "${XRSDK_HEADERS_DIR}/rdkx_logger.h"
-cp "$GITHUB_WORKSPACE/xr-voice-sdk/src/xr_voice_sdk.h" "${XRSDK_HEADERS_DIR}/xr_voice_sdk.h"
+# Stage rdkversion.h before building xr-voice-sdk.
+cp "$RDKVERSION_DIR/src/rdkversion.h" "$HEADERS_DIR/rdkversion.h"
+
+# Build xr-voice-sdk and install its headers under ${HEADERS_DIR}/xr-voice-sdk/.
+# Version doesn't matter here, but we try to get the latest tag for good measure since it's included in the generated headers and may be used by downstream code.
+XRSDK_REF=$(git ls-remote --tags https://github.com/rdkcentral/xr-voice-sdk.git \
+    | grep -oP '\d+\.\d+\.\d+$' | sort -V | tail -1)
+echo "Building xr-voice-sdk at ref ${XRSDK_REF}"
+cmake -G Ninja \
+    -S "$GITHUB_WORKSPACE/xr-voice-sdk" \
+    -B "$GITHUB_WORKSPACE/build/xr-voice-sdk" \
+    -DCMAKE_INSTALL_PREFIX="${HEADERS_DIR}" \
+    -DCMAKE_INSTALL_INCLUDEDIR="xr-voice-sdk" \
+    -DCMAKE_INSTALL_SYSCONFDIR="${HEADERS_DIR}/etc" \
+    -DCMAKE_C_FLAGS="-I${HEADERS_DIR}" \
+    -DSTAGING_BINDIR_NATIVE="/usr/bin" \
+    -DCMAKE_PROJECT_VERSION="${XRSDK_REF}" \
+    -DUSE_SAFEC=OFF \
+    -DVAD_ENABLED=OFF \
+    -DINSTALL_INTERNAL_HEADERS=ON
+
+cmake --build "$GITHUB_WORKSPACE/build/xr-voice-sdk"
+cmake --install "$GITHUB_WORKSPACE/build/xr-voice-sdk" --component headers
+cmake --install "$GITHUB_WORKSPACE/build/xr-voice-sdk" --component internal-headers
 
 cd "${HEADERS_DIR}"
 
@@ -160,15 +180,10 @@ find "$IARMMGRS_DIR" -name comcastIrKeyCodes.h -print -quit | xargs -r -I{} cp "
 [ -f comcastIrKeyCodes.h ]
 
 # rdkversion.h (used by ctrlm_main.cpp)
-cp "$RDKVERSION_DIR/src/rdkversion.h" rdkversion.h
 [ -f rdkversion.h ]
 
 # secure_wrapper (types provided via empty stub — no v_secure_* calls in core)
 touch secure_wrapper.h
-
-# safec compatibility header - committed in ci/mocks, copied here so it is
-# resolved on the generated-headers include path.
-cp "$GITHUB_WORKSPACE/ci/mocks/safec_lib.h" safec_lib.h
 
 echo "Stub headers created successfully"
 
@@ -190,12 +205,14 @@ cat > /tmp/stub.c << 'STUB_EOF'
 void __stub_placeholder(void) {}
 STUB_EOF
 
-# Build stub .so for each missing library
-# nopoll and dshalcli are unused (factory-only) but unconditionally linked by CMakeLists.txt
-# We can remove them from the link list in the future if desired, but for now just provide stubs to satisfy the linker.
-for lib in xr-voice-sdk rdkversion IARMBus ds nopoll dshalcli rfcapi secure_wrapper evdev; do
+# Build stub .so files for libraries still linked in CI.
+# nopoll and dshalcli are factory-only but still linked unconditionally.
+for lib in rdkversion IARMBus ds nopoll dshalcli rfcapi secure_wrapper evdev; do
     gcc -shared -fPIC -o "${STUB_LIB_DIR}/lib${lib}.so" /tmp/stub.c
 done
+
+# Copy the real xr-voice-sdk .so alongside the stubs.
+cp "$GITHUB_WORKSPACE/build/xr-voice-sdk/src/libxr-voice-sdk.so" "${STUB_LIB_DIR}/libxr-voice-sdk.so"
 
 rm /tmp/stub.c
 

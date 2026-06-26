@@ -332,6 +332,15 @@ std::vector<uint16_t> ctrlm_obj_controller_t::get_wakeup_custom_list() const {
     return {};
 }
 
+void ctrlm_obj_controller_t::set_mid_field_voice_capable(bool capable) {
+    XLOGD_WARN("not implemented.");
+}
+
+bool ctrlm_obj_controller_t::get_mid_field_voice_capable() const {
+    XLOGD_WARN("not implemented.");
+    return false;
+}
+
 void ctrlm_obj_controller_t::set_upgrade_progress(uint8_t progress) {
     upgrade_progress_ = progress;
     ctrlm_rcu_upgrade_state_t previous_state = get_upgrade_state();

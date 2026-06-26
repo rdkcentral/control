@@ -85,6 +85,10 @@ typedef enum {
    CTRLM_HAL_BLE_PROPERTY_WAKEUP_CONFIG,
    CTRLM_HAL_BLE_PROPERTY_WAKEUP_CUSTOM_LIST,
    CTRLM_HAL_BLE_PROPERTY_IRDBS_SUPPORTED,
+   CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_TYPE,
+   CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_DATA,
+   CTRLM_HAL_BLE_PROPERTY_MFV_PRIVACY,
+   CTRLM_HAL_BLE_PROPERTY_MFV_CAPABILITIES,
    CTRLM_HAL_BLE_PROPERTY_UNKNOWN
 } ctrlm_hal_ble_RcuProperty_t;
 /// @}
@@ -123,6 +127,12 @@ typedef struct {
    int                           wakeup_custom_list[CTRLM_WAKEUP_CONFIG_LIST_MAX_SIZE];
    int                           wakeup_custom_list_size;
    uint8_t                       irdbs_supported;
+   uint8_t                       mfv_detection_type;
+   uint16_t                      mfv_ww_start;
+   uint16_t                      mfv_ww_end;
+   uint16_t                      mfv_confidence; // encoded as percentage * 10 (e.g. 976 = 97.6%)
+   bool                          mfv_privacy_enabled;
+   uint8_t                       mfv_capabilities;
 } ctrlm_hal_ble_rcu_data_t;
 
 typedef struct {

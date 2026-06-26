@@ -67,6 +67,18 @@ public:
     uint8_t gainLevel() const override;
     void setGainLevel(uint8_t level) override;
 
+    // MFV accessors
+    DetectionType mfvDetectionType() const override;
+    DetectionData mfvDetectionData() const override;
+    ModelVersion mfvModelVersion() const override;
+    bool mfvPrivacyEnabled() const override;
+    std::vector<uint8_t> mfvModelConfiguration() const override;
+    uint8_t mfvCapabilities() const override;
+    StreamStatsRaw mfvStreamStats() const override;
+
+    void writeMfvPrivacy(bool enabled, PendingReply<> &&reply) override;
+    void writeMfvModelConfiguration(uint8_t sensitivity, uint8_t secondary, uint8_t aad, PendingReply<> &&reply) override;
+
 private:
 
     bool getAudioCodecsCharacteristic(const std::shared_ptr<const BleGattService> &gattService);
@@ -74,6 +86,31 @@ private:
     bool getAudioControlCharacteristic(const std::shared_ptr<const BleGattService> &gattService);
     bool getAudioDataCharacteristic(const std::shared_ptr<const BleGattService> &gattService);
     bool getAudioInfoCharacteristic(const std::shared_ptr<const BleGattService> &gattService);
+
+    // MFV characteristic discovery
+    bool getMfvCharacteristics(const std::shared_ptr<const BleGattService> &gattService);
+
+    // MFV initial reads
+    void requestMfvCapabilities();
+    void requestMfvModelVersion();
+    void requestMfvPrivacy();
+    void requestMfvModelConfig();
+    bool areMfvInitialReadsComplete() const;
+    void onMfvInitialReadComplete();
+
+    // MFV notification enable
+    void requestStartMfvSessionStartNotify();
+    void requestStartMfvDetectionDataNotify();
+    void requestStartMfvPrivacyNotify();
+
+    // MFV notification handlers
+    void onMfvSessionStartChanged(const std::vector<uint8_t> &newValue);
+    void onMfvDetectionDataChanged(const std::vector<uint8_t> &newValue);
+    void onMfvPrivacyChanged(const std::vector<uint8_t> &newValue);
+
+    // MFV write handlers
+    void onWriteMfvPrivacyReply(PendingReply<> *reply);
+    void onWriteMfvModelConfigReply(PendingReply<> *reply);
 
     void requestGainLevel();
     void requestAudioCodecs();
@@ -88,6 +125,34 @@ private:
     std::shared_ptr<BleGattCharacteristic> m_audioDataCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_audioInfoCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_audioCodecsCharacteristic;
+
+    // MFV characteristics and data
+    bool m_mfvSupported = false;
+    int  m_mfvInitialReadsRemaining = 0;
+
+    DetectionType m_mfvDetectionType = FullPower;
+    DetectionData m_mfvDetectionData;
+    ModelVersion  m_mfvModelVersionData;
+    bool          m_mfvPrivacyEnabled = false;
+    std::vector<uint8_t> m_mfvModelConfigurationData;
+    uint8_t       m_mfvCapabilitiesValue = 0;
+    StreamStatsRaw m_mfvStreamStatsData;
+
+    std::shared_ptr<PendingReply<>> m_mfvPromiseResults;
+
+    std::shared_ptr<BleGattCharacteristic> m_mfvSessionStartCharacteristic;
+    std::shared_ptr<BleGattCharacteristic> m_mfvDetectionDataCharacteristic;
+    std::shared_ptr<BleGattCharacteristic> m_mfvModelVersionCharacteristic;
+    std::shared_ptr<BleGattCharacteristic> m_mfvPrivacyCharacteristic;
+    std::shared_ptr<BleGattCharacteristic> m_mfvModelConfigCharacteristic;
+    std::shared_ptr<BleGattCharacteristic> m_mfvCapabilitiesCharacteristic;
+
+    static const BleUuid m_mfvSessionStartCharUuid;
+    static const BleUuid m_mfvDetectionDataCharUuid;
+    static const BleUuid m_mfvModelVersionCharUuid;
+    static const BleUuid m_mfvPrivacyCharUuid;
+    static const BleUuid m_mfvModelConfigCharUuid;
+    static const BleUuid m_mfvCapabilitiesCharUuid;
 
 };
 

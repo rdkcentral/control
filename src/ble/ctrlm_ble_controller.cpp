@@ -528,6 +528,52 @@ ctrlm_timestamp_t ctrlm_obj_controller_ble_t::getVoiceStartTimeLocal() const {
    return(voice_start_time_local_);
 }
 
+void ctrlm_obj_controller_ble_t::setMfvDetectionType(uint8_t type) {
+   mfv_detection_type_ = type;
+}
+
+uint8_t ctrlm_obj_controller_ble_t::getMfvDetectionType() const {
+   return mfv_detection_type_;
+}
+
+void ctrlm_obj_controller_ble_t::setMfvDetectionData(uint16_t start, uint16_t end, uint16_t confidence) {
+   mfv_ww_start_ = start;
+   mfv_ww_end_ = end;
+   mfv_confidence_ = confidence;
+}
+
+uint16_t ctrlm_obj_controller_ble_t::getMfvWwStart() const {
+   return mfv_ww_start_;
+}
+
+uint16_t ctrlm_obj_controller_ble_t::getMfvWwEnd() const {
+   return mfv_ww_end_;
+}
+
+uint16_t ctrlm_obj_controller_ble_t::getMfvConfidence() const {
+   return mfv_confidence_;
+}
+
+float ctrlm_obj_controller_ble_t::getMfvConfidencePercent() const {
+   return mfv_confidence_ / 10.0f;
+}
+
+void ctrlm_obj_controller_ble_t::setMfvPrivacy(bool enabled) {
+   mfv_privacy_enabled_ = enabled;
+}
+
+bool ctrlm_obj_controller_ble_t::getMfvPrivacy() const {
+   return mfv_privacy_enabled_;
+}
+
+void ctrlm_obj_controller_ble_t::setMfvCapabilities(uint8_t caps) {
+   mfv_capabilities_ = caps;
+}
+
+uint8_t ctrlm_obj_controller_ble_t::getMfvCapabilities() const {
+   return mfv_capabilities_;
+}
+
 void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmask) {
    this->irdbs_supported_ = vendor_support_bitmask;
 
@@ -689,6 +735,13 @@ void ctrlm_obj_controller_ble_t::print_status() {
    XLOGD_INFO("Programmed AVR IRDB Code     : %s", irdb_entry_id_name_avr_->to_string().c_str());
    XLOGD_INFO("");
    voice_metrics_->print(__FUNCTION__);
+   XLOGD_INFO("");
+   XLOGD_INFO("MFV Detection Type           : 0x%02X", mfv_detection_type_);
+   XLOGD_INFO("MFV WW Start                 : %u", mfv_ww_start_);
+   XLOGD_INFO("MFV WW End                   : %u", mfv_ww_end_);
+   XLOGD_INFO("MFV Confidence               : %.1f%%", mfv_confidence_ / 10.0);
+   XLOGD_INFO("MFV Privacy                  : %s", mfv_privacy_enabled_ ? "enabled" : "disabled");
+   XLOGD_INFO("MFV Capabilities             : 0x%02X", mfv_capabilities_);
    XLOGD_WARN("------------------------------------------------------------");
 }
 

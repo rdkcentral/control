@@ -253,6 +253,8 @@ ctrlm_voice_t::ctrlm_voice_t() {
     this->device_requires_stb_data[CTRLM_VOICE_DEVICE_MICROPHONE] = true;
     this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE_TAP]            = CTRLM_VOICE_DEVICE_STATUS_NONE;
     this->device_requires_stb_data[CTRLM_VOICE_DEVICE_MICROPHONE_TAP] = true;
+    this->device_status[CTRLM_VOICE_DEVICE_MFV]            = CTRLM_VOICE_DEVICE_STATUS_NONE;
+    this->device_requires_stb_data[CTRLM_VOICE_DEVICE_MFV] = true;
     this->device_status[CTRLM_VOICE_DEVICE_INVALID]             = CTRLM_VOICE_DEVICE_STATUS_NOT_SUPPORTED;
     this->device_requires_stb_data[CTRLM_VOICE_DEVICE_INVALID]  = true;
 
@@ -3276,6 +3278,10 @@ xrsr_src_t voice_device_to_xrsr(ctrlm_voice_device_t device) {
         }
         case CTRLM_VOICE_DEVICE_MICROPHONE_TAP: {
             ret = XRSR_SRC_MICROPHONE_TAP;
+            break;
+        }
+        case CTRLM_VOICE_DEVICE_MFV: {
+            ret = XRSR_SRC_RCU_MFV;
             break;
         }
         default: {

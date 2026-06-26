@@ -123,6 +123,9 @@ public:
    virtual std::vector<uint16_t>    get_wakeup_custom_list() const;
    std::string                      wakeupCustomListToString();
 
+   virtual void                     set_mid_field_voice_capable(bool capable);
+   virtual bool                     get_mid_field_voice_capable() const;
+
    void                             setUpgradePaused(bool paused);
    bool                             getUpgradePaused();
    bool                             getUpgradePauseSupported(void);
@@ -205,6 +208,8 @@ private:
 
    bool                                    upgrade_stuck_supported_ = false;
    ctrlm_sw_version_t                      upgrade_stuck_version_;
+
+   bool                                    mid_field_voice_capable_ = false;
 
 };
 // End Class ctrlm_obj_controller_ble_t

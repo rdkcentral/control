@@ -94,6 +94,9 @@ public:
    virtual ctrlm_rcu_wakeup_config_t get_wakeup_config() const;
    virtual std::vector<uint16_t>     get_wakeup_custom_list() const;
 
+   virtual void                      set_mid_field_voice_capable(bool capable);
+   virtual bool                      get_mid_field_voice_capable() const;
+
    virtual void                      set_upgrade_progress(uint8_t progress);
    virtual uint8_t                   get_upgrade_progress() const;
    virtual void                      set_upgrade_state(ctrlm_rcu_upgrade_state_t state);

@@ -47,6 +47,7 @@
 #include <time.h>
 #include <unordered_map>
 #include "ctrlm_rcp_ipc_iarm_thunder.h"
+#include "tv_audio/ctrlm_tv_audio_cap.h"
 
 using namespace std;
 
@@ -520,7 +521,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
          dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
       } else {
          // Currently BLE RCUs only support push-to-talk, so hardcoding here for now
-         ctrlm_voice_device_t device = CTRLM_VOICE_DEVICE_PTT;
+         ctrlm_voice_device_t device = controllers_[controller_id]->get_mid_field_voice_capable() ? CTRLM_VOICE_DEVICE_MFV : CTRLM_VOICE_DEVICE_PTT;
          ctrlm_voice_session_response_status_t voice_status;
 
          // only support ADPCM from ble-rcu component
@@ -1765,6 +1766,9 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   break;
                case CTRLM_HAL_BLE_PROPERTY_CONNECTED:
                   controller->setConnected(dqm->rcu_data.connected);
+                  if (controller->get_mid_field_voice_capable()) {
+                     update_tv_audio_device_qty();
+                  }
                   break;
                case CTRLM_HAL_BLE_PROPERTY_AUDIO_STREAMING:
                   controller->setAudioStreaming(dqm->rcu_data.audio_streaming);
@@ -2029,6 +2033,11 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::controller_add(ctrlm_hal_ble_rcu_
       if (rcu_data.wakeup_config != 0xFF) { controller->setWakeupConfig(rcu_data.wakeup_config); }
       if (rcu_data.wakeup_custom_list_size != 0) { controller->setWakeupCustomList(rcu_data.wakeup_custom_list, rcu_data.wakeup_custom_list_size); }
       if (rcu_data.last_wakeup_key != 0xFF) { controller->setLastWakeupKey(rcu_data.last_wakeup_key); }
+
+      // If the controller is mid-field voice capable, update the tv audio capture device quantity
+      if (controller->get_connected() && controller->get_mid_field_voice_capable()) {
+         update_tv_audio_device_qty();
+      }
 
       controller->db_store();
    }
@@ -2572,6 +2581,9 @@ void ctrlm_obj_network_ble_t::power_state_change(gboolean waking_up) {
       for(auto &controller : controllers_) {
          controller.second->setLastWakeupKey(CTRLM_KEY_CODE_INVALID);
       }
+   } else {
+      // When waking from deep sleep, re-evaluate mid-field voice device quantity
+      update_tv_audio_device_qty();
    }
 
    if (ble_rcu_interface_) {
@@ -2661,4 +2673,17 @@ void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start
 
 bool ctrlm_obj_network_ble_t::is_managed_by_network(ctrlm_controller_id_t id) {
     return (id >= BLE_RCU_ID_RANGE_MIN && id < BLE_RCU_ID_RANGE_MAX);
+}
+
+void ctrlm_obj_network_ble_t::update_tv_audio_device_qty() {
+   uint32_t mid_field_device_qty = 0;
+   for (auto const &it : controllers_) {
+      if (it.second->get_connected() && it.second->get_mid_field_voice_capable()) {
+         mid_field_device_qty++;
+      }
+   }
+   ctrlm_tv_audio_cap_t *tv_audio = ctrlm_tv_audio_cap_t::get_instance();
+   if (tv_audio) {
+      tv_audio->update_device_qty(mid_field_device_qty);
+   }
 }

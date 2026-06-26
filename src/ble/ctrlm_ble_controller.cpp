@@ -480,6 +480,15 @@ vector<uint16_t> ctrlm_obj_controller_ble_t::get_wakeup_custom_list() const {
    return wakeup_custom_list_;
 }
 
+void ctrlm_obj_controller_ble_t::set_mid_field_voice_capable(bool capable) {
+   XLOGD_DEBUG("Controller %u set mid-field voice capable to %s", controller_id_get(), capable ? "TRUE" : "FALSE");
+   mid_field_voice_capable_ = capable;
+}
+
+bool ctrlm_obj_controller_ble_t::get_mid_field_voice_capable() const {
+   return true;
+}
+
 std::string ctrlm_obj_controller_ble_t::wakeupCustomListToString() {
   std::ostringstream oss;
   if (!wakeup_custom_list_.empty()) {

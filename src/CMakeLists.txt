@@ -81,6 +81,7 @@ target_sources(controlMgr PRIVATE
    voice/endpoints/ctrlm_voice_endpoint_ws_nsp.cpp
    voice/ipc/ctrlm_voice_ipc_iarm_all.cpp
    voice/ipc/ctrlm_voice_ipc_iarm_legacy.cpp
+   tv_audio/ctrlm_tv_audio_cap.cpp
    )
 
 if(BLE_ENABLED)

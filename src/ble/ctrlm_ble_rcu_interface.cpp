@@ -508,7 +508,7 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
                 params.rcu_data.ieee_address = address.toUInt64();
                 params.rcu_data.mfv_ww_start = data.start;
                 params.rcu_data.mfv_ww_end = data.end;
-                params.rcu_data.mfv_confidence_x10 = data.confidence;
+                params.rcu_data.mfv_confidence = data.confidence;
                 m_rcuStatusChangedSlots.invoke(&params);
             };
         audioSvc->addMfvDetectionDataChangedSlot(Slot<const BleRcuAudioService::DetectionData &>(m_isAlive, mfvDetectionDataSlot));
@@ -737,7 +737,7 @@ ctrlm_hal_ble_rcu_data_t ctrlm_ble_rcu_interface_t::getAllDeviceProperties(uint6
         ret.mfv_detection_type = static_cast<uint8_t>(audioSvc->mfvDetectionType());
         ret.mfv_ww_start = detectionData.start;
         ret.mfv_ww_end = detectionData.end;
-        ret.mfv_confidence_x10 = detectionData.confidence;
+        ret.mfv_confidence = detectionData.confidence;
         ret.mfv_privacy_enabled = audioSvc->mfvPrivacyEnabled();
         ret.mfv_capabilities = audioSvc->mfvCapabilities();
     }

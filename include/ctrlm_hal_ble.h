@@ -130,7 +130,7 @@ typedef struct {
    uint8_t                       mfv_detection_type;
    uint16_t                      mfv_ww_start;
    uint16_t                      mfv_ww_end;
-   uint16_t                      mfv_confidence_x10;
+   uint16_t                      mfv_confidence; // encoded as percentage * 10 (e.g. 976 = 97.6%)
    bool                          mfv_privacy_enabled;
    uint8_t                       mfv_capabilities;
 } ctrlm_hal_ble_rcu_data_t;

@@ -1966,9 +1966,9 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   break;
                }
                case CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_DATA:
-                  controller->setMfvDetectionData(dqm->rcu_data.mfv_ww_start, dqm->rcu_data.mfv_ww_end, dqm->rcu_data.mfv_confidence_x10);
+                  controller->setMfvDetectionData(dqm->rcu_data.mfv_ww_start, dqm->rcu_data.mfv_ww_end, dqm->rcu_data.mfv_confidence);
                   XLOGD_INFO("Controller <%s> MFV detection data: start=%u end=%u confidence=%.1f%%",
-                        controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.mfv_ww_start, dqm->rcu_data.mfv_ww_end, dqm->rcu_data.mfv_confidence_x10 / 10.0);
+                     controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.mfv_ww_start, dqm->rcu_data.mfv_ww_end, dqm->rcu_data.mfv_confidence / 10.0);
                   break;
                case CTRLM_HAL_BLE_PROPERTY_MFV_PRIVACY:
                   controller->setMfvPrivacy(dqm->rcu_data.mfv_privacy_enabled);

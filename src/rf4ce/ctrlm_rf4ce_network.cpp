@@ -4452,6 +4452,9 @@ void ctrlm_obj_network_rf4ce_t::req_process_program_ir_codes(void *data, int siz
       XLOGD_ERROR("Controller %u doesn't exist", dqm->controller_id);
    }
 
+   ir_state_ = success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED;
+   iarm_event_rcu_status();
+
    if(dqm->success) dqm->success->push_back(success);
    // post the semaphore
    if(dqm->semaphore) {
@@ -4481,6 +4484,9 @@ void ctrlm_obj_network_rf4ce_t::req_process_ir_clear_codes(void *data, int size)
    } else {
       XLOGD_ERROR("Controller %u doesn't exist", dqm->controller_id);
    }
+
+   ir_state_ = success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED;
+   iarm_event_rcu_status();
 
    if(dqm->success) dqm->success->push_back(success);
    // post the semaphore

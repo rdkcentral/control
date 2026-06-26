@@ -238,7 +238,6 @@ typedef struct {
 typedef struct {
    union {
       ctrlm_hal_rf4ce_cfm_init_params_t rf4ce;
-      ctrlm_hal_ip_cfm_init_params_t    ip;
       ctrlm_hal_ble_cfm_init_params_t   ble;
    } params;
    sem_t                            *semaphore;

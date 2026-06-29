@@ -219,7 +219,8 @@ private:
    void                                      emit_irdb_program_result(int ir_state, const std::string &fail_reason, uint8_t rcu_bitmask, const std::string &vendor_name, uint8_t vendor_bitmask);
 
    json_t *                                  json_config_               = NULL;
-   bool                                      voice_disabled_            = false;
+   bool                                      voice_disabled_                          = false;
+   bool                                      mfv_below_threshold_session_enabled_     = false;
    bool                                      upgrade_in_progress_       = false;
    bool                                      unpair_on_remote_request_  = true;
    ctrlm_ble_unpair_metrics_t                last_rcu_unpair_metrics_;

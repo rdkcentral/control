@@ -147,6 +147,18 @@ public:
    ctrlm_timestamp_t                getVoiceStartTimeKey() const;
    ctrlm_timestamp_t                getVoiceStartTimeLocal() const;
 
+   void                             setMfvDetectionType(ctrlm_hal_ble_MfvDetectionType_t type);
+   ctrlm_hal_ble_MfvDetectionType_t getMfvDetectionType() const;
+   void                             setMfvDetectionData(uint16_t start, uint16_t end, uint16_t confidence);
+   uint16_t                         getMfvWwStart() const;
+   uint16_t                         getMfvWwEnd() const;
+   uint16_t                         getMfvConfidence() const;        // returns raw value encoded as integer * 10 (e.g. 953 = 95.3%)
+   float                            getMfvConfidencePercent() const; // returns confidence as a percentage (e.g. 95.3)
+   void                             setMfvPrivacy(bool enabled);
+   bool                             getMfvPrivacy() const;
+   void                             setMfvCapabilities(uint8_t caps);
+   uint8_t                          getMfvCapabilities() const;
+
    void                             update_controller_id_and_db_entry(std::string name, ctrlm_network_id_t network_id, ctrlm_controller_id_t new_id);
 
 private:
@@ -196,6 +208,13 @@ private:
    std::string                             controller_type_str_;
    
    bool                                    type_z_supported_     = false;
+
+   ctrlm_hal_ble_MfvDetectionType_t        mfv_detection_type_   = CTRLM_HAL_BLE_MFV_DETECTION_UNKNOWN;
+   uint16_t                                mfv_ww_start_         = 0;
+   uint16_t                                mfv_ww_end_           = 0;
+   uint16_t                                mfv_confidence_       = 0;    // encoded as integer * 10 (e.g. 953 = 95.3%)
+   bool                                    mfv_privacy_enabled_  = false;
+   uint8_t                                 mfv_capabilities_     = 0;
 
    bool                                    conn_param_update_before_ota_supported_ = false;
    ctrlm_sw_version_t                      conn_param_update_before_ota_version_;

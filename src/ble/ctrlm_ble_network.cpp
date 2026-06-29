@@ -318,6 +318,13 @@ ctrlm_obj_network_ble_t::ctrlm_obj_network_ble_t(ctrlm_network_type_t type, ctrl
                XLOGD_INFO("BLE voice support is disabled by config");
             }
          }
+         json_value = json_object_get(obj_options, JSON_BOOL_NAME_NETWORK_BLE_OPTIONS_MFV_BELOW_THRESHOLD_SESSION_ENABLED);
+         if(json_value != NULL && json_is_boolean(json_value)) {
+            mfv_below_threshold_session_enabled_ = json_boolean_value(json_value);
+            if(mfv_below_threshold_session_enabled_) {
+               XLOGD_INFO("MFV below-threshold detections will start a voice session");
+            }
+         }
       }
    }
 
@@ -2081,6 +2088,54 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                case CTRLM_HAL_BLE_PROPERTY_IRDBS_SUPPORTED:
                   controller->setSupportedIrdbs(dqm->rcu_data.irdbs_supported);
                   schedule_status_print();
+                  break;
+               case CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_TYPE: {
+                  const ctrlm_hal_ble_MfvDetectionType_t detection_type = dqm->rcu_data.mfv_detection_type;
+                  controller->setMfvDetectionType(detection_type);
+                  XLOGD_INFO("Controller <%s> MFV detection type = 0x%02X", controller->ieee_address_get().to_string().c_str(), detection_type);
+
+                  // Start a voice session for FullPower and AAD detections. BelowThreshold is a low-confidence
+                  // secondary detection which is controlled by a config (mfv_below_threshold_session_enabled) and
+                  // defaults to false to avoid flooding the server with false triggers from the field.
+                  const bool start_session = (detection_type == CTRLM_HAL_BLE_MFV_DETECTION_FULL_POWER ||
+                                              detection_type == CTRLM_HAL_BLE_MFV_DETECTION_AAD ||
+                                             (detection_type == CTRLM_HAL_BLE_MFV_DETECTION_BELOW_THRESHOLD && mfv_below_threshold_session_enabled_));
+                  if (start_session) {
+                     rdkx_timestamp_t detectionTime;
+                     rdkx_timestamp_get(&detectionTime);
+                     controller->setVoiceStartTime(detectionTime);
+
+                     XLOGD_INFO("------------------------------------------------------------------------");
+                     XLOGD_INFO("MFV wake word detected (%s) for device: %s",
+                        detection_type == CTRLM_HAL_BLE_MFV_DETECTION_FULL_POWER ? "FullPower" :
+                        detection_type == CTRLM_HAL_BLE_MFV_DETECTION_AAD ? "AAD" : "BelowThreshold",
+                        controller->ieee_address_get().to_string().c_str());
+                     XLOGD_INFO("------------------------------------------------------------------------");
+
+                     ctrlm_voice_iarm_call_voice_session_t v_params;
+                     v_params.ieee_address = dqm->rcu_data.ieee_address;
+
+                     ctrlm_main_queue_msg_voice_session_t msg;
+                     errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
+                     ERR_CHK(safec_rc);
+                     msg.params = &v_params;
+
+                     req_process_voice_session_begin(&msg, sizeof(msg));
+                  }
+                  break;
+               }
+               case CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_DATA:
+                  controller->setMfvDetectionData(dqm->rcu_data.mfv_ww_start, dqm->rcu_data.mfv_ww_end, dqm->rcu_data.mfv_confidence);
+                  XLOGD_INFO("Controller <%s> MFV detection data: start=%u end=%u confidence=%.1f%%",
+                     controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.mfv_ww_start, dqm->rcu_data.mfv_ww_end, dqm->rcu_data.mfv_confidence / 10.0);
+                  break;
+               case CTRLM_HAL_BLE_PROPERTY_MFV_PRIVACY:
+                  controller->setMfvPrivacy(dqm->rcu_data.mfv_privacy_enabled);
+                  XLOGD_INFO("Controller <%s> MFV privacy = %s", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.mfv_privacy_enabled ? "enabled" : "disabled");
+                  break;
+               case CTRLM_HAL_BLE_PROPERTY_MFV_CAPABILITIES:
+                  controller->setMfvCapabilities(dqm->rcu_data.mfv_capabilities);
+                  XLOGD_INFO("Controller <%s> MFV capabilities = 0x%02X", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.mfv_capabilities);
                   break;
                default:
                   XLOGD_WARN("Unhandled Property: %d !!!!!!!!!!!!!!!!!!!!!!!!", dqm->property_updated);

@@ -218,7 +218,8 @@ private:
    ctrlm_controller_id_t                     find_controller_from_upgrade_session_uuid(const std::string &uuid);
 
    json_t *                                  json_config_               = NULL;
-   bool                                      voice_disabled_            = false;
+   bool                                      voice_disabled_                          = false;
+   bool                                      mfv_below_threshold_session_enabled_     = false;
    bool                                      upgrade_in_progress_       = false;
    bool                                      unpair_on_remote_request_  = true;
    ctrlm_ble_unpair_metrics_t                last_rcu_unpair_metrics_;

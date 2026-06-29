@@ -469,7 +469,6 @@ gboolean                           ctrlm_pairing_window_active_get(void);
 void                               ctrlm_pairing_window_bind_status_set(ctrlm_bind_status_t bind_status);
 void                               ctrlm_discovery_remote_type_set(const char *remote_type_str);
 ctrlm_pairing_restrict_by_remote_t restrict_pairing_by_remote_get();
-void                               ctrlm_event_handler_ir(const char *owner, IARM_EventId_t event_id, void *data, size_t len);
 void                               ctrlm_quit_main_loop();
 gboolean                           ctrlm_power_state_change(ctrlm_power_state_t power_state);
 

@@ -303,6 +303,13 @@ ctrlm_obj_network_ble_t::ctrlm_obj_network_ble_t(ctrlm_network_type_t type, ctrl
                XLOGD_INFO("BLE voice support is disabled by config");
             }
          }
+         json_value = json_object_get(obj_options, JSON_BOOL_NAME_NETWORK_BLE_OPTIONS_MFV_BELOW_THRESHOLD_SESSION_ENABLED);
+         if(json_value != NULL && json_is_boolean(json_value)) {
+            mfv_below_threshold_session_enabled_ = json_boolean_value(json_value);
+            if(mfv_below_threshold_session_enabled_) {
+               XLOGD_INFO("MFV below-threshold detections will start a voice session");
+            }
+         }
       }
    }
 
@@ -1935,21 +1942,25 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   print_status = false;
                   break;
                case CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_TYPE: {
-                  controller->setMfvDetectionType(dqm->rcu_data.mfv_detection_type);
-                  XLOGD_INFO("Controller <%s> MFV detection type = 0x%02X", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.mfv_detection_type);
+                  const ctrlm_hal_ble_MfvDetectionType_t detection_type = dqm->rcu_data.mfv_detection_type;
+                  controller->setMfvDetectionType(detection_type);
+                  XLOGD_INFO("Controller <%s> MFV detection type = 0x%02X", controller->ieee_address_get().to_string().c_str(), detection_type);
 
-                  // Start a voice session for FullPower (0x01) and AAD (0x02) detections.
-                  // BelowThreshold (0x03) is a low-confidence secondary detection - do not start a session.
-                  // TODO: Get clarity on if BelowThreshold detections should start a sessions (assume not for now)
-                  uint8_t detection_type = dqm->rcu_data.mfv_detection_type;
-                  if (detection_type == 0x01 || detection_type == 0x02) {
+                  // Start a voice session for FullPower and AAD detections. BelowThreshold is a low-confidence
+                  // secondary detection which is controlled by a config (mfv_below_threshold_session_enabled) and
+                  // defaults to false to avoid flooding the server with false triggers from the field.
+                  const bool start_session = (detection_type == CTRLM_HAL_BLE_MFV_DETECTION_FULL_POWER ||
+                                              detection_type == CTRLM_HAL_BLE_MFV_DETECTION_AAD ||
+                                             (detection_type == CTRLM_HAL_BLE_MFV_DETECTION_BELOW_THRESHOLD && mfv_below_threshold_session_enabled_));
+                  if (start_session) {
                      rdkx_timestamp_t detectionTime;
                      rdkx_timestamp_get(&detectionTime);
                      controller->setVoiceStartTime(detectionTime);
 
                      XLOGD_INFO("------------------------------------------------------------------------");
                      XLOGD_INFO("MFV wake word detected (%s) for device: %s",
-                        detection_type == 0x01 ? "FullPower" : "AAD",
+                        detection_type == CTRLM_HAL_BLE_MFV_DETECTION_FULL_POWER ? "FullPower" :
+                        detection_type == CTRLM_HAL_BLE_MFV_DETECTION_AAD ? "AAD" : "BelowThreshold",
                         controller->ieee_address_get().to_string().c_str());
                      XLOGD_INFO("------------------------------------------------------------------------");
 

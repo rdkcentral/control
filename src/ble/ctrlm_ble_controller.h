@@ -147,8 +147,8 @@ public:
    ctrlm_timestamp_t                getVoiceStartTimeKey() const;
    ctrlm_timestamp_t                getVoiceStartTimeLocal() const;
 
-   void                             setMfvDetectionType(uint8_t type);
-   uint8_t                          getMfvDetectionType() const;
+   void                             setMfvDetectionType(ctrlm_hal_ble_MfvDetectionType_t type);
+   ctrlm_hal_ble_MfvDetectionType_t getMfvDetectionType() const;
    void                             setMfvDetectionData(uint16_t start, uint16_t end, uint16_t confidence);
    uint16_t                         getMfvWwStart() const;
    uint16_t                         getMfvWwEnd() const;
@@ -209,7 +209,7 @@ private:
    
    bool                                    type_z_supported_     = false;
 
-   uint8_t                                 mfv_detection_type_   = 0;
+   ctrlm_hal_ble_MfvDetectionType_t        mfv_detection_type_   = CTRLM_HAL_BLE_MFV_DETECTION_UNKNOWN;
    uint16_t                                mfv_ww_start_         = 0;
    uint16_t                                mfv_ww_end_           = 0;
    uint16_t                                mfv_confidence_       = 0;    // encoded as integer * 10 (e.g. 953 = 95.3%)

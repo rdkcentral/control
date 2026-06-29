@@ -527,11 +527,11 @@ ctrlm_timestamp_t ctrlm_obj_controller_ble_t::getVoiceStartTimeLocal() const {
    return(voice_start_time_local_);
 }
 
-void ctrlm_obj_controller_ble_t::setMfvDetectionType(uint8_t type) {
+void ctrlm_obj_controller_ble_t::setMfvDetectionType(ctrlm_hal_ble_MfvDetectionType_t type) {
    mfv_detection_type_ = type;
 }
 
-uint8_t ctrlm_obj_controller_ble_t::getMfvDetectionType() const {
+ctrlm_hal_ble_MfvDetectionType_t ctrlm_obj_controller_ble_t::getMfvDetectionType() const {
    return mfv_detection_type_;
 }
 

@@ -493,7 +493,7 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
                 ctrlm_hal_ble_RcuStatusData_t params;
                 params.property_updated = CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_TYPE;
                 params.rcu_data.ieee_address = address.toUInt64();
-                params.rcu_data.mfv_detection_type = static_cast<uint8_t>(type);
+                params.rcu_data.mfv_detection_type = static_cast<ctrlm_hal_ble_MfvDetectionType_t>(type);
                 m_rcuStatusChangedSlots.invoke(&params);
             };
         audioSvc->addMfvDetectionTypeChangedSlot(Slot<BleRcuAudioService::DetectionType>(m_isAlive, mfvDetectionTypeSlot));
@@ -734,7 +734,7 @@ ctrlm_hal_ble_rcu_data_t ctrlm_ble_rcu_interface_t::getAllDeviceProperties(uint6
     // MFV data (part of the RDK Voice / audio service)
     if (auto audioSvc = device->audioService()) {
         auto detectionData = audioSvc->mfvDetectionData();
-        ret.mfv_detection_type = static_cast<uint8_t>(audioSvc->mfvDetectionType());
+        ret.mfv_detection_type = static_cast<ctrlm_hal_ble_MfvDetectionType_t>(audioSvc->mfvDetectionType());
         ret.mfv_ww_start = detectionData.start;
         ret.mfv_ww_end = detectionData.end;
         ret.mfv_confidence = detectionData.confidence;

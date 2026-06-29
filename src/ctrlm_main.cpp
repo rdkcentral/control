@@ -365,7 +365,6 @@ static void     ctrlm_stop_one_touch_autobind_(ctrlm_network_id_t network_id);
 static void     ctrlm_close_pairing_window_(ctrlm_network_id_t network_id, ctrlm_close_pairing_window_reason reason);
 static void     ctrlm_pairing_window_bind_status_set_(ctrlm_bind_status_t bind_status);
 static void     ctrlm_discovery_remote_type_set_(const char* remote_type_str);
-static void     ctrlm_controller_product_name_get(ctrlm_controller_id_t controller_id, char *source_name);
 static void     ctrlm_global_rfc_values_retrieved(const ctrlm_rfc_attr_t &attr);
 
 static gboolean ctrlm_timeout_line_of_sight(gpointer user_data);
@@ -5537,35 +5536,6 @@ ctrlm_controller_id_t ctrlm_last_used_controller_get(ctrlm_network_type_t networ
    }
    XLOGD_ERROR("Not supported for %s", ctrlm_network_type_str(network_type).c_str());
    return CTRLM_MAIN_CONTROLLER_ID_INVALID;
-}
-
-void ctrlm_controller_product_name_get(ctrlm_controller_id_t controller_id, char *source_name) {
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_product_name_t msg;
-   errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
-   ERR_CHK(safec_rc);
-
-   sem_init(&semaphore, 0, 0);
-   msg.controller_id   = controller_id;
-   msg.product_name    = source_name;
-   msg.semaphore       = &semaphore;
-   msg.cmd_result      = &cmd_result;
-
-   ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_controller_product_name, &msg, sizeof(msg), NULL, 1); // TODO: Hack, using default RF4CE network ID.
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process CONTROLLER_TYPE request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result != CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      XLOGD_ERROR("ERROR getting product name!!");
-      return;
-   }
 }
 
 void control_service_values_read_from_db() {

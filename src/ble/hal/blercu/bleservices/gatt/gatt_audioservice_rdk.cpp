@@ -201,20 +201,20 @@ void GattAudioServiceRdk::onEnteredStartStreamingState()
                 stateMachinePostEvent(GattErrorEvent);
 
             } else {
-                if (!m_audioDataCharacteristic->notificationsEnabled()) {
-                    XLOGD_ERROR("audio data notifications not enabled, cannot continue with audio stream");
-                    setLastError(StreamingError::InternalError);
-                    stateMachinePostEvent(GattErrorEvent);
-                } else {
-                    stateMachinePostEvent(StreamingStartedEvent);
-                }
+                stateMachinePostEvent(StreamingStartedEvent);
             }
         };
 
-    // the first byte is the codec to use, the second byte is to enable voice
-    const vector<uint8_t> value({ 0x01, 0x01 });
-    m_audioCtrlCharacteristic->writeValueWithoutResponse(value, PendingReply<>(getIsAlivePtr(), replyHandler));
 
+    if (!m_audioDataCharacteristic->notificationsEnabled()) {
+        XLOGD_ERROR("audio data notifications not enabled, cannot continue with audio stream");
+        setLastError(StreamingError::InternalError);
+        stateMachinePostDelayedEvent(GattErrorEvent, 10);   // needs to be delayed to avoid re-entrancy issues with the state machine
+    } else {
+        // the first byte is the codec to use, the second byte is to enable voice
+        const vector<uint8_t> value({ 0x01, 0x01 });
+        m_audioCtrlCharacteristic->writeValueWithoutResponse(value, PendingReply<>(getIsAlivePtr(), replyHandler));
+    }
     GattAudioService::onEnteredStartStreamingState();
 }
 

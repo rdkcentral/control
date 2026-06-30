@@ -71,6 +71,8 @@ public:
     void updateFrameCountSupport(bool frameCountSupported);
 
     void stateMachinePostEvent(const Event::Type event);
+    void stateMachinePostDelayedEvent(const Event::Type event, const int delay);
+
     bool stateMachineIsIdle();
 
     void setLastError(BleRcuAudioService::StreamingError error);
@@ -159,15 +161,17 @@ public:
     static const Event::Type StopStreamingRequestEvent  = Event::Type(Event::User + 4);
 
     static const Event::Type NotificationsEnabledEvent  = Event::Type(Event::User + 5);
+    static const Event::Type RetryStartNotifyEvent      = Event::Type(Event::User + 6);
 
-    static const Event::Type StreamingStartedEvent      = Event::Type(Event::User + 6);
-    static const Event::Type StreamingStoppedEvent      = Event::Type(Event::User + 7);
+    static const Event::Type StreamingStartedEvent      = Event::Type(Event::User + 7);
+    static const Event::Type StreamingStoppedEvent      = Event::Type(Event::User + 8);
 
-    static const Event::Type GattErrorEvent             = Event::Type(Event::User + 8);
-    static const Event::Type OutputPipeCloseEvent       = Event::Type(Event::User + 9);
+    static const Event::Type GattErrorEvent             = Event::Type(Event::User + 9);
+    static const Event::Type OutputPipeCloseEvent       = Event::Type(Event::User + 10);
 
-    static const Event::Type AudioInfoTimeoutEvent      = Event::Type(Event::User + 10);
-    static const Event::Type AudioLastFrameTimeoutEvent = Event::Type(Event::User + 11);
+    static const Event::Type AudioInfoTimeoutEvent      = Event::Type(Event::User + 11);
+    static const Event::Type AudioLastFrameTimeoutEvent = Event::Type(Event::User + 12);
+
 };
 
 #endif // !defined(GATT_AUDIOSERVICE_H)

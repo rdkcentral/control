@@ -141,14 +141,10 @@ void GattAudioServiceRdk::onEnteredEnableNotificationsState()
     auto replyHandlerData = [this](PendingReply<> *reply)
         {
             if (reply->isError()) {
-                // this is bad if this happens as we won't get updates, so we install a timer to 
-                // retry enabling notifications in a couple of seconds time
-                XLOGD_ERROR("failed to enable audio data notifications due to <%s>", 
-                        reply->errorMessage().c_str());
-
-                setLastError(StreamingError::InternalError);
-                stateMachinePostEvent(GattErrorEvent);
-
+                XLOGD_ERROR("failed to enable audio data notifications due to <%s>", reply->errorMessage().c_str());
+                
+                // notifications are required for audio streaming, so if this fails we need to retry in a couple of seconds
+                stateMachinePostDelayedEvent(RetryStartNotifyEvent, 2000);
             } else {
                 // notifications enabled so post an event to the state machine
                 stateMachinePostEvent(NotificationsEnabledEvent);
@@ -199,22 +195,24 @@ void GattAudioServiceRdk::onEnteredStartStreamingState()
     auto replyHandler = [this](PendingReply<> *reply)
         {
             if (reply->isError()) {
-                XLOGD_ERROR("failed to write audio control characteristic due to <%s>", 
-                        reply->errorMessage().c_str());
+                XLOGD_ERROR("failed to write audio control characteristic due to <%s>", reply->errorMessage().c_str());
 
                 setLastError(StreamingError::InternalError);
                 stateMachinePostEvent(GattErrorEvent);
 
             } else {
-                stateMachinePostEvent(StreamingStartedEvent);
+                if (!m_audioDataCharacteristic->notificationsEnabled()) {
+                    XLOGD_ERROR("audio data notifications not enabled, cannot continue with audio stream");
+                    setLastError(StreamingError::InternalError);
+                    stateMachinePostEvent(GattErrorEvent);
+                } else {
+                    stateMachinePostEvent(StreamingStartedEvent);
+                }
             }
         };
 
-
     // the first byte is the codec to use, the second byte is to enable voice
     const vector<uint8_t> value({ 0x01, 0x01 });
-
-    // send a write request to write the control characteristic
     m_audioCtrlCharacteristic->writeValueWithoutResponse(value, PendingReply<>(getIsAlivePtr(), replyHandler));
 
     GattAudioService::onEnteredStartStreamingState();
@@ -237,8 +235,7 @@ void GattAudioServiceRdk::onEnteredStopStreamingState()
         {
             // check for errors
             if (reply->isError()) {
-                XLOGD_ERROR("failed to write audio control characteristic due to <%s>", 
-                        reply->errorMessage().c_str());
+                XLOGD_ERROR("failed to write audio control characteristic due to <%s>", reply->errorMessage().c_str());
 
                 setLastError(StreamingError::InternalError);
                 stateMachinePostEvent(GattErrorEvent);

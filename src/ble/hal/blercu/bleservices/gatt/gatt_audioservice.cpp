@@ -83,20 +83,22 @@ void GattAudioService::init()
     // add all the states and the super state groupings
     m_stateMachine.addState(IdleState, "Idle");
     m_stateMachine.addState(ReadyState, "Ready");
+    m_stateMachine.addState(EnableNotificationsState, "EnableNotifications");
 
     m_stateMachine.addState(StreamingSuperState, "StreamingSuperState");
-    m_stateMachine.addState(StreamingSuperState, EnableNotificationsState, "EnableNotifications");
     m_stateMachine.addState(StreamingSuperState, StartStreamingState, "StartStreaming");
     m_stateMachine.addState(StreamingSuperState, StreamingState, "Streaming");
     m_stateMachine.addState(StreamingSuperState, StopStreamingState, "StopStreaming");
 
 
     // add the transitions:      From State         ->      Event                   ->  To State
-    m_stateMachine.addTransition(IdleState,                 StartServiceRequestEvent,   ReadyState);
-    m_stateMachine.addTransition(ReadyState,                StopServiceRequestEvent,    IdleState);
-    m_stateMachine.addTransition(ReadyState,                StartStreamingRequestEvent, EnableNotificationsState);
+    m_stateMachine.addTransition(IdleState,                 StartServiceRequestEvent,   EnableNotificationsState);
+    m_stateMachine.addTransition(EnableNotificationsState,  RetryStartNotifyEvent,      EnableNotificationsState);
+    m_stateMachine.addTransition(EnableNotificationsState,  StopServiceRequestEvent,    IdleState);
+    m_stateMachine.addTransition(EnableNotificationsState,  NotificationsEnabledEvent,  ReadyState);
 
-    m_stateMachine.addTransition(EnableNotificationsState,  NotificationsEnabledEvent,  StartStreamingState);
+    m_stateMachine.addTransition(ReadyState,                StopServiceRequestEvent,    IdleState);
+    m_stateMachine.addTransition(ReadyState,                StartStreamingRequestEvent, StartStreamingState);
 
     m_stateMachine.addTransition(StartStreamingState,       StreamingStartedEvent,      StreamingState);
 
@@ -736,6 +738,11 @@ bool GattAudioService::getFirstAudioDataTime(ctrlm_timestamp_t &time)
 void GattAudioService::stateMachinePostEvent(const Event::Type event)
 {
     m_stateMachine.postEvent(event);
+}
+
+void GattAudioService::stateMachinePostDelayedEvent(const Event::Type event, const int delay)
+{
+    m_stateMachine.postDelayedEvent(event, delay);
 }
 
 bool GattAudioService::stateMachineIsIdle()

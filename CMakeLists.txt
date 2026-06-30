@@ -35,6 +35,7 @@ project(ctrlm-main VERSION ${CMAKE_PROJECT_VERSION})
 
 # OPTIONS
 option(BUILD_LIBRARY "Build Control Manager Library" OFF)
+option(IARMBUS_ENABLED "Enable IARMBUS Support" ON)
 option(AUTH_ENABLED "Enable AUTH" OFF)
 option(BLE_ENABLED "Enable BLE" ON)
 option(BLE_SERVICES "Enable BLE Services" OFF)
@@ -118,9 +119,7 @@ include_directories( ${CMAKE_CURRENT_BINARY_DIR}
                      ${CMAKE_SYSROOT}/usr/include/glib-2.0
                      ${CMAKE_SYSROOT}/usr/lib/glib-2.0/include
                      ${CMAKE_SYSROOT}/usr/include/gio-unix-2.0
-                     ${CMAKE_SYSROOT}/usr/include/rdk/iarmbus
                      ${CMAKE_SYSROOT}/usr/include/nopoll
-                     ${CMAKE_SYSROOT}/usr/include/rdk/iarmmgrs-hal
                      ${CMAKE_SYSROOT}/usr/include/wdmp-c
                      ${CMAKE_SYSROOT}/usr/include/rdk/ds
                      ${CMAKE_SYSROOT}/usr/include/rdk/ds-rpc
@@ -129,6 +128,14 @@ include_directories( ${CMAKE_CURRENT_BINARY_DIR}
                      ${CMAKE_SYSROOT}/usr/include/WPEFramework
                      ${CMAKE_SYSROOT}/usr/include/breakpad
                    )
+
+if(IARMBUS_ENABLED)
+include_directories( ${CMAKE_SYSROOT}/usr/include/rdk/iarmbus
+                     ${CMAKE_SYSROOT}/usr/include/rdk/iarmmgrs-hal
+                   )
+
+target_link_libraries(controlMgr IARMBus)
+endif()
 
 # SOURCES
 add_subdirectory(src)
@@ -156,7 +163,6 @@ target_link_libraries(
       jansson
       dbus-1
       uuid
-      IARMBus
       ds
       nopoll
       ssl

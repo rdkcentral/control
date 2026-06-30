@@ -593,7 +593,8 @@ void GattAudioService::stopStreaming(uint32_t audioDuration, PendingReply<> &&re
 {
     // check the service is ready
     if (m_stateMachine.state() != StreamingState) {
-        reply.setError("Service not currently streaming");
+        // Don't treat this as an error.  The intent is to stop streaming, and if we're not streaming then the intent has been satisfied.
+        XLOGD_DEBUG("service not currently streaming");
         reply.finish();
         return;
     }

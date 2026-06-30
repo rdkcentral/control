@@ -34,6 +34,7 @@ set(CMAKE_NO_SYSTEM_FROM_IMPORTED ON)
 project(ctrlm-main VERSION ${CMAKE_PROJECT_VERSION})
 
 # OPTIONS
+option(BUILD_LIBRARY "Build Control Manager Library" OFF)
 option(AUTH_ENABLED "Enable AUTH" OFF)
 option(BLE_ENABLED "Enable BLE" ON)
 option(BLE_SERVICES "Enable BLE Services" OFF)
@@ -67,7 +68,12 @@ set(BEEP_ON_KWD_FILE "NONE" CACHE STRING "Keyword Beep file name")
 set(CMAKE_ENABLE_EXPORTS ON)
 
 # EXECUTABLE(S)
-add_executable(controlMgr src/ctrlm_config_default.json ctrlm_version_build.h ctrlm_config_default.h ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.c)
+if(BUILD_LIBRARY)
+   add_library(controlMgr SHARED src/ctrlm_config_default.json ctrlm_version_build.h ctrlm_config_default.h ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.c)
+   add_compile_definitions(BUILD_LIBRARY)
+else()
+   add_executable(controlMgr src/ctrlm_config_default.json ctrlm_version_build.h ctrlm_config_default.h ${CMAKE_CURRENT_SOURCE_DIR}/src/ctrlm_config_default.c)
+endif()
 
 if(BUILD_CTRLM_FACTORY)
     add_library(ctrlm-fta)

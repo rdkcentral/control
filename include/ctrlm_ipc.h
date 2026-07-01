@@ -26,9 +26,6 @@
 #define CTRLM_MAIN_IARM_BUS_NAME                                 "Ctrlm"                                ///< Control Manager's IARM Bus Name
 #define CTRLM_MAIN_IARM_BUS_API_REVISION                         (16)                                   ///< Revision of the Control Manager Main IARM API
 
-#define CTRLM_MAIN_IARM_CALL_PROPERTY_GET                        "Main_PropertyGet"                     ///< Gets a property of the Control Manager
-#define CTRLM_MAIN_IARM_CALL_DISCOVERY_CONFIG_SET                "Main_DiscoveryConfigSet"              ///< Sets the discovery settings
-#define CTRLM_MAIN_IARM_CALL_AUTOBIND_CONFIG_SET                 "Main_AutobindConfigSet"               ///< Sets the autobind settings
 #define CTRLM_MAIN_IARM_CALL_PRECOMMISSION_CONFIG_SET            "Main_PrecommissionConfigSet"          ///< Sets the pre-commission settings
 #define CTRLM_MAIN_IARM_CALL_FACTORY_RESET                       "Main_FactoryReset"                    ///< Sets the configuration back to factory default
 #define CTRLM_MAIN_IARM_CALL_CONTROLLER_UNBIND                   "Main_ControllerUnbind"                ///< Removes a binding between the target and the specified controller
@@ -329,15 +326,6 @@ typedef enum {
 
 typedef unsigned char ctrlm_network_id_t;
 typedef unsigned char ctrlm_controller_id_t;
-
-typedef struct {
-   unsigned char            api_revision;                 ///< Revision of this API
-   ctrlm_iarm_call_result_t result;                       ///< Result of the operation
-   ctrlm_network_id_t       network_id;                   ///< IN - identifier of network or CTRLM_MAIN_NETWORK_ID_ALL for all networks
-   unsigned char            enable;                       ///< Enable (1) or disable (0) autobinding.
-   unsigned char            threshold_pass;               ///< Number of successful pairing attempts required to complete autobinding successfully
-   unsigned char            threshold_fail;               ///< Number of unsuccessful pairing attempts required to complete autobinding unsuccessfully
-} ctrlm_main_iarm_call_autobind_config_t;
 
 typedef struct {
    unsigned char            api_revision;                                  ///< Revision of this API

@@ -37,7 +37,6 @@
 #include "dsMgr.h"
 #include "dsRpc.h"
 
-static IARM_Result_t ctrlm_main_iarm_call_autobind_config_set(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_precommission_config_set(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_controller_unbind(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_ir_remote_usage_get(void *arg);
@@ -68,7 +67,6 @@ static volatile int running = 0;
 
 // Array to hold the IARM Calls that will be registered by Control Manager
 ctrlm_iarm_call_t ctrlm_iarm_calls[] = {
-   {CTRLM_MAIN_IARM_CALL_AUTOBIND_CONFIG_SET,                ctrlm_main_iarm_call_autobind_config_set                },
    {CTRLM_MAIN_IARM_CALL_PRECOMMISSION_CONFIG_SET,           ctrlm_main_iarm_call_precommission_config_set           },
    {CTRLM_MAIN_IARM_CALL_CONTROLLER_UNBIND,                  ctrlm_main_iarm_call_controller_unbind                  },
    {CTRLM_MAIN_IARM_CALL_IR_REMOTE_USAGE_GET,                ctrlm_main_iarm_call_ir_remote_usage_get                },
@@ -178,29 +176,6 @@ IARM_Result_t ctrlm_main_iarm_call_last_key_info_get(void *arg) {
 
    if(!ctrlm_main_iarm_call_last_key_info_get(last_key_info)) {
       last_key_info->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_autobind_config_set(void *arg) {
-   ctrlm_main_iarm_call_autobind_config_t *config = (ctrlm_main_iarm_call_autobind_config_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(NULL == config) {
-      XLOGD_ERROR("NULL Property Argument");
-      g_assert(0);
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(config->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-      XLOGD_INFO("Unsupported API Revision (%u, %u)", config->api_revision, CTRLM_MAIN_IARM_BUS_API_REVISION);
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-      return(IARM_RESULT_SUCCESS);
-   }
-   if(!ctrlm_main_iarm_call_autobind_config_set(config)) {
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR;
    }
    return(IARM_RESULT_SUCCESS);
 }

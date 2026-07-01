@@ -417,7 +417,11 @@ gboolean ctrlm_is_production_build(void) {
    return(g_ctrlm.production_build);
 }
 
+#ifdef BUILD_LIBRARY
+int ctrlm_main_launch(void) {
+#else
 int main(int argc, char *argv[]) {
+#endif
    // Set stdout to be line buffered
    setvbuf(stdout, NULL, _IOLBF, 0);
 

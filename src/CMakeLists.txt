@@ -21,14 +21,12 @@ set(project "ctrlm-main")
 
 target_sources(controlMgr PRIVATE
    ctrlm_main.cpp
-   ctrlm_main_iarm.cpp
    ctrlm_utils.cpp
    ctrlm_network.cpp
    ctrlm_controller.cpp
    ctrlm_ir_controller.cpp
    ctrlm_powermanager_factory.cpp
    ctrlm_rcu.cpp
-   ctrlm_rcu_iarm.cpp
    attributes/ctrlm_attr.cpp
    attributes/ctrlm_attr_general.cpp
    attributes/ctrlm_attr_voice.cpp
@@ -39,13 +37,10 @@ target_sources(controlMgr PRIVATE
    config/ctrlm_config_types.cpp
    ctrlm_controller.cpp
    ctrlm_device_update.cpp
-   ctrlm_device_update_iarm.cpp
    ctrlm_ir_controller.cpp
    ctrlm_main.cpp
-   ctrlm_main_iarm.cpp
    ctrlm_network.cpp
    ctrlm_rcu.cpp
-   ctrlm_rcu_iarm.cpp
    ctrlm_recovery.cpp
    ctrlm_tr181.cpp
    ctrlm_utils.cpp
@@ -63,11 +58,9 @@ target_sources(controlMgr PRIVATE
    database/ctrlm_db_attr.cpp
    database/ctrlm_db_types.cpp
    input_event/ctrlm_input_event_writer.cpp
-   ipc/ctrlm_ipc_iarm.cpp
    ipc/ctrlm_rcp_ipc_event.cpp
    irdb/ctrlm_irdb_stub.cpp
    irdb/ctrlm_irdb_interface.cpp
-   irdb/ipc/ctrlm_irdb_ipc_iarm_thunder.cpp
    json_config.cpp
    network/ctrlm_ir_rf_db.cpp
    network/ctrlm_ir_rf_db_entry.cpp
@@ -79,15 +72,30 @@ target_sources(controlMgr PRIVATE
    voice/endpoints/ctrlm_voice_endpoint.cpp
    voice/endpoints/ctrlm_voice_endpoint_ws_nextgen.cpp
    voice/endpoints/ctrlm_voice_endpoint_ws_nsp.cpp
-   voice/ipc/ctrlm_voice_ipc_iarm_all.cpp
-   voice/ipc/ctrlm_voice_ipc_iarm_legacy.cpp
    )
+
+if(IARMBUS_ENABLED)
+   target_sources(controlMgr PRIVATE
+      ctrlm_main_iarm.cpp
+      ctrlm_rcu_iarm.cpp
+      ctrlm_device_update_iarm.cpp
+      ctrlm_main_iarm.cpp
+      ipc/ctrlm_ipc_iarm.cpp
+      irdb/ipc/ctrlm_irdb_ipc_iarm_thunder.cpp
+      voice/ipc/ctrlm_voice_ipc_iarm_all.cpp
+      voice/ipc/ctrlm_voice_ipc_iarm_legacy.cpp
+   )
+   if(BLE_ENABLED)
+      target_sources(controlMgr PRIVATE
+         ble/ctrlm_ble_iarm.cpp
+      )
+   endif()
+endif()
 
 if(BLE_ENABLED)
    target_sources(controlMgr PRIVATE
       ble/ctrlm_ble_controller.cpp
       ble/ctrlm_ble_controller_attr_version.cpp
-      ble/ctrlm_ble_iarm.cpp
       ble/ctrlm_ble_network.cpp
       ble/ctrlm_ble_rcu_interface.cpp
       ble/ctrlm_ble_utils.cpp
@@ -200,10 +208,15 @@ if(THUNDER)
       thunder/plugins/ctrlm_thunder_plugin_av_input.cpp
       thunder/plugins/ctrlm_thunder_plugin_hdmi_input.cpp
       thunder/plugins/ctrlm_thunder_plugin_system.cpp
-      ipc/ctrlm_rcp_ipc_iarm_thunder.cpp
-      voice/ipc/ctrlm_voice_ipc_iarm_thunder.cpp
       voice/ipc/ctrlm_voice_ipc_request_type.c
    )
+   if(IARMBUS_ENABLED)
+      target_sources(controlMgr PRIVATE
+         ipc/ctrlm_rcp_ipc_iarm_thunder.cpp
+         voice/ipc/ctrlm_voice_ipc_iarm_thunder.cpp
+      )
+   endif()
+
 
    if(AUTH_ENABLED)
       target_sources(controlMgr PRIVATE

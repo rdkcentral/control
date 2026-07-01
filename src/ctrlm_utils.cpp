@@ -332,7 +332,6 @@ const char *ctrlm_main_queue_msg_type_str(ctrlm_main_queue_msg_type_t type) {
       case CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_CONFIGURATION_COMPLETE:             return("BIND_CONFIGURATION_COMPLETE");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_NETWORK_PROPERTY_SET:                    return("NETWORK_PROPERTY_SET");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_TERMINATE:                               return("TERMINATE");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STATUS:                             return("MAIN_STATUS");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_SET:                       return("MAIN_PROPERTY_SET");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_GET:                       return("MAIN_PROPERTY_GET");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_DISCOVERY_CONFIG_SET:               return("MAIN_DISCOVERY_CONFIG_SET");

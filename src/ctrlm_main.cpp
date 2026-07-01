@@ -354,7 +354,6 @@ static void     ctrlm_signals_register(void);
 static void     ctrlm_signal_handler(int signal);
 static gboolean ctrlm_unix_signal_terminate(gpointer user_data);
 
-static void     ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *status);
 static void     ctrlm_main_iarm_call_property_get_(ctrlm_main_iarm_call_property_t *property);
 static void     ctrlm_main_iarm_call_discovery_config_set_(ctrlm_main_iarm_call_discovery_config_t *config);
 static void     ctrlm_main_iarm_call_autobind_config_set_(ctrlm_main_iarm_call_autobind_config_t *config);
@@ -2501,17 +2500,6 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STATUS: {
-            ctrlm_main_queue_msg_main_status_t *dqm = (ctrlm_main_queue_msg_main_status_t *) msg;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STATUS");
-            ctrlm_main_iarm_call_status_get_(dqm->status);
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_SET: {
             ctrlm_main_queue_msg_main_property_t *dqm = (ctrlm_main_queue_msg_main_property_t *) msg;
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_SET");
@@ -3223,75 +3211,6 @@ gboolean ctrlm_timeout_systemd_restart_delay(gpointer user_data) {
       bus = NULL;
    }
    return(FALSE);
-}
-
-gboolean ctrlm_main_iarm_call_status_get(ctrlm_main_iarm_call_status_t *status) {
-   if(status == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_status_t *msg = (ctrlm_main_queue_msg_main_status_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_status_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-   sem_init(&semaphore, 0, 0);
-
-   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STATUS;
-   msg->header.network_id = CTRLM_MAIN_NETWORK_ID_ALL;
-   msg->status            = status;
-   msg->semaphore         = &semaphore;
-   msg->cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process STATUS_GET request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-void ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *status) {
-   unsigned long index = 0;
-   errno_t safec_rc = -1;
-
-   if(g_ctrlm.networks.size() > CTRLM_MAIN_MAX_NETWORKS) {
-      status->network_qty = CTRLM_MAIN_MAX_NETWORKS;
-   } else {
-      status->network_qty = g_ctrlm.networks.size();
-   }
-   for(auto const &itr : g_ctrlm.networks) {
-      status->networks[index].id   = itr.first;
-      status->networks[index].type = itr.second->type_get();
-      index++;
-   }
-
-   status->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-
-   safec_rc = strcpy_s(status->ctrlm_version, sizeof(status->ctrlm_version), CTRLM_VERSION);
-   ERR_CHK(safec_rc);
-
-   safec_rc = strcpy_s(status->ctrlm_commit_id, sizeof(status->ctrlm_commit_id), CTRLM_MAIN_COMMIT_ID);
-   ERR_CHK(safec_rc);
-
-   safec_rc = strncpy_s(status->stb_device_id, sizeof(status->stb_device_id), g_ctrlm.device_id.c_str(), CTRLM_MAIN_DEVICE_ID_MAX_LENGTH - 1);
-   ERR_CHK(safec_rc);
-   status->stb_device_id[CTRLM_MAIN_DEVICE_ID_MAX_LENGTH - 1] = '\0';
 }
 
 gboolean ctrlm_main_iarm_call_ir_remote_usage_get(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage) {

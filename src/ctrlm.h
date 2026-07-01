@@ -81,7 +81,6 @@ typedef enum {
 
    // Global messages
    CTRLM_MAIN_QUEUE_MSG_TYPE_TERMINATE                             = CTRLM_MAIN_QUEUE_MSG_TYPE_GLOBAL + 1,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STATUS,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_SET,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_GET,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_DISCOVERY_CONFIG_SET,
@@ -170,13 +169,6 @@ typedef enum {
    CTRLM_MAIN_STATUS_REQUEST_SUCCESS = 1,
    CTRLM_MAIN_STATUS_REQUEST_ERROR   = 2
 } ctrlm_main_status_cmd_result_t;
-
-typedef struct {
-   ctrlm_main_queue_msg_header_t   header;
-   ctrlm_main_iarm_call_status_t * status;
-   sem_t *                         semaphore;
-   ctrlm_main_status_cmd_result_t *cmd_result;
-} ctrlm_main_queue_msg_main_status_t;
 
 typedef struct {
    ctrlm_main_iarm_call_network_status_t *status;
@@ -473,7 +465,6 @@ void                               ctrlm_event_handler_ir(const char *owner, IAR
 void                               ctrlm_quit_main_loop();
 gboolean                           ctrlm_power_state_change(ctrlm_power_state_t power_state);
 
-gboolean ctrlm_main_iarm_call_status_get(ctrlm_main_iarm_call_status_t *status);
 gboolean ctrlm_main_iarm_call_network_status_get(ctrlm_main_iarm_call_network_status_t *status);
 gboolean ctrlm_main_iarm_call_property_set(ctrlm_main_iarm_call_property_t *property);
 void     ctrlm_main_iarm_call_property_set_(ctrlm_main_iarm_call_property_t *property);

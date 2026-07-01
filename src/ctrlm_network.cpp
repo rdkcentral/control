@@ -602,23 +602,6 @@ void ctrlm_obj_network_t::req_process_rib_get(void *data, int size) {
    }   
 }
 
-void ctrlm_obj_network_t::req_process_network_status(void *data, int size) {
-   ctrlm_main_queue_msg_main_network_status_t *dqm = (ctrlm_main_queue_msg_main_network_status_t *)data;
-
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_main_network_status_t));
-
-   if(dqm->cmd_result && *dqm->cmd_result == CTRLM_MAIN_STATUS_REQUEST_PENDING) {
-      XLOGD_WARN("not implemented for %s network", name_get());
-      dqm->status->result = CTRLM_IARM_CALL_RESULT_ERROR_NOT_SUPPORTED;
-      *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_ERROR;
-   }
-
-   if(dqm->semaphore) {
-      sem_post(dqm->semaphore);
-   }
-}
-
 void ctrlm_obj_network_t::req_process_voice_session_begin(void *data, int size){
    XLOGD_WARN("request is not valid for %s network", name_get());
    ctrlm_main_queue_msg_voice_session_t *dqm = (ctrlm_main_queue_msg_voice_session_t *)data;

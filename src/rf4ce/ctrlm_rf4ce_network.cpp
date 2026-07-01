@@ -4274,49 +4274,6 @@ void ctrlm_obj_network_rf4ce_t::hal_init_cfm(void *data, int size) {
    ctrlm_obj_network_t::hal_init_cfm(data, size);
 }
 
-void ctrlm_obj_network_rf4ce_t::req_process_network_status(void *data, int size) {
-   ctrlm_main_queue_msg_main_network_status_t *dqm = (ctrlm_main_queue_msg_main_network_status_t *)data;
-
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_main_network_status_t));
-   g_assert(dqm->cmd_result);
-
-   ctrlm_network_status_rf4ce_t *status_rf4ce  = &dqm->status->status.rf4ce;
-   errno_t safec_rc = strncpy_s(status_rf4ce->version_hal, sizeof(status_rf4ce->version_hal), version_get(), CTRLM_MAIN_VERSION_LENGTH-1);
-   ERR_CHK(safec_rc);
-   status_rf4ce->version_hal[CTRLM_MAIN_VERSION_LENGTH - 1] = '\0';
-   safec_rc = strncpy_s(status_rf4ce->chipset, sizeof(status_rf4ce->chipset), chipset_get(), CTRLM_MAIN_MAX_CHIPSET_LENGTH-1);
-   ERR_CHK(safec_rc);
-   status_rf4ce->chipset[CTRLM_MAIN_MAX_CHIPSET_LENGTH - 1] = '\0';
-
-   int index = 0;
-   for(auto const &itr : controllers_) {
-      //If the validation result is not success, then this remote has not finished pairing.  Do not send it's status.
-      if(itr.second->validation_result_get() == CTRLM_RF4CE_RESULT_VALIDATION_SUCCESS) {
-         status_rf4ce->controllers[index] = itr.first;
-         index++;
-         if(index >= CTRLM_MAIN_MAX_BOUND_CONTROLLERS) {
-            break;
-         }
-      } else {
-         XLOGD_WARN("Controller <%u> is pending.  Ignoring.", itr.first);
-      }
-   }
-   status_rf4ce->controller_qty = index;
-   XLOGD_INFO("HAL Version <%s> Controller Qty %u", status_rf4ce->version_hal, status_rf4ce->controller_qty);
-   pan_id_get(&status_rf4ce->pan_id);
-   ieee_address_get(&status_rf4ce->ieee_address);
-   short_address_get(&status_rf4ce->short_address);
-   ctrlm_rf4ce_rf_channel_info_t rf_channel_info;
-   rf_channel_info_get(&rf_channel_info);
-   status_rf4ce->rf_channel_active.number  = rf_channel_info.rf_channel_number;
-   status_rf4ce->rf_channel_active.quality = rf_channel_info.rf_channel_quality;
-   dqm->status->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-   *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-
-   ctrlm_obj_network_t::req_process_network_status(data, size);
-}
-
 void ctrlm_obj_network_rf4ce_t::req_process_chip_status(void *data, int size) {
    ctrlm_main_queue_msg_main_chip_status_t *dqm = (ctrlm_main_queue_msg_main_chip_status_t *)data;
 
@@ -4913,15 +4870,8 @@ void ctrlm_obj_network_rf4ce_t::req_process_start_pairing(void *data, int size) 
       dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
    } else {
       if(dqm->params->timeout != 0) { // use a timeout
-         ctrlm_main_iarm_call_property_t property = {};
-         property.api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION;
-         property.result       = CTRLM_IARM_CALL_RESULT_INVALID;
-         property.network_id   = CTRLM_MAIN_NETWORK_ID_ALL;
-         property.name         = CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND;
-         property.value        = dqm->params->timeout * 1000;
 
-         ctrlm_main_iarm_call_property_set_(&property);
-         if (property.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
+         if(!ctrlm_main_active_period_screenbind_timeout_set_(dqm->params->timeout * 1000)) {
             XLOGD_ERROR("Failed to set ACTIVE PERIOD SCREENBIND property");
             set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
             dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());

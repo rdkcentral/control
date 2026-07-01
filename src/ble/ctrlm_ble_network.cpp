@@ -467,33 +467,6 @@ void ctrlm_obj_network_ble_t::thread_monitor_poll(ctrlm_thread_monitor_response_
 // ==================================================================================================================================================================
 // BEGIN - Process Requests to the network in CTRLM Main thread context
 // ------------------------------------------------------------------------------------------------------------------------------------------------------------------
-void ctrlm_obj_network_ble_t::req_process_network_status(void *data, int size) {
-   THREAD_ID_VALIDATE();
-   ctrlm_main_queue_msg_main_network_status_t *dqm = (ctrlm_main_queue_msg_main_network_status_t *)data;
-
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_main_network_status_t));
-   g_assert(dqm->cmd_result);
-
-   ctrlm_network_status_ble_t *network_status  = &dqm->status->status.ble;
-   errno_t safec_rc = strncpy_s(network_status->version_hal, sizeof(network_status->version_hal), version_get(), CTRLM_MAIN_VERSION_LENGTH - 1);
-   ERR_CHK(safec_rc);
-   network_status->version_hal[CTRLM_MAIN_VERSION_LENGTH - 1] = '\0';
-   network_status->controller_qty = controllers_.size();
-   XLOGD_INFO("HAL Version <%s> Controller Qty %u", network_status->version_hal, network_status->controller_qty);
-   int index = 0;
-   for(auto const &itr : controllers_) {
-      network_status->controllers[index] = itr.first;
-      index++;
-      if(index >= CTRLM_MAIN_MAX_BOUND_CONTROLLERS) {
-         break;
-      }
-   }
-   dqm->status->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-   *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-
-   ctrlm_obj_network_t::req_process_network_status(data, size);
-}
 
 void ctrlm_obj_network_ble_t::req_process_controller_status(void *data, int size) {
    THREAD_ID_VALIDATE();

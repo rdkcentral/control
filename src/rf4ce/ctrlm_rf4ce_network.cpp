@@ -4870,15 +4870,8 @@ void ctrlm_obj_network_rf4ce_t::req_process_start_pairing(void *data, int size) 
       dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
    } else {
       if(dqm->params->timeout != 0) { // use a timeout
-         ctrlm_main_iarm_call_property_t property = {};
-         property.api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION;
-         property.result       = CTRLM_IARM_CALL_RESULT_INVALID;
-         property.network_id   = CTRLM_MAIN_NETWORK_ID_ALL;
-         property.name         = CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND;
-         property.value        = dqm->params->timeout * 1000;
 
-         ctrlm_main_iarm_call_property_set_(&property);
-         if (property.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
+         if(!ctrlm_main_active_period_screenbind_timeout_set_(dqm->params->timeout * 1000)) {
             XLOGD_ERROR("Failed to set ACTIVE PERIOD SCREENBIND property");
             set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
             dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());

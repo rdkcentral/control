@@ -26,7 +26,6 @@
 #define CTRLM_MAIN_IARM_BUS_NAME                                 "Ctrlm"                                ///< Control Manager's IARM Bus Name
 #define CTRLM_MAIN_IARM_BUS_API_REVISION                         (16)                                   ///< Revision of the Control Manager Main IARM API
 
-#define CTRLM_MAIN_IARM_CALL_PROPERTY_SET                        "Main_PropertySet"                     ///< Sets a property of the Control Manager
 #define CTRLM_MAIN_IARM_CALL_PROPERTY_GET                        "Main_PropertyGet"                     ///< Gets a property of the Control Manager
 #define CTRLM_MAIN_IARM_CALL_DISCOVERY_CONFIG_SET                "Main_DiscoveryConfigSet"              ///< Sets the discovery settings
 #define CTRLM_MAIN_IARM_CALL_AUTOBIND_CONFIG_SET                 "Main_AutobindConfigSet"               ///< Sets the autobind settings
@@ -85,14 +84,8 @@
 #define CTRLM_MAIN_COMMIT_ID_MAX_LENGTH                          (48) ///< Maximum length of commit ID string (including null termination)
 #define CTRLM_MAIN_DEVICE_ID_MAX_LENGTH                          (24) ///< Maximum length of device ID string (including null termination)
 
-#define CTRLM_PROPERTY_ACTIVE_PERIOD_BUTTON_VALUE_MIN               (5000) ///< Minimum active period (in ms) for button binding.
-#define CTRLM_PROPERTY_ACTIVE_PERIOD_BUTTON_VALUE_MAX             (600000) ///< Maximum active period (in ms) for button binding.
 #define CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND_VALUE_MIN           (5000) ///< Minimum active period (in ms) for screen bind.
 #define CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND_VALUE_MAX         (600000) ///< Maximum active period (in ms) for screen bind.
-#define CTRLM_PROPERTY_ACTIVE_PERIOD_ONE_TOUCH_AUTOBIND_VALUE_MIN   (5000) ///< Minimum active period (in ms) for screen bind.
-#define CTRLM_PROPERTY_ACTIVE_PERIOD_ONE_TOUCH_AUTOBIND_VALUE_MAX (600000) ///< Maximum active period (in ms) for screen bind.
-#define CTRLM_PROPERTY_ACTIVE_PERIOD_LINE_OF_SIGHT_VALUE_MIN        (5000) ///< Minimum active period (in ms) for line of sight.
-#define CTRLM_PROPERTY_ACTIVE_PERIOD_LINE_OF_SIGHT_VALUE_MAX       (60000) ///< Maximum active period (in ms) for line of sight.
 
 #define CTRLM_PROPERTY_VALIDATION_TIMEOUT_MIN                  (1000) ///< Validation timeout value minimum (in ms)
 #define CTRLM_PROPERTY_VALIDATION_TIMEOUT_MAX                 (45000) ///< Validation timeout value maximum (in ms)
@@ -154,26 +147,6 @@ typedef enum {
    CTRLM_IARM_CALL_RESULT_ERROR_NOT_SUPPORTED     = 5, ///< The requested operation is not supported
    CTRLM_IARM_CALL_RESULT_INVALID                 = 6, ///< Invalid call result value
 } ctrlm_iarm_call_result_t;
-
-typedef enum {
-   CTRLM_PROPERTY_BINDING_BUTTON_ACTIVE            =  0, ///< (RO) Boolean value indicating whether a front panel button was recently pressed (1) or not (0).
-   CTRLM_PROPERTY_BINDING_SCREEN_ACTIVE            =  1, ///< (RW) Boolean value indicating whether the 'Pairing Description Screen' is being displayed (1) or not (0).
-   CTRLM_PROPERTY_BINDING_LINE_OF_SIGHT_ACTIVE     =  2, ///< (RO) Boolean value indicating whether the STB has received the Line of Sight remote command and is within the active period.
-   CTRLM_PROPERTY_AUTOBIND_LINE_OF_SIGHT_ACTIVE    =  3, ///< (RO) Boolean value indicating that the STB has received the Autobind Line of Sight remote code and is within the active period.
-   CTRLM_PROPERTY_ACTIVE_PERIOD_BUTTON             =  4, ///< (RW) Active period (in ms) for button binding.
-   CTRLM_PROPERTY_ACTIVE_PERIOD_LINE_OF_SIGHT      =  5, ///< (RW) Active period (in ms) for line of sight.
-   CTRLM_PROPERTY_VALIDATION_TIMEOUT_INITIAL       =  6, ///< (RW) Timeout value (in ms) used for the start of the validation period.
-   CTRLM_PROPERTY_VALIDATION_TIMEOUT_DURING        =  7, ///< (RW) Timeout value (in ms) used during the validation period.
-   CTRLM_PROPERTY_CONFIGURATION_TIMEOUT            =  8, ///< (RW) Timeout value (in ms) used during the configuration period.
-   CTRLM_PROPERTY_VALIDATION_MAX_ATTEMPTS          =  9, ///< (RW) Maximum number of validation attempts.
-   CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND         = 10, ///< (RW) Active period (in ms) for screenbind.
-   CTRLM_PROPERTY_ACTIVE_PERIOD_ONE_TOUCH_AUTOBIND = 11, ///< (RW) Active period (in ms) for one-touch autobind.
-   CTRLM_PROPERTY_REMOTE_REVERSE_CMD_ACTIVE        = 12, ///< (RW) Boolean value indicating whether the 'Remote Reverse Command' feature is enabled (1) or not (0).
-   CTRLM_PROPERTY_MAC_POLLING_INTERVAL             = 13, ///< (RW) MAC polling polling interval, in milliseconds.
-   CTRLM_PROPERTY_RCU_REVERSE_CMD_TIMEOUT          = 14, ///< (RW) Find My Remote RC response timeout, Factor of CTRLM_PROPERTY_MAC_POLLING_INTERVAL, min 2
-   CTRLM_PROPERTY_AUTO_ACK                         = 15, ///< (RW) Boolean value indicating whether the 'Automatic Packet Acknowledgment' feature is enabled (1) or not (0).
-   CTRLM_PROPERTY_MAX                              = 16, ///< (NA) Maximum property enumeration value.
-} ctrlm_property_t;
 
 typedef enum {
    CTRLM_MAIN_IARM_EVENT_BINDING_BUTTON             =  0, ///< Generated when a state change of the binding button status occurs
@@ -356,19 +329,6 @@ typedef enum {
 
 typedef unsigned char ctrlm_network_id_t;
 typedef unsigned char ctrlm_controller_id_t;
-
-typedef struct {
-   ctrlm_network_id_t   id;   ///< identifier of the network
-   ctrlm_network_type_t type; ///< Type of network
-} ctrlm_network_t;
-
-typedef struct {
-   unsigned char            api_revision; ///< Revision of this API
-   ctrlm_iarm_call_result_t result;       ///< Result of the operation
-   ctrlm_network_id_t       network_id;   ///< IN - identifier of network or CTRLM_MAIN_NETWORK_ID_ALL for all networks
-   ctrlm_property_t         name;         ///< Property name on which this call will operate
-   unsigned long            value;        ///< Value for this property
-} ctrlm_main_iarm_call_property_t;
 
 typedef struct {
    unsigned char            api_revision;                 ///< Revision of this API

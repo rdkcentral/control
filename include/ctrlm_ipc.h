@@ -334,14 +334,6 @@ typedef struct {
    unsigned char            api_revision;                 ///< Revision of this API
    ctrlm_iarm_call_result_t result;                       ///< Result of the operation
    ctrlm_network_id_t       network_id;                   ///< IN - identifier of network or CTRLM_MAIN_NETWORK_ID_ALL for all networks
-   unsigned char            enable;                       ///< Enable (1) or disable (0) open discovery
-   unsigned char            require_line_of_sight;        ///< Require (1) or do not require (0) line of sight to respond to discovery requests
-} ctrlm_main_iarm_call_discovery_config_t;
-
-typedef struct {
-   unsigned char            api_revision;                 ///< Revision of this API
-   ctrlm_iarm_call_result_t result;                       ///< Result of the operation
-   ctrlm_network_id_t       network_id;                   ///< IN - identifier of network or CTRLM_MAIN_NETWORK_ID_ALL for all networks
    unsigned char            enable;                       ///< Enable (1) or disable (0) autobinding.
    unsigned char            threshold_pass;               ///< Number of successful pairing attempts required to complete autobinding successfully
    unsigned char            threshold_fail;               ///< Number of unsuccessful pairing attempts required to complete autobinding unsuccessfully

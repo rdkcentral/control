@@ -81,9 +81,6 @@ typedef enum {
 
    // Global messages
    CTRLM_MAIN_QUEUE_MSG_TYPE_TERMINATE                             = CTRLM_MAIN_QUEUE_MSG_TYPE_GLOBAL + 1,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_SET,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_GET,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_DISCOVERY_CONFIG_SET,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_AUTOBIND_CONFIG_SET,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PRECOMMISSION_CONFIG_SET,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_FACTORY_RESET,
@@ -174,13 +171,6 @@ typedef struct {
    ctrlm_main_iarm_call_chip_status_t     *status;
    sem_t *                                semaphore;
 } ctrlm_main_queue_msg_main_chip_status_t;
-
-typedef struct {
-   ctrlm_main_queue_msg_header_t            header;
-   ctrlm_main_iarm_call_discovery_config_t *config;
-   sem_t *                                  semaphore;
-   ctrlm_main_status_cmd_result_t *         cmd_result;
-} ctrlm_main_queue_msg_main_discovery_config_t;
 
 typedef struct {
    ctrlm_main_queue_msg_header_t           header;
@@ -454,7 +444,6 @@ gboolean                           ctrlm_power_state_change(ctrlm_power_state_t 
 
 bool     ctrlm_main_active_period_screenbind_timeout_set_(uint32_t timeout);
 
-gboolean ctrlm_main_iarm_call_discovery_config_set(ctrlm_main_iarm_call_discovery_config_t *config);
 gboolean ctrlm_main_iarm_call_autobind_config_set(ctrlm_main_iarm_call_autobind_config_t *config);
 gboolean ctrlm_main_iarm_call_precommission_config_set(ctrlm_main_iarm_call_precommision_config_t *config);
 gboolean ctrlm_main_iarm_call_factory_reset(ctrlm_main_iarm_call_factory_reset_t *reset);

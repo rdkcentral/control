@@ -36,7 +36,9 @@
 #include "ctrlm_ipc_voice.h"
 #include "ctrlm_ipc_device_update.h"
 #include "ctrlm_irdb_interface.h"
+#ifdef IARMBUS_ENABLED
 #include "libIBus.h"
+#endif
 #include "safec_lib.h"
 
 #define CTRLM_MAIN_QUEUE_MSG_TYPE_GLOBAL (0x100)

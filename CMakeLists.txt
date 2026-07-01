@@ -133,7 +133,7 @@ if(IARMBUS_ENABLED)
 include_directories( ${CMAKE_SYSROOT}/usr/include/rdk/iarmbus
                      ${CMAKE_SYSROOT}/usr/include/rdk/iarmmgrs-hal
                    )
-
+add_compile_definitions(IARMBUS_ENABLED)
 target_link_libraries(controlMgr IARMBus)
 endif()
 

@@ -23,78 +23,6 @@
 #include "libIBusDaemon.h"
 #include "ctrlm_ipc_key_codes.h"
 
-/// @file ctrlm_ipc.h
-///
-/// @defgroup CTRLM_IPC_MAIN IARM API - Control Manager
-/// @{
-///
-/// @defgroup CTRLM_IPC_MAIN_COMMS       Communication Interfaces
-/// @defgroup CTRLM_IPC_MAIN_CALLS       IARM Remote Procedure Calls
-/// @defgroup CTRLM_IPC_MAIN_EVENTS      IARM Events
-/// @defgroup CTRLM_IPC_MAIN_DEFINITIONS Constants
-/// @defgroup CTRLM_IPC_MAIN_ENUMS       Enumerations
-/// @defgroup CTRLM_IPC_MAIN_STRUCTS     Structures
-///
-/// @mainpage Control Manager IARM Interface
-/// This document describes the interfaces that Control Manager uses to communicate with other components in the system.  It exposes
-/// functionality to other processes in the system via the IARM bus. The IARM interface provides inter-process communication via Calls
-/// and Events.  Control Manager supports one or more network devices via a Hardware Abstraction Layer (HAL).  The HAL API specifies the
-/// method by which a network device communicates with the Control Manager.
-///
-/// This manual is divided into the following sections:
-/// - @subpage CTRLM_IPC_MAIN_INTRO
-/// - @subpage CTRLM_IPC_MAIN_COMMS
-/// - @subpage CTRL_MGR
-/// - @subpage CTRL_MGR_HAL
-/// - @subpage CTRL_MGR_HAL_RF4CE
-/// - @subpage CTRL_MGR_HAL_IP
-/// - @subpage CTRL_MGR_HAL_BLE
-///
-/// @page CTRLM_IPC_MAIN_INTRO Introduction
-/// The state of the Control Manager is summarized in the following diagram.
-///
-/// @dot
-/// digraph CTRLMGR_StateMachine {
-///     "INIT"  [shape="ellipse", fontname=Helvetica, fontsize=10];
-///     "READY" [shape="ellipse", fontname=Helvetica, fontsize=10];
-///     "TERM"  [shape="ellipse", fontname=Helvetica, fontsize=10];
-///
-///     "INIT"  -> "INIT"  [fontname=Helvetica, fontsize=10,label="  IARM Connect Failed (delay)"];
-///     "INIT"  -> "READY" [fontname=Helvetica, fontsize=10,label="    "headlabel="IARM\rConnect",labeldistance=4.5, labelangle=25];
-///     "READY" -> "INIT"  [fontname=Helvetica, fontsize=10,label="  IARM\l  Disconnect"];
-///     "READY" -> "TERM"  [fontname=Helvetica, fontsize=10,label="  Control Manager Exited"];
-///     "READY" -> "READY" [fontname=Helvetica, fontsize=10,label="  Process events and service calls"];
-/// }
-/// \enddot
-///
-///
-/// Initialization
-/// --------------
-///
-/// During initialization, the Control Manager initializes the IARM bus by calling IARM_Bus_Init() using its well known bus name, CTRLM_MAIN_IARM_BUS_NAME.
-/// Upon successful initialization, the Control Manager connects to the bus by calling IARM_Bus_Connect().\n
-///  If initialization is not completed successfully, the process will sleep for X seconds and retry the initialization procedure.
-///
-/// For debug purposes, the Control Manager may register to receive log messages from the IARM bus calling the IARM_Bus_RegisterForLog() function.
-///
-/// Termination
-/// -----------
-///
-/// Before the Control Manager exits, it unregisters for events, disconnects from the IARM bus and terminates the session by calling IARM_Bus_UnRegisterEventHandler(), IARM_Bus_Disconnect()
-/// and IARM_Bus_Term() respectively.
-///
-/// Normal Operation
-/// ----------------
-///
-/// After successful initialization, the Control Manager will begin processing and generating @link CTRLM_IPC_MAIN_EVENTS events @endlink and @link CTRLM_IPC_MAIN_CALLS remote process calls @endlink (RPC).  Periodically, the status of the IARM bus connection is
-/// checked by calling IARM_Bus_IsConnected().  If the result is not IARM_RESULT_SUCCESS, the Control Manager will return to the pre-initialized state.
-///
-/// @addtogroup CTRLM_IPC_MAIN_DEFINITIONS
-/// @{
-/// @brief Macros for constant values used by Control Manager clients
-/// @details The Control Manager API provides macros for some parameters which may change in the future.  Clients should use
-/// these names to allow the client code to function correctly if the values change.
-
 #define CTRLM_MAIN_IARM_BUS_NAME                                 "Ctrlm"                                ///< Control Manager's IARM Bus Name
 #define CTRLM_MAIN_IARM_BUS_API_REVISION                         (16)                                   ///< Revision of the Control Manager Main IARM API
 
@@ -219,16 +147,6 @@
 #define CTRLM_WAKEUP_CONFIG_LIST_MAX_SIZE (256)
 #define CTRLM_RCU_ASSERT_REPORT_MAX_SIZE  (128)
 
-/// @}
-
-/// @addtogroup CTRLM_IPC_MAIN_ENUMS
-/// @{
-/// @brief Enumerated Types
-/// @details The Control Manager provides enumerated types for logical groups of values.
-
-/// @brief Remote Procedure Call Results
-/// @details The structure for each remote call has a result member which is populated with the result of the operation.  This field is only valid
-/// when the IARM return code indicates a successful call.
 typedef enum {
    CTRLM_IARM_CALL_RESULT_SUCCESS                 = 0, ///< The requested operation was completed successfully.
    CTRLM_IARM_CALL_RESULT_ERROR                   = 1, ///< An error occurred during the requested operation.
@@ -239,8 +157,6 @@ typedef enum {
    CTRLM_IARM_CALL_RESULT_INVALID                 = 6, ///< Invalid call result value
 } ctrlm_iarm_call_result_t;
 
-/// @brief Control Manager Properties
-/// @details The properties enumeration is used in calls to @link CTRLM_IPC_MAIN_CALLS PropertyGet @endlink and @link CTRLM_IPC_MAIN_CALLS PropertySet@endlink.  They are used to get/set values in Control Manager.
 typedef enum {
    CTRLM_PROPERTY_BINDING_BUTTON_ACTIVE            =  0, ///< (RO) Boolean value indicating whether a front panel button was recently pressed (1) or not (0).
    CTRLM_PROPERTY_BINDING_SCREEN_ACTIVE            =  1, ///< (RW) Boolean value indicating whether the 'Pairing Description Screen' is being displayed (1) or not (0).
@@ -261,8 +177,6 @@ typedef enum {
    CTRLM_PROPERTY_MAX                              = 16, ///< (NA) Maximum property enumeration value.
 } ctrlm_property_t;
 
-/// @brief Control Manager Events
-/// @details The events enumeration defines a value for each event that can be generated by Control Manager.
 typedef enum {
    CTRLM_MAIN_IARM_EVENT_BINDING_BUTTON             =  0, ///< Generated when a state change of the binding button status occurs
    CTRLM_MAIN_IARM_EVENT_BINDING_LINE_OF_SIGHT      =  1, ///< Generated when a state change of the line of sight status occurs
@@ -305,8 +219,6 @@ typedef enum {
    CTRLM_MAIN_IARM_EVENT_MAX                        = 38  ///< Placeholder for the last event (used in registration)
 } ctrlm_main_iarm_event_t;
 
-/// @brief Remote Control Key Status
-/// @details The status of the key.
 typedef enum {
    CTRLM_KEY_STATUS_DOWN    = 0, ///< Key down
    CTRLM_KEY_STATUS_UP      = 1, ///< Key up
@@ -314,8 +226,6 @@ typedef enum {
    CTRLM_KEY_STATUS_INVALID = 3, ///< Invalid key status
 } ctrlm_key_status_t;
 
-/// @brief Remote Control Key Source
-/// @details The source of the key press, e.g. infrared, rf, etc.
 typedef enum {
    CTRLM_KEY_SOURCE_FP = 0,   //< Key Source Front Panel
    CTRLM_KEY_SOURCE_IR,       //< Key Source Infrared
@@ -323,16 +233,12 @@ typedef enum {
    CTRLM_KEY_SOURCE_INVALID   //< Invalid
 } ctrlm_key_source_t;
 
-/// @brief Data Access Type
-/// @details The type of permission for access to data in Control Manager.
 typedef enum {
    CTRLM_ACCESS_TYPE_READ    = 0, ///< Read access
    CTRLM_ACCESS_TYPE_WRITE   = 1, ///< Write access
    CTRLM_ACCESS_TYPE_INVALID = 2  ///< Invalid access type
 } ctrlm_access_type_t;
 
-/// @brief Network Type
-/// @details The Control Manager network type.
 typedef enum {
    CTRLM_NETWORK_TYPE_RF4CE        = 0,   ///< RF4CE Network
    CTRLM_NETWORK_TYPE_BLUETOOTH_LE = 1,   ///< Bluetooth Low Energy Network
@@ -341,8 +247,6 @@ typedef enum {
    CTRLM_NETWORK_TYPE_INVALID      = 255  ///< Invalid Network
 } ctrlm_network_type_t;
 
-/// @brief Controller Unbind Reason
-/// @details When a controller binding is removed, the reason is defined by the value in this enumeration.
 typedef enum {
    CTRLM_UNBIND_REASON_CONTROLLER         = 0, ///< The controller initiated the unbind
    CTRLM_UNBIND_REASON_TARGET_USER        = 1, ///< The target initiated the unbind due to user request
@@ -353,8 +257,6 @@ typedef enum {
    CTRLM_UNBIND_REASON_MAX                = 6  ///< Maximum unbind reason value
 } ctrlm_unbind_reason_t;
 
-/// @brief Pairing Restrictions
-/// @details The Control Manager network type.
 typedef enum {
    CTRLM_PAIRING_RESTRICT_NONE                = 0,   ///< No restrictions on pairing
    CTRLM_PAIRING_RESTRICT_TO_VOICE_REMOTES    = 1,   ///< Only pair voice remotes
@@ -362,8 +264,6 @@ typedef enum {
    CTRLM_PAIRING_RESTRICT_MAX                 = 3    ///< Maximum restriction value
 } ctrlm_pairing_restrict_by_remote_t;
 
-/// @brief Pairing Restrictions
-/// @details The Control Manager network type.
 typedef enum {
    CTRLM_PAIRING_MODE_BUTTON_BUTTON_BIND    = 0,   ///< Button Button binding
    CTRLM_PAIRING_MODE_SCREEN_BIND           = 1,   ///< Screen binding
@@ -371,8 +271,6 @@ typedef enum {
    CTRLM_PAIRING_MODE_MAX                   = 3,   ///< Maximum pairing mode value
 } ctrlm_pairing_modes_t;
 
-/// @brief Pairing Restrictions
-/// @details The Control Manager network type.
 typedef enum
 {
    CTRLM_BIND_STATUS_SUCCESS,
@@ -389,8 +287,6 @@ typedef enum
    CTRLM_BIND_STATUS_UNKNOWN_FAILURE,
 } ctrlm_bind_status_t;
 
-/// @brief chime volume settings
-/// @details The Control Manager network type.
 typedef enum
 {
    CTRLM_CHIME_VOLUME_LOW,
@@ -399,8 +295,6 @@ typedef enum
    CTRLM_CHIME_VOLUME_INVALID,
 } ctrlm_chime_volume_t;
 
-/// @brief IR device types
-/// @details Types of IR devices supported by Control Manager
 typedef enum {
    CTRLM_IR_DEVICE_TV = 0,
    CTRLM_IR_DEVICE_AMP,
@@ -432,16 +326,12 @@ typedef enum {
    CTRLM_FMR_LEVEL_INVALID
 } ctrlm_fmr_alarm_level_t;
 
-/// @brief audio capture container settings
-/// @details Audio container types
 typedef enum {
    CTRLM_AUDIO_CONTAINER_WAV     = 0,
    CTRLM_AUDIO_CONTAINER_NONE    = 1,
    CTRLM_AUDIO_CONTAINER_INVALID = 2
 } ctrlm_audio_container_t;
 
-/// @brief Power State Type
-/// @details Power Manager sends the current power state and the new power state. This type is used to track the state information.
 typedef enum {
    CTRLM_POWER_STATE_STANDBY                = 0,  //Indicates power state transition
    CTRLM_POWER_STATE_ON                     = 1,
@@ -466,29 +356,14 @@ typedef enum {
    CTRLM_RCU_UPGRADE_STATE_INVALID
 } ctrlm_rcu_upgrade_state_t;
 
-/// @brief Network Id Type
-/// @details During initialization, of the HAL network, Control Manager will assign a unique id to the network.  It must be used in all
-/// subsequent communication with the Control Manager.
 typedef unsigned char ctrlm_network_id_t;
-/// @brief Controller Id Type
-/// @details When a controller is paired, the Control Manager will assign an id (typically 48/64 bit MAC address) to the controller.
 typedef unsigned char ctrlm_controller_id_t;
 
-/// @}
-/// @addtogroup CTRLM_IPC_MAIN_STRUCTS
-/// @{
-/// @brief Structure definitions
-/// @details The Control Manager provides structures that are used in IARM calls and events.
-
-/// @brief Network Structure
-/// @details The information for a network.
 typedef struct {
    ctrlm_network_id_t   id;   ///< identifier of the network
    ctrlm_network_type_t type; ///< Type of network
 } ctrlm_network_t;
 
-/// @brief Control Manager Status Structure
-/// @details The Control Manager Status structure is used in the CTRLM_MAIN_IARM_CALL_STATUS_GET call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char            api_revision;                                       ///< Revision of this API
    ctrlm_iarm_call_result_t result;                                             ///< OUT - The result of the operation.
@@ -499,15 +374,11 @@ typedef struct {
    char                     stb_device_id[CTRLM_MAIN_DEVICE_ID_MAX_LENGTH];     ///< OUT - Device ID obtained from the Set-Top Box
 } ctrlm_main_iarm_call_status_t;
 
-/// @brief RF Channel Structure
-/// @details The diagnostics information for an RF channel.
 typedef struct {
    unsigned char number;  ///< RF channel number (15, 20 or 25 for RF4CE)
    unsigned char quality; ///< Quality indicator for this channel
 } ctrlm_rf_channel_t;
 
-/// @brief RF4CE Network Status Structure
-/// @details The RF4CE Network Status structure provided detailed information about the network.
 typedef struct {
    char                  version_hal[CTRLM_MAIN_VERSION_LENGTH];        ///< Software version of the HAL driver
    unsigned char         controller_qty;                                ///< Number of controllers bound to the target device
@@ -519,24 +390,18 @@ typedef struct {
    char                  chipset[CTRLM_MAIN_MAX_CHIPSET_LENGTH];        ///< Chipset of the target
 } ctrlm_network_status_rf4ce_t;
 
-/// @brief Bluetooth LE Network Status Structure
-/// @details The Bluetooth LE Network Status structure provided detailed information about the network.
 typedef struct {
    char                  version_hal[CTRLM_MAIN_VERSION_LENGTH];        ///< Software version of the HAL driver
    unsigned char         controller_qty;                                ///< Number of controllers bound to the target device.
    ctrlm_controller_id_t controllers[CTRLM_MAIN_MAX_BOUND_CONTROLLERS]; ///< List of controllers bound to the target device
 } ctrlm_network_status_ble_t;
 
-/// @brief IP Network Status Structure
-/// @details The IP Network Status structure provided detailed information about the network.
 typedef struct {
    char                  version_hal[CTRLM_MAIN_VERSION_LENGTH];        ///< Software version of the HAL driver
    unsigned char         controller_qty;                                ///< Number of controllers bound to the target device.
    ctrlm_controller_id_t controllers[CTRLM_MAIN_MAX_BOUND_CONTROLLERS]; ///< List of controllers bound to the target device
 } ctrlm_network_status_ip_t;
 
-/// @brief Network Status Structure
-/// @details The Network Status structure is used in the CTRLM_MAIN_IARM_CALL_NETWORK_STATUS_GET call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char            api_revision; ///< Revision of this API
    ctrlm_iarm_call_result_t result;       ///< OUT - Result of the operation
@@ -548,8 +413,6 @@ typedef struct {
    } status;                              ///< OUT - Union of network status types
 } ctrlm_main_iarm_call_network_status_t;
 
-/// @brief Property Structure
-/// @details The property structure is used in PropertyGet and PropertySet calls. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char            api_revision; ///< Revision of this API
    ctrlm_iarm_call_result_t result;       ///< Result of the operation
@@ -558,8 +421,6 @@ typedef struct {
    unsigned long            value;        ///< Value for this property
 } ctrlm_main_iarm_call_property_t;
 
-/// @brief Discovery Config Call Structure
-/// @details The Discovery Config Call structure is used in the CTRLM_IARM_CALL_DISCOVERY_CONFIG_SET call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char            api_revision;                 ///< Revision of this API
    ctrlm_iarm_call_result_t result;                       ///< Result of the operation
@@ -568,8 +429,6 @@ typedef struct {
    unsigned char            require_line_of_sight;        ///< Require (1) or do not require (0) line of sight to respond to discovery requests
 } ctrlm_main_iarm_call_discovery_config_t;
 
-/// @brief Autobind Config Call Structure
-/// @details The Autobind Config Call structure is used in the CTRLM_IARM_CALL_AUTOBIND_CONFIG_SET call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char            api_revision;                 ///< Revision of this API
    ctrlm_iarm_call_result_t result;                       ///< Result of the operation
@@ -579,8 +438,6 @@ typedef struct {
    unsigned char            threshold_fail;               ///< Number of unsuccessful pairing attempts required to complete autobinding unsuccessfully
 } ctrlm_main_iarm_call_autobind_config_t;
 
-/// @brief Precommision Config Call Structure
-/// @details The Precommission Config Call structure is used in the CTRLM_IARM_CALL_PRECOMMISSION_CONFIG_SET call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char            api_revision;                                  ///< Revision of this API
    ctrlm_iarm_call_result_t result;                                        ///< Result of the operation
@@ -589,9 +446,6 @@ typedef struct {
    unsigned long long       controllers[CTRLM_MAIN_MAX_BOUND_CONTROLLERS]; ///< IEEE Address for precommissioned controllers
 } ctrlm_main_iarm_call_precommision_config_t;
 
-/// @brief Controller Unbind Call Structure
-/// @details This structure provides a method to remove a binding between the target and a controller.  For RF4CE controllers, only the target will be unbound since
-/// there is no method to wake up the controller to unbind it.
 typedef struct {
    unsigned char            api_revision;                           ///< Revision of this API
    ctrlm_iarm_call_result_t result;                                 ///< Result of the IARM call
@@ -599,29 +453,21 @@ typedef struct {
    ctrlm_controller_id_t    controller_id;                          ///< IN - identifier of the controller
 } ctrlm_main_iarm_call_controller_unbind_t;
 
-/// @brief Structure of Control Manager's Binding Button IARM event
-/// @details This event notifies listeners that a state change has occurred in the binding button status.
 typedef struct {
    unsigned char api_revision; ///< Revision of this API
    unsigned char active;       ///< Indicates that the binding button status is active (1) or not active (0)
 } ctrlm_main_iarm_event_binding_button_t;
 
-/// @brief Structure of Control Manager's Binding Line of Sight IARM event
-/// @details This event notifies listeners that a state change has occurred in the binding line of sight status.
 typedef struct {
    unsigned char api_revision; ///< Revision of this API
    unsigned char active;       ///< Indicates that the binding line of sight status is active (1) or not active (0)
 } ctrlm_main_iarm_event_binding_line_of_sight_t;
 
-/// @brief Structure of Control Manager's Autobind Line of Sight IARM event
-/// @details This event notifies listeners that a state change has occurred in the autobind line of sight status.
 typedef struct {
    unsigned char api_revision; ///< Revision of this API
    unsigned char active;       ///< Indicates that the autobind line of sight status is active (1) or not active (0)
 } ctrlm_main_iarm_event_autobind_line_of_sight_t;
 
-/// @brief Structure of Control Manager's Unbind IARM event
-/// @details The unbind Event is generated whenever a controller is removed from the binding table.
 typedef struct {
    unsigned char         api_revision;  ///< Revision of this API
    ctrlm_network_id_t    network_id;    ///< Identifier of network on which the controller is bound
@@ -630,8 +476,6 @@ typedef struct {
    ctrlm_unbind_reason_t reason;        ///< Reason that the controller binding was removed
 } ctrlm_main_iarm_event_controller_unbind_t;
 
-/// @brief Control Manager IR Remote Usage Structure
-/// @details The Control Manager Status structure is used in the CTRLM_MAIN_IARM_CALL_IR_REMOTE_USAGE_GET call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char            api_revision;             ///< Revision of this API
    ctrlm_iarm_call_result_t result;                   ///< OUT - The result of the operation.
@@ -648,8 +492,6 @@ typedef struct {
    unsigned char            has_ir_remote_today;      ///< OUT - Boolean value indicating remote in IR mode was used the current day
 } ctrlm_main_iarm_call_ir_remote_usage_t;
 
-/// @brief Control Manager Last Key Info Structure
-/// @details The Control Manager Status structure is used in the CTRLM_MAIN_IARM_CALL_LAST_KEY_INFO_GET call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char            api_revision;                                       ///< Revision of this API
    ctrlm_network_id_t       network_id;                                         ///< IN - identifier of network on which the controller is bound
@@ -663,8 +505,6 @@ typedef struct {
    char                     source_name[CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH];     ///< OUT - The source name of the last key press.
 } ctrlm_main_iarm_call_last_key_info_t;
 
-/// @brief Control Manager Control Service Settings Structure
-/// @details The Control Manager Status structure is used in the CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_SET_VALUES call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char                api_revision;                                   ///< The revision of this API.
    ctrlm_iarm_call_result_t     result;                                         ///< Result of the IARM call
@@ -679,17 +519,12 @@ typedef struct {
    unsigned char                ir_command_repeats;                             ///< The ir command repeats (1 - 10)
 } ctrlm_main_iarm_call_control_service_settings_t;
 
-/// @brief Control Manager Control Service Can Find My Remote Structure
-/// @details The Control Manager Status structure is used in the CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_CAN_FIND_MY_REMOTE call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char                api_revision;                                   ///< The revision of this API.
    ctrlm_iarm_call_result_t     result;                                         ///< Result of the IARM call
    unsigned char                is_supported;                                   ///< Read only Boolean value to indicate if findMyRemote is supported enable (non-zero) or not supported (zero)
    ctrlm_network_type_t         network_type;                                   ///< [in]  Type of network on which the controller is bound
 } ctrlm_main_iarm_call_control_service_can_find_my_remote_t;
-
-/// @brief Control Manager Control Service Pairing Mode Structure
-/// @details The Control Manager Status structure is used in the CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_START_PAIRING_MODE call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 
 typedef struct {
    unsigned char                api_revision;                                   ///< The revision of this API.
@@ -701,8 +536,6 @@ typedef struct {
    unsigned int                 bind_status;                                    ///< OUT - The bind status of the pairing session
 } ctrlm_main_iarm_call_control_service_pairing_mode_t;
 
-/// @brief Control Manager Pairing Metrics Structure
-/// @details The Control Manager Status structure is used in the CTRLM_MAIN_IARM_CALL_PAIRING_METRICS_GET call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char            api_revision;                                                       ///< Revision of this API
    ctrlm_iarm_call_result_t result;                                                             ///< OUT - The result of the operation.
@@ -716,7 +549,6 @@ typedef struct {
    unsigned char            last_non_screenbind_error_binding_type;                             ///< OUT - The last screenbind error binding type
    char                     last_non_screenbind_remote_type[CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH]; ///< OUT - The last screenbind error remote type
 } ctrlm_main_iarm_call_pairing_metrics_t;
-
 
 typedef struct {
    ctrlm_controller_id_t      controller_id;                               ///< identifier of the controller, used for calls to a specific RCU
@@ -767,8 +599,6 @@ typedef struct {
    ctrlm_iarm_call_result_t      result;
 } ctrlm_iarm_call_WriteRcuWakeupConfig_params_t;
 
-/// @brief Chip Status Structure
-/// @details The Chip Status structure is used in the CTRLM_MAIN_IARM_CALL_CHIP_STATUS_GET call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char            api_revision;   ///< Revision of this API
    ctrlm_iarm_call_result_t result;         ///< OUT - Result of the operation
@@ -776,8 +606,6 @@ typedef struct {
    unsigned char            chip_connected; ///< OUT - 1 - chip connected, 0 - chip disconnected
 } ctrlm_main_iarm_call_chip_status_t;
 
-/// @brief Control Manager Audio Capture Structure
-/// @details The Control Manager Audio Capture structure is used in the CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_START call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char            api_revision;
    ctrlm_iarm_call_result_t result;
@@ -792,126 +620,15 @@ typedef struct {
    ctrlm_power_state_t new_state;
 } ctrlm_main_iarm_call_power_state_change_t;
 
-/// @brief Control Manager General Thunder IARM IPC Call Structure
-/// @details The Control Manager General Thunder IARM IPC Call structure is used by multiple CTRLM_MAIN_IARM calls. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char api_revision;                                ///< Revision of this API
    char          result[CTRLM_MAIN_IARM_CALL_RESULT_LEN_MAX]; ///< OUT - Result of the operation formatted in JSON
    char          payload[];                                   ///< IN - Input params specific to RPC formatted in JSON (e.g. Network ID)
 } ctrlm_main_iarm_call_json_t;
 
-/// @brief Control Manager General Thunder IARM IPC Event Structure
-/// @details The Control Manager General Thunder IARM IPC Event structure is used by multiple CTRLM_MAIN_IARM events. See the @link CTRLM_IPC_MAIN_EVENTS Calls@endlink section for more details on invoking this call.
 typedef struct {
    unsigned char api_revision; ///< Revision of this API
    char          payload[];    ///< OUT - Result of the operation formmated in JSON
 } ctrlm_main_iarm_event_json_t;
-
-/// @}
-
-/// @addtogroup CTRLM_IPC_MAIN_EVENTS Events
-/// @{
-/// @brief Broadcast Events accessible via IARM bus
-/// @details The iARM bus uses events to broadcast information to interested clients. An event is sent separately to each client. There are no return values for an event and no
-/// guarantee that a client will receive the event.  Each event has a different argument structure according to the information being transferred to the clients.  The
-/// Control Manager generates and subscribes to are detailed below.
-///
-/// - - -
-/// Event Generation (Broadcast)
-/// ----------------------------
-///
-/// The Control Manager generates events that can be received by other processes connected to the IARM bus. The following events
-/// are registered during initialization:
-///
-/// | Bus Name                 | Event Name                                   | Argument                                       | Description |
-/// | :-------                 | :---------                                   | :-------                                       | :---------- |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_MAIN_IARM_EVENT_BINDING_BUTTON         | ctrlm_main_iarm_event_binding_button_t         | Generated when a state change of the binding button status occurs |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_MAIN_IARM_EVENT_BINDING_LINE_OF_SIGHT  | ctrlm_main_iarm_event_binding_line_of_sight_t  | Generated when a state change of the line of sight status occurs |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_MAIN_IARM_EVENT_AUTOBIND_LINE_OF_SIGHT | ctrlm_main_iarm_event_autobind_line_of_sight_t | Generated when a state change of the autobind line of sight status occurs |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_MAIN_IARM_EVENT_CONTROLLER_UNBIND      | ctrlm_main_iarm_event_controller_unbind_t      | Generated when a controller binding is removed |
-///
-/// IARM events are available on a subscription basis. In order to receive an event, a client must explicitly register to receive the event by calling
-/// IARM_Bus_RegisterEventHandler() with the Control Manager bus name, event name and a @link IARM_EventHandler_t handler function @endlink. Events may be generated at any time by the
-/// Control Manager. All events are asynchronous.
-///
-/// Examples:
-///
-/// Register for a Control Manager event:
-///
-///     IARM_Result_t result;
-///
-///     result = IARM_Bus_RegisterEventHandler(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_MAIN_IARM_EVENT_KEY_PRESS, key_handler_func);
-///     if(IARM_RESULT_SUCCESS == result) {
-///         // Event registration was set successful
-///     }
-///
-/// @}
-///
-/// @addtogroup CTRLM_IPC_MAIN_CALLS Remote Procedure Calls
-/// @{
-/// @brief Remote Calls accessible via IARM bus
-/// @details IARM calls are synchronous calls to functions provided by other IARM bus members. Each bus member can register
-/// calls using the IARM_Bus_RegisterCall() function. Other members can invoke the call using the IARM_Bus_Call() function.
-///
-/// - - -
-/// Call Registration
-/// -----------------
-///
-/// The Control Manager registers the following calls.
-///
-/// | Bus Name                 | Call Name                                | Argument                                   | Description |
-/// | :-------                 | :--------                                | :-------                                   | :---------- |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_IARM_CALL_STATUS_GET               | ctrlm_main_iarm_call_status_t              | Retrieves Control Manager's Status information |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_IARM_CALL_NETWORK_STATUS_GET       | ctrlm_main_iarm_call_network_status_t      | Retrieves the specified network's Status information |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_IARM_CALL_PROPERTY_SET             | ctrlm_main_iarm_call_property_t            | Sets a property of the Control Manager |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_IARM_CALL_PROPERTY_GET             | ctrlm_main_iarm_call_property_t            | Gets a property of the Control Manager |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_IARM_CALL_UNIQUE_REFERENCE_ID_SET  | ctrlm_main_iarm_call_unique_reference_id_t | Sets the unique reference id for the STB |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_IARM_CALL_AUTOBIND_CONFIG_SET      | ctrlm_main_iarm_call_autobind_config_t     | Sets the configuration settings for autobind |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_IARM_CALL_PRECOMMISSION_CONFIG_SET | ctrlm_main_iarm_call_precommision_config_t | Sets the pre-commission settings |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_IARM_CALL_FACTORY_RESET            | ctrlm_main_iarm_call_json_t                | Resets settings to factory default for the specified network |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_IARM_CALL_CONTROLLER_UNBIND        | ctrlm_main_iarm_call_controller_unbind_t   | Removes a controller from the specified network |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_IARM_CALL_LAST_KEYPRESS_GET        | ctrlm_main_iarm_call_json_t                | Returns last key pressed from a controller on a specified network |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_IARM_CALL_START_PAIRING            | ctrlm_main_iarm_call_json_t                | Initiates the pairing process for a specified network |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_IARM_CALL_FIND_MY_REMOTE           | ctrlm_main_iarm_call_json_t                | Initiates find my remote for controllers on a specified network |
-///
-/// Examples:
-///
-/// Set a Control Manager property:
-///
-///     IARM_Result_t    result;
-///     ctrlm_property_t property;
-///     property.name  = CTRLM_PROPERTY_CLASS_DESC_LINE_OF_SIGHT;
-///     property.value = 1;
-///
-///     result = IARM_Bus_Call(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_IARM_CALL_PROPERTY_SET, (void *)&property, sizeof(property));
-///     if(IARM_RESULT_SUCCESS == result && CTRLMGR_RESULT_SUCCESS == property.result) {
-///         // Property was set successfully
-///     }
-///
-/// Get a Control Manager property:
-///
-///     IARM_Result_t    result;
-///     ctrlm_property_t property;
-///     property.name  = CTRLM_PROPERTY_VALIDATION_MAX_ATTEMPTS;
-///
-///     result = IARM_Bus_Call(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_IARM_CALL_PROPERTY_GET, (void *)&property, sizeof(property));
-///     if(IARM_RESULT_SUCCESS == result && CTRLMGR_RESULT_SUCCESS == property.result) {
-///         // Property was retrieved successfully
-///     }
-///
-/// Get Network Status information:
-///
-///     IARM_Result_t     result;
-///     ctrlm_rf_status_t status;
-///
-///     result = IARM_Bus_Call(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_IARM_CALL_NETWORK_STATUS_GET, (void *)&status, sizeof(status));
-///     if(IARM_RESULT_SUCCESS == result && CTRLMGR_RESULT_SUCCESS == status.result) {
-///         // Process Status
-///     }
-///
-/// @}
-
-
-/// @}
 
 #endif

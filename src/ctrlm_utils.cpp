@@ -32,20 +32,10 @@
 #include <linux/input.h>
 #include <uuid/uuid.h>
 
-// dsMgr includes
-#include "host.hpp"
-#include "exception.hpp"
-#include "videoOutputPort.hpp"
-#include "videoOutputPortType.hpp"
-#include "videoOutputPortConfig.hpp"
-#include "audioOutputPort.hpp"
-#include "frontPanelIndicator.hpp"
-#include "manager.hpp"
-#include "dsMgr.h"
-#include "dsRpc.h"
-#include "dsDisplay.h"
+#include <dsAudio.h>
 #include <regex>
-// end dsMgr includes
+#include "thunder/plugins/ctrlm_thunder_plugin_display_settings.h"
+#include "thunder/plugins/ctrlm_thunder_plugin_front_panel.h"
 
 #define BLOCK_SIZE     (1024 * 4 * 10) /* bytes */
 #define MAX_RECURSE_DEPTH 20
@@ -1574,87 +1564,69 @@ char *ctrlm_do_regex(char *re, char *str) {
 }
 
 bool ctrlm_dsmgr_init() {
-   if(device::Manager::IsInitialized) {
-      XLOGD_INFO("DSMgr already initialized");
-      return true;
-   }
-   try {
-      device::Manager::Initialize();
-      XLOGD_INFO("DSMgr is initialized");
-   }
-   catch (...) {
-      XLOGD_WARN("Failed to initialize DSMgr");
-      return false;
-   }
+   // DSMgr initialization is no longer needed; Thunder plugins self-initialise.
    return true;
 }
 
 bool ctrlm_dsmgr_deinit() {
-   try {
-      if(device::Manager::IsInitialized) {
-         device::Manager::DeInitialize();
-      }
-   }
-   catch(...) {
-      XLOGD_WARN("Failed to deinitialize DSMgr");
-      return false;
-   }
+   // DSMgr deinitialization is no longer needed; Thunder plugins self-manage.
    return true;
 }
 
 bool ctrlm_dsmgr_mute_audio(bool mute) {
-  try {
-     dsAudioDuckingAction_t action = mute ? dsAUDIO_DUCKINGACTION_START : dsAUDIO_DUCKINGACTION_STOP;
-     device::Host::getInstance().getAudioOutputPort("SPEAKER0").setAudioDucking(action, dsAUDIO_DUCKINGTYPE_ABSOLUTE, mute ? 0 : 100);
-     XLOGD_INFO("Audio is %smuted", mute?"":"un-");
-  }
-  catch(std::exception& error) {
-    XLOGD_WARN("Muting sound error : %s", error.what());
-    return false;
-  }
-  return true;
+   dsAudioDuckingAction_t action = mute ? dsAUDIO_DUCKINGACTION_START : dsAUDIO_DUCKINGACTION_STOP;
+   auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
+   if(!ds) {
+      XLOGD_ERROR("DisplaySettings plugin not available");
+      return false;
+   }
+   bool ret = ds->set_audio_ducking(action, dsAUDIO_DUCKINGTYPE_ABSOLUTE, mute ? 0 : 100);
+   if(ret) {
+      XLOGD_INFO("Audio is %smuted", mute ? "" : "un-");
+   } else {
+      XLOGD_WARN("Muting sound via Thunder failed");
+   }
+   return ret;
 }
 
 bool ctrlm_dsmgr_duck_audio(bool enable, bool relative, double vol) {
-  if(vol < 0 || vol > 1) {
+   if(vol < 0 || vol > 1) {
       XLOGD_ERROR("Invalid volume");
       return false;
-  }
-  try {
-     unsigned char level = (unsigned char)((vol * 100) + 0.5);
+   }
+   unsigned char level = (unsigned char)((vol * 100) + 0.5);
+   dsAudioDuckingAction_t action = enable   ? dsAUDIO_DUCKINGACTION_START  : dsAUDIO_DUCKINGACTION_STOP;
+   dsAudioDuckingType_t   type   = relative ? dsAUDIO_DUCKINGTYPE_RELATIVE : dsAUDIO_DUCKINGTYPE_ABSOLUTE;
 
-     dsAudioDuckingAction_t action = enable   ? dsAUDIO_DUCKINGACTION_START  : dsAUDIO_DUCKINGACTION_STOP;
-     dsAudioDuckingType_t   type   = relative ? dsAUDIO_DUCKINGTYPE_RELATIVE : dsAUDIO_DUCKINGTYPE_ABSOLUTE;
-
-     device::Host::getInstance().getAudioOutputPort("SPEAKER0").setAudioDucking(action, type, level);
-
-     if(enable) {
-        XLOGD_INFO("Audio ducking enabled - type <%s> level <%u%%>", relative ? "RELATIVE" : "ABSOLUTE", level);
-     } else {
-        XLOGD_INFO("Audio ducking disabled");
-     }
-  }
-  catch(std::exception& error) {
-    XLOGD_WARN("Ducking sound error : %s", error.what());
-    return false;
-  }
-  return true;
+   auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
+   if(!ds) {
+      XLOGD_ERROR("DisplaySettings plugin not available");
+      return false;
+   }
+   bool ret = ds->set_audio_ducking(action, type, level);
+   if(ret) {
+      if(enable) {
+         XLOGD_INFO("Audio ducking enabled - type <%s> level <%u%%>", relative ? "RELATIVE" : "ABSOLUTE", level);
+      } else {
+         XLOGD_INFO("Audio ducking disabled");
+      }
+   } else {
+      XLOGD_WARN("Ducking sound via Thunder failed");
+   }
+   return ret;
 }
 
 bool ctrlm_dsmgr_LED(bool on) {
-  try {
-    device::FrontPanelIndicator &led =  device::FrontPanelIndicator::getInstance("Power");
-    if (on) {
-       led.setColor(0xFFFFFF);
-       led.setBrightness(100);
-    }
-    led.setState(on);
-  }
-  catch(std::exception& error) {
-    XLOGD_WARN("LED error : %s", error.what());
-    return false;
-  }
-  return true;
+   auto *fp = Thunder::FrontPanel::ctrlm_thunder_plugin_front_panel_t::getInstance();
+   if(!fp) {
+      XLOGD_ERROR("FrontPanel plugin not available");
+      return false;
+   }
+   bool ret = on ? fp->power_led_on(100) : fp->power_led_off();
+   if(!ret) {
+      XLOGD_WARN("LED control via Thunder failed");
+   }
+   return ret;
 }
 
 bool ctrlm_is_voice_assistant(ctrlm_rcu_controller_type_t controller_type) {

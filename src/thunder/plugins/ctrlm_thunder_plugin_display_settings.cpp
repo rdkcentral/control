@@ -186,3 +186,25 @@ void ctrlm_thunder_plugin_display_settings_t::on_initial_activation() {
 
     Thunder::Plugin::ctrlm_thunder_plugin_t::on_initial_activation();
 }
+
+bool ctrlm_thunder_plugin_display_settings_t::set_audio_ducking(
+        dsAudioDuckingAction_t action, dsAudioDuckingType_t type, unsigned char level) {
+    JsonObject params, response;
+    params["audioPort"]   = "SPEAKER0";
+    params["mode"]        = "raw";
+    params["action"]      = (action == dsAUDIO_DUCKINGACTION_START) ? "start" : "stop";
+    params["duckingType"] = (type   == dsAUDIO_DUCKINGTYPE_RELATIVE) ? "relative" : "absolute";
+    params["level"]       = (int)level;
+
+    if(!this->call_plugin("setAudioDucking", (void *)&params, (void *)&response)) {
+        XLOGD_ERROR("DisplaySettings setAudioDucking call failed");
+        return false;
+    }
+    if(!response["success"].Boolean()) {
+        std::string resp_str;
+        response.ToString(resp_str);
+        XLOGD_ERROR("DisplaySettings setAudioDucking returned failure: %s", resp_str.c_str());
+        return false;
+    }
+    return true;
+}

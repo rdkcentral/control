@@ -26,8 +26,6 @@
 #define CTRLM_MAIN_IARM_BUS_NAME                                 "Ctrlm"                                ///< Control Manager's IARM Bus Name
 #define CTRLM_MAIN_IARM_BUS_API_REVISION                         (16)                                   ///< Revision of the Control Manager Main IARM API
 
-#define CTRLM_MAIN_IARM_CALL_STATUS_GET                          "Main_StatusGet"                       ///< Retrieves Control Manager's Status information
-#define CTRLM_MAIN_IARM_CALL_NETWORK_STATUS_GET                  "Main_NetworkStatusGet"                ///< Retrieves the network's Status information
 #define CTRLM_MAIN_IARM_CALL_PROPERTY_SET                        "Main_PropertySet"                     ///< Sets a property of the Control Manager
 #define CTRLM_MAIN_IARM_CALL_PROPERTY_GET                        "Main_PropertyGet"                     ///< Gets a property of the Control Manager
 #define CTRLM_MAIN_IARM_CALL_DISCOVERY_CONFIG_SET                "Main_DiscoveryConfigSet"              ///< Sets the discovery settings
@@ -363,55 +361,6 @@ typedef struct {
    ctrlm_network_id_t   id;   ///< identifier of the network
    ctrlm_network_type_t type; ///< Type of network
 } ctrlm_network_t;
-
-typedef struct {
-   unsigned char            api_revision;                                       ///< Revision of this API
-   ctrlm_iarm_call_result_t result;                                             ///< OUT - The result of the operation.
-   unsigned char            network_qty;                                        ///< OUT - Number of networks connected to Control Manager
-   ctrlm_network_t          networks[CTRLM_MAIN_MAX_NETWORKS];                  ///< OUT - List of networks
-   char                     ctrlm_version[CTRLM_MAIN_VERSION_LENGTH];           ///< OUT - Software version of Control Manager
-   char                     ctrlm_commit_id[CTRLM_MAIN_COMMIT_ID_MAX_LENGTH];   ///< OUT - Last commit ID of Control Manager
-   char                     stb_device_id[CTRLM_MAIN_DEVICE_ID_MAX_LENGTH];     ///< OUT - Device ID obtained from the Set-Top Box
-} ctrlm_main_iarm_call_status_t;
-
-typedef struct {
-   unsigned char number;  ///< RF channel number (15, 20 or 25 for RF4CE)
-   unsigned char quality; ///< Quality indicator for this channel
-} ctrlm_rf_channel_t;
-
-typedef struct {
-   char                  version_hal[CTRLM_MAIN_VERSION_LENGTH];        ///< Software version of the HAL driver
-   unsigned char         controller_qty;                                ///< Number of controllers bound to the target device
-   ctrlm_controller_id_t controllers[CTRLM_MAIN_MAX_BOUND_CONTROLLERS]; ///< List of controllers bound to the target device
-   unsigned short        pan_id;                                        ///< PAN Identifier
-   ctrlm_rf_channel_t    rf_channel_active;                             ///< Current RF channel on which the target is operating
-   unsigned long long    ieee_address;                                  ///< The 64-bit IEEE Address of the target device
-   unsigned short        short_address;                                 ///< Short address (if applicable)
-   char                  chipset[CTRLM_MAIN_MAX_CHIPSET_LENGTH];        ///< Chipset of the target
-} ctrlm_network_status_rf4ce_t;
-
-typedef struct {
-   char                  version_hal[CTRLM_MAIN_VERSION_LENGTH];        ///< Software version of the HAL driver
-   unsigned char         controller_qty;                                ///< Number of controllers bound to the target device.
-   ctrlm_controller_id_t controllers[CTRLM_MAIN_MAX_BOUND_CONTROLLERS]; ///< List of controllers bound to the target device
-} ctrlm_network_status_ble_t;
-
-typedef struct {
-   char                  version_hal[CTRLM_MAIN_VERSION_LENGTH];        ///< Software version of the HAL driver
-   unsigned char         controller_qty;                                ///< Number of controllers bound to the target device.
-   ctrlm_controller_id_t controllers[CTRLM_MAIN_MAX_BOUND_CONTROLLERS]; ///< List of controllers bound to the target device
-} ctrlm_network_status_ip_t;
-
-typedef struct {
-   unsigned char            api_revision; ///< Revision of this API
-   ctrlm_iarm_call_result_t result;       ///< OUT - Result of the operation
-   ctrlm_network_id_t       network_id;   ///< IN - identifier of network
-   union {
-      ctrlm_network_status_rf4ce_t rf4ce; ///< OUT - RF4CE network status
-      ctrlm_network_status_ble_t   ble;   ///< OUT - BLE network status
-      ctrlm_network_status_ip_t    ip;    ///< OUT - IP network status
-   } status;                              ///< OUT - Union of network status types
-} ctrlm_main_iarm_call_network_status_t;
 
 typedef struct {
    unsigned char            api_revision; ///< Revision of this API

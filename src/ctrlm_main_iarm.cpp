@@ -37,8 +37,6 @@
 #include "dsMgr.h"
 #include "dsRpc.h"
 
-static IARM_Result_t ctrlm_main_iarm_call_status_get(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_network_status_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_property_set(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_property_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_discovery_config_set(void *arg);
@@ -73,8 +71,6 @@ static volatile int running = 0;
 
 // Array to hold the IARM Calls that will be registered by Control Manager
 ctrlm_iarm_call_t ctrlm_iarm_calls[] = {
-   {CTRLM_MAIN_IARM_CALL_STATUS_GET,                         ctrlm_main_iarm_call_status_get                         },
-   {CTRLM_MAIN_IARM_CALL_NETWORK_STATUS_GET,                 ctrlm_main_iarm_call_network_status_get                 },
    {CTRLM_MAIN_IARM_CALL_PROPERTY_SET,                       ctrlm_main_iarm_call_property_set                       },
    {CTRLM_MAIN_IARM_CALL_PROPERTY_GET,                       ctrlm_main_iarm_call_property_get                       },
    {CTRLM_MAIN_IARM_CALL_DISCOVERY_CONFIG_SET,               ctrlm_main_iarm_call_discovery_config_set               },
@@ -144,30 +140,6 @@ void ctrlm_main_iarm_terminate(void) {
    //}
 }
 
-IARM_Result_t ctrlm_main_iarm_call_status_get(void *arg) {
-   ctrlm_main_iarm_call_status_t *status = (ctrlm_main_iarm_call_status_t *) arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(status == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(status->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-      XLOGD_INFO("Unsupported API Revision (%u, %u)", status->api_revision, CTRLM_MAIN_IARM_BUS_API_REVISION);
-      status->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-      return(IARM_RESULT_SUCCESS);
-   }
-   XLOGD_INFO("");
-
-   if(!ctrlm_main_iarm_call_status_get(status)) {
-      status->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-   return(IARM_RESULT_SUCCESS);
-}
-
 IARM_Result_t ctrlm_main_iarm_call_ir_remote_usage_get(void *arg) {
    ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage = (ctrlm_main_iarm_call_ir_remote_usage_t *) arg;
 
@@ -212,30 +184,6 @@ IARM_Result_t ctrlm_main_iarm_call_last_key_info_get(void *arg) {
 
    if(!ctrlm_main_iarm_call_last_key_info_get(last_key_info)) {
       last_key_info->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_network_status_get(void *arg) {
-   ctrlm_main_iarm_call_network_status_t *status = (ctrlm_main_iarm_call_network_status_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(status == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(status->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-      XLOGD_INFO("Unsupported API Revision (%u, %u)", status->api_revision, CTRLM_MAIN_IARM_BUS_API_REVISION);
-      status->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-      return(IARM_RESULT_SUCCESS);
-   }
-   XLOGD_INFO("");
-   
-   if(!ctrlm_main_iarm_call_network_status_get(status)) {
-      status->result = CTRLM_IARM_CALL_RESULT_ERROR;
    }
    return(IARM_RESULT_SUCCESS);
 }

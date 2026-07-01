@@ -252,7 +252,6 @@ public:
    virtual void                                  set_rf_pair_state(ctrlm_rf_pair_state_t rf_pair_state);
    virtual ctrlm_rf_pair_state_t                 get_rf_pair_state() const;
 
-   virtual void         req_process_network_status(void *data, int size);
    virtual void         req_process_chip_status(void *data, int size);
    virtual void         req_process_controller_link_key(void *data, int size);
    virtual void         req_process_controller_status(void *data, int size);

@@ -347,7 +347,6 @@ public:
    ctrlm_rib_request_cmd_result_t req_process_rib_export(ctrlm_controller_id_t controller_id, uint8_t identifier, unsigned char index, unsigned char length, unsigned char *data);
    void req_process_controller_status(void *dqm, int size);
    void req_process_controller_product_name(void *data, int size);
-   void req_process_network_status(void *data, int size);
    void req_process_chip_status(void *data, int size);
    void req_process_controller_link_key(void *data, int size);
    void req_process_dpi_control(void *data, int size);

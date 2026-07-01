@@ -171,12 +171,6 @@ typedef enum {
 } ctrlm_main_status_cmd_result_t;
 
 typedef struct {
-   ctrlm_main_iarm_call_network_status_t *status;
-   sem_t *                                semaphore;
-   ctrlm_main_status_cmd_result_t *       cmd_result;
-} ctrlm_main_queue_msg_main_network_status_t;
-
-typedef struct {
    ctrlm_main_iarm_call_chip_status_t     *status;
    sem_t *                                semaphore;
 } ctrlm_main_queue_msg_main_chip_status_t;
@@ -465,7 +459,6 @@ void                               ctrlm_event_handler_ir(const char *owner, IAR
 void                               ctrlm_quit_main_loop();
 gboolean                           ctrlm_power_state_change(ctrlm_power_state_t power_state);
 
-gboolean ctrlm_main_iarm_call_network_status_get(ctrlm_main_iarm_call_network_status_t *status);
 gboolean ctrlm_main_iarm_call_property_set(ctrlm_main_iarm_call_property_t *property);
 void     ctrlm_main_iarm_call_property_set_(ctrlm_main_iarm_call_property_t *property);
 gboolean ctrlm_main_iarm_call_property_get(ctrlm_main_iarm_call_property_t *property);

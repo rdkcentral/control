@@ -125,4 +125,40 @@
 // End Voice Markers
 //
 
+//
+// RCU Markers
+//
+
+// BLE RCU Pairing Attempt Marker
+// Value format: Array of comma separated integers or string with the fields below.
+// [<version>,<type>,<method>,<result>,<discovered>,<name>,<bluez_retries>,<bluez_msg1>,<bluez_msg2>,<bluez_msg3>]
+// <version>       - version of the marker format.
+// <type>          - type of network the marker is coming from
+// <method>        - enum representing pairing method (see PairingMethod)
+// <result>        - enum that represents "success" or failure reason (see FailureReason)
+// <discovered>    - number of discovered devices from pairing attempt
+// <name>          - name of paired remote, empty string on failure
+// <bluez_retries> - number of bluez pair() retries made before success or final error
+// <bluez_msg1>    - error message 1 from bluez layer or null if no error
+// <bluez_msg2>    - error message 2 from bluez layer or null if no error
+// <bluez_msg3>    - error message 3 from bluez layer or null if no error
+#define MARKER_RCU_PAIRING_ATTEMPT "ctrlm.rcu.pairing.attempt_accum"
+#define MARKER_RCU_PAIRING_ATTEMPT_VERSION 1
+
+//
+// End RCU Markers
+
+// IRDB Markers
+//
+
+// All _accum markers are aggregated by the T2 platform within each reporting window.
+#define MARKER_IRDB_AUTOLOOKUP_RESULT "ctrlm.irdb.autolookup.result_accum" // format: <stb_vendor>,<stb_bitmask>,<tv>,<tv_code_count>,<avr_code_count>,<result>
+#define MARKER_IRDB_MANUAL_RESULT     "ctrlm.irdb.manual.result_accum"     // format: <stb_vendor>,<stb_bitmask>,<method>,<result>
+#define MARKER_IRDB_PROGRAM_RESULT    "ctrlm.irdb.program.result_accum"    // format: <result>,<fail_reason>,<rcu_bitmask>,<vendor_name>,<vendor_bitmask>
+#define MARKER_IRDB_VENDOR_SET        "ctrlm.irdb.vendor_set_accum"        // format: <set_result>,<rcu_bitmask>,<vendor_name>,<vendor_bitmask>,<supported>
+
+//
+// End IRDB Markers
+//
+
 #endif

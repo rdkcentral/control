@@ -77,10 +77,10 @@ void ctrlm_db_chime_volume_write(guchar *data, guint32 length);
 void ctrlm_db_chime_volume_read(guchar **data, guint32 *length);
 void ctrlm_db_ir_command_repeats_write(guchar *data, guint32 length);
 void ctrlm_db_ir_command_repeats_read(guchar **data, guint32 *length);
-void ctrlm_db_tv_ir_code_id_write(const std::string id);
-void ctrlm_db_tv_ir_code_id_read(std::string &id);
-void ctrlm_db_avr_ir_code_id_write(const std::string id);
-void ctrlm_db_avr_ir_code_id_read(std::string &id);
+void ctrlm_db_tv_ir_code_id_write(const std::string id, unsigned char vendor_id, const std::string vendor_name);
+void ctrlm_db_tv_ir_code_id_read(std::string &id, unsigned char &vendor_id, std::string &vendor_name);
+void ctrlm_db_avr_ir_code_id_write(const std::string id, unsigned char vendor_id, const std::string vendor_name);
+void ctrlm_db_avr_ir_code_id_read(std::string &id, unsigned char &vendor_id, std::string &vendor_name);
 
 void ctrlm_db_rf4ce_networks_list(std::vector<ctrlm_network_id_t> *network_ids);
 void ctrlm_db_rf4ce_controllers_list(ctrlm_network_id_t network_id, std::vector<ctrlm_controller_id_t> *controller_ids);

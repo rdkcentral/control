@@ -470,7 +470,7 @@ void GattAudioServiceRdk::requestGainLevel()
                 
                 if (value.size() == 1) {
                     m_gainLevel = value[0];
-                    XLOGD_INFO("Successfully read from RCU gain level = %u", m_gainLevel);
+                    XLOGD_DEBUG("Successfully read from RCU gain level = %u", m_gainLevel);
                     m_gainLevelChangedSlots.invoke(m_gainLevel);
                 } else {
                     XLOGD_ERROR("gain value received has invalid length (%d bytes)", value.size());
@@ -504,7 +504,7 @@ void GattAudioServiceRdk::requestAudioCodecs()
                 
                 if (value.size() == sizeof(m_audioCodecs)) {
                     memcpy(&m_audioCodecs, value.data(), sizeof(m_audioCodecs));
-                    XLOGD_INFO("Successfully read from RCU audio codecs bit mask = 0x%X", m_audioCodecs);
+                    XLOGD_DEBUG("Successfully read from RCU audio codecs bit mask = 0x%X", m_audioCodecs);
                     m_audioCodecsChangedSlots.invoke(m_audioCodecs);
                 } else {
                     XLOGD_ERROR("audio codec received has invalid length (%d bytes)", value.size());

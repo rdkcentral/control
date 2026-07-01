@@ -281,7 +281,7 @@ void GattRemoteControlService::requestStartUnpairNotify()
                 m_stateMachine.cancelDelayedEvents(RetryStartNotifyEvent);
                 m_stateMachine.postDelayedEvent(RetryStartNotifyEvent, 2000);
             } else {
-                XLOGD_INFO("request to start notifications on Unpair characteristic succeeded");
+                XLOGD_DEBUG("request to start notifications on Unpair characteristic succeeded");
             }
         };
 
@@ -305,7 +305,7 @@ void GattRemoteControlService::requestStartRebootNotify()
                 m_stateMachine.cancelDelayedEvents(RetryStartNotifyEvent);
                 m_stateMachine.postDelayedEvent(RetryStartNotifyEvent, 2000);
             } else {
-                XLOGD_INFO("request to start notifications on Reboot Reason characteristic succeeded");
+                XLOGD_DEBUG("request to start notifications on Reboot Reason characteristic succeeded");
             }
         };
 
@@ -334,7 +334,7 @@ void GattRemoteControlService::requestRawBatteryVoltageChangedNotify()
                 m_stateMachine.cancelDelayedEvents(RetryStartNotifyEvent);
                 m_stateMachine.postDelayedEvent(RetryStartNotifyEvent, 2000);
             } else {
-                XLOGD_INFO("request to start notifications on Raw Battery Voltage characteristic succeeded");
+                XLOGD_DEBUG("request to start notifications on Raw Battery Voltage characteristic succeeded");
             }
         };
 
@@ -435,7 +435,7 @@ void GattRemoteControlService::requestUnpairReason()
                 
                 if (value.size() == 1) {
                     m_unpairReason = value[0];
-                    XLOGD_INFO("Initial unpair reason is %u (%s)", m_unpairReason, 
+                    XLOGD_DEBUG("Initial unpair reason is %u (%s)", m_unpairReason, 
                             ctrlm_ble_unpair_reason_str((ctrlm_ble_RcuUnpairReason_t)m_unpairReason));
                 } else {
                     XLOGD_ERROR("Unpair reason received has invalid length (%d bytes)", value.size());
@@ -470,7 +470,7 @@ void GattRemoteControlService::requestRebootReason()
                 
                 if (value.size() == 1) {
                     m_rebootReason = value[0];
-                    XLOGD_INFO("Initial reboot reason is %u (%s)", m_rebootReason, 
+                    XLOGD_DEBUG("Initial reboot reason is %u (%s)", m_rebootReason, 
                             ctrlm_ble_reboot_reason_str((ctrlm_ble_RcuRebootReason_t)m_rebootReason));
 
                     if (m_rebootReason == CTRLM_BLE_RCU_REBOOT_REASON_ASSERT) {
@@ -511,7 +511,7 @@ void GattRemoteControlService::requestAssertReport()
                 
                 if (value.size() == CTRLM_RCU_ASSERT_REPORT_MAX_SIZE) {
                     string assertStr(value.begin(), value.end()); 
-                    XLOGD_INFO("Initial RCU assert report is <%s>", assertStr.c_str());
+                    XLOGD_DEBUG("Initial RCU assert report is <%s>", assertStr.c_str());
                 } else {
                     XLOGD_ERROR("RCU assert report has invalid length (%d bytes)", value.size());
                 }
@@ -547,7 +547,7 @@ void GattRemoteControlService::requestLastKeypress()
                 
                 if (value.size() == 1) {
                     m_lastKeypress = value[0];
-                    XLOGD_INFO("Successfully read last key press characteristic, value = <0x%X>, emitting signal...", m_lastKeypress);
+                    XLOGD_DEBUG("Successfully read last key press characteristic, value = <0x%X>, emitting signal...", m_lastKeypress);
                     m_lastKeypressChangedSlots.invoke(m_lastKeypress);
                 } else {
                     XLOGD_ERROR("Last key press received has invalid length (%d bytes)", value.size());
@@ -627,7 +627,7 @@ void GattRemoteControlService::requestAdvConfig()
                 
                 if (value.size() == 1) {
                     m_advConfig = value[0];
-                    XLOGD_INFO("Successfully read advertising config characteristic, value = <0x%X>, emitting signal...", m_advConfig);
+                    XLOGD_DEBUG("Successfully read advertising config characteristic, value = <0x%X>, emitting signal...", m_advConfig);
                     m_advConfigChangedSlots.invoke(m_advConfig);
                 } else {
                     XLOGD_ERROR("Advertising config received has invalid length (%d bytes)", value.size());
@@ -664,7 +664,7 @@ void GattRemoteControlService::requestAdvConfigCustomList()
                 XLOGD_ERROR("Failed to read custom advertising config due to <%s>", reply->errorMessage().c_str());
             } else {
                 m_advConfigCustomList = reply->result();
-                XLOGD_INFO("Successfully read advertising config custom list characteristic");
+                XLOGD_DEBUG("Successfully read advertising config custom list characteristic");
                 
                 m_advConfigCustomListChangedSlots.invoke(m_advConfigCustomList);
             }
@@ -884,7 +884,7 @@ void GattRemoteControlService::onRebootReasonChanged(const vector<uint8_t> &newV
         XLOGD_ERROR("Reboot reason received has invalid length (%d bytes)", newValue.size());
     } else {
         m_rebootReason = newValue[0];
-        XLOGD_INFO("reboot reason changed to %u (%s)", m_rebootReason, 
+        XLOGD_DEBUG("reboot reason changed to %u (%s)", m_rebootReason, 
                 ctrlm_ble_reboot_reason_str((ctrlm_ble_RcuRebootReason_t)m_rebootReason));
 
         if (m_rebootReason == CTRLM_BLE_RCU_REBOOT_REASON_ASSERT && m_assertReportCharacteristic) {

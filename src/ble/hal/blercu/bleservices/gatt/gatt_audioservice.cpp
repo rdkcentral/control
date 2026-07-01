@@ -746,6 +746,11 @@ void GattAudioService::stateMachinePostDelayedEvent(const Event::Type event, con
     m_stateMachine.postDelayedEvent(event, delay);
 }
 
+void GattAudioService::stateMachineCancelDelayedEvents(const Event::Type eventType)
+{
+    m_stateMachine.cancelDelayedEvents(eventType);
+}
+
 bool GattAudioService::stateMachineIsIdle()
 {
     return m_stateMachine.inState(IdleState);

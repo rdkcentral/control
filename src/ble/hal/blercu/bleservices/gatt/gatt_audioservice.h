@@ -72,6 +72,7 @@ public:
 
     void stateMachinePostEvent(const Event::Type event);
     void stateMachinePostDelayedEvent(const Event::Type event, const int delay);
+    void stateMachineCancelDelayedEvents(const Event::Type eventType);
 
     bool stateMachineIsIdle();
 

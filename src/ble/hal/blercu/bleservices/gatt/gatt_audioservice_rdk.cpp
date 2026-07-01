@@ -111,6 +111,9 @@ void GattAudioServiceRdk::stop()
 }
 
 void GattAudioServiceRdk::onEnteredIdle() {
+    stateMachineCancelDelayedEvents(RetryStartNotifyEvent);
+    stateMachineCancelDelayedEvents(GattErrorEvent);
+
     if (m_audioDataCharacteristic) {
         XLOGD_INFO("Disabling notifications for m_audioDataCharacteristic");
         m_audioDataCharacteristic->disableNotifications();
@@ -144,6 +147,7 @@ void GattAudioServiceRdk::onEnteredEnableNotificationsState()
                 XLOGD_ERROR("failed to enable audio data notifications due to <%s>", reply->errorMessage().c_str());
                 
                 // notifications are required for audio streaming, so if this fails we need to retry in a couple of seconds
+                stateMachineCancelDelayedEvents(RetryStartNotifyEvent);
                 stateMachinePostDelayedEvent(RetryStartNotifyEvent, 2000);
             } else {
                 // notifications enabled so post an event to the state machine
@@ -209,6 +213,7 @@ void GattAudioServiceRdk::onEnteredStartStreamingState()
     if (!m_audioDataCharacteristic->notificationsEnabled()) {
         XLOGD_ERROR("audio data notifications not enabled, cannot continue with audio stream");
         setLastError(StreamingError::InternalError);
+        stateMachineCancelDelayedEvents(GattErrorEvent);
         stateMachinePostDelayedEvent(GattErrorEvent, 10);   // needs to be delayed to avoid re-entrancy issues with the state machine
     } else {
         // the first byte is the codec to use, the second byte is to enable voice

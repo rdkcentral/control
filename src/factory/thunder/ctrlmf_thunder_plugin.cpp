@@ -208,6 +208,33 @@ bool ctrlm_thunder_plugin_t::call_plugin(std::string method, void *params, void 
     return(ret);
 }
 
+bool ctrlm_thunder_plugin_t::call_plugin(std::string method, void *params, void *response, unsigned int retries) {
+    bool ret = false;
+    unsigned int attempts = 0;
+    auto clientObject = (JSONRPC::LinkType<Core::JSON::IElement>*)this->plugin_client;
+    JsonObject *jsonParams = (JsonObject *)params;
+    JsonObject *jsonResponse = (JsonObject *)response;
+    if(clientObject) {
+        if(!method.empty() && jsonParams && jsonResponse) {
+            uint32_t thunderRet = Core::ERROR_TIMEDOUT;
+            while(thunderRet == Core::ERROR_TIMEDOUT && attempts <= retries) {
+                thunderRet = clientObject->Invoke<JsonObject, JsonObject>(CALL_TIMEOUT, _T(method), *jsonParams, *jsonResponse);
+                if(thunderRet == Core::ERROR_NONE) {
+                    ret = true;
+                } else {
+                    XLOGD_ERROR("%s: Thunder call failed <%s> <%u>\n", __FUNCTION__, method.c_str(), thunderRet);
+                    attempts++;
+                }
+            }
+        } else {
+            XLOGD_ERROR("%s: Invalid parameters\n", __FUNCTION__);
+        }
+    } else {
+        XLOGD_ERROR("%s: Client is NULL\n", __FUNCTION__);
+    }
+    return(ret);
+}
+
 bool ctrlm_thunder_plugin_t::call_controller(std::string method, void *params, void *response) {
     bool ret = false;
     if(this->controller) {

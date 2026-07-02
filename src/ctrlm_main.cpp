@@ -354,7 +354,6 @@ static void     ctrlm_signals_register(void);
 static void     ctrlm_signal_handler(int signal);
 static gboolean ctrlm_unix_signal_terminate(gpointer user_data);
 
-static void     ctrlm_main_iarm_call_precommission_config_set_(ctrlm_main_iarm_call_precommision_config_t *config);
 static void     ctrlm_main_iarm_call_factory_reset_(ctrlm_main_iarm_call_factory_reset_t *reset);
 static void     ctrlm_main_iarm_call_controller_unbind_(ctrlm_main_iarm_call_controller_unbind_t *unbind);
 static void     ctrlm_main_update_export_controller_list(void);
@@ -2497,17 +2496,6 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PRECOMMISSION_CONFIG_SET: {
-            ctrlm_main_queue_msg_main_precommision_config_t *dqm = (ctrlm_main_queue_msg_main_precommision_config_t *) msg;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PRECOMMISSION_CONFIG_SET");
-            ctrlm_main_iarm_call_precommission_config_set_(dqm->config);
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_FACTORY_RESET: {
             ctrlm_main_queue_msg_main_factory_reset_t *dqm = (ctrlm_main_queue_msg_main_factory_reset_t *) msg;
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_FACTORY_RESET");
@@ -3364,67 +3352,6 @@ bool ctrlm_main_active_period_screenbind_timeout_set_(uint32_t timeout) {
    XLOGD_INFO("ACTIVE PERIOD SCREENBIND %lu ms", timeout);
    
    return(true);
-}
-
-gboolean ctrlm_main_iarm_call_precommission_config_set(ctrlm_main_iarm_call_precommision_config_t *config) {
-   if(config == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_precommision_config_t *msg = (ctrlm_main_queue_msg_main_precommision_config_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_precommision_config_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-   sem_init(&semaphore, 0, 0);
-
-   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PRECOMMISSION_CONFIG_SET;
-   msg->header.network_id = CTRLM_MAIN_NETWORK_ID_ALL;
-   msg->config            = config;
-   msg->semaphore         = &semaphore;
-   msg->cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process PRECOMISSION_CONFIG_SET request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-void ctrlm_main_iarm_call_precommission_config_set_(ctrlm_main_iarm_call_precommision_config_t *config) {
-   if(config->network_id != CTRLM_MAIN_NETWORK_ID_ALL && !ctrlm_network_id_is_valid(config->network_id)) {
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      XLOGD_ERROR("network id - Out of range %u", config->network_id);
-      return;
-   }
-   if(config->controller_qty > CTRLM_MAIN_MAX_BOUND_CONTROLLERS) {
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      XLOGD_ERROR("controller qty - Out of range %lu", config->controller_qty);
-      return;
-   }
-   unsigned long index;
-
-   for(index = 0; index < config->controller_qty; index++) {
-      g_ctrlm.precomission_table[config->controllers[index]] = true;
-      XLOGD_INFO("Adding 0x%016llX", config->controllers[index]);
-   }
-   config->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
 }
 
 gboolean ctrlm_main_iarm_call_factory_reset(ctrlm_main_iarm_call_factory_reset_t *reset) {

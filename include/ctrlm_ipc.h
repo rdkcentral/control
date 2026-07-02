@@ -26,7 +26,6 @@
 #define CTRLM_MAIN_IARM_BUS_NAME                                 "Ctrlm"                                ///< Control Manager's IARM Bus Name
 #define CTRLM_MAIN_IARM_BUS_API_REVISION                         (16)                                   ///< Revision of the Control Manager Main IARM API
 
-#define CTRLM_MAIN_IARM_CALL_PRECOMMISSION_CONFIG_SET            "Main_PrecommissionConfigSet"          ///< Sets the pre-commission settings
 #define CTRLM_MAIN_IARM_CALL_FACTORY_RESET                       "Main_FactoryReset"                    ///< Sets the configuration back to factory default
 #define CTRLM_MAIN_IARM_CALL_CONTROLLER_UNBIND                   "Main_ControllerUnbind"                ///< Removes a binding between the target and the specified controller
 #define CTRLM_MAIN_IARM_CALL_IR_REMOTE_USAGE_GET                 "Main_IrRemoteUsageGet"                ///< Retrieves the ir remote usage info
@@ -42,7 +41,7 @@
 #define CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_START                 "Main_AudioCaptureStart"               ///< Sends message to xraudio to capture mic data, in specified container
 #define CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_STOP                  "Main_AudioCaptureStop"                ///< Sends message to xraudio to stop capturing mic data
 #define CTRLM_MAIN_IARM_CALL_POWER_STATE_CHANGE                  "Main_PowerStateChange"                ///< Sends message to xr-speech-router to set power state, download DSP firmware, etc
-// IARM calls for the IR Database
+
 #define CTRLM_MAIN_IARM_CALL_IR_CODES                            "Main_IRCodes"           ///< IARM Call to retrieve IR Codes based on type, manufacturer, and model
 #define CTRLM_MAIN_IARM_CALL_IR_MANUFACTURERS                    "Main_IRManufacturers"   ///< IARM Call to retrieve list of manufacturers, based on (partial) name
 #define CTRLM_MAIN_IARM_CALL_IR_MODELS                           "Main_IRModels"          ///< IARM Call to retrieve list of models, based on (partial) name
@@ -51,7 +50,6 @@
 #define CTRLM_MAIN_IARM_CALL_IR_CLEAR_CODE                       "Main_IRClear"           ///< IARM Call to clear all IR Codes from a specified BLE remote
 #define CTRLM_MAIN_IARM_CALL_IR_INITIALIZE                       "Main_IRInitialize"      ///< IARM Call to initialize the IR database
 
-// For Remote Plugin, only used for BLE currently, refactoring needed in other networks to use this interface
 #define CTRLM_MAIN_IARM_CALL_GET_RCU_STATUS                      "Main_GetRcuStatus"            ///< IARM Call get the RCU status info (same as what's provided by CTRLM_RCU_IARM_EVENT_RCU_STATUS)
 #define CTRLM_MAIN_IARM_CALL_START_PAIRING                       "Main_StartPairing"            ///< IARM Call to initiate searching for a remote to pair with
 #define CTRLM_MAIN_IARM_CALL_START_PAIR_WITH_CODE                "Main_StartPairWithCode"       ///< IARM Call to initiate searching for a remote to pair with
@@ -326,14 +324,6 @@ typedef enum {
 
 typedef unsigned char ctrlm_network_id_t;
 typedef unsigned char ctrlm_controller_id_t;
-
-typedef struct {
-   unsigned char            api_revision;                                  ///< Revision of this API
-   ctrlm_iarm_call_result_t result;                                        ///< Result of the operation
-   ctrlm_network_id_t       network_id;                                    ///< IN - identifier of network or CTRLM_MAIN_NETWORK_ID_ALL for all networks
-   unsigned long            controller_qty;                                ///< Number of precommissioned controllers
-   unsigned long long       controllers[CTRLM_MAIN_MAX_BOUND_CONTROLLERS]; ///< IEEE Address for precommissioned controllers
-} ctrlm_main_iarm_call_precommision_config_t;
 
 typedef struct {
    unsigned char            api_revision;                           ///< Revision of this API

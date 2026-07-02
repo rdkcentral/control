@@ -29,13 +29,20 @@
 #include "ctrlm_utils.h"
 #include <xr_mq.h>
 #include <map>
+#include <tuple>
+#include <string>
 #include <linux/input.h>
 #include <uuid/uuid.h>
 
-#include <dsAudio.h>
+#include <curl/curl.h>
 #include <regex>
 #include "thunder/plugins/ctrlm_thunder_plugin_display_settings.h"
 #include "thunder/plugins/ctrlm_thunder_plugin_front_panel.h"
+
+using std::map;
+using std::tuple;
+using std::get;
+using std::string;
 
 #define BLOCK_SIZE     (1024 * 4 * 10) /* bytes */
 #define MAX_RECURSE_DEPTH 20

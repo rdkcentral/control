@@ -99,7 +99,6 @@ typedef enum {
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STOP_BINDING_SCREEN,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_SET_VALUES,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_CAN_FIND_MY_REMOTE,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_START_PAIRING_MODE,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_END_PAIRING_MODE,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STOP_ONE_TOUCH_AUTOBIND,
@@ -252,13 +251,6 @@ typedef struct {
    sem_t *                                          semaphore;
    ctrlm_main_status_cmd_result_t *                 cmd_result;
 } ctrlm_main_queue_msg_main_control_service_settings_t;
-
-typedef struct {
-   ctrlm_main_queue_msg_header_t                              header;
-   ctrlm_main_iarm_call_control_service_can_find_my_remote_t *can_find_my_remote;
-   sem_t *                                                    semaphore;
-   ctrlm_main_status_cmd_result_t *                           cmd_result;
-} ctrlm_main_queue_msg_main_control_service_can_find_my_remote_t;
 
 typedef struct {
    ctrlm_main_queue_msg_header_t                        header;
@@ -435,7 +427,6 @@ gboolean ctrlm_main_iarm_call_pairing_metrics_get(ctrlm_main_iarm_call_pairing_m
 gboolean ctrlm_main_iarm_call_last_key_info_get(ctrlm_main_iarm_call_last_key_info_t *last_key_info);
 gboolean ctrlm_main_iarm_call_control_service_set_values(ctrlm_main_iarm_call_control_service_settings_t *settings);
 gboolean ctrlm_main_iarm_call_control_service_get_values(ctrlm_main_iarm_call_control_service_settings_t *settings);
-gboolean ctrlm_main_iarm_call_control_service_can_find_my_remote(ctrlm_main_iarm_call_control_service_can_find_my_remote_t *can_find_my_remote);
 gboolean ctrlm_main_iarm_call_control_service_start_pairing_mode(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 void     ctrlm_main_iarm_call_control_service_start_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 gboolean ctrlm_main_iarm_call_control_service_end_pairing_mode(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);

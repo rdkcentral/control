@@ -33,7 +33,6 @@
 #define CTRLM_MAIN_IARM_CALL_LAST_KEYPRESS_GET                   "Main_LastKeyPressGet"                 ///< Retrieves the last key press (TODO: replace CTRLM_MAIN_IARM_CALL_LAST_KEY_INFO_GET with this)
 #define CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_SET_VALUES          "Main_ControlService_SetValues"        ///< IARM Call to set control service values
 #define CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_GET_VALUES          "Main_ControlService_GetValues"        ///< IARM Call to get control service values
-#define CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_CAN_FIND_MY_REMOTE  "Main_ControlService_CanFindMyRemote"  ///< IARM Call to get control service find my remote
 #define CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_START_PAIRING_MODE  "Main_ControlService_StartPairingMode" ///< IARM Call to set control service start pairing mode
 #define CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_END_PAIRING_MODE    "Main_ControlService_EndPairingMode"   ///< IARM Call to set control service end pairing mode
 #define CTRLM_MAIN_IARM_CALL_PAIRING_METRICS_GET                 "Main_PairingMetricsGet"               ///< Retrieves the stb's pairing metrics
@@ -397,13 +396,6 @@ typedef struct {
    ctrlm_chime_volume_t         chime_volume;                                   ///< The chime volume
    unsigned char                ir_command_repeats;                             ///< The ir command repeats (1 - 10)
 } ctrlm_main_iarm_call_control_service_settings_t;
-
-typedef struct {
-   unsigned char                api_revision;                                   ///< The revision of this API.
-   ctrlm_iarm_call_result_t     result;                                         ///< Result of the IARM call
-   unsigned char                is_supported;                                   ///< Read only Boolean value to indicate if findMyRemote is supported enable (non-zero) or not supported (zero)
-   ctrlm_network_type_t         network_type;                                   ///< [in]  Type of network on which the controller is bound
-} ctrlm_main_iarm_call_control_service_can_find_my_remote_t;
 
 typedef struct {
    unsigned char                api_revision;                                   ///< The revision of this API.

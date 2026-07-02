@@ -2872,21 +2872,6 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_CAN_FIND_MY_REMOTE: {
-            ctrlm_main_queue_msg_main_control_service_can_find_my_remote_t *dqm = (ctrlm_main_queue_msg_main_control_service_can_find_my_remote_t *) msg;
-            ctrlm_main_iarm_call_control_service_can_find_my_remote_t *can_find_my_remote = dqm->can_find_my_remote;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_CAN_FIND_MY_REMOTE");
-            obj_net = g_ctrlm.networks[hdr->network_id];
-            can_find_my_remote->is_supported = obj_net->is_fmr_supported();
-            XLOGD_INFO("Can find My Remote: Supported <%s>", can_find_my_remote->is_supported ? "true" : "false");
-            
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_START_PAIRING_MODE: {
             ctrlm_main_queue_msg_main_control_service_pairing_mode_t *dqm = (ctrlm_main_queue_msg_main_control_service_pairing_mode_t *) msg;
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_START_PAIRING_MODE");
@@ -4482,47 +4467,6 @@ gboolean ctrlm_main_iarm_call_control_service_get_values(ctrlm_main_iarm_call_co
 
    // Wait for the result semaphore to be signaled
    XLOGD_DEBUG("Waiting for main thread to process CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-gboolean ctrlm_main_iarm_call_control_service_can_find_my_remote(ctrlm_main_iarm_call_control_service_can_find_my_remote_t *can_find_my_remote) {
-   if(can_find_my_remote == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_control_service_can_find_my_remote_t *msg = (ctrlm_main_queue_msg_main_control_service_can_find_my_remote_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_control_service_can_find_my_remote_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-   sem_init(&semaphore, 0, 0);
-
-   msg->header.type        = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_CAN_FIND_MY_REMOTE;
-   msg->header.network_id  = ctrlm_network_id_get(can_find_my_remote->network_type);
-   msg->can_find_my_remote = can_find_my_remote;
-   msg->semaphore          = &semaphore;
-   msg->cmd_result         = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_CAN_FIND_MY_REMOTE request");
    sem_wait(&semaphore);
    sem_destroy(&semaphore);
 

@@ -177,6 +177,7 @@ if(TELEMETRY_SUPPORT)
 endif()
 
 if(THUNDER)
+   add_compile_definitions(PRIVATE CTRLM_USE_THUNDER_FR_DS)
    target_sources(controlMgr PRIVATE
       thunder/ctrlm_thunder_controller.cpp
       thunder/ctrlm_thunder_plugin.cpp

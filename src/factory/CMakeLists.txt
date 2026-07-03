@@ -57,7 +57,6 @@ endif()
 
 if(THUNDER)
    add_compile_definitions(PRIVATE CTRLMF_THUNDER)
-   add_compile_definitions(PRIVATE CTRLM_USE_THUNDER_FR_DS)
    target_sources(ctrlm-fta PRIVATE
       ctrlmf_audio_playback.cpp
       thunder/ctrlmf_thunder_controller.cpp
@@ -84,6 +83,10 @@ if(THUNDER)
       target_link_libraries(ctrlm-fta WPEFrameworkSecurityUtil secure_wrapper)
       target_link_libraries(controlFactory WPEFrameworkSecurityUtil secure_wrapper)
    endif()
+endif()
+
+if(CTRLM_USE_THUNDER_FR_DS)
+   add_compile_definitions(PRIVATE CTRLM_USE_THUNDER_FR_DS)
 endif()
 
 install(TARGETS controlFactory DESTINATION bin)

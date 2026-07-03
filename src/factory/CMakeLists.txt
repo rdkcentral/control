@@ -57,6 +57,7 @@ endif()
 
 if(THUNDER)
    add_compile_definitions(PRIVATE CTRLMF_THUNDER)
+   add_compile_definitions(PRIVATE CTRLM_USE_THUNDER_FR_DS)
    target_sources(ctrlm-fta PRIVATE
       ctrlmf_audio_playback.cpp
       thunder/ctrlmf_thunder_controller.cpp

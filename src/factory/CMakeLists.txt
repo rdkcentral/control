@@ -50,6 +50,10 @@ target_sources(ctrlm-fta PRIVATE
 target_link_libraries(ctrlm-fta c rdkversion dbus-1 glib-2.0 IARMBus xr-voice-sdk pthread nopoll secure_wrapper)
 target_link_libraries(controlFactory c ctrlm-fta secure_wrapper)
 
+if(NOT CTRLM_USE_THUNDER_FR_DS)
+   target_link_libraries(ctrlm-fta ds)
+endif()
+
 if(AUTH_ENABLED)
    add_compile_definitions(PRIVATE CTRLMF_WSS_ENABLED)
    target_link_libraries(ctrlm-fta RdkCertSelector rdkconfig)

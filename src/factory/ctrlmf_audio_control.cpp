@@ -7,7 +7,7 @@
 #include <ctrlmf_utils.h>
 #include <dsAudio.h>
 
-#ifdef CTRLMF_THUNDER
+#ifdef CTRLM_USE_THUNDER_FR_DS
 #include "thunder/plugins/ctrlm_thunder_plugin_display_settings.h"
 #else
 #include "host.hpp"
@@ -24,7 +24,7 @@
 #endif
 
 bool ctrlmf_audio_control_init(void) {
-#ifdef CTRLMF_THUNDER
+#ifdef CTRLM_USE_THUNDER_FR_DS
    // DSMgr initialization is no longer needed; Thunder plugins self-initialise.
    return(true);
 #else
@@ -45,7 +45,7 @@ bool ctrlmf_audio_control_init(void) {
 }
 
 bool ctrlmf_audio_control_term(void) {
-#ifdef CTRLMF_THUNDER
+#ifdef CTRLM_USE_THUNDER_FR_DS
    // DSMgr deinitialization is no longer needed; Thunder plugins self-manage.
    return(true);
 #else
@@ -67,7 +67,7 @@ bool ctrlmf_audio_control_mute(bool mute) {
       XLOGD_ERROR("not initialized");
       return(false);
    }
-#ifdef CTRLMF_THUNDER
+#ifdef CTRLM_USE_THUNDER_FR_DS
    dsAudioDuckingAction_t action = mute ? dsAUDIO_DUCKINGACTION_START : dsAUDIO_DUCKINGACTION_STOP;
    auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
    if(!ds) {
@@ -104,7 +104,7 @@ bool ctrlmf_audio_control_attenuate(bool enable, bool relative, double vol) {
       XLOGD_ERROR("Invalid volume");
       return(false);
    }
-#ifdef CTRLMF_THUNDER
+#ifdef CTRLM_USE_THUNDER_FR_DS
    unsigned char level = (unsigned char)((vol * 100) + 0.5);
    dsAudioDuckingAction_t action = enable   ? dsAUDIO_DUCKINGACTION_START  : dsAUDIO_DUCKINGACTION_STOP;
    dsAudioDuckingType_t   type   = relative ? dsAUDIO_DUCKINGTYPE_RELATIVE : dsAUDIO_DUCKINGTYPE_ABSOLUTE;

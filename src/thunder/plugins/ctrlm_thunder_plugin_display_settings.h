@@ -20,7 +20,6 @@
 #define __CTRLM_THUNDER_PLUGIN_DISPLAY_SETTINGS_H__
 #include "ctrlm_thunder_plugin.h"
 #include <semaphore.h>
-#include <dsAudio.h>
 
 namespace Thunder {
 namespace DisplaySettings {
@@ -49,12 +48,12 @@ public:
 
     /**
      * Calls DisplaySettings.setAudioDucking on the SPEAKER0 audio port.
-     * @param action  dsAUDIO_DUCKINGACTION_START or dsAUDIO_DUCKINGACTION_STOP
-     * @param type    dsAUDIO_DUCKINGTYPE_ABSOLUTE or dsAUDIO_DUCKINGTYPE_RELATIVE
+     * @param action  true to start ducking, false to stop
+     * @param type    true for relative ducking, false for absolute
      * @param level   Volume level 0-100
      * @return true on success
      */
-    bool set_audio_ducking(dsAudioDuckingAction_t action, dsAudioDuckingType_t type, unsigned char level);
+    bool set_audio_ducking(bool action, bool type, unsigned char level);
 
 public:
     /**

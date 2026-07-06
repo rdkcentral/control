@@ -5,7 +5,6 @@
 #include <rdkx_logger.h>
 #include <ctrlm_fta_lib.h>
 #include <ctrlmf_utils.h>
-#include <dsAudio.h>
 
 #ifdef CTRLM_USE_THUNDER_FR_DS
 #include "thunder/plugins/ctrlm_thunder_plugin_display_settings.h"
@@ -21,6 +20,7 @@
 #include "dsMgr.h"
 #include "dsRpc.h"
 #include "dsDisplay.h"
+#include <dsAudio.h>
 #endif
 
 bool ctrlmf_audio_control_init(void) {

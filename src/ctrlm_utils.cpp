@@ -134,6 +134,14 @@ void ctrlm_timestamp_get_monotonic(ctrlm_timestamp_t *timestamp) {
    }
 }
 
+uint64_t ctrlm_timestamp_get_ms(void) {
+   struct timespec ts;
+   if(clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+      return 0;
+   }
+   return ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL);
+}
+
 //  1 : one is greater than two
 //  0 : one and two are equal
 // -1 : one is less than two

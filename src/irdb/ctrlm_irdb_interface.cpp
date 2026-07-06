@@ -20,6 +20,7 @@
 #include "ctrlm_irdb_interface.h"
 #include "ctrlm_network.h"
 #include "ctrlm_log.h"
+#include "ctrlm_utils.h"
 #include "ctrlm_irdb_stub.h"
 #include "ctrlm_telemetry_event.h"
 
@@ -617,12 +618,14 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
     }
     std::string results = ss.str();
     ss.str("");
-    ss << "[\"" << t2_vendor_info.name << "\""
+    ss << "[" << MARKER_IRDB_AUTOLOOKUP_RESULT_VERSION
+       << ",\"" << t2_vendor_info.name << "\""
        << ",0x" << std::hex << std::setfill('0') << std::setw(2) << (int)t2_vendor_info.rcu_support_bitmask
        << "," << std::dec << (int)m_platform_tv
        << "," << tv_count
        << "," << avr_count
-       << "," << (results.empty() ? "\"\"" : results) << "]";
+       << "," << (results.empty() ? "\"\"" : results)
+       << "," << ctrlm_timestamp_get_ms() << "]";
     ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_AUTOLOOKUP_RESULT, ss.str());
     ev.event();
 #endif

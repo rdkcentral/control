@@ -795,11 +795,13 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
          XLOGD_ERROR("Unsupported IRDB - not continuing with ir code download!");
 #ifdef TELEMETRY_SUPPORT
          char t2_buf[256];
-         snprintf(t2_buf, sizeof(t2_buf), "[%d,\"unsupported\",0x%02X,\"%s\",0x%02X]",
+         snprintf(t2_buf, sizeof(t2_buf), "[%d,%d,\"unsupported\",0x%02X,\"%s\",0x%02X,%llu]",
+                  MARKER_IRDB_PROGRAM_RESULT_VERSION,
                   (int)CTRLM_IR_STATE_FAILED,
                   controllers_[controller_id]->getSupportedIrdbs(),
                   dqm->vendor_info.name.c_str(),
-                  dqm->vendor_info.rcu_support_bitmask);
+                  dqm->vendor_info.rcu_support_bitmask,
+                  (unsigned long long)ctrlm_timestamp_get_ms());
          ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_PROGRAM_RESULT, t2_buf);
          ev.event();
 #endif
@@ -1754,6 +1756,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int si
           ss << ",";
       }
    }
+   ss << "," << ctrlm_timestamp_get_ms();
    ss << "]";
 
    ctrlm_telemetry_event_t<std::string> ev(MARKER_RCU_PAIRING_ATTEMPT, ss.str());
@@ -1826,12 +1829,14 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                      rcu_bitmask = controller->getSupportedIrdbs();
                  }
 
-                 snprintf(t2_buf, sizeof(t2_buf), "[%d,\"%s\",0x%02X,\"%s\",0x%02X]",
+                 snprintf(t2_buf, sizeof(t2_buf), "[%d,%d,\"%s\",0x%02X,\"%s\",0x%02X,%llu]",
+                          MARKER_IRDB_PROGRAM_RESULT_VERSION,
                           (int)dqm->ir_state,
                           dqm->ir_fail_reason,
                           rcu_bitmask,
                           vendor_info.name.c_str(),
-                          vendor_info.rcu_support_bitmask);
+                          vendor_info.rcu_support_bitmask,
+                          (unsigned long long)ctrlm_timestamp_get_ms());
                  ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_PROGRAM_RESULT, t2_buf);
                  ev.event();
              }

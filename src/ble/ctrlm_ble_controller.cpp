@@ -537,7 +537,7 @@ void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmas
       XLOGD_ERROR("IRDB interface is NULL!!!");
 #ifdef TELEMETRY_SUPPORT
       char t2_buf[256];
-      snprintf(t2_buf, sizeof(t2_buf), "[0,0x%02X,\"unknown\",0x00,0]", vendor_support_bitmask);
+      snprintf(t2_buf, sizeof(t2_buf), "[%d,0,0x%02X,\"unknown\",0x00,0,%llu]", MARKER_IRDB_VENDOR_SET_VERSION, vendor_support_bitmask, (unsigned long long)ctrlm_timestamp_get_ms());
       ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_VENDOR_SET, t2_buf);
       ev.event();
 #endif
@@ -571,10 +571,12 @@ void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmas
    }
 #ifdef TELEMETRY_SUPPORT
    char t2_buf[256];
-   snprintf(t2_buf, sizeof(t2_buf), "[%d,0x%02X,\"%s\",0x%02X,%d]",
+   snprintf(t2_buf, sizeof(t2_buf), "[%d,%d,0x%02X,\"%s\",0x%02X,%d,%llu]",
+            MARKER_IRDB_VENDOR_SET_VERSION,
             (int)set_result,vendor_support_bitmask,
             vendor_info.name.c_str(), vendor_info.rcu_support_bitmask,
-            (int)supported);
+            (int)supported,
+            (unsigned long long)ctrlm_timestamp_get_ms());
    ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_VENDOR_SET, t2_buf);
    ev.event();
 #endif

@@ -143,7 +143,6 @@ gboolean ctrlm_rcu_controller_status(ctrlm_rcu_iarm_call_controller_status_t *pa
 gboolean ctrlm_rcu_rib_request_get(ctrlm_rcu_iarm_call_rib_request_t *params);
 gboolean ctrlm_rcu_rib_request_set(ctrlm_rcu_iarm_call_rib_request_t *params);
 gboolean ctrlm_rcu_controller_link_key(ctrlm_rcu_iarm_call_controller_link_key_t *params);
-gboolean ctrlm_rcu_reverse_cmd(ctrlm_main_iarm_call_rcu_reverse_cmd_t *params);
 gboolean ctrlm_rcu_controller_type_get(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_controller_type_t *type);
 gboolean ctrlm_rcu_rf4ce_polling_action(ctrlm_rcu_iarm_call_rf4ce_polling_action_t *params);
 

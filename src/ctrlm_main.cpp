@@ -2896,23 +2896,6 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_CONTROLLER_REVERSE_CMD: {
-            if(ctrlm_main_successful_init_get()) {
-               ctrlm_main_queue_msg_rcu_reverse_cmd_t *dqm = (ctrlm_main_queue_msg_rcu_reverse_cmd_t *) msg;
-               ctrlm_controller_status_cmd_result_t      cmd_result = CTRLM_CONTROLLER_STATUS_REQUEST_ERROR;
-               XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_CONTROLLER_REVERSE_CMD");
-               cmd_result = obj_net->req_process_reverse_cmd(dqm);
-               if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-                  // Signal the semaphore to indicate that the result is present
-                  *dqm->cmd_result = cmd_result;
-                  sem_post(dqm->semaphore);
-               }
-            } else {
-               // Networks are not ready, push back to the queue, then continue so it's not freed
-               ctrlm_timeout_create(CTRLM_MAIN_QUEUE_REPEAT_DELAY, ctrlm_message_queue_delay, msg);
-            }
-            break;
-         }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_AUDIO_CAPTURE_START: {
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_AUDIO_CAPTURE_START");
             ctrlm_main_queue_msg_audio_capture_start_t *start_msg = (ctrlm_main_queue_msg_audio_capture_start_t *)msg;

@@ -25,7 +25,6 @@
 #define CTRLM_RCU_IARM_CALL_CONTROLLER_LINK_KEY          "Rcu_ControllerLinkKey"    ///< IARM Call to get controller link key
 #define CTRLM_RCU_IARM_CALL_RIB_REQUEST_GET              "Rcu_RibRequestGet"        ///< IARM Call to retrieves an attribute from the controller's RIB
 #define CTRLM_RCU_IARM_CALL_RIB_REQUEST_SET              "Rcu_RibRequestSet"        ///< IARM Call to set an attribute in the controller's RIB
-#define CTRLM_RCU_IARM_CALL_REVERSE_CMD                  "Rcu_ReverseCmd"           ///< IARM Call to Trigger Remote Controller Action
 #define CTRLM_RCU_IARM_CALL_RF4CE_POLLING_ACTION         "Rcu_Rf4cePollingAction"   ///< IARM Call to Send Remote Heartbeat Response Polling Action
 
 #define CTRLM_RCU_IARM_BUS_API_REVISION                  (13)    ///< Revision of the RCU IARM API

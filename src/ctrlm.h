@@ -163,11 +163,6 @@ typedef enum {
 } ctrlm_main_status_cmd_result_t;
 
 typedef struct {
-   ctrlm_main_iarm_call_chip_status_t     *status;
-   sem_t *                                semaphore;
-} ctrlm_main_queue_msg_main_chip_status_t;
-
-typedef struct {
    ctrlm_iarm_call_result_t result;
    ctrlm_network_id_t       network_id;
 } ctrlm_main_iarm_call_factory_reset_t;
@@ -427,7 +422,6 @@ gboolean ctrlm_main_iarm_call_control_service_set_values(ctrlm_main_iarm_call_co
 gboolean ctrlm_main_iarm_call_control_service_get_values(ctrlm_main_iarm_call_control_service_settings_t *settings);
 void     ctrlm_main_iarm_call_control_service_start_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 void     ctrlm_main_iarm_call_control_service_end_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
-gboolean ctrlm_main_iarm_call_chip_status_get(ctrlm_main_iarm_call_chip_status_t *status);
 
 ctrlm_power_state_t ctrlm_main_get_system_power_state(void);
 ctrlm_power_state_t ctrlm_main_get_internal_power_state(void);

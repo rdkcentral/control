@@ -46,7 +46,6 @@ static IARM_Result_t ctrlm_main_iarm_call_pairing_metrics_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_voice_session_begin(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_voice_session_end(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_start_pair_with_code(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_chip_status_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_audio_capture_start(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_audio_capture_stop(void *arg);
 #if CTRLM_HAL_RF4CE_API_VERSION >= 10  && !defined(CTRLM_DPI_CONTROL_NOT_SUPPORTED)
@@ -72,7 +71,6 @@ ctrlm_iarm_call_t ctrlm_iarm_calls[] = {
    {CTRLM_VOICE_IARM_CALL_SESSION_BEGIN,                     ctrlm_main_iarm_call_voice_session_begin                },
    {CTRLM_VOICE_IARM_CALL_SESSION_END,                       ctrlm_main_iarm_call_voice_session_end                  },
    {CTRLM_MAIN_IARM_CALL_START_PAIR_WITH_CODE,               ctrlm_main_iarm_call_start_pair_with_code               },
-   {CTRLM_MAIN_IARM_CALL_CHIP_STATUS_GET,                    ctrlm_main_iarm_call_chip_status_get                    },
    {CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_START,                ctrlm_main_iarm_call_audio_capture_start                },
    {CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_STOP,                 ctrlm_main_iarm_call_audio_capture_stop                 },
    #if USE_IARM_POWER_MANAGER      
@@ -370,34 +368,6 @@ IARM_Result_t ctrlm_main_iarm_call_pairing_metrics_get(void *arg) {
    if(!ctrlm_main_iarm_call_pairing_metrics_get(pairing_metrics)) {
       pairing_metrics->result = CTRLM_IARM_CALL_RESULT_ERROR;
    }
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_chip_status_get(void *arg) {
-   ctrlm_main_iarm_call_chip_status_t *status = (ctrlm_main_iarm_call_chip_status_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(status == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(status->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-      XLOGD_INFO("Unsupported API Revision (%u, %u)", status->api_revision, CTRLM_MAIN_IARM_BUS_API_REVISION);
-      status->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-      return(IARM_RESULT_SUCCESS);
-   }
-   XLOGD_INFO("");
-
-#if CTRLM_HAL_RF4CE_API_VERSION < 15 || defined(CTRLM_RF4CE_CHIP_CONNECTIVITY_CHECK_NOT_SUPPORTED)
-   status->result = CTRLM_IARM_CALL_RESULT_ERROR_NOT_SUPPORTED;
-#else
-   if(!ctrlm_main_iarm_call_chip_status_get(status)) {
-      status->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-#endif
    return(IARM_RESULT_SUCCESS);
 }
 

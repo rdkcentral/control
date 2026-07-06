@@ -34,7 +34,6 @@
 #define CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_SET_VALUES          "Main_ControlService_SetValues"        ///< IARM Call to set control service values
 #define CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_GET_VALUES          "Main_ControlService_GetValues"        ///< IARM Call to get control service values
 #define CTRLM_MAIN_IARM_CALL_PAIRING_METRICS_GET                 "Main_PairingMetricsGet"               ///< Retrieves the stb's pairing metrics
-#define CTRLM_MAIN_IARM_CALL_CHIP_STATUS_GET                     "Main_ChipStatusGet"                   ///< get Chip status
 #define CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_START                 "Main_AudioCaptureStart"               ///< Sends message to xraudio to capture mic data, in specified container
 #define CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_STOP                  "Main_AudioCaptureStop"                ///< Sends message to xraudio to stop capturing mic data
 #define CTRLM_MAIN_IARM_CALL_POWER_STATE_CHANGE                  "Main_PowerStateChange"                ///< Sends message to xr-speech-router to set power state, download DSP firmware, etc
@@ -467,13 +466,6 @@ typedef struct {
    int                           customListSize;
    ctrlm_iarm_call_result_t      result;
 } ctrlm_iarm_call_WriteRcuWakeupConfig_params_t;
-
-typedef struct {
-   unsigned char            api_revision;   ///< Revision of this API
-   ctrlm_iarm_call_result_t result;         ///< OUT - Result of the operation
-   ctrlm_network_id_t       network_id;     ///< IN - identifier of network
-   unsigned char            chip_connected; ///< OUT - 1 - chip connected, 0 - chip disconnected
-} ctrlm_main_iarm_call_chip_status_t;
 
 typedef struct {
    unsigned char            api_revision;

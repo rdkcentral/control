@@ -3430,34 +3430,6 @@ void ctrlm_main_iarm_call_controller_unbind_(ctrlm_main_iarm_call_controller_unb
    unbind->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
 }
 
-gboolean ctrlm_main_iarm_call_chip_status_get(ctrlm_main_iarm_call_chip_status_t *status) {
-   if(status == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_chip_status_t msg = {0};
-
-   sem_init(&semaphore, 0, 0);
-
-   msg.status            = status;
-   msg.status->result    = CTRLM_IARM_CALL_RESULT_ERROR;
-   msg.semaphore         = &semaphore;
-
-   ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_chip_status, &msg, sizeof(msg), NULL, status->network_id);
-
-   // Wait for the result semaphore to be signaled
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   return(true);
-}
-
 #ifdef USE_DEPRECATED_IRMGR
 void ctrlm_event_handler_ir(const char *owner, IARM_EventId_t event_id, void *data, size_t len)
 {

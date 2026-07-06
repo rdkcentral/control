@@ -40,42 +40,6 @@ void ctrlm_rcu_terminate(void) {
    ctrlm_rcu_terminate_iarm();
 }
 
-gboolean ctrlm_rcu_validation_finish(ctrlm_rcu_iarm_call_validation_finish_t *params) {
-
-#if 1 // ASYNCHRONOUS
-   if(!ctrlm_controller_id_is_valid(params->network_id, params->controller_id)) {
-      XLOGD_ERROR("invalid controller id (%u, %u)", params->network_id, params->controller_id);
-      return(false);
-   }
-   if(params->validation_result >= CTRLM_RCU_VALIDATION_RESULT_MAX) {
-      XLOGD_ERROR("invalid validation result (%d)", params->validation_result);
-      return(false);
-   }
-
-   ctrlm_inform_validation_end(params->network_id, params->controller_id, CTRLM_RCU_BINDING_TYPE_INTERACTIVE, CTRLM_RCU_VALIDATION_TYPE_APPLICATION, params->validation_result, NULL, NULL);
-   return(true);
-#else // synchronous
-   sem_t semaphore;
-   ctrlm_validation_end_cmd_result_t cmd_result = CTRLM_VALIDATION_END_CMD_RESULT_PENDING;
-
-   sem_init(&semaphore, 0, 0);
-
-   if(!ctrlm_inform_validation_end(params->network_id, params->controller_id, params->validation_result, &semaphore, &cmd_result)) {
-      sem_destroy(&semaphore);
-      return(false);
-   }
-
-   // Wait for the result semaphore to be signaled
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_VALIDATION_END_CMD_RESULT_SUCCESS) {
-      return(true);
-   }
-   return(false);
-#endif
-}
-
 gboolean ctrlm_rcu_controller_status(ctrlm_rcu_iarm_call_controller_status_t *params) {
    XLOGD_INFO("(%u, %u)", params->network_id, params->controller_id);
 

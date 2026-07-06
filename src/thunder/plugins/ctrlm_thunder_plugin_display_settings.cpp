@@ -188,12 +188,12 @@ void ctrlm_thunder_plugin_display_settings_t::on_initial_activation() {
 }
 
 bool ctrlm_thunder_plugin_display_settings_t::set_audio_ducking(
-        dsAudioDuckingAction_t action, dsAudioDuckingType_t type, unsigned char level) {
+        bool action, bool type, unsigned char level) {
     JsonObject params, response;
     params["audioPort"]   = "SPEAKER0";
     params["mode"]        = "raw";
-    params["action"]      = (action == dsAUDIO_DUCKINGACTION_START) ? "start" : "stop";
-    params["duckingType"] = (type   == dsAUDIO_DUCKINGTYPE_RELATIVE) ? "relative" : "absolute";
+    params["action"]      = action ? "start" : "stop";
+    params["duckingType"] = type ? "relative" : "absolute";
     params["level"]       = (int)level;
 
     if(!this->call_plugin("setAudioDucking", (void *)&params, (void *)&response)) {

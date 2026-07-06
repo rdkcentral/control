@@ -68,13 +68,14 @@ bool ctrlmf_audio_control_mute(bool mute) {
       return(false);
    }
 #ifdef CTRLM_USE_THUNDER_FR_DS
-   dsAudioDuckingAction_t action = mute ? dsAUDIO_DUCKINGACTION_START : dsAUDIO_DUCKINGACTION_STOP;
    auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
    if(!ds) {
       XLOGD_ERROR("DisplaySettings plugin not available");
       return(false);
    }
-   bool ret = ds->set_audio_ducking(action, dsAUDIO_DUCKINGTYPE_ABSOLUTE, mute ? 0 : 100);
+   bool action = mute;        // true = start ducking (mute), false = stop ducking (unmute)
+   bool type   = false;       // false = absolute ducking
+   bool ret = ds->set_audio_ducking(action, type, mute ? 0 : 100);
    if(ret) {
       XLOGD_INFO("Audio is %smuted", mute ? "" : "un-");
    } else {
@@ -106,8 +107,8 @@ bool ctrlmf_audio_control_attenuate(bool enable, bool relative, double vol) {
    }
 #ifdef CTRLM_USE_THUNDER_FR_DS
    unsigned char level = (unsigned char)((vol * 100) + 0.5);
-   dsAudioDuckingAction_t action = enable   ? dsAUDIO_DUCKINGACTION_START  : dsAUDIO_DUCKINGACTION_STOP;
-   dsAudioDuckingType_t   type   = relative ? dsAUDIO_DUCKINGTYPE_RELATIVE : dsAUDIO_DUCKINGTYPE_ABSOLUTE;
+   bool action = enable;      // true = start ducking, false = stop ducking
+   bool type   = relative;    // true = relative, false = absolute
 
    auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
    if(!ds) {

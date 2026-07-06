@@ -26,6 +26,9 @@
 #define CTRLM_MAIN_IARM_BUS_NAME                                 "Ctrlm"                                ///< Control Manager's IARM Bus Name
 #define CTRLM_MAIN_IARM_BUS_API_REVISION                         (16)                                   ///< Revision of the Control Manager Main IARM API
 
+#define CTRLM_MAIN_IARM_CALL_STATUS_GET                          "Main_StatusGet"                       ///< Retrieves Control Manager's Status information
+#define CTRLM_MAIN_IARM_CALL_NETWORK_STATUS_GET                  "Main_NetworkStatusGet"                ///< Retrieves the network's Status information
+#define CTRLM_MAIN_IARM_CALL_PROPERTY_SET                        "Main_PropertySet"                     ///< Sets a property of the Control Manager
 #define CTRLM_MAIN_IARM_CALL_FACTORY_RESET                       "Main_FactoryReset"                    ///< Sets the configuration back to factory default
 #define CTRLM_MAIN_IARM_CALL_CONTROLLER_UNBIND                   "Main_ControllerUnbind"                ///< Removes a binding between the target and the specified controller
 #define CTRLM_MAIN_IARM_CALL_IR_REMOTE_USAGE_GET                 "Main_IrRemoteUsageGet"                ///< Retrieves the ir remote usage info
@@ -137,6 +140,26 @@ typedef enum {
    CTRLM_IARM_CALL_RESULT_ERROR_NOT_SUPPORTED     = 5, ///< The requested operation is not supported
    CTRLM_IARM_CALL_RESULT_INVALID                 = 6, ///< Invalid call result value
 } ctrlm_iarm_call_result_t;
+
+typedef enum {
+   CTRLM_PROPERTY_BINDING_BUTTON_ACTIVE            =  0, ///< (RO) Boolean value indicating whether a front panel button was recently pressed (1) or not (0).
+   CTRLM_PROPERTY_BINDING_SCREEN_ACTIVE            =  1, ///< (RW) Boolean value indicating whether the 'Pairing Description Screen' is being displayed (1) or not (0).
+   CTRLM_PROPERTY_BINDING_LINE_OF_SIGHT_ACTIVE     =  2, ///< (RO) Boolean value indicating whether the STB has received the Line of Sight remote command and is within the active period.
+   CTRLM_PROPERTY_AUTOBIND_LINE_OF_SIGHT_ACTIVE    =  3, ///< (RO) Boolean value indicating that the STB has received the Autobind Line of Sight remote code and is within the active period.
+   CTRLM_PROPERTY_ACTIVE_PERIOD_BUTTON             =  4, ///< (RW) Active period (in ms) for button binding.
+   CTRLM_PROPERTY_ACTIVE_PERIOD_LINE_OF_SIGHT      =  5, ///< (RW) Active period (in ms) for line of sight.
+   CTRLM_PROPERTY_VALIDATION_TIMEOUT_INITIAL       =  6, ///< (RW) Timeout value (in ms) used for the start of the validation period.
+   CTRLM_PROPERTY_VALIDATION_TIMEOUT_DURING        =  7, ///< (RW) Timeout value (in ms) used during the validation period.
+   CTRLM_PROPERTY_CONFIGURATION_TIMEOUT            =  8, ///< (RW) Timeout value (in ms) used during the configuration period.
+   CTRLM_PROPERTY_VALIDATION_MAX_ATTEMPTS          =  9, ///< (RW) Maximum number of validation attempts.
+   CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND         = 10, ///< (RW) Active period (in ms) for screenbind.
+   CTRLM_PROPERTY_ACTIVE_PERIOD_ONE_TOUCH_AUTOBIND = 11, ///< (RW) Active period (in ms) for one-touch autobind.
+   CTRLM_PROPERTY_REMOTE_REVERSE_CMD_ACTIVE        = 12, ///< (RW) Boolean value indicating whether the 'Remote Reverse Command' feature is enabled (1) or not (0).
+   CTRLM_PROPERTY_MAC_POLLING_INTERVAL             = 13, ///< (RW) MAC polling polling interval, in milliseconds.
+   CTRLM_PROPERTY_RCU_REVERSE_CMD_TIMEOUT          = 14, ///< (RW) Find My Remote RC response timeout, Factor of CTRLM_PROPERTY_MAC_POLLING_INTERVAL, min 2
+   CTRLM_PROPERTY_AUTO_ACK                         = 15, ///< (RW) Boolean value indicating whether the 'Automatic Packet Acknowledgment' feature is enabled (1) or not (0).
+   CTRLM_PROPERTY_MAX                              = 16, ///< (NA) Maximum property enumeration value.
+} ctrlm_property_t;
 
 typedef enum {
    CTRLM_MAIN_IARM_EVENT_BINDING_BUTTON             =  0, ///< Generated when a state change of the binding button status occurs
@@ -319,6 +342,78 @@ typedef enum {
 
 typedef unsigned char ctrlm_network_id_t;
 typedef unsigned char ctrlm_controller_id_t;
+
+typedef struct {
+   ctrlm_network_id_t   id;   ///< identifier of the network
+   ctrlm_network_type_t type; ///< Type of network
+} ctrlm_network_t;
+
+/// @brief Control Manager Status Structure
+/// @details The Control Manager Status structure is used in the CTRLM_MAIN_IARM_CALL_STATUS_GET call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
+typedef struct {
+   unsigned char            api_revision;                                       ///< Revision of this API
+   ctrlm_iarm_call_result_t result;                                             ///< OUT - The result of the operation.
+   unsigned char            network_qty;                                        ///< OUT - Number of networks connected to Control Manager
+   ctrlm_network_t          networks[CTRLM_MAIN_MAX_NETWORKS];                  ///< OUT - List of networks
+   char                     ctrlm_version[CTRLM_MAIN_VERSION_LENGTH];           ///< OUT - Software version of Control Manager
+   char                     ctrlm_commit_id[CTRLM_MAIN_COMMIT_ID_MAX_LENGTH];   ///< OUT - Last commit ID of Control Manager
+   char                     stb_device_id[CTRLM_MAIN_DEVICE_ID_MAX_LENGTH];     ///< OUT - Device ID obtained from the Set-Top Box
+} ctrlm_main_iarm_call_status_t;
+
+typedef struct {
+   unsigned char number;  ///< RF channel number (15, 20 or 25 for RF4CE)
+   unsigned char quality; ///< Quality indicator for this channel
+} ctrlm_rf_channel_t;
+
+/// @brief RF4CE Network Status Structure
+/// @details The RF4CE Network Status structure provided detailed information about the network.
+typedef struct {
+   char                  version_hal[CTRLM_MAIN_VERSION_LENGTH];        ///< Software version of the HAL driver
+   unsigned char         controller_qty;                                ///< Number of controllers bound to the target device
+   ctrlm_controller_id_t controllers[CTRLM_MAIN_MAX_BOUND_CONTROLLERS]; ///< List of controllers bound to the target device
+   unsigned short        pan_id;                                        ///< PAN Identifier
+   ctrlm_rf_channel_t    rf_channel_active;                             ///< Current RF channel on which the target is operating
+   unsigned long long    ieee_address;                                  ///< The 64-bit IEEE Address of the target device
+   unsigned short        short_address;                                 ///< Short address (if applicable)
+   char                  chipset[CTRLM_MAIN_MAX_CHIPSET_LENGTH];        ///< Chipset of the target
+} ctrlm_network_status_rf4ce_t;
+
+/// @brief Bluetooth LE Network Status Structure
+/// @details The Bluetooth LE Network Status structure provided detailed information about the network.
+typedef struct {
+   char                  version_hal[CTRLM_MAIN_VERSION_LENGTH];        ///< Software version of the HAL driver
+   unsigned char         controller_qty;                                ///< Number of controllers bound to the target device.
+   ctrlm_controller_id_t controllers[CTRLM_MAIN_MAX_BOUND_CONTROLLERS]; ///< List of controllers bound to the target device
+} ctrlm_network_status_ble_t;
+
+/// @brief IP Network Status Structure
+/// @details The IP Network Status structure provided detailed information about the network.
+typedef struct {
+   char                  version_hal[CTRLM_MAIN_VERSION_LENGTH];        ///< Software version of the HAL driver
+   unsigned char         controller_qty;                                ///< Number of controllers bound to the target device.
+   ctrlm_controller_id_t controllers[CTRLM_MAIN_MAX_BOUND_CONTROLLERS]; ///< List of controllers bound to the target device
+} ctrlm_network_status_ip_t;
+
+/// @brief Network Status Structure
+/// @details The Network Status structure is used in the CTRLM_MAIN_IARM_CALL_NETWORK_STATUS_GET call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
+typedef struct {
+   unsigned char            api_revision; ///< Revision of this API
+   ctrlm_iarm_call_result_t result;       ///< OUT - Result of the operation
+   ctrlm_network_id_t       network_id;   ///< IN - identifier of network
+   union {
+      ctrlm_network_status_rf4ce_t rf4ce; ///< OUT - RF4CE network status
+      ctrlm_network_status_ble_t   ble;   ///< OUT - BLE network status
+      ctrlm_network_status_ip_t    ip;    ///< OUT - IP network status
+   } status;                              ///< OUT - Union of network status types
+} ctrlm_main_iarm_call_network_status_t;
+
+typedef struct {
+   unsigned char            api_revision; ///< Revision of this API
+   ctrlm_iarm_call_result_t result;       ///< Result of the operation
+   ctrlm_network_id_t       network_id;   ///< IN - identifier of network or CTRLM_MAIN_NETWORK_ID_ALL for all networks
+   ctrlm_property_t         name;         ///< Property name on which this call will operate
+   unsigned long            value;        ///< Value for this property
+} ctrlm_main_iarm_call_property_t;
 
 typedef struct {
    unsigned char            api_revision;                           ///< Revision of this API

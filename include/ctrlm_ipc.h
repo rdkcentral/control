@@ -158,10 +158,10 @@ typedef enum {
    CTRLM_VOICE_IARM_EVENT_SESSION_ABORT             = 16, ///< Voice session was aborted (denied)
    CTRLM_VOICE_IARM_EVENT_SESSION_SHORT             = 17, ///< Voice session did not meet minimum duration
    CTRLM_VOICE_IARM_EVENT_MEDIA_SERVICE             = 18, ///< Voice session results in media service event
-   CTRLM_DEVICE_UPDATE_IARM_EVENT_READY_TO_DOWNLOAD = 19, ///< Indicates that a device has an update available
-   CTRLM_DEVICE_UPDATE_IARM_EVENT_DOWNLOAD_STATUS   = 20, ///< Provides status of a download that is in progress
-   CTRLM_DEVICE_UPDATE_IARM_EVENT_LOAD_BEGIN        = 21, ///< Indicates that a device has started to load an image
-   CTRLM_DEVICE_UPDATE_IARM_EVENT_LOAD_END          = 22, ///< Indicates that a device has completed an image load
+   CTRLM_DEVICE_UPDATE_IARM_EVENT_READY_TO_DOWNLOAD = 19, ///< deprecated
+   CTRLM_DEVICE_UPDATE_IARM_EVENT_DOWNLOAD_STATUS   = 20, ///< deprecated
+   CTRLM_DEVICE_UPDATE_IARM_EVENT_LOAD_BEGIN        = 21, ///< deprecated
+   CTRLM_DEVICE_UPDATE_IARM_EVENT_LOAD_END          = 22, ///< deprecated
    CTRLM_RCU_IARM_EVENT_BATTERY_MILESTONE           = 23, ///< Indicates that a battery milestone event occured
    CTRLM_RCU_IARM_EVENT_REMOTE_REBOOT               = 24, ///< Indicates that a remote reboot event occured
    CTRLM_RCU_IARM_EVENT_RCU_REVERSE_CMD_BEGIN       = 25, ///< Indicates that a RCU Reverse Command started

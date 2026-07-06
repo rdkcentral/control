@@ -193,7 +193,6 @@ const char *ctrlm_voice_reset_type_str(ctrlm_voice_reset_type_t reset_type);
 
 const char *ctrlm_device_update_iarm_load_type_str(ctrlm_device_update_iarm_load_type_t load_type);
 const char *ctrlm_device_update_iarm_load_result_str(ctrlm_device_update_iarm_load_result_t load_result);
-const char *ctrlm_device_update_image_type_str(ctrlm_device_update_image_type_t image_type);
 const char *ctrlm_bind_status_str(ctrlm_bind_status_t bind_status);
 const char *ctrlm_close_pairing_window_reason_str(ctrlm_close_pairing_window_reason reason);
 const char *ctrlm_battery_event_str(ctrlm_rcu_battery_event_t event);

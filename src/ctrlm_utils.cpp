@@ -738,16 +738,6 @@ const char *ctrlm_device_update_iarm_load_result_str(ctrlm_device_update_iarm_lo
    return(ctrlm_invalid_return(load_result));
 }
 
-const char *ctrlm_device_update_image_type_str(ctrlm_device_update_image_type_t image_type) {
-   switch(image_type) {
-      case CTRLM_DEVICE_UPDATE_IMAGE_TYPE_FIRMWARE:   return("FIRMWARE");
-      case CTRLM_DEVICE_UPDATE_IMAGE_TYPE_AUDIO_DATA: return("AUDIO_DATA");
-      case CTRLM_DEVICE_UPDATE_IMAGE_TYPE_OTHER:      return("OTHER");
-      case CTRLM_DEVICE_UPDATE_IMAGE_TYPE_MAX:        return("MAX");
-   }
-   return(ctrlm_invalid_return(image_type));
-}
-
 const char *ctrlm_hal_result_str(ctrlm_hal_result_t result) {
    switch(result) {
       case CTRLM_HAL_RESULT_SUCCESS:                 return("SUCCESS");

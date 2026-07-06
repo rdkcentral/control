@@ -26,7 +26,6 @@ set_target_properties( ctrlm-fta PROPERTIES
 
 include_directories(
    .
-   ..
    iarm
    thunder
    ${CMAKE_SYSROOT}/usr/include/rdk/ds
@@ -66,31 +65,29 @@ if(THUNDER)
       thunder/ctrlmf_thunder_controller.cpp
       thunder/ctrlmf_thunder_plugin.cpp
       thunder/ctrlmf_thunder_plugin_system_audio_player.cpp
-      ../thunder/helpers/ctrlm_thunder_helpers.cpp
-      ../thunder/plugins/ctrlm_thunder_plugin_display_settings.cpp
-      ../thunder/plugins/ctrlm_thunder_plugin_front_panel.cpp
    )
+   if(CTRLM_USE_THUNDER_FR_DS)
+      target_sources(ctrlm-fta PRIVATE
+         thunder/ctrlmf_thunder_plugin_display_settings.cpp
+      )
+   endif()
 
    target_link_libraries(ctrlm-fta WPEFrameworkCore WPEFrameworkPlugins)
-   target_link_libraries(controlFactory WPEFrameworkCore WPEFrameworkPlugins)
    if(WPE_FRAMEWORK_COM_SOCKET)
       target_link_libraries(ctrlm-fta WPEFrameworkCOM WPEFrameworkWebSocket)
-      target_link_libraries(controlFactory WPEFrameworkCOM WPEFrameworkWebSocket)
    endif()
    if(WPE_FRAMEWORK_PROTO_TRACING)
       target_link_libraries(ctrlm-fta WPEFrameworkProtocols WPEFrameworkTracing)
-      target_link_libraries(controlFactory WPEFrameworkProtocols WPEFrameworkTracing)
    endif()
 
    if(THUNDER_SECURITY)
       add_compile_definitions(PRIVATE THUNDER_SECURITY)
       target_link_libraries(ctrlm-fta WPEFrameworkSecurityUtil secure_wrapper)
-      target_link_libraries(controlFactory WPEFrameworkSecurityUtil secure_wrapper)
    endif()
 endif()
 
 if(CTRLM_USE_THUNDER_FR_DS)
-   add_compile_definitions(PRIVATE CTRLM_USE_THUNDER_FR_DS)
+   target_compile_definitions(ctrlm-fta PRIVATE CTRLM_USE_THUNDER_FR_DS)
 endif()
 
 install(TARGETS controlFactory DESTINATION bin)

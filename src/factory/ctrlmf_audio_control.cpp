@@ -7,7 +7,7 @@
 #include <ctrlmf_utils.h>
 
 #ifdef CTRLM_USE_THUNDER_FR_DS
-#include "thunder/plugins/ctrlm_thunder_plugin_display_settings.h"
+#include "thunder/ctrlmf_thunder_plugin_display_settings.h"
 #else
 #include "host.hpp"
 #include "exception.hpp"
@@ -68,7 +68,7 @@ bool ctrlmf_audio_control_mute(bool mute) {
       return(false);
    }
 #ifdef CTRLM_USE_THUNDER_FR_DS
-   auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
+   auto *ds = Thunder::DisplaySettings::ctrlmf_thunder_plugin_display_settings_t::getInstance();
    if(!ds) {
       XLOGD_ERROR("DisplaySettings plugin not available");
       return(false);
@@ -79,7 +79,7 @@ bool ctrlmf_audio_control_mute(bool mute) {
    if(ret) {
       XLOGD_INFO("Audio is %smuted", mute ? "" : "un-");
    } else {
-      XLOGD_WARN("Muting sound via Thunder failed");
+      XLOGD_WARN("Muting sound error");
    }
    return(ret);
 #else
@@ -123,7 +123,7 @@ bool ctrlmf_audio_control_attenuate(bool enable, bool relative, double vol) {
          XLOGD_INFO("Audio ducking disabled");
       }
    } else {
-      XLOGD_WARN("Ducking sound via Thunder failed");
+      XLOGD_WARN("Ducking sound error");
    }
    return(ret);
 #else

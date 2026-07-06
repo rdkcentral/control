@@ -1588,13 +1588,12 @@ bool ctrlm_dsmgr_deinit() {
 
 bool ctrlm_dsmgr_mute_audio(bool mute) {
 #ifdef CTRLM_USE_THUNDER_FR_DS
-   dsAudioDuckingAction_t action = mute ? dsAUDIO_DUCKINGACTION_START : dsAUDIO_DUCKINGACTION_STOP;
    auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
    if(!ds) {
       XLOGD_ERROR("DisplaySettings plugin not available");
       return false;
    }
-   bool ret = ds->set_audio_ducking(action, dsAUDIO_DUCKINGTYPE_ABSOLUTE, mute ? 0 : 100);
+   bool ret = ds->set_audio_ducking(mute, false, mute ? 0 : 100);
    if(ret) {
       XLOGD_INFO("Audio is %smuted", mute ? "" : "un-");
    } else {
@@ -1622,15 +1621,13 @@ bool ctrlm_dsmgr_duck_audio(bool enable, bool relative, double vol) {
    }
 #ifdef CTRLM_USE_THUNDER_FR_DS
    unsigned char level = (unsigned char)((vol * 100) + 0.5);
-   dsAudioDuckingAction_t action = enable   ? dsAUDIO_DUCKINGACTION_START  : dsAUDIO_DUCKINGACTION_STOP;
-   dsAudioDuckingType_t   type   = relative ? dsAUDIO_DUCKINGTYPE_RELATIVE : dsAUDIO_DUCKINGTYPE_ABSOLUTE;
 
    auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
    if(!ds) {
       XLOGD_ERROR("DisplaySettings plugin not available");
       return false;
    }
-   bool ret = ds->set_audio_ducking(action, type, level);
+   bool ret = ds->set_audio_ducking(enable, relative, level);
    if(ret) {
       if(enable) {
          XLOGD_INFO("Audio ducking enabled - type <%s> level <%u%%>", relative ? "RELATIVE" : "ABSOLUTE", level);

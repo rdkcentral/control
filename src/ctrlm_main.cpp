@@ -2872,17 +2872,6 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_START_PAIRING_MODE: {
-            ctrlm_main_queue_msg_main_control_service_pairing_mode_t *dqm = (ctrlm_main_queue_msg_main_control_service_pairing_mode_t *) msg;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_START_PAIRING_MODE");
-            ctrlm_main_iarm_call_control_service_start_pairing_mode_(dqm->pairing);
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_END_PAIRING_MODE: {
             ctrlm_main_queue_msg_main_control_service_pairing_mode_t *dqm = (ctrlm_main_queue_msg_main_control_service_pairing_mode_t *) msg;
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_END_PAIRING_MODE");
@@ -4467,47 +4456,6 @@ gboolean ctrlm_main_iarm_call_control_service_get_values(ctrlm_main_iarm_call_co
 
    // Wait for the result semaphore to be signaled
    XLOGD_DEBUG("Waiting for main thread to process CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-gboolean ctrlm_main_iarm_call_control_service_start_pairing_mode(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing) {
-   if(pairing == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_control_service_pairing_mode_t *msg = (ctrlm_main_queue_msg_main_control_service_pairing_mode_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_control_service_pairing_mode_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-   sem_init(&semaphore, 0, 0);
-
-   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_START_PAIRING_MODE;
-   msg->header.network_id = CTRLM_MAIN_NETWORK_ID_ALL;
-   msg->pairing           = pairing;
-   msg->semaphore         = &semaphore;
-   msg->cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_START_PAIRING_MODE request");
    sem_wait(&semaphore);
    sem_destroy(&semaphore);
 

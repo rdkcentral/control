@@ -648,15 +648,6 @@ const char *ctrlm_rcu_reverse_cmd_result_str(ctrlm_rcu_reverse_cmd_result_t resu
    return(ctrlm_invalid_return(result));
 }
 
-const char *ctrlm_voice_session_result_str(ctrlm_voice_session_result_t result) {
-   switch(result) {
-      case CTRLM_VOICE_SESSION_RESULT_SUCCESS: return("SUCCESS");
-      case CTRLM_VOICE_SESSION_RESULT_FAILURE: return("FAILURE");
-      case CTRLM_VOICE_SESSION_RESULT_MAX:     return("MAX");
-   }
-   return(ctrlm_invalid_return(result));
-}
-
 const char *ctrlm_voice_session_end_reason_str(ctrlm_voice_session_end_reason_t reason) {
    switch(reason) {
       case CTRLM_VOICE_SESSION_END_REASON_DONE:                 return("DONE");
@@ -688,16 +679,6 @@ const char *ctrlm_voice_session_abort_reason_str(ctrlm_voice_session_abort_reaso
       case CTRLM_VOICE_SESSION_ABORT_REASON_MAX:                   return("MAX");
    }
    return(ctrlm_invalid_return(reason));
-}
-
-const char *ctrlm_voice_internal_error_str(ctrlm_voice_internal_error_t error) {
-   switch(error) {
-      case CTRLM_VOICE_INTERNAL_ERROR_NONE:          return("NONE");
-      case CTRLM_VOICE_INTERNAL_ERROR_EXCEPTION:     return("EXCEPTION");
-      case CTRLM_VOICE_INTERNAL_ERROR_THREAD_CREATE: return("THREAD_CREATE");
-      case CTRLM_VOICE_INTERNAL_ERROR_MAX:           return("MAX");
-   }
-   return(ctrlm_invalid_return(error));
 }
 
 const char *ctrlm_voice_reset_type_str(ctrlm_voice_reset_type_t reset_type) {

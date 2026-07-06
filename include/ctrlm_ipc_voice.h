@@ -37,18 +37,12 @@
 #define CTRLM_VOICE_IARM_CALL_RESULT_LEN_MAX       (2048) ///< IARM Call result length
 
 #define CTRLM_VOICE_IARM_BUS_API_REVISION             (9) ///< Revision of the Voice IARM API
-#define CTRLM_VOICE_MIME_MAX_LENGTH                  (64) ///< Audio mime string maximum length
-#define CTRLM_VOICE_SUBTYPE_MAX_LENGTH               (64) ///< Audio subtype string maximum length
-#define CTRLM_VOICE_LANG_MAX_LENGTH                  (16) ///< Audio language string maximum length
 #define CTRLM_VOICE_SERVER_URL_MAX_LENGTH          (2048) ///< Server url string maximum length
 #define CTRLM_VOICE_GUIDE_LANGUAGE_MAX_LENGTH        (16) ///< Guide language string maximum length
 #define CTRLM_VOICE_ASPECT_RATIO_MAX_LENGTH          (16) ///< Aspect ratio string maximum length
-#define CTRLM_VOICE_SESSION_ID_MAX_LENGTH            (64) ///< Session Id string maximum length
 #define CTRLM_VOICE_SESSION_TEXT_MAX_LENGTH         (512) ///< Session text string maximum length
-#define CTRLM_VOICE_SESSION_MSG_MAX_LENGTH          (128) ///< Session message string maximum length
 #define CTRLM_VOICE_QUERY_STRING_MAX_LENGTH         (128) ///< Query string maximum name or value length
 #define CTRLM_VOICE_QUERY_STRING_MAX_PAIRS           (24) ///< Query string maximum number of name/value pairs
-#define CTRLM_VOICE_REQUEST_IP_MAX_LENGTH            (48) ///< cURL request primary IP address string maximum length (big enough for IPv6)
 
 #define CTRLM_VOICE_MIN_UTTERANCE_DURATION_MAXIMUM  (600) ///< Maximum value of the utterance duration minimum setting (in milliseconds)
 
@@ -62,12 +56,6 @@
 #define CTRLM_VOICE_SETTINGS_QUERY_STRINGS            (0x0040) ///< Setting to update the request query strings
 #define CTRLM_VOICE_SETTINGS_FARFIELD_VREX_SERVER_URL (0x0080) ///< Setting to update the farfield vrex server url string
 #define CTRLM_VOICE_SETTINGS_MIC_TAP_SERVER_URL       (0x0100) ///< Setting to update the microphone tap server url string
-
-typedef enum {
-   CTRLM_VOICE_SESSION_RESULT_SUCCESS           = 0, ///< Voice session completed successfully
-   CTRLM_VOICE_SESSION_RESULT_FAILURE           = 1, ///< Voice session completed unsuccessfully
-   CTRLM_VOICE_SESSION_RESULT_MAX               = 2  ///< Voice session result maximum value
-} ctrlm_voice_session_result_t;
 
 typedef enum {
    CTRLM_VOICE_SESSION_END_REASON_DONE                    = 0, ///< Session completed normally
@@ -95,13 +83,6 @@ typedef enum {
    CTRLM_VOICE_SESSION_ABORT_REASON_APPLICATION_RESTART   =  9, ///< Session aborted due to restarting controlMgr.
    CTRLM_VOICE_SESSION_ABORT_REASON_MAX                   = 10  ///< Session Abort Reason maximum value
 } ctrlm_voice_session_abort_reason_t;
-
-typedef enum {
-   CTRLM_VOICE_INTERNAL_ERROR_NONE              = 0, ///< No internal error occurred
-   CTRLM_VOICE_INTERNAL_ERROR_EXCEPTION         = 1, ///< An exception generated an internal error
-   CTRLM_VOICE_INTERNAL_ERROR_THREAD_CREATE     = 2, ///< Failure to launch a session thread
-   CTRLM_VOICE_INTERNAL_ERROR_MAX               = 3  ///< Internal error type maximum value
-} ctrlm_voice_internal_error_t;
 
 typedef enum {
    CTRLM_VOICE_RESET_TYPE_POWER_ON                   = 0, ///< Normal power up by inserting batteries
@@ -168,83 +149,6 @@ typedef struct {
    unsigned long long         ieee_address;        ///< IEEE MAC address of the remote
    ctrlm_iarm_call_result_t   result;              ///< OUT - The result of the operation.
 } ctrlm_voice_iarm_call_voice_session_t;
-
-typedef struct {
-   unsigned char         api_revision;                             ///< The revision of this API.
-   ctrlm_network_id_t    network_id;                               ///< Identifier of network on which the controller is bound
-   ctrlm_network_type_t  network_type;                             ///< Type of network on which the controller is bound
-   ctrlm_controller_id_t controller_id;                            ///< A unique identifier of the remote
-   unsigned long         session_id;                               ///< A unique id for the voice session.
-   unsigned char         mime_type[CTRLM_VOICE_MIME_MAX_LENGTH];   ///< The mime type of the data audio/vnd.wave;codec=1 for PCM or audio/x-adpcm for ADPCM. see http://www.isi.edu/in-notes/rfc2361.txt wrt mime types
-   unsigned char         sub_type[CTRLM_VOICE_SUBTYPE_MAX_LENGTH]; ///< The subtype (using exising definitions such as PCM_16_16K, PCM_16_32K, PCM_16_22K)
-   unsigned char         language[CTRLM_VOICE_LANG_MAX_LENGTH];    ///< The language code (ISO-639-1 format)
-   unsigned char         is_voice_assistant;                       ///< Boolean indicating if the device is a far-field device (1) as opposed to a hand-held remote (0).
-} ctrlm_voice_iarm_event_session_begin_t;
-
-typedef struct {
-   unsigned char                    api_revision;         ///< The revision of this API.
-   ctrlm_network_id_t               network_id;           ///< Identifier of network on which the controller is bound
-   ctrlm_network_type_t             network_type;         ///< Type of network on which the controller is bound
-   ctrlm_controller_id_t            controller_id;        ///< A unique identifier of the remote
-   unsigned long                    session_id;           ///< A unique id for the voice session.
-   ctrlm_voice_session_end_reason_t reason;               ///< The reason for ending session
-   unsigned char                    is_voice_assistant;   ///< Boolean indicating if the device is a far-field device (1) as opposed to a hand-held remote (0).
-} ctrlm_voice_iarm_event_session_end_t;
-
-typedef struct {
-   unsigned char                   api_revision;                                             ///< The revision of this API.
-   ctrlm_network_id_t              network_id;                                               ///< Identifier of network on which the controller is bound
-   ctrlm_network_type_t            network_type;                                             ///< Type of network on which the controller is bound
-   ctrlm_controller_id_t           controller_id;                                            ///< A unique identifier of the remote
-   unsigned long                   session_id;                                               ///< A unique id for the voice session.
-   ctrlm_voice_session_result_t    result;                                                   ///< The overall result of the voice command
-   long                            return_code_http;                                         ///< HTTP request return code
-   long                            return_code_curl;                                         ///< Curl's return code
-   long                            return_code_vrex;                                         ///< Vrex server's return code
-   long                            return_code_internal;                                     ///< Internally generated return code
-   char                            vrex_session_id[CTRLM_VOICE_SESSION_ID_MAX_LENGTH];       ///< Unique identifier for the vrex session (null terminated string)
-   char                            vrex_session_text[CTRLM_VOICE_SESSION_TEXT_MAX_LENGTH];   ///< Text field returned by the vrex server
-   char                            vrex_session_message[CTRLM_VOICE_SESSION_MSG_MAX_LENGTH]; ///< Message field returned by the vrex server
-   char                            session_uuid[CTRLM_VOICE_SESSION_ID_MAX_LENGTH];          ///< Local UUID generated for this session
-   char                            curl_request_ip[CTRLM_VOICE_REQUEST_IP_MAX_LENGTH];       ///< cURL request primary IP address string
-   double                          curl_request_dns_time;                                    ///< cURL request name lookup time (in seconds)
-   double                          curl_request_connect_time;                                ///< cURL request connect time (in seconds)
-} ctrlm_voice_iarm_event_session_result_t;
-
-typedef struct {
-   unsigned char               api_revision;  ///< The revision of this API.
-   ctrlm_network_id_t          network_id;    ///< Identifier of network on which the controller is bound
-   ctrlm_network_type_t        network_type;  ///< Type of network on which the controller is bound
-   ctrlm_controller_id_t       controller_id; ///< A unique identifier of the remote
-   unsigned long               session_id;    ///< A unique id for the voice session.
-   ctrlm_voice_stats_session_t session;       ///< Statistics for the session
-   ctrlm_voice_stats_reboot_t  reboot;        ///< Data associated with a reboot
-} ctrlm_voice_iarm_event_session_stats_t;
-
-typedef struct {
-   unsigned char                      api_revision;  ///< The revision of this API.
-   ctrlm_network_id_t                 network_id;    ///< Identifier of network on which the controller is bound
-   ctrlm_network_type_t               network_type;  ///< Type of network on which the controller is bound
-   ctrlm_controller_id_t              controller_id; ///< A unique identifier of the remote
-   unsigned long                      session_id;    ///< A unique id for the voice session.
-   ctrlm_voice_session_abort_reason_t reason;        ///< The reason that the voice session was aborted
-} ctrlm_voice_iarm_event_session_abort_t;
-
-typedef struct {
-   unsigned char                    api_revision;         ///< The revision of this API.
-   ctrlm_network_id_t               network_id;           ///< Identifier of network on which the controller is bound
-   ctrlm_network_type_t             network_type;         ///< Type of network on which the controller is bound
-   ctrlm_controller_id_t            controller_id;        ///< A unique identifier of the remote
-   unsigned long                    session_id;           ///< A unique id for the voice session.
-   ctrlm_voice_session_end_reason_t reason;               ///< The reason that the voice streaming ended
-   long                             return_code_internal; ///< Internally generated return code
-} ctrlm_voice_iarm_event_session_short_t;
-
-typedef struct {
-   unsigned char api_revision;            ///< The revision of this API
-   char          media_service_url[2083]; ///< The url for the media service (null terminated string)
-} ctrlm_voice_iarm_event_media_service_t;
-
 
 // APIs for Thunder Plugin
 

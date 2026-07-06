@@ -185,10 +185,8 @@ const char *ctrlm_rcu_controller_type_str(ctrlm_rcu_controller_type_t controller
 const char *ctrlm_rcu_reverse_cmd_result_str(ctrlm_rcu_reverse_cmd_result_t result);
 const char *ctrlm_rcu_ir_remote_types_str(ctrlm_ir_remote_type controller_type);
 
-const char *ctrlm_voice_session_result_str(ctrlm_voice_session_result_t result);
 const char *ctrlm_voice_session_end_reason_str(ctrlm_voice_session_end_reason_t reason);
 const char *ctrlm_voice_session_abort_reason_str(ctrlm_voice_session_abort_reason_t reason);
-const char *ctrlm_voice_internal_error_str(ctrlm_voice_internal_error_t error);
 const char *ctrlm_voice_reset_type_str(ctrlm_voice_reset_type_t reset_type);
 
 const char *ctrlm_device_update_iarm_load_type_str(ctrlm_device_update_iarm_load_type_t load_type);

@@ -22,25 +22,13 @@
 #include "ctrlm_log.h"
 #include "ctrlm_voice_obj.h"
 
-static IARM_Result_t update_settings(void *arg);
-
 ctrlm_voice_ipc_iarm_legacy_t::ctrlm_voice_ipc_iarm_legacy_t(ctrlm_voice_t *obj_voice) : ctrlm_voice_ipc_t(obj_voice) {
     this->state = EVENT_ALL;
 }
 
 bool ctrlm_voice_ipc_iarm_legacy_t::register_ipc() const {
     bool ret = true;
-    IARM_Result_t rc;
     // NOTE: The IARM events are registered in ctrlm_main.cpp
-
-    XLOGD_INFO("ServiceManager");
-
-    XLOGD_INFO("Registering for voice update settings");
-    rc = IARM_Bus_RegisterCall(CTRLM_VOICE_IARM_CALL_UPDATE_SETTINGS, update_settings);
-    if(rc != IARM_RESULT_SUCCESS) {
-        XLOGD_ERROR("Failed to register %d", rc);
-        ret = false;
-    }
     return(ret);
 }
 
@@ -162,7 +150,7 @@ bool ctrlm_voice_ipc_iarm_legacy_t::session_end(const ctrlm_voice_ipc_event_sess
     }
     // Reset state
     this->state = EVENT_ALL;
-    return(ret);               
+    return(ret);
 }
 
 bool ctrlm_voice_ipc_iarm_legacy_t::server_message(const char *message, unsigned long size) {
@@ -197,34 +185,4 @@ bool ctrlm_voice_ipc_iarm_legacy_t::session_statistics(const ctrlm_voice_ipc_eve
 }
 
 void ctrlm_voice_ipc_iarm_legacy_t::deregister_ipc() const {
-    XLOGD_INFO("ServiceManager");
-}
-
-IARM_Result_t update_settings(void *arg) {
-    ctrlm_voice_iarm_call_settings_t *voice_settings = (ctrlm_voice_iarm_call_settings_t *)arg;
-    ctrlm_voice_t *voice_obj = NULL;
-
-    if(voice_settings == NULL) {
-        XLOGD_ERROR("voice settings NULL");
-        return(IARM_RESULT_INVALID_PARAM);
-    }
-
-    XLOGD_INFO("Rxd CTRLM_VOICE_IARM_EVENT_VOICE_SETTINGS - API Revision %u", voice_settings->api_revision);
-
-    if(voice_settings->api_revision != CTRLM_VOICE_IARM_BUS_API_REVISION) {
-        XLOGD_INFO("Unsupported API Revision (%u, %u)", voice_settings->api_revision, CTRLM_VOICE_IARM_BUS_API_REVISION);
-        voice_settings->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-        return(IARM_RESULT_INVALID_PARAM);
-    }
-
-    voice_obj = ctrlm_get_voice_obj();
-    if(voice_obj) {
-        if(!voice_obj->voice_configure(voice_settings, true)) {
-            return(IARM_RESULT_INVALID_PARAM);
-        }
-    } else {
-        return(IARM_RESULT_INVALID_STATE);
-    }
-
-    return(IARM_RESULT_SUCCESS);
 }

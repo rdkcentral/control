@@ -21,24 +21,7 @@
 #define _CTRLM_IPC_VOICE_H_
 
 #include "ctrlm_ipc.h"
-/// @file ctrlm_ipc_voice.h
-///
-/// @defgroup CTRLM_IPC_VOICE IARM API - Voice
-/// @{
-///
-/// @defgroup CTRLM_IPC_VOICE_COMMS       Communication Interfaces
-/// @defgroup CTRLM_IPC_VOICE_CALLS       IARM Remote Procedure Calls
-/// @defgroup CTRLM_IPC_VOICE_EVENTS      IARM Events
-/// @defgroup CTRLM_IPC_VOICE_DEFINITIONS Constants
-/// @defgroup CTRLM_IPC_VOICE_ENUMS       Enumerations
-/// @defgroup CTRLM_IPC_VOICE_STRUCTS     Structures
 
-/// @addtogroup CTRLM_IPC_VOICE_DEFINITIONS
-/// @{
-/// @brief Constant Defintions
-/// @details The Control Manager provides definitions for constant values.
-
-#define CTRLM_VOICE_IARM_CALL_UPDATE_SETTINGS            "Voice_UpdateSettings"          ///< IARM Call to update settings
 #define CTRLM_VOICE_IARM_CALL_SESSION_BEGIN              "Voice_SessionBegin"            ///< starts a voice streaming session
 #define CTRLM_VOICE_IARM_CALL_SESSION_END                "Voice_SessionEnd"              ///< ends a voice streaming session
 
@@ -80,23 +63,12 @@
 #define CTRLM_VOICE_SETTINGS_FARFIELD_VREX_SERVER_URL (0x0080) ///< Setting to update the farfield vrex server url string
 #define CTRLM_VOICE_SETTINGS_MIC_TAP_SERVER_URL       (0x0100) ///< Setting to update the microphone tap server url string
 
-/// @}
-
-/// @addtogroup CTRLM_IPC_VOICE_ENUMS
-/// @{
-/// @brief Enumerated Types
-/// @details The Control Manager provides enumerated types for logical groups of values.
-
-/// @brief Voice Session Results
-/// @details An enumeration of the overall result for a voice session.
 typedef enum {
    CTRLM_VOICE_SESSION_RESULT_SUCCESS           = 0, ///< Voice session completed successfully
    CTRLM_VOICE_SESSION_RESULT_FAILURE           = 1, ///< Voice session completed unsuccessfully
    CTRLM_VOICE_SESSION_RESULT_MAX               = 2  ///< Voice session result maximum value
 } ctrlm_voice_session_result_t;
 
-/// @brief Voice Session End Reasons
-/// @details An enumeration of the reasons that cause a voice session to end.
 typedef enum {
    CTRLM_VOICE_SESSION_END_REASON_DONE                    = 0, ///< Session completed normally
    CTRLM_VOICE_SESSION_END_REASON_TIMEOUT_FIRST_PACKET    = 1, ///< Session ended due to timeout on the first audio sample
@@ -110,8 +82,6 @@ typedef enum {
    CTRLM_VOICE_SESSION_END_REASON_MAX                     = 9  ///< Session End Reason maximum value
 } ctrlm_voice_session_end_reason_t;
 
-/// @brief Voice Session Abort Reasons
-/// @details An enumeration of the reasons that cause a voice session to be aborted.
 typedef enum {
    CTRLM_VOICE_SESSION_ABORT_REASON_BUSY                  =  0, ///< Session aborted because another session in progress
    CTRLM_VOICE_SESSION_ABORT_REASON_SERVER_NOT_READY      =  1, ///< Session aborted because the server cannot be reached
@@ -126,8 +96,6 @@ typedef enum {
    CTRLM_VOICE_SESSION_ABORT_REASON_MAX                   = 10  ///< Session Abort Reason maximum value
 } ctrlm_voice_session_abort_reason_t;
 
-/// @brief Voice Internal Errors
-/// @details An enumeration of the Voice component's internal error codes.
 typedef enum {
    CTRLM_VOICE_INTERNAL_ERROR_NONE              = 0, ///< No internal error occurred
    CTRLM_VOICE_INTERNAL_ERROR_EXCEPTION         = 1, ///< An exception generated an internal error
@@ -135,8 +103,6 @@ typedef enum {
    CTRLM_VOICE_INTERNAL_ERROR_MAX               = 3  ///< Internal error type maximum value
 } ctrlm_voice_internal_error_t;
 
-/// @brief Voice Reset Types
-/// @details An enumeration of the types of reset that can occur on a controller.
 typedef enum {
    CTRLM_VOICE_RESET_TYPE_POWER_ON                   = 0, ///< Normal power up by inserting batteries
    CTRLM_VOICE_RESET_TYPE_EXTERNAL                   = 1, ///< Reset due to an external condition
@@ -146,13 +112,6 @@ typedef enum {
    CTRLM_VOICE_RESET_TYPE_OTHER                      = 5, ///< Reset due to any other reason
    CTRLM_VOICE_RESET_TYPE_MAX                        = 6  ///< Reset type maximum value
 } ctrlm_voice_reset_type_t;
-
-/// @}
-
-/// @addtogroup CTRLM_IPC_VOICE_STRUCTS
-/// @{
-/// @brief Structure Definitions
-/// @details The Control Manager provides structures that are used in IARM calls and events.
 
 typedef struct {
     char    name[CTRLM_VOICE_QUERY_STRING_MAX_LENGTH];      ///< The name (null terminated string) for a query
@@ -318,118 +277,4 @@ typedef struct {
 
 // End APIs for Thunder Plugin
 
-/// @}
-///
-/// @addtogroup CTRLM_IPC_VOICE_CALLS
-/// @{
-/// @brief Remote Calls accessible via IARM bus
-/// @details IARM calls are synchronous calls to functions provided by other IARM bus members. Each bus member can register
-/// calls using the IARM_Bus_RegisterCall() function. Other members can invoke the call using the IARM_Bus_Call() function.
-///
-/// -----------------
-/// Call Registration
-/// -----------------
-///
-/// The Voice component of Control Manager registers the following calls.
-///
-/// | Bus Name                 | Call Name                      | Argument                      | Description                                    |
-/// | :-------                 | :--------                      | :-------                      | :----------                                    |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_VOICE_IARM_CALL_SETTINGS | ctrlm_voice_iarm_settings_t * | Sets one or more voice configuration settings. |
-///
-/// Examples:
-///
-/// Get a controller's status:
-///
-///     IARM_Result_t               result;
-///     ctrlm_voice_iarm_settings_t settings;
-///     settings.available = (CTRLM_VOICE_SETTINGS_VOICE_ENABLED | CTRLM_VOICE_SETTINGS_VREX_SAT_ENABLED);
-///     settings.voice_control_enabled = 1;
-///     settings.vrex_sat_enabled      = 1;
-///
-///     result = IARM_Bus_Call(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_CALL_SETTINGS, (void *)&settings, sizeof(settings));
-///     if(IARM_RESULT_SUCCESS == result && CTRLM_IARM_CALL_RESULT_SUCCESS == settings.result) {
-///         // Settings were successfully updated
-///     }
-///     }
-///
-/// @}
-///
-/// @addtogroup CTRLM_IPC_VOICE_EVENTS
-/// @{
-/// @brief Broadcast Events accessible via IARM bus
-/// @details The IARM bus uses events to broadcast information to interested clients. An event is sent separately to each client. There are no return values for an event and no
-/// guarantee that a client will receive the event.  Each event has a different argument structure according to the information being transferred to the clients.  The events that the
-/// Remote Control component in Control Manager generates and subscribes to are detailed below.
-///
-/// ----------------------------
-/// Event Generation (Broadcast)
-/// ----------------------------
-///
-/// The Voice component generates events that can be received by other processes connected to the IARM bus. The following events
-/// are registered during initialization:
-///
-/// | Bus Name                 | Event Name                            | Argument                                  | Description                                                      |
-/// | :-------                 | :---------                            | :-------                                  | :----------                                                      |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_VOICE_IARM_EVENT_SESSION_BEGIN  | ctrlm_voice_iarm_event_session_begin_t *  | Generated at the beginning of a voice session                    |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_VOICE_IARM_EVENT_SESSION_END    | ctrlm_voice_iarm_event_session_end_t *    | Generated at the end of a voice session                          |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_VOICE_IARM_EVENT_SESSION_RESULT | ctrlm_voice_iarm_event_session_result_t * | Generated when the result of the voice session is available      |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_VOICE_IARM_EVENT_SESSION_STATS  | ctrlm_voice_iarm_event_session_stats_t *  | Generated when the statistics of the voice session are available |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_VOICE_IARM_EVENT_SESSION_ABORT  | ctrlm_voice_iarm_event_session_abort_t *  | Generated when a voice session is aborted (denied)               |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_VOICE_IARM_EVENT_SESSION_SHORT  | ctrlm_voice_iarm_event_session_short_t *  | Generated when a short voice session is detected                 |
-/// | CTRLM_MAIN_IARM_BUS_NAME | CTRLM_VOICE_IARM_EVENT_MEDIA_SERVICE  | ctrlm_voice_iarm_event_media_service_t *  | Generated when a media service response is received              |
-///
-/// IARM events are available on a subscription basis. In order to receive an event, a client must explicitly register to receive the event by calling
-/// IARM_Bus_RegisterEventHandler() with the bus name, event name and a @link IARM_EventHandler_t handler function@endlink. Events may be generated at any time by the
-/// Voice component. All events are asynchronous.
-///
-/// Examples:
-///
-/// Register for a Voice event:
-///
-///     IARM_Result_t result;
-///
-///     result = IARM_Bus_RegisterEventHandler(CTRLM_MAIN_IARM_BUS_NAME, CTRLM_VOICE_IARM_EVENT_SESSION_RESULT, session_result_handler_func);
-///     if(IARM_RESULT_SUCCESS == result) {
-///         // Event registration was set successfully
-///     }
-///     }
-///
-/// @}
-///
-/// @addtogroup CTRLM_IPC_VOICE_COMMS
-/// @{
-/// @brief Communication Interfaces
-/// @details The following diagrams detail the main communication paths for the Voice component.
-/// ---------------
-/// Voice Data Flow
-/// ---------------
-///
-/// @dot
-/// digraph CTRL_MGR_VREX {
-///     rankdir=LR;
-///     "VREX_IDLE"         [shape="ellipse", fontname=Helvetica, fontsize=10, label="IDLE"];
-///     "VREX_OPEN"         [shape="ellipse", fontname=Helvetica, fontsize=10, label="OPEN"];
-///     "VREX_CLOSE"        [shape="ellipse", fontname=Helvetica, fontsize=10, label="CLOSE"];
-///     "VREX_IS_REM_VALID" [shape="diamond", fontname=Helvetica, fontsize=10, label="Is remote\nvalid?"];
-///     "VREX_IS_SVR_AVAIL" [shape="diamond", fontname=Helvetica, fontsize=10, label="Is server\navailable?"];
-///     "VREX_IS_SEND_OK"   [shape="diamond", fontname=Helvetica, fontsize=10, label="Is fragment transferred\nto the server?"];
-///
-///     "VREX_IDLE"         -> "VREX_IS_REM_VALID" [dir="forward", fontname=Helvetica, fontsize=10,label="  Voice Begin Event Rxd"];
-///     "VREX_IDLE"         -> "VREX_IDLE"         [dir="forward", fontname=Helvetica, fontsize=10,label="  Voice Fragment/End Event Rxd"];
-///     "VREX_IS_REM_VALID" -> "VREX_IS_SVR_AVAIL" [dir="forward", fontname=Helvetica, fontsize=10,label="  Yes"];
-///     "VREX_IS_REM_VALID" -> "VREX_IDLE"         [dir="forward", fontname=Helvetica, fontsize=10,label="  No"];
-///     "VREX_IS_SVR_AVAIL" -> "VREX_OPEN"         [dir="forward", fontname=Helvetica, fontsize=10,label="  Yes, open session"];
-///     "VREX_IS_SVR_AVAIL" -> "VREX_IDLE"         [dir="forward", fontname=Helvetica, fontsize=10,label="  No"];
-///     "VREX_OPEN"         -> "VREX_IS_SEND_OK"   [dir="forward", fontname=Helvetica, fontsize=10,label="  Voice Fragment\nEvent Rxd"];
-///     "VREX_IS_SEND_OK"   -> "VREX_OPEN"         [dir="forward", fontname=Helvetica, fontsize=10,label="  Yes"];
-///     "VREX_IS_SEND_OK"   -> "VREX_CLOSE"        [dir="forward", fontname=Helvetica, fontsize=10,label="  No, end session"];
-///     "VREX_OPEN"         -> "VREX_CLOSE"        [dir="forward", fontname=Helvetica, fontsize=10,label="  Voice End Event Rxd.\nTransfer status\ncode to server."];
-///     "VREX_CLOSE"        -> "VREX_IDLE"         [dir="forward", fontname=Helvetica, fontsize=10,label="  Close session."];
-///     { rank=same; "VREX_IS_REM_VALID"; "VREX_IS_SVR_AVAIL"; }
-///     { rank=same; "VREX_OPEN"; "VREX_IS_SEND_OK"; }
-/// }
-/// \enddot
-/// @}
-///
-/// @}
 #endif

@@ -207,7 +207,7 @@ if(THUNDER)
 endif()
 
 if(CTRLM_USE_THUNDER_FR_DS)
-   add_compile_definitions(PRIVATE CTRLM_USE_THUNDER_FR_DS)
+   target_compile_definitions(controlMgr PRIVATE CTRLM_USE_THUNDER_FR_DS)
 endif()
 
 if(XRSR_HTTP)

@@ -97,6 +97,8 @@ BleRcuDeviceBluez::BleRcuDeviceBluez(const BleAddress &bdaddr,
     , m_lastPairedState(false)
     , m_lastServicesResolvedState(false)
     , m_isPairing(false)
+    , m_pairingRetryCnt(0)
+    , m_maxPairingRetries(0)
     , m_timeSinceReady(0)
     , m_recoveryAttempts(0)
     , m_maxRecoveryAttempts(100)
@@ -240,8 +242,9 @@ static gboolean getInitialDeviceProperties(gpointer user_data)
     request then the \a pairingError signal will be emitted.
 
  */
-void BleRcuDeviceBluez::pair(int timeout)
+void BleRcuDeviceBluez::pair(int timeout, int retries)
 {
+    m_maxPairingRetries = retries;
     m_deviceProxy->Pair(
             PendingReply<>(m_isAlive, std::bind(&BleRcuDeviceBluez::onPairRequestReply, this, std::placeholders::_1)));
 
@@ -261,11 +264,18 @@ void BleRcuDeviceBluez::onPairRequestReply(PendingReply<> *reply)
     if (reply->isError()) {
         m_isPairing = false;
 
-        // an error occurred so log it
         XLOGD_ERROR("%s pairing request failed with error: <%s>", 
-                m_address.toString().c_str(), reply->errorMessage().c_str());
+            m_address.toString().c_str(), reply->errorMessage().c_str());
 
-        m_pairingErrorSlots.invoke(reply->errorMessage());
+        if (m_pairingRetryCnt < m_maxPairingRetries) {
+            m_pairingRetryCnt++;
+            XLOGD_INFO("Retrying pairing, attempt %d out of %d ", m_pairingRetryCnt, m_maxPairingRetries);
+            m_pairingErrorSlots.invoke(reply->errorMessage(), m_pairingRetryCnt, false);
+            pair(0, m_maxPairingRetries);
+        } else {
+            m_pairingErrorSlots.invoke(reply->errorMessage(), m_pairingRetryCnt, true);
+            m_pairingRetryCnt = 0;
+        }
     } else {
         XLOGD_DEBUG("%s pairing request successful", m_address.toString().c_str());
     }
@@ -660,7 +670,7 @@ void BleRcuDeviceBluez::onEnteredRecoveryDisconnectingState()
     m_recoveryAttempts++;
 
     // log the attempt
-    XLOGD_ERROR("entered recovery state after device %s failed to resolve services (attempt #%d)", 
+    XLOGD_AUTOMATION_ERROR("entered recovery state after device %s failed to resolve services (attempt #%d)",
             m_address.toString().c_str(), m_recoveryAttempts);
 
 

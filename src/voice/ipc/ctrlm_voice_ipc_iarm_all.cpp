@@ -24,7 +24,9 @@
 #include "jansson.h"
 
 ctrlm_voice_ipc_iarm_all_t::ctrlm_voice_ipc_iarm_all_t(ctrlm_voice_t *obj_voice): ctrlm_voice_ipc_t(obj_voice) {
+    #ifdef CTRLM_THUNDER
     this->ipc.push_back(new ctrlm_voice_ipc_iarm_thunder_t(obj_voice));
+    #endif
     this->ipc.push_back(new ctrlm_voice_ipc_iarm_legacy_t(obj_voice));
 }
 

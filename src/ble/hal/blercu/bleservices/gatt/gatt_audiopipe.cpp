@@ -117,6 +117,14 @@ GattAudioPipe::GattAudioPipe(uint8_t frameSize, uint32_t frameCountMax, cbFrameV
         m_outputPipeWrFd = fds[1];
     }
 
+    // Set the pipe size to at least N seconds
+    const uint32_t pipe_size_min_ms = 3000;
+    uint32_t pipe_size_min_bytes = (pipe_size_min_ms * frameSize) / ((frameSize - 4) / 8);
+
+    int rc = fcntl(m_outputPipeWrFd, F_SETPIPE_SZ, pipe_size_min_bytes);
+    if(rc < (int)pipe_size_min_bytes) { // emit a warning if the kernel returns a pipe size smaller than we requested
+        XLOGD_WARN("set pipe size failed exp <%u> rxd <%d>", pipe_size_min_bytes, rc);
+    }
 }
 
 // -----------------------------------------------------------------------------

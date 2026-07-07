@@ -23,6 +23,7 @@
 #include <semaphore.h>
 #include <mutex>
 #include <memory>
+#include <map>
 #include "ctrlm_ipc_iarm.h"
 #include "ctrlm_ipc.h"
 #include "ctrlm_utils.h"
@@ -46,6 +47,10 @@ namespace rcp_json_keys
     constexpr char const* SESSION_ID           = "sessionId";
     constexpr char const* SESSION_ID_LIST      = "sessionIdList";
     constexpr char const* MAC_ADDRESS_LIST     = "macAddressList";
+    constexpr char const* SCREEN_BIND_ENABLE   = "screenBindEnable";
+    constexpr char const* SCREEN_BIND_DISABLE  = "screenBindDisable";
+    constexpr char const* SCAN_ENABLE          = "scanEnable";
+    constexpr char const* SCAN_DISABLE         = "scanDisable";
     constexpr char const* SUCCESS              = "success";
 }
 
@@ -73,10 +78,13 @@ public:
     bool is_thunder_device_update_enabled() const;
 
     bool on_status(const ctrlm_rcp_ipc_net_status_t &net_status) const;
+    bool on_validation_status(const ctrlm_rcp_ipc_validation_status_t &validation_status) const;
     bool on_firmware_update_progress(const ctrlm_rcp_ipc_upgrade_status_t &upgrade_status) const;
+    bool on_validation(const ctrlm_rcp_ipc_validation_status_t &validation_status) const;
 
 protected:
     static IARM_Result_t start_pairing(void *arg);
+    static IARM_Result_t stop_pairing(void *arg);
     static IARM_Result_t get_net_status(void *arg);
     static IARM_Result_t get_last_keypress(void *arg);
     static IARM_Result_t find_my_remote(void *arg);
@@ -86,6 +94,12 @@ protected:
     static IARM_Result_t cancel_fw_update(void *arg);
     static IARM_Result_t status_fw_update(void *arg);
     static IARM_Result_t unpair(void *arg);
+
+
+    static json_t *build_rcu_status_json(const std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> &status_map,
+                                  ctrlm_ir_state_t      ir_prog_state,
+                                  ctrlm_rf_pair_state_t rf_pair_state,
+                                  ctrlm_network_type_t  type);
 
     template <typename T1, typename T2>
     static void sync_send_netw_handler_to_main_queue(T1 params, ctrlm_msg_handler_network_t handler)

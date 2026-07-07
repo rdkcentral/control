@@ -35,7 +35,7 @@ ctrlm_db_obj_t::~ctrlm_db_obj_t() {
 bool ctrlm_db_obj_t::read_db(ctrlm_db_ctx_t ctx) {
     bool ret = false;
     sqlite3 *handle = (sqlite3 *)ctx;
-    XLOGD_INFO("reading blob %s from table %s", this->key.c_str(), this->table.c_str());
+    XLOGD_DEBUG("reading blob %s from table %s", this->key.c_str(), this->table.c_str());
     if(handle) {
         sqlite3_stmt *stmt = NULL;
         std::string query = "SELECT value FROM " + this->table + " WHERE key='" + this->key + "';";
@@ -63,7 +63,7 @@ bool ctrlm_db_obj_t::read_db(ctrlm_db_ctx_t ctx) {
 bool ctrlm_db_obj_t::write_db(ctrlm_db_ctx_t ctx) {
     bool ret = false;
     sqlite3 *handle = (sqlite3 *)ctx;
-    XLOGD_INFO("writing blob %s to table %s", this->key.c_str(), this->table.c_str());
+    XLOGD_DEBUG("writing blob %s to table %s", this->key.c_str(), this->table.c_str());
     if(handle) {
         sqlite3_stmt *stmt = NULL;
         std::string query = "INSERT OR REPLACE INTO " + this->table + "(key,value) VALUES (?,?);";

@@ -47,6 +47,7 @@ const BleUuid GattRemoteControlService::m_lastKeypressCharUuid(BleUuid::LastKeyp
 const BleUuid GattRemoteControlService::m_advConfigCharUuid(BleUuid::AdvertisingConfig);
 const BleUuid GattRemoteControlService::m_advConfigCustomListCharUuid(BleUuid::AdvertisingConfigCustomList);
 const BleUuid GattRemoteControlService::m_assertReportCharUuid(BleUuid::AssertReport);
+const BleUuid GattRemoteControlService::m_rawBatteryVoltageCharUuid(BleUuid::RawBatteryVoltage);
 
 using namespace std;
 
@@ -182,6 +183,12 @@ bool GattRemoteControlService::start(const shared_ptr<const BleGattService> &gat
             XLOGD_WARN("failed to get optional Assert Reporting characteristic, continuing anyway...");
         }
     }
+    if (!m_rawBatteryVoltageCharacteristic || !m_rawBatteryVoltageCharacteristic->isValid()) {
+        m_rawBatteryVoltageCharacteristic = gattService->characteristic(m_rawBatteryVoltageCharUuid);
+        if (!m_rawBatteryVoltageCharacteristic || !m_rawBatteryVoltageCharacteristic->isValid()) {
+            XLOGD_WARN("failed to get Raw Battery Voltage characteristic, continuing anyway...");
+        }
+    }
 
     // check we're not already started
     if (m_stateMachine.state() != IdleState) {
@@ -228,6 +235,7 @@ void GattRemoteControlService::onEnteredState(int state)
         m_rebootReasonCharacteristic.reset();
         m_rcuActionCharacteristic.reset();
         m_assertReportCharacteristic.reset();
+        m_rawBatteryVoltageCharacteristic.reset();
 
 
     } else if (state == RetrieveInitialValuesState) {
@@ -237,12 +245,14 @@ void GattRemoteControlService::onEnteredState(int state)
         requestAdvConfigCustomList();
         requestUnpairReason();
         requestRebootReason();
+        requestRawBatteryVoltage();
 
         m_readySlots.invoke();
 
     } else if (state == EnableNotificationsState) {
         requestStartUnpairNotify();
         requestStartRebootNotify();
+        requestRawBatteryVoltageChangedNotify();
     }
 }
 
@@ -269,7 +279,7 @@ void GattRemoteControlService::requestStartUnpairNotify()
                 m_stateMachine.cancelDelayedEvents(RetryStartNotifyEvent);
                 m_stateMachine.postDelayedEvent(RetryStartNotifyEvent, 2000);
             } else {
-                XLOGD_INFO("request to start notifications on Unpair characteristic succeeded");
+                XLOGD_DEBUG("request to start notifications on Unpair characteristic succeeded");
             }
         };
 
@@ -293,13 +303,42 @@ void GattRemoteControlService::requestStartRebootNotify()
                 m_stateMachine.cancelDelayedEvents(RetryStartNotifyEvent);
                 m_stateMachine.postDelayedEvent(RetryStartNotifyEvent, 2000);
             } else {
-                XLOGD_INFO("request to start notifications on Reboot Reason characteristic succeeded");
+                XLOGD_DEBUG("request to start notifications on Reboot Reason characteristic succeeded");
             }
         };
 
     m_rebootReasonCharacteristic->enableNotifications(
             Slot<const std::vector<uint8_t> &>(m_isAlive,
                 std::bind(&GattRemoteControlService::onRebootReasonChanged, this, std::placeholders::_1)), 
+            PendingReply<>(m_isAlive, replyHandler));
+}
+
+void GattRemoteControlService::requestRawBatteryVoltageChangedNotify()
+{
+    if (!m_rawBatteryVoltageCharacteristic || !m_rawBatteryVoltageCharacteristic->isValid()) {
+        XLOGD_WARN("Invalid raw battery voltage characteristic, skipping notification setup");
+        return;
+    }
+
+    auto replyHandler = [this](PendingReply<> *reply)
+        {
+            // check for errors
+            if (reply->isError()) {
+                // this is bad if this happens as we won't get updates, so we install a timer to
+                // retry enabling notifications in a couple of seconds time
+                XLOGD_ERROR("failed to enable raw battery voltage characteristic notifications due to <%s>",
+                        reply->errorMessage().c_str());
+
+                m_stateMachine.cancelDelayedEvents(RetryStartNotifyEvent);
+                m_stateMachine.postDelayedEvent(RetryStartNotifyEvent, 2000);
+            } else {
+                XLOGD_DEBUG("request to start notifications on Raw Battery Voltage characteristic succeeded");
+            }
+        };
+
+    m_rawBatteryVoltageCharacteristic->enableNotifications(
+            Slot<const std::vector<uint8_t> &>(m_isAlive,
+                std::bind(&GattRemoteControlService::onRawBatteryVoltageChanged, this, std::placeholders::_1)),
             PendingReply<>(m_isAlive, replyHandler));
 }
 
@@ -394,7 +433,7 @@ void GattRemoteControlService::requestUnpairReason()
                 
                 if (value.size() == 1) {
                     m_unpairReason = value[0];
-                    XLOGD_INFO("Initial unpair reason is %u (%s)", m_unpairReason, 
+                    XLOGD_DEBUG("Initial unpair reason is %u (%s)", m_unpairReason, 
                             ctrlm_ble_unpair_reason_str((ctrlm_ble_RcuUnpairReason_t)m_unpairReason));
                 } else {
                     XLOGD_ERROR("Unpair reason received has invalid length (%d bytes)", value.size());
@@ -429,7 +468,7 @@ void GattRemoteControlService::requestRebootReason()
                 
                 if (value.size() == 1) {
                     m_rebootReason = value[0];
-                    XLOGD_INFO("Initial reboot reason is %u (%s)", m_rebootReason, 
+                    XLOGD_DEBUG("Initial reboot reason is %u (%s)", m_rebootReason, 
                             ctrlm_ble_reboot_reason_str((ctrlm_ble_RcuRebootReason_t)m_rebootReason));
 
                     if (m_rebootReason == CTRLM_BLE_RCU_REBOOT_REASON_ASSERT) {
@@ -470,7 +509,7 @@ void GattRemoteControlService::requestAssertReport()
                 
                 if (value.size() == CTRLM_RCU_ASSERT_REPORT_MAX_SIZE) {
                     string assertStr(value.begin(), value.end()); 
-                    XLOGD_INFO("Initial RCU assert report is <%s>", assertStr.c_str());
+                    XLOGD_DEBUG("Initial RCU assert report is <%s>", assertStr.c_str());
                 } else {
                     XLOGD_ERROR("RCU assert report has invalid length (%d bytes)", value.size());
                 }
@@ -506,7 +545,7 @@ void GattRemoteControlService::requestLastKeypress()
                 
                 if (value.size() == 1) {
                     m_lastKeypress = value[0];
-                    XLOGD_INFO("Successfully read last key press characteristic, value = <0x%X>, emitting signal...", m_lastKeypress);
+                    XLOGD_DEBUG("Successfully read last key press characteristic, value = <0x%X>, emitting signal...", m_lastKeypress);
                     m_lastKeypressChangedSlots.invoke(m_lastKeypress);
                 } else {
                     XLOGD_ERROR("Last key press received has invalid length (%d bytes)", value.size());
@@ -522,6 +561,45 @@ void GattRemoteControlService::requestLastKeypress()
 
     } else {
         XLOGD_ERROR("Last key press characteristic is not valid, check that the remote firmware version supports this feature.");
+    }
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    \internal
+
+    Sends a request to org.bluez.GattCharacteristic1.Value() to get the value
+    property of the characteristic which contains the raw battery voltage.
+
+ */
+void GattRemoteControlService::requestRawBatteryVoltage()
+{
+    // lambda invoked when the request returns
+    auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
+    {
+        // check for errors
+        if (reply->isError()) {
+            XLOGD_ERROR("Failed to read raw battery voltage due to <%s>", reply->errorMessage().c_str());
+        } else {
+            std::vector<uint8_t> value;
+            value = reply->result();
+
+            if (value.size() == 3) {
+                onRawBatteryVoltageChanged(value);
+            } else {
+                XLOGD_ERROR("Raw battery voltage received has invalid length (%d bytes)", value.size());
+            }
+        }
+    };
+
+
+    if (m_rawBatteryVoltageCharacteristic && m_rawBatteryVoltageCharacteristic->isValid()) {
+
+        // send a request to the bluez daemon to read the characteristic
+        m_rawBatteryVoltageCharacteristic->readValue(PendingReply<std::vector<uint8_t>>(m_isAlive, replyHandler));
+
+    } else {
+        XLOGD_WARN("Raw battery voltage characteristic is not valid, check that the remote firmware version supports this feature.");
     }
 }
 
@@ -547,7 +625,7 @@ void GattRemoteControlService::requestAdvConfig()
                 
                 if (value.size() == 1) {
                     m_advConfig = value[0];
-                    XLOGD_INFO("Successfully read advertising config characteristic, value = <0x%X>, emitting signal...", m_advConfig);
+                    XLOGD_DEBUG("Successfully read advertising config characteristic, value = <0x%X>, emitting signal...", m_advConfig);
                     m_advConfigChangedSlots.invoke(m_advConfig);
                 } else {
                     XLOGD_ERROR("Advertising config received has invalid length (%d bytes)", value.size());
@@ -584,7 +662,7 @@ void GattRemoteControlService::requestAdvConfigCustomList()
                 XLOGD_ERROR("Failed to read custom advertising config due to <%s>", reply->errorMessage().c_str());
             } else {
                 m_advConfigCustomList = reply->result();
-                XLOGD_INFO("Successfully read advertising config custom list characteristic");
+                XLOGD_DEBUG("Successfully read advertising config custom list characteristic");
                 
                 m_advConfigCustomListChangedSlots.invoke(m_advConfigCustomList);
             }
@@ -601,7 +679,38 @@ void GattRemoteControlService::requestAdvConfigCustomList()
     }
 }
 
+// -----------------------------------------------------------------------------
+/*!
+    \internal
 
+    Internal slot called when a notification from the remote device is sent
+    due to raw battery voltage changing.
+ */
+void GattRemoteControlService::onRawBatteryVoltageChanged(const std::vector<uint8_t> &newValue) {
+    m_unloadedVoltage = newValue[0];
+    m_loadedVoltage = newValue[1];
+    m_voltagePercentage = std::clamp(newValue[2], uint8_t(0), uint8_t(100)); // Clamp percentage between 0 - 100
+
+    // Formats an 8-bit unsigned integer as a voltage string.
+    // Upper 2 bits = whole voltage (0-3v), lower 6 bits = 1/64v increments.
+    //     Example: 137 (0x89 = 0b10001001)
+    //      - Upper 2 bits: 0b10 = 2v
+    //      - Lower 6 bits: 0b001001 = 9 = 9/64 = 0.14v
+    //      - Result: "2.14v"
+    auto formatVoltage = [](uint8_t value) -> std::string {
+        const uint8_t wholeVolts = (value >> 6) & 0x03; // Upper 2 bits
+        const uint8_t fractionalBits = value & 0x3F;    // Lower 6 bits
+        const float totalVolts = wholeVolts + (fractionalBits / 64.0f);
+
+        char buffer[16];
+        snprintf(buffer, sizeof(buffer), "%.2fv", totalVolts);
+        return buffer;
+    };
+
+    XLOGD_TELEMETRY("Successfully read raw battery voltage characteristic, unloaded = %s, loaded = %s, loaded percentage = %u%%",
+       formatVoltage(m_unloadedVoltage).c_str(), formatVoltage(m_loadedVoltage).c_str(), (unsigned int)m_voltagePercentage);
+    m_rawBatteryVoltageChangedSlots.invoke(newValue);
+}
 
 // -----------------------------------------------------------------------------
 /*!
@@ -773,7 +882,7 @@ void GattRemoteControlService::onRebootReasonChanged(const vector<uint8_t> &newV
         XLOGD_ERROR("Reboot reason received has invalid length (%d bytes)", newValue.size());
     } else {
         m_rebootReason = newValue[0];
-        XLOGD_INFO("reboot reason changed to %u (%s)", m_rebootReason, 
+        XLOGD_DEBUG("reboot reason changed to %u (%s)", m_rebootReason, 
                 ctrlm_ble_reboot_reason_str((ctrlm_ble_RcuRebootReason_t)m_rebootReason));
 
         if (m_rebootReason == CTRLM_BLE_RCU_REBOOT_REASON_ASSERT && m_assertReportCharacteristic) {

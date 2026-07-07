@@ -33,11 +33,6 @@ bool ctrlm_auth_thunder_t::is_ready() {
    return(ret);
 }
 
-bool ctrlm_auth_thunder_t::get_receiver_id(std::string &receiver_id) {
-   bool ret = this->plugin->get_receiver_id(receiver_id);
-   return(ret);
-}
-
 bool ctrlm_auth_thunder_t::get_device_id(std::string &device_id) {
    bool ret = this->plugin->get_device_id(device_id);
    return(ret);
@@ -50,11 +45,6 @@ bool ctrlm_auth_thunder_t::get_account_id(std::string &account_id) {
 
 bool ctrlm_auth_thunder_t::get_partner_id(std::string &partner_id) {
    bool ret = this->plugin->get_partner_id(partner_id);
-   return(ret);
-}
-
-bool ctrlm_auth_thunder_t::get_experience(std::string &experience) {
-   bool ret = this->plugin->get_experience(experience);
    return(ret);
 }
 

@@ -479,6 +479,13 @@ void ctrlm_obj_network_rf4ce_t::ind_process_data_rcu(ctrlm_main_queue_msg_rf4ce_
                function == CTRLM_RCU_FUNCTION_MODE_CLIP_DISCOVERY) {
                // Unbind the controller since it has effectively unpaired
                controller_unbind(dqm->controller_id, CTRLM_UNBIND_REASON_CONTROLLER_RESET);
+               ctrlm_main_queue_msg_header_t *msg = (ctrlm_main_queue_msg_header_t *)g_malloc(sizeof(ctrlm_main_queue_msg_header_t));
+               if(msg == NULL) {
+                  XLOGD_ERROR("Out of memory");
+               } else {
+                  msg->type = CTRLM_MAIN_QUEUE_MSG_TYPE_EXPORT_CONTROLLER_LIST;
+                  ctrlm_main_queue_msg_push((gpointer)msg);
+               }
             }
 
             if((function != CTRLM_RCU_FUNCTION_INVALID) && (function != CTRLM_RCU_FUNCTION_INVALID_KEY_COMBO)) {
@@ -579,6 +586,14 @@ void ctrlm_obj_network_rf4ce_t::ind_process_data_rcu(ctrlm_main_queue_msg_rf4ce_
          controllers_[dqm->controller_id]->rib_configuration_complete(dqm->timestamp, (ctrlm_rf4ce_rib_configuration_complete_status_t)cmd_data[1]);
          set_rf_pair_state(CTRLM_RF_PAIR_STATE_COMPLETE);
          iarm_event_rcu_status();
+
+         ctrlm_main_queue_msg_header_t *msg = (ctrlm_main_queue_msg_header_t *)g_malloc(sizeof(ctrlm_main_queue_msg_header_t));
+         if(msg == NULL) {
+            XLOGD_ERROR("Out of memory");
+         } else {
+            msg->type = CTRLM_MAIN_QUEUE_MSG_TYPE_EXPORT_CONTROLLER_LIST;
+            ctrlm_main_queue_msg_push((gpointer)msg);
+         }
          break;
       }
       default: {

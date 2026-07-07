@@ -92,7 +92,7 @@ public:
 public:
     std::string bluezObjectPath() const;
 
-    void pair(int timeout);
+    void pair(int timeout, int retries);
     void cancelPairing();
     void connect();
 
@@ -231,6 +231,9 @@ private:
     bool m_lastPairedState;
     bool m_lastServicesResolvedState;
     bool m_isPairing;
+
+    int m_pairingRetryCnt;
+    int m_maxPairingRetries;
 
     GTimer* m_timeSinceReady;
 

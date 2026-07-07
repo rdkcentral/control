@@ -312,6 +312,9 @@ void ctrlm_validation_begin(ctrlm_network_id_t network_id, ctrlm_controller_id_t
    }
 }
 
+void ctrlm_validation_key(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_controller_type_t controller_type, ctrlm_key_code_t key_code) {
+}
+
 gboolean ctrlm_validation_end(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_controller_type_t controller_type, ctrlm_rcu_binding_type_t binding_type, ctrlm_rcu_validation_type_t validation_type, ctrlm_rcu_validation_result_t validation_result, sem_t *semaphore, ctrlm_validation_end_cmd_result_t *cmd_result) {
    XLOGD_INFO("(%u, %u) Type <%s> result <%s>", network_id, controller_id, ctrlm_rcu_validation_type_str(validation_type), ctrlm_rcu_validation_result_str(validation_result));
 
@@ -438,6 +441,23 @@ void ctrlm_inform_validation_begin(ctrlm_network_id_t network_id, ctrlm_controll
    ctrlm_main_queue_msg_push(msg);
 }
 
+void ctrlm_inform_validation_key(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_key_code_t key_code) {
+   // Allocate a message and send it to Control Manager's queue
+   ctrlm_main_queue_msg_bind_validation_key_t *msg = (ctrlm_main_queue_msg_bind_validation_key_t *)g_malloc(sizeof(ctrlm_main_queue_msg_bind_validation_key_t));
+   
+   if(NULL == msg) {
+      XLOGD_FATAL("Out of memory");
+      g_assert(0);
+      return;
+   }
+   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_KEY;
+   msg->header.network_id = network_id;
+   msg->controller_id     = controller_id;
+   msg->key_code          = key_code;
+
+   ctrlm_main_queue_msg_push(msg);
+}
+
 gboolean ctrlm_inform_validation_end(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_binding_type_t binding_type, ctrlm_rcu_validation_type_t validation_type, ctrlm_rcu_validation_result_t validation_result, sem_t *semaphore, ctrlm_validation_end_cmd_result_t *cmd_result) {
    g_ctrlm_validation.golden_index         = 0;
    g_ctrlm_validation.num_wrong_keypresses = 0;
@@ -502,7 +522,7 @@ gboolean ctrlm_validation_key_sniff(ctrlm_network_id_t network_id, ctrlm_control
       ctrlm_validation_timeout_update(g_ctrlm_validation.timeout_subsequent);
 
       // Send the validation key as a broadcast event
-      ctrlm_rcu_iarm_event_key_press_validation(network_id, controller_id, controller_type, CTRLM_RCU_BINDING_TYPE_INTERACTIVE, key_status, key_code);
+      ctrlm_inform_validation_key(network_id, controller_id, key_code);
       
       if(!g_ctrlm_validation.app_based_validation) {
          if(g_ctrlm_validation.golden_index < 3) {// Check the input

@@ -35,12 +35,12 @@
 
 #include <string>
 
+#define BLE_MAX_MANAGED_RCUS (1)
+
 class ConfigSettings;
 
 class BleRcuAdapter;
 class BleRcuDevice;
-
-
 
 class BleRcuControllerImpl final : public BleRcuController
 {
@@ -61,7 +61,6 @@ public:
 
     bool startPairingAutoWithTimeout(int timeoutMs) override;
     bool startPairingWithCode(uint8_t pairingCode) override;
-    bool startPairingWithMacHash(uint8_t macHash) override;
     bool startPairingWithList(const std::vector<BleAddress> &macAddrList) override;
 
     bool cancelPairing() override;

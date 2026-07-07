@@ -185,6 +185,12 @@ void ctrlm_ble_rcu_interface_t::initialize()
                 m_rcuUnpairedSlots.invoke(&params);
             };
         m_controller->addManagedDeviceRemovedSlot(Slot<const BleAddress &>(m_isAlive, deviceRemovedSlot));
+
+        auto pairingOutcomeSlot = [this](const BleRcuPairingOutcome &outcome)
+            {
+                m_rcuPairingOutcomeSlots.invoke(outcome);
+            };
+        m_controller->addPairingOutcomeSlot(Slot<const BleRcuPairingOutcome&>(m_isAlive, pairingOutcomeSlot));
     }
 
     voice_params_par_t params;
@@ -544,18 +550,10 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
 
             ctrlm_hal_ble_RcuStatusData_t params;
 
-            // Get supported vendor types from IR protocol bitmask value
-            int num_irdbs_supported = 0;
-            for (uint8_t bit = 0; bit < 8; bit++) {
-                if (irSupport & (0x1 << bit)) {
-                    params.rcu_data.irdbs_supported[num_irdbs_supported] = ctrlm_ble_utils_IrControlToVendor(0x1 << bit);
-                    num_irdbs_supported++;
-                }
-            }
+            params.rcu_data.irdbs_supported = irSupport;
 
             params.property_updated = CTRLM_HAL_BLE_PROPERTY_IRDBS_SUPPORTED;
             params.rcu_data.ieee_address = address.toUInt64();
-            params.rcu_data.num_irdbs_supported = num_irdbs_supported;
 
             m_rcuStatusChangedSlots.invoke(&params);
         };
@@ -678,15 +676,7 @@ ctrlm_hal_ble_rcu_data_t ctrlm_ble_rcu_interface_t::getAllDeviceProperties(uint6
     }
 
     // IR Service
-    uint8_t irSupport = device->irSupport();
-    int num_irdbs_supported = 0;
-    for (uint8_t bit = 0; bit < 8; bit++) {
-        if (irSupport & (0x1 << bit)) {
-            ret.irdbs_supported[num_irdbs_supported] = ctrlm_ble_utils_IrControlToVendor(0x1 << bit);
-            num_irdbs_supported++;
-        }
-    }
-    ret.num_irdbs_supported = num_irdbs_supported;
+    ret.irdbs_supported = device->irSupport();
 
     // Voice Service
     ret.audio_codecs = device->audioCodecs();
@@ -713,31 +703,6 @@ bool ctrlm_ble_rcu_interface_t::pairWithCode(unsigned int code)
             XLOGD_ERROR("controller failed to start pairing, %s: %s", error.name().c_str(), error.message().c_str());
         }
         return false;
-    } else {
-        XLOGD_INFO("started pairing with code %hhu", code);
-    }
-    return true;
-}
-
-bool ctrlm_ble_rcu_interface_t::pairWithMacHash(unsigned int code)
-{
-    if (!m_controller) {
-        XLOGD_ERROR("m_controller is NULL!!!");
-        return false;
-    }
-
-    if (!m_controller->startPairingWithMacHash((uint8_t) code)) {
-        BleRcuError error = m_controller->lastError();
-
-        // Remote will continually send out IR pairing signals until the BLE pair request
-        // has been received.  This means that the "Already in pairing state" error is normal.
-        // Let's omit this error print because it only serves to confuse those analyzing the logs.
-        if (error.message() != "Already in pairing state") {
-            XLOGD_ERROR("controller failed to start pairing, %s: %s", error.name().c_str(), error.message().c_str());
-        }
-        return false;
-    } else {
-        XLOGD_INFO("started pairing with MAC hash 0x%X", code);
     }
     return true;
 }
@@ -771,6 +736,22 @@ bool ctrlm_ble_rcu_interface_t::pairAutoWithTimeout(int timeoutMs)
     if (!m_controller->startPairingAutoWithTimeout(timeoutMs)) {
         BleRcuError error = m_controller->lastError();
         XLOGD_ERROR("controller failed to start scan, %s: %s", error.name().c_str(), error.message().c_str());
+        return false;
+    }
+    return true;
+}
+
+bool ctrlm_ble_rcu_interface_t::pairCancel()
+{
+    if (!m_controller) {
+        XLOGD_ERROR("m_controller is NULL!!!");
+        return false;
+    }
+
+    XLOGD_INFO("Canceling BLE pairing operations.");
+    if (!m_controller->cancelPairing()) {
+        BleRcuError error = m_controller->lastError();
+        XLOGD_ERROR("controller failed to cancel pairing, %s: %s", error.name().c_str(), error.message().c_str());
         return false;
     }
     return true;
@@ -1138,7 +1119,7 @@ bool ctrlm_ble_rcu_interface_t::getFirstAudioDataTime(uint64_t ieee_address, ctr
     return false;
 }
 
-bool ctrlm_ble_rcu_interface_t::setIrControl(uint64_t ieee_address, ctrlm_irdb_vendor_t vendor)
+bool ctrlm_ble_rcu_interface_t::setIrControl(uint64_t ieee_address, uint8_t vendor)
 {
     // This method will wait for the operation to complete, so init a semaphore
     sem_t semaphore;
@@ -1163,10 +1144,9 @@ bool ctrlm_ble_rcu_interface_t::setIrControl(uint64_t ieee_address, ctrlm_irdb_v
 
     if (m_controller) {
         const auto device = m_controller->managedDevice(address);
-        uint8_t irControl = ctrlm_ble_utils_VendorToIrControlBitmask(vendor);
         if (device) {
             sem_init(&semaphore, 0, 0);
-            device->setIrControl(irControl, PendingReply<>(m_isAlive, replyHandler));
+            device->setIrControl(vendor, PendingReply<>(m_isAlive, replyHandler));
         } else {
             return false;
         }
@@ -1182,11 +1162,11 @@ bool ctrlm_ble_rcu_interface_t::setIrControl(uint64_t ieee_address, ctrlm_irdb_v
 }
 
 bool ctrlm_ble_rcu_interface_t::programIrSignalWaveforms(uint64_t ieee_address, 
-                                                         ctrlm_irdb_ir_codes_t &&irWaveforms, 
-                                                         ctrlm_irdb_vendor_t vendor)
+                                                         std::map<ctrlm_key_code_t, std::vector<uint8_t>> &&irWaveforms, 
+                                                         uint8_t vendor)
 {
     // lambda invoked when the request returns
-    auto replyHandler = [this](PendingReply<> *reply) mutable
+    auto replyHandler = [this, ieee_address](PendingReply<> *reply) mutable
         {
             bool success = false;
 
@@ -1199,9 +1179,13 @@ bool ctrlm_ble_rcu_interface_t::programIrSignalWaveforms(uint64_t ieee_address,
                 success = true;
             }
 
-            ctrlm_hal_ble_RcuStatusData_t params;
+            ctrlm_hal_ble_RcuStatusData_t params = {};
             params.property_updated = CTRLM_HAL_BLE_PROPERTY_IR_STATE;
             params.ir_state = success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED;
+            params.rcu_data.ieee_address = ieee_address;
+            if (!success) {
+                snprintf(params.ir_fail_reason, CTRLM_MAX_PARAM_STR_LEN, "%s", reply->errorMessage().c_str());
+            }
             m_rcuStatusChangedSlots.invoke(&params);
         };
 
@@ -1210,7 +1194,6 @@ bool ctrlm_ble_rcu_interface_t::programIrSignalWaveforms(uint64_t ieee_address,
     XLOGD_INFO("programming IR waveforms on remote %s", address.toString().c_str());
 
     bool success = true;
-    uint8_t irControl = ctrlm_ble_utils_VendorToIrControlBitmask(vendor);
 
     if (m_controller) {
         const auto device = m_controller->managedDevice(address);
@@ -1258,7 +1241,7 @@ bool ctrlm_ble_rcu_interface_t::programIrSignalWaveforms(uint64_t ieee_address,
                 bleRcuWaveforms[key_code] = std::move(waveform.second);
             }
 
-            device->programIrSignalWaveforms(std::move(bleRcuWaveforms), irControl, 
+            device->programIrSignalWaveforms(std::move(bleRcuWaveforms), vendor, 
                     PendingReply<>(m_isAlive, replyHandler) );
             
         } else {
@@ -1268,9 +1251,10 @@ bool ctrlm_ble_rcu_interface_t::programIrSignalWaveforms(uint64_t ieee_address,
         success = false;
     }
 
-    ctrlm_hal_ble_RcuStatusData_t params;
+    ctrlm_hal_ble_RcuStatusData_t params = {};
     params.property_updated = CTRLM_HAL_BLE_PROPERTY_IR_STATE;
     params.ir_state = success ? CTRLM_IR_STATE_WAITING : CTRLM_IR_STATE_FAILED;
+    params.rcu_data.ieee_address = ieee_address;
     m_rcuStatusChangedSlots.invoke(&params);
 
     return success;
@@ -1279,7 +1263,7 @@ bool ctrlm_ble_rcu_interface_t::programIrSignalWaveforms(uint64_t ieee_address,
 bool ctrlm_ble_rcu_interface_t::eraseIrSignals(uint64_t ieee_address)
 {
     // lambda invoked when the request returns
-    auto replyHandler = [this](PendingReply<> *reply) mutable
+    auto replyHandler = [this, ieee_address](PendingReply<> *reply) mutable
         {
             bool success = false;
 
@@ -1292,9 +1276,13 @@ bool ctrlm_ble_rcu_interface_t::eraseIrSignals(uint64_t ieee_address)
                 success = true;
             }
 
-            ctrlm_hal_ble_RcuStatusData_t params;
+            ctrlm_hal_ble_RcuStatusData_t params = {};
             params.property_updated = CTRLM_HAL_BLE_PROPERTY_IR_STATE;
             params.ir_state = success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED;
+            params.rcu_data.ieee_address = ieee_address;
+            if (!success) {
+                snprintf(params.ir_fail_reason, CTRLM_MAX_PARAM_STR_LEN, "%s", reply->errorMessage().c_str());
+            }
             m_rcuStatusChangedSlots.invoke(&params);
         };
 
@@ -1316,9 +1304,10 @@ bool ctrlm_ble_rcu_interface_t::eraseIrSignals(uint64_t ieee_address)
         success = false;
     }
 
-    ctrlm_hal_ble_RcuStatusData_t params;
+    ctrlm_hal_ble_RcuStatusData_t params = {};
     params.property_updated = CTRLM_HAL_BLE_PROPERTY_IR_STATE;
     params.ir_state = success ? CTRLM_IR_STATE_WAITING : CTRLM_IR_STATE_FAILED;
+    params.rcu_data.ieee_address = ieee_address;
     m_rcuStatusChangedSlots.invoke(&params);
 
     return success;
@@ -1424,7 +1413,7 @@ std::vector<uint64_t> ctrlm_ble_rcu_interface_t::getManagedDevices()
         return ret;
     }
 
-    XLOGD_INFO("Get list of currently managed devices");
+    XLOGD_DEBUG("Get list of currently managed devices");
     auto devices = m_controller->managedDevices();
 
     for (auto const &device : devices) {
@@ -1509,8 +1498,8 @@ static int OpenKeyInputDevice(uint64_t ieee_address)
 
                         uint64_t evdev_macaddr = ctrlm_convert_mac_string_to_long(libevdev_get_uniq(evdev));
                         if (evdev_macaddr == ieee_address) {
-                            XLOGD_INFO("Input Dev Node (%s) for device (0x%llX) FOUND, returning file descriptor: <%d>", 
-                                    keyInputFilename.c_str(), ieee_address, input_fd);
+                            XLOGD_INFO("Input Dev Node (%s) for device: <%s> (0x%llX) FOUND, returning file descriptor: <%d>", 
+                                    keyInputFilename.c_str(), libevdev_get_name(evdev), ieee_address, input_fd);
 
                             libevdev_free(evdev);
                             evdev = NULL;

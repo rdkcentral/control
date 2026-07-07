@@ -17,8 +17,6 @@
 # limitations under the License.
 ##########################################################################
 
-option(FACTORY_AUDIO_PLAYBACK "AUDIO PLAYBACK" OFF)
-
 add_executable(controlFactory ctrlmf_main.c)
 add_library(ctrlm-fta SHARED)
 set_target_properties( ctrlm-fta PROPERTIES
@@ -30,6 +28,9 @@ include_directories(
    .
    iarm
    thunder
+   ${CMAKE_SYSROOT}/usr/include/rdk/ds
+   ${CMAKE_SYSROOT}/usr/include/rdk/ds-rpc
+   ${CMAKE_SYSROOT}/usr/include/rdk/ds-hal
 )
 
 target_sources(ctrlm-fta PRIVATE
@@ -37,37 +38,21 @@ target_sources(ctrlm-fta PRIVATE
    ctrlmf_reset.cpp
    ctrlmf_systemd.c
    ctrlmf_utils.c
+   ctrlmf_audio_capture.cpp
+   ctrlmf_audio_control.cpp
+   ctrlmf_audio_playback.cpp
+   ctrlmf_mic_test.cpp
+   ctrlmf_ws.c
    iarm/ctrlmf_iarm_client.cpp
    iarm/ctrlmf_iarm_control_manager.cpp
 )
 
-target_link_libraries(ctrlm-fta c rdkversion dbus-1 glib-2.0 IARMBus xr-voice-sdk pthread nopoll secure_wrapper)
+target_link_libraries(ctrlm-fta c rdkversion dbus-1 glib-2.0 IARMBus xr-voice-sdk pthread nopoll secure_wrapper ds)
 target_link_libraries(controlFactory c ctrlm-fta secure_wrapper)
 
-if(CUSTOM_AUDIO_ANALYSIS_LIB)
-   add_compile_definitions(PRIVATE CTRLMF_CUSTOM_AUDIO_ANALYSIS)
-   target_link_libraries(controlFactory ${CUSTOM_AUDIO_ANALYSIS_LIB})
-endif()
-
-if(CUSTOM_AUTH_LIB)
+if(AUTH_ENABLED)
    add_compile_definitions(PRIVATE CTRLMF_WSS_ENABLED)
-   target_link_libraries(controlFactory ${CUSTOM_AUTH_LIB})
-endif()
-
-if(EXISTS ${CMAKE_SYSROOT}/usr/lib/libctrlm-hal-certificate.so)
-   target_link_libraries(controlFactory ctrlm-hal-certificate)
-else()
-   if(AUTH_ENABLED)
-      message(WARNING "ctrlm-hal-certificate library is not provided, disabling authentication")
-      unset(AUTH_ENABLED)
-   endif()
-endif()
-
-if(LOCAL_MIC)
-   add_compile_definitions(PRIVATE CTRLMF_LOCAL_MIC)
-   if(MIC_TAP)
-      add_compile_definitions(PRIVATE CTRLMF_LOCAL_MIC_TAP)
-   endif()
+   target_link_libraries(ctrlm-fta RdkCertSelector rdkconfig)
 endif()
 
 if(THUNDER)
@@ -75,6 +60,7 @@ if(THUNDER)
    target_sources(ctrlm-fta PRIVATE
       thunder/ctrlmf_thunder_controller.cpp
       thunder/ctrlmf_thunder_plugin.cpp
+      thunder/ctrlmf_thunder_plugin_system_audio_player.cpp
    )
 
    target_link_libraries(controlFactory WPEFrameworkCore WPEFrameworkPlugins)
@@ -84,40 +70,11 @@ if(THUNDER)
    if(WPE_FRAMEWORK_PROTO_TRACING)
       target_link_libraries(controlFactory WPEFrameworkProtocols WPEFrameworkTracing)
    endif()
-endif()
 
-if(THUNDER_SECURITY)
-   add_compile_definitions(PRIVATE THUNDER_SECURITY)
-   target_link_libraries(controlFactory WPEFrameworkSecurityUtil secure_wrapper)
-endif()
-
-if(FACTORY_AUDIO_PLAYBACK)
-   add_compile_definitions(PRIVATE CTRLMF_AUDIO_PLAYBACK)
-   include_directories( ${CMAKE_SYSROOT}/usr/include/rdk/ds
-                   ${CMAKE_SYSROOT}/usr/include/rdk/ds-rpc
-                   ${CMAKE_SYSROOT}/usr/include/rdk/ds-hal
-                  )
-   target_sources(ctrlm-fta PRIVATE ctrlmf_audio_playback.cpp)
-   if(THUNDER)
-      target_sources(ctrlm-fta PRIVATE thunder/ctrlmf_thunder_plugin_system_audio_player.cpp)
+   if(THUNDER_SECURITY)
+      add_compile_definitions(PRIVATE THUNDER_SECURITY)
+      target_link_libraries(controlFactory WPEFrameworkSecurityUtil secure_wrapper)
    endif()
-
-   install(FILES ${CMAKE_SOURCE_DIR}/../tone_1khz.wav DESTINATION share )
-endif()
-
-if(FACTORY_AUDIO_CONTROL)
-   add_compile_definitions(PRIVATE CTRLMF_AUDIO_CONTROL)
-   target_sources(ctrlm-fta PRIVATE
-      ctrlmf_audio_control.cpp
-   )
-endif()
-
-if(LOCAL_MIC)
-   target_sources(ctrlm-fta PRIVATE
-      ctrlmf_audio_capture.cpp
-      ctrlmf_mic_test.cpp
-      ctrlmf_ws.c
-   )
 endif()
 
 install(TARGETS controlFactory DESTINATION bin)

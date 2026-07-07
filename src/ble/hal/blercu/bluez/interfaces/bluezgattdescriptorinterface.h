@@ -61,7 +61,7 @@ public:
         gchar *result_str = g_variant_print(getProperty("Value").getGVariant(), false);
         XLOGD_INFO("path <%s>, Value is type <%s> = <%s>\n", path(), g_variant_get_type_string(getProperty("Value").getGVariant()), result_str);
         g_free(result_str);
-        //EGTODO: parse the variant into the byte array (ret).  This function isn't currently used,
+        // Need to parse the variant into the byte array (ret).  This function isn't currently used,
         // so leaving it unimplemented for now.
         return false; 
     }

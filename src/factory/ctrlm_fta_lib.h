@@ -38,7 +38,7 @@
 extern "C" {
 #endif
 
-bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback);
+bool ctrlmf_init(xlog_level_t level, bool requires_audio_playback, bool requires_audio_control, ctrlmf_mic_test_audio_analyze_t *audio_analyze_func);
 void ctrlmf_term(void);
 
 bool ctrlmf_factory_reset(void);
@@ -51,7 +51,7 @@ bool ctrlmf_audio_control_attenuate(bool enable, bool relative, double vol);
 
 bool ctrlmf_audio_playback_start(const char *filename);
 
-bool ctrlmf_mic_test_factory(uint32_t duration, const char *output_filename, uint32_t level, const char *audio_filename, double *snr_min, double *snr_max, double *snr_var, ctrlmf_test_result_t *test_result);
+bool ctrlmf_mic_test_factory(uint32_t duration, const char *output_filename, uint32_t level, const char *audio_filename, double *snr_min, double *snr_max, double *snr_var, ctrlmf_test_result_t *test_result, ctrlmf_mic_test_audio_analyze_t audio_analyze_func);
 
 #ifdef __cplusplus
 }

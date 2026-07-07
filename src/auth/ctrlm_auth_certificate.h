@@ -17,8 +17,8 @@
  * limitations under the License.
  */
 
-#ifndef __CTRLM_HAL_CERTIFICATE_H__
-#define __CTRLM_HAL_CERTIFICATE_H__
+#ifndef __CTRLM_AUTH_CERTIFICATE_H__
+#define __CTRLM_AUTH_CERTIFICATE_H__
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,10 +62,10 @@ typedef struct {
    } cert;
 } ctrlm_voice_cert_t;
 
-class ctrlm_hal_certificate_t {
+class ctrlm_auth_certificate_t {
 public:
-   ctrlm_hal_certificate_t();
-   virtual ~ctrlm_hal_certificate_t();
+   ctrlm_auth_certificate_t();
+   virtual ~ctrlm_auth_certificate_t();
 
    virtual bool device_cert_get(ctrlm_voice_cert_t &device_cert, bool &ocsp_verify_stapling, bool &ocsp_verify_ca);
 
@@ -77,6 +77,6 @@ private:
    bool               ocsp_verify_ca;
 };
 
-ctrlm_hal_certificate_t *ctrlm_hal_certificate_get();
+ctrlm_auth_certificate_t *ctrlm_auth_certificate_get();
 
 #endif

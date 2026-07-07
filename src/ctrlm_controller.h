@@ -22,7 +22,7 @@
 #include <sstream>
 #include <vector>
 #include "ctrlm_ipc_rcu.h"
-#include "ctrlm_irdb.h"
+#include "ctrlm_irdb_plugin.h"
 #include "ctrlm_attr_general.h"
 #include "ctrlm_attr_voice.h"
 #include "ctrlm_version.h"
@@ -54,20 +54,19 @@ public:
    virtual void            process_event_key(ctrlm_key_status_t key_status, uint16_t key_code, bool mask);
 
    void                    send_to(unsigned long delay, unsigned long length, char *data);
-   virtual void            irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, ctrlm_irdb_ir_entry_id_t irdb_ir_entry_id);
+   virtual void            irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, const std::string &irdb_ir_entry_id);
    std::string             get_irdb_entry_id_name_tv() const;
    std::string             get_irdb_entry_id_name_avr() const;
 
    ctrlm_controller_id_t   controller_id_get() const;
    ctrlm_network_id_t      network_id_get() const;
-   std::string             receiver_id_get() const;
    std::string             device_id_get() const;
    std::string             service_account_id_get() const;
    std::string             partner_id_get() const;
-   std::string             experience_get() const;
    std::string             stb_name_get() const;
    void                    set_device_minor_id(int device_minor_id);
    int                     get_device_minor_id() const;
+   void                    update_controller_id_and_db_entry(std::string db_name, ctrlm_network_id_t network_id, ctrlm_controller_id_t id);
 
    virtual ctrlm_controller_capabilities_t get_capabilities() const;
 

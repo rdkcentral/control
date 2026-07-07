@@ -54,10 +54,8 @@ typedef struct {
    char     url_ptt[CTRLM_VOICE_SERVER_URL_MAX_LENGTH];
    bool     url_ff_valid;
    char     url_ff[CTRLM_VOICE_SERVER_URL_MAX_LENGTH];
-   #ifdef CTRLM_LOCAL_MIC_TAP
    bool     url_mic_tap_valid;
    char     url_mic_tap[CTRLM_VOICE_SERVER_URL_MAX_LENGTH];
-   #endif
 
    uint32_t            query_string_ptt_count;
    query_string_pair_t query_string_ptt_pairs[CTRLM_VOICE_QUERY_STRING_MAX_PAIRS];
@@ -313,7 +311,6 @@ void ctrlm_sm_voice_url_ff_write(std::string url) {
    g_ctrlm_sm.mmap->url_ff_valid = true;
 }
 
-#ifdef CTRLM_LOCAL_MIC_TAP
 void ctrlm_sm_voice_url_mic_tap_read(std::string &url) {
    if(g_ctrlm_sm.mmap == NULL) {
       XLOGD_ERROR("mmap is invalid");
@@ -334,7 +331,6 @@ void ctrlm_sm_voice_url_mic_tap_write(std::string url) {
    g_ctrlm_sm.mmap->url_mic_tap[sizeof(g_ctrlm_sm.mmap->url_mic_tap) - 1] = '\0';
    g_ctrlm_sm.mmap->url_mic_tap_valid = true;
 }
-#endif
 
 void ctrlm_sm_voice_query_string_ptt_count_read(uint8_t &count) {
    if(g_ctrlm_sm.mmap == NULL) {

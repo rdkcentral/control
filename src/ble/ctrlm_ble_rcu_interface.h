@@ -92,9 +92,9 @@ public:
     void handleDeepsleep(bool wakingUp);
 
     bool pairWithCode(unsigned int code);
-    bool pairWithMacHash(unsigned int code);
     bool pairWithMacAddrs(const std::vector<uint64_t> &macAddrList);
     bool pairAutoWithTimeout(int timeoutMs);
+    bool pairCancel();
     bool unpairDevice(uint64_t ieee_address);
 
     bool findMe(uint64_t ieee_address, ctrlm_fmr_alarm_level_t level);
@@ -113,8 +113,8 @@ public:
     bool getAudioStatus(uint64_t ieee_address, uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs);
     bool getFirstAudioDataTime(uint64_t ieee_address, ctrlm_timestamp_t &time);
 
-    bool setIrControl(uint64_t ieee_address, ctrlm_irdb_vendor_t vendor);
-    bool programIrSignalWaveforms(uint64_t ieee_address, ctrlm_irdb_ir_codes_t &&irWaveforms, ctrlm_irdb_vendor_t vendor);
+    bool setIrControl(uint64_t ieee_address, uint8_t vendor);
+    bool programIrSignalWaveforms(uint64_t ieee_address, std::map<ctrlm_key_code_t, std::vector<uint8_t>> &&irWaveforms, uint8_t vendor);
     bool eraseIrSignals(uint64_t ieee_address);
 
     bool startUpgrade(uint64_t ieee_address, const std::string &fwFile);
@@ -145,12 +145,17 @@ public:
     {
         m_rcuKeypressSlots.addSlot(func);
     }
+    inline void addRcuPairingOutcomeHandler(const Slot<const BleRcuPairingOutcome&> &func)
+    {
+        m_rcuPairingOutcomeSlots.addSlot(func);
+    }
 
     
     Slots<ctrlm_hal_ble_RcuStatusData_t*> m_rcuStatusChangedSlots;
     Slots<ctrlm_hal_ble_IndPaired_params_t*> m_rcuPairedSlots;
     Slots<ctrlm_hal_ble_IndUnPaired_params_t*> m_rcuUnpairedSlots;
     Slots<ctrlm_hal_ble_IndKeypress_params_t*> m_rcuKeypressSlots;
+    Slots<const BleRcuPairingOutcome&> m_rcuPairingOutcomeSlots;
 
 private:
     std::shared_ptr<bool> m_isAlive;

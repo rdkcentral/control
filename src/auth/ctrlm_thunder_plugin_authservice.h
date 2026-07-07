@@ -55,13 +55,6 @@ public:
     bool is_device_activated();
 
     /**
-     * Function that retrieves the Receiver ID from Authservice.
-     * @param receiver_id The reference to a string which will contain the Receiver ID.
-     * @return True on success otherwise False.
-     */
-    bool get_receiver_id(std::string &receiver_id);
-
-    /**
      * Function that retrieves the Device ID from Authservice.
      * @param device_id The reference to a string which will contain the Device ID.
      * @return True on success otherwise False.
@@ -81,13 +74,6 @@ public:
      * @return True on success otherwise False.
      */
     bool get_account_id(std::string &account_id);
-
-    /**
-     * Function that retrieves the Experience String from Authservice.
-     * @param experience The reference to a string which will contain the Experience String.
-     * @return True on success otherwise False.
-     */
-    bool get_experience(std::string &experience);
 
     /**
      * Function that retrieves the SAT Token from Authservice.

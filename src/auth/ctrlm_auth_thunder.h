@@ -10,11 +10,9 @@ public:
    virtual ~ctrlm_auth_thunder_t();
 
    virtual bool is_ready();
-   virtual bool get_receiver_id(std::string &receiver_id);
    virtual bool get_device_id(std::string &device_id);
    virtual bool get_account_id(std::string &account_id);
    virtual bool get_partner_id(std::string &partner_id);
-   virtual bool get_experience(std::string &experience);
    virtual bool get_sat(std::string &sat, time_t &expiration);
    virtual bool supports_sat_expiration() const;
 

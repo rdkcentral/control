@@ -422,6 +422,11 @@ void GattInfraredService::requestIrSupport()
     // sanity check we actually have a ir support characteristic
     if (!m_irSupportCharacteristic || !m_irSupportCharacteristic->isValid()) {
         XLOGD_WARN("missing ir support characteristic");
+        
+        // Set ir support back to invalid value and notify
+        m_irSupport = 0;
+        m_irSupportChangedSlots.invoke(m_irSupport);
+
         return;
     }
 
@@ -434,8 +439,9 @@ void GattInfraredService::requestIrSupport()
                 XLOGD_ERROR("failed to get initial ir support code due to <%s>",
                         reply->errorMessage().c_str());
 
+                // Set ir support back to invalid value and notify
                 m_irSupport = 0;
-
+                m_irSupportChangedSlots.invoke(m_irSupport);
             } else {
 
                 std::vector<uint8_t> value;
@@ -443,7 +449,7 @@ void GattInfraredService::requestIrSupport()
 
                 if (value.size() == 1) {
                     uint8_t irSupport_ = value[0];
-                    XLOGD_INFO("IR support value = 0x%x", irSupport_);
+                    XLOGD_DEBUG("IR support value = 0x%x", irSupport_);
                     if (irSupport_ != m_irSupport) {
                         m_irSupport = irSupport_;
                         m_irSupportChangedSlots.invoke(m_irSupport);
@@ -494,7 +500,7 @@ void GattInfraredService::requestCodeId()
                                       (int32_t(value[2]) << 16) |
                                       (int32_t(value[3]) << 24);
 
-                    XLOGD_INFO("IR code ID = %d", codeId_);
+                    XLOGD_DEBUG("IR code ID = %d", codeId_);
 
                     if (codeId_ != m_codeId) {
                         m_codeId = codeId_;

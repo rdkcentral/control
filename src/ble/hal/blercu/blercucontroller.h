@@ -36,10 +36,23 @@
 
 #include <set>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 
 class BleRcuDevice;
 
+struct BleRcuPairingOutcome
+{
+    int         method;          // numeric enum value for PairingMethod
+    int         result;          // numeric enum value for FailureReason
+    int         discovered;      // number of discovered devices
+    int         bluezRetries;    // number of bluez retries attempted
+    int         maxBluezRetries; // max number of retries
+    std::string name;            // empty on failure
+    std::vector<std::string> bluezError; // bluez error messages
+};
 
 class BleRcuController
 {
@@ -73,7 +86,6 @@ public:
 
     virtual bool startPairingAutoWithTimeout(int timeoutMs) = 0;
     virtual bool startPairingWithCode(uint8_t pairingCode) = 0;
-    virtual bool startPairingWithMacHash(uint8_t macHash) = 0;
     virtual bool startPairingWithList(const std::vector<BleAddress> &macAddrList) = 0;
     virtual bool cancelPairing() = 0;
 
@@ -102,12 +114,17 @@ public:
     {
         m_stateChangedSlots.addSlot(func);
     }
+    inline void addPairingOutcomeSlot(const Slot<const BleRcuPairingOutcome&> &func)
+    {
+        m_pairingOutcomeSlots.addSlot(func);
+    }
 
 protected:
     Slots<const BleAddress&> m_managedDeviceAddedSlots;
     Slots<const BleAddress&> m_managedDeviceRemovedSlots;
     Slots<bool> m_pairingStateChangedSlots;
     Slots<State> m_stateChangedSlots;
+    Slots<const BleRcuPairingOutcome&> m_pairingOutcomeSlots;
 };
 
 #endif // !defined(BLERCUCONTROLLER_H)

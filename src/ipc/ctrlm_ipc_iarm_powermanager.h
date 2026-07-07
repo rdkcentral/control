@@ -2,7 +2,7 @@
  * If not stated otherwise in this file or this component's license file the
  * following copyright and licenses apply:
  *
- * Copyright 2014 RDK Management
+ * Copyright 2015 RDK Management
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
+#include "ctrlm_ipc.h"
+#include "ctrlm_powermanager.h"
+#include <semaphore.h>
 
-#ifndef __CTRLM_IRDB_FACTORY_H__
-#define __CTRLM_IRDB_FACTORY_H__
-#include "ctrlm_irdb.h"
+class ctrlm_ipc_iarm_powermanager_t : public ctrlm_powermanager_t {
+public:
+    ctrlm_ipc_iarm_powermanager_t();
+    ~ctrlm_ipc_iarm_powermanager_t();
 
-ctrlm_irdb_t *ctrlm_irdb_create(bool platform_tv);
+    ctrlm_power_state_t get_power_state();
+    bool get_networked_standby_mode();
+    bool get_wakeup_reason_voice();
 
+
+private:
+    sem_t           semaphore;
+};
+
+#if CTRLM_HAL_RF4CE_API_VERSION >= 10 && !defined(CTRLM_DPI_CONTROL_NOT_SUPPORTED)
+IARM_Result_t ctrlm_iarm_powermanager_event_handler_power_pre_change(void* pArgs);
 #endif
+IARM_Result_t ctrlm_iarm_powermanager_call_power_state_change(void *arg);

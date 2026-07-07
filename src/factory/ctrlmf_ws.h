@@ -35,7 +35,7 @@ typedef struct {
 extern "C" {
 #endif
 
-bool ctrlmf_ws_init(uint32_t audio_frame_size, uint16_t port, bool log_enable, ctrlmf_ws_callbacks_t *callbacks);
+bool ctrlmf_ws_init(uint32_t audio_frame_size, uint16_t port, bool log_enable, ctrlmf_ws_callbacks_t *callbacks, bool *has_valid_cert);
 bool ctrlmf_ws_capture_set(ctrlmf_audio_frame_t audio_frames, uint32_t audio_frame_qty);
 void ctrlmf_ws_term(void);
 

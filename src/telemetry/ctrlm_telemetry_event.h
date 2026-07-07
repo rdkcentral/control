@@ -26,6 +26,8 @@
 #include <telemetry_busmessage_sender.h>
 #endif
 
+#define CTRLM_TELEMETRY_MAX_EVENT_SIZE_BYTES 4536 // Maximum size of event list in bytes (there are limitations in the T2 implementation that restrict the maximum size of an event string.  This value should be within the limits of the T2 implementation)
+
 template <typename T>
 class ctrlm_telemetry_event_t {
     static_assert(std::is_same<T, int>::value || std::is_same<T, double>::value || std::is_same<T, std::string>::value, "Invalid telemetry event type");

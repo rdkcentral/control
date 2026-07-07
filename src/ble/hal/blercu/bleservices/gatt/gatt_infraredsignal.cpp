@@ -365,27 +365,27 @@ void GattInfraredSignal::onEnteredInitialisingState()
                     switch (value[0]) {
                         case 0x0C:   
                             m_keyCode = Key_PowerPrimary;
-                            XLOGD_INFO("found characteristic for 0x%02hhx (Key_PowerPrimary)", value[0]);
+                            XLOGD_DEBUG("found characteristic for 0x%02hhx (Key_PowerPrimary)", value[0]);
                             break;
                         case 0x0B:   
                             m_keyCode = Key_PowerSecondary;
-                            XLOGD_INFO("found characteristic for 0x%02hhx (Key_PowerSecondary)", value[0]);
+                            XLOGD_DEBUG("found characteristic for 0x%02hhx (Key_PowerSecondary)", value[0]);
                             break;
                         case 0x29:   
                             m_keyCode = Key_Input; 
-                            XLOGD_INFO("found characteristic for 0x%02hhx (Key_Input)", value[0]);
+                            XLOGD_DEBUG("found characteristic for 0x%02hhx (Key_Input)", value[0]);
                             break;
                         case 0x10:   
                             m_keyCode = Key_VolUp; 
-                            XLOGD_INFO("found characteristic for 0x%02hhx (Key_VolUp)", value[0]);
+                            XLOGD_DEBUG("found characteristic for 0x%02hhx (Key_VolUp)", value[0]);
                             break;
                         case 0x11:   
                             m_keyCode = Key_VolDown; 
-                            XLOGD_INFO("found characteristic for 0x%02hhx (Key_VolDown)", value[0]);
+                            XLOGD_DEBUG("found characteristic for 0x%02hhx (Key_VolDown)", value[0]);
                             break;
                         case 0x0D:   
                             m_keyCode = Key_Mute; 
-                            XLOGD_INFO("found characteristic for 0x%02hhx (Key_Mute)", value[0]);
+                            XLOGD_DEBUG("found characteristic for 0x%02hhx (Key_Mute)", value[0]);
                             break;
 
                         /* 

@@ -120,34 +120,36 @@ void ctrlm_obj_network_rf4ce_t::ind_process_discovery(void *data, int size) {
    safec_rc = strncpy_s((char *)params.rec_user_string, sizeof(params.rec_user_string), user_string_.c_str(), 9);
    ERR_CHK(safec_rc);
    params.rec_user_string[9]  = '\0'; // Null
-#ifdef ASB
-   if(is_asb_enabled() && (dqm->params.org_user_string[10] & CTRLM_RF4CE_DISCOVERY_ASB_OCTET_ENABLED)) {
-      if(asb_fallback_count_ >= asb_fallback_count_threshold_) {
-         XLOGD_TELEMETRY("ASB Fail Count >= to threshold, falling back to normal pairing");
-         params.rec_user_string[10] = 0x00; // ASB Octet
-      } else {
-         params.rec_user_string[10] = CTRLM_RF4CE_DISCOVERY_ASB_OCTET_ENABLED; // ASB Octet
-         // store timestamp for ieee address for discovery deadline
-         ctrlm_rf4ce_discovery_deadline_t discovery_deadline;
-         ctrlm_timestamp_get(&discovery_deadline.timestamp);
-         // replace older timestamp for the same ieee address
-         asb_discovery_deadlines_.erase(dqm->params.src_ieee_addr);
-         asb_discovery_deadlines_.insert(std::make_pair(dqm->params.src_ieee_addr, discovery_deadline));
-         // clean up expired discovery deadlines
-         for(auto it = asb_discovery_deadlines_.begin(), end_it = asb_discovery_deadlines_.end(); it != end_it;) {
-            if(CTRLM_RF4CE_DISCOVERY_ASB_EXPIRATION_TIME_MS < ctrlm_timestamp_since_ms(it->second.timestamp)) {
-               asb_discovery_deadlines_.erase(it++);
-            } else {
-               ++it;
+   
+   gboolean asb_supported = ctrlm_is_rf4ce_asb_supported();
+   if(asb_supported) {
+      if(is_asb_enabled() && (dqm->params.org_user_string[10] & CTRLM_RF4CE_DISCOVERY_ASB_OCTET_ENABLED)) {
+         if(asb_fallback_count_ >= asb_fallback_count_threshold_) {
+            XLOGD_TELEMETRY("ASB Fail Count >= to threshold, falling back to normal pairing");
+            params.rec_user_string[10] = 0x00; // ASB Octet
+         } else {
+            params.rec_user_string[10] = CTRLM_RF4CE_DISCOVERY_ASB_OCTET_ENABLED; // ASB Octet
+            // store timestamp for ieee address for discovery deadline
+            ctrlm_rf4ce_discovery_deadline_t discovery_deadline;
+            ctrlm_timestamp_get(&discovery_deadline.timestamp);
+            // replace older timestamp for the same ieee address
+            asb_discovery_deadlines_.erase(dqm->params.src_ieee_addr);
+            asb_discovery_deadlines_.insert(std::make_pair(dqm->params.src_ieee_addr, discovery_deadline));
+            // clean up expired discovery deadlines
+            for(auto it = asb_discovery_deadlines_.begin(), end_it = asb_discovery_deadlines_.end(); it != end_it;) {
+               if(CTRLM_RF4CE_DISCOVERY_ASB_EXPIRATION_TIME_MS < ctrlm_timestamp_since_ms(it->second.timestamp)) {
+                  asb_discovery_deadlines_.erase(it++);
+               } else {
+                  ++it;
+               }
             }
          }
+      } else {
+         params.rec_user_string[10] = 0x00;    // ASB Octet
       }
    } else {
       params.rec_user_string[10] = 0x00;    // ASB Octet
    }
-#else
-   params.rec_user_string[10] = 0x00;    // ASB Octet
-#endif
    // Primary / Secondary descriptors are handled in Discovery specific functions
    params.rec_user_string[13] = FULL_ROLLBACK_ENABLED; // Strict LQI Threshold and Full Rollback enabled
    params.rec_user_string[14] = LQI_THRESHOLD_NONE;    // LQI Threshold
@@ -166,11 +168,11 @@ void ctrlm_obj_network_rf4ce_t::ind_process_discovery(void *data, int size) {
    ctrlm_network_queue_deliver_result(dqm, params);
 
    user_string = (char *)dqm->params.org_user_string;
-#ifdef ASB
-   XLOGD_INFO("Discovery Type <%s>, Respond? <%s>, MSO User String <%s>, Full Roll Back Enabled <%s>, Binding Initiation Indicator <%s>, MAC Address <0x%016llx>, ASB Enabled <%s>", ctrlm_rf4ce_discovery_type_str(dqm->params.search_dev_type), (CTRLM_HAL_RESULT_DISCOVERY_RESPOND == params.result ? "YES" : "NO"), user_string, (user_string[13] & RF4CE_BINDING_CONFIG_FULL_ROLLBACK_ENABLED) ? "YES" : "NO", ctrlm_rf4ce_binding_initiation_indicator_str((ctrlm_rf4ce_binding_initiation_indicator_t)(user_string[14])), dqm->params.src_ieee_addr, (user_string[10] & CTRLM_RF4CE_DISCOVERY_ASB_OCTET_ENABLED ? "YES" : "NO"));
-#else
-   XLOGD_INFO("Discovery Type <%s>, Respond? <%s>, MSO User String <%s>, Full Roll Back Enabled <%s>, Binding Initiation Indicator <%s>, MAC Address <0x%016llx>", ctrlm_rf4ce_discovery_type_str(dqm->params.search_dev_type), (CTRLM_HAL_RESULT_DISCOVERY_RESPOND == params.result ? "YES" : "NO"), user_string, (user_string[13] & RF4CE_BINDING_CONFIG_FULL_ROLLBACK_ENABLED) ? "YES" : "NO", ctrlm_rf4ce_binding_initiation_indicator_str((ctrlm_rf4ce_binding_initiation_indicator_t)(user_string[14])), dqm->params.src_ieee_addr);
-#endif
+   if(asb_supported) {
+      XLOGD_INFO("Discovery Type <%s>, Respond? <%s>, MSO User String <%s>, Full Roll Back Enabled <%s>, Binding Initiation Indicator <%s>, MAC Address <0x%016llx>, ASB Enabled <%s>", ctrlm_rf4ce_discovery_type_str(dqm->params.search_dev_type), (CTRLM_HAL_RESULT_DISCOVERY_RESPOND == params.result ? "YES" : "NO"), user_string, (user_string[13] & RF4CE_BINDING_CONFIG_FULL_ROLLBACK_ENABLED) ? "YES" : "NO", ctrlm_rf4ce_binding_initiation_indicator_str((ctrlm_rf4ce_binding_initiation_indicator_t)(user_string[14])), dqm->params.src_ieee_addr, (user_string[10] & CTRLM_RF4CE_DISCOVERY_ASB_OCTET_ENABLED ? "YES" : "NO"));
+   } else {
+      XLOGD_INFO("Discovery Type <%s>, Respond? <%s>, MSO User String <%s>, Full Roll Back Enabled <%s>, Binding Initiation Indicator <%s>, MAC Address <0x%016llx>", ctrlm_rf4ce_discovery_type_str(dqm->params.search_dev_type), (CTRLM_HAL_RESULT_DISCOVERY_RESPOND == params.result ? "YES" : "NO"), user_string, (user_string[13] & RF4CE_BINDING_CONFIG_FULL_ROLLBACK_ENABLED) ? "YES" : "NO", ctrlm_rf4ce_binding_initiation_indicator_str((ctrlm_rf4ce_binding_initiation_indicator_t)(user_string[14])), dqm->params.src_ieee_addr);
+   }
    ctrlm_discovery_remote_type_set((const char *)user_string);
 }
 
@@ -390,7 +392,6 @@ gboolean ctrlm_obj_network_rf4ce_t::is_screen_bind_active(ctrlm_hal_rf4ce_ieee_a
    return false;
 }
 
-#ifdef ASB
 gboolean ctrlm_obj_network_rf4ce_t::is_asb_active(ctrlm_hal_rf4ce_ieee_address_t ieee_address) {
    for(auto it = asb_discovery_deadlines_.begin(), end_it = asb_discovery_deadlines_.end(); it != end_it;) {
       if(CTRLM_RF4CE_DISCOVERY_ASB_EXPIRATION_TIME_MS < ctrlm_timestamp_since_ms(it->second.timestamp)) {
@@ -404,4 +405,3 @@ gboolean ctrlm_obj_network_rf4ce_t::is_asb_active(ctrlm_hal_rf4ce_ieee_address_t
    }
    return false;
 }
-#endif

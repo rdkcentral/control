@@ -28,6 +28,8 @@
 #include <cstring>
 #include <unistd.h>
 #include <fcntl.h>
+#include <dirent.h>
+#include <sstream>
 
 bool ctrlm_input_event_writer::init(std::string uinput_name, uint32_t vendor, uint32_t product) {
     if (initialized_) {
@@ -59,8 +61,32 @@ bool ctrlm_input_event_writer::init(std::string uinput_name, uint32_t vendor, ui
     errno_t safec_rc = strcpy_s(usetup.name, sizeof(usetup.name), uinput_name.c_str());
     ERR_CHK(safec_rc);
 
-    ioctl(fd, UI_DEV_SETUP, &usetup);
-    ioctl(fd, UI_DEV_CREATE);
+    int err = ioctl(fd, UI_DEV_SETUP, &usetup);
+    if (err == -1) {
+        int errsv = errno;
+        XLOGD_ERROR("UI_DEV_SETUP failed with errno %d (%s)", errsv, std::strerror(errsv));
+        close(fd);
+        return false;
+    }
+
+    err = ioctl(fd, UI_DEV_CREATE);
+    if (err == -1) {
+        int errsv = errno;
+        XLOGD_ERROR("UI_DEV_CREATE failed with errno %d (%s)", errsv, std::strerror(errsv));
+        close(fd);
+        return false;
+    }
+
+    char sysfs_name[16] = {0};
+    err = ioctl(fd, UI_GET_SYSNAME(sizeof(sysfs_name)), sysfs_name);
+    if (err == -1) {
+        int errsv = errno;
+        XLOGD_ERROR("UI_GET_SYSNAME failed with errno %d (%s)", errsv, std::strerror(errsv));
+        ioctl(fd, UI_DEV_DESTROY);
+        close(fd);
+        return false;
+    }
+    sysfs_name_ = sysfs_name;
 
     fd_ = fd;
     initialized_ = true;
@@ -147,10 +173,43 @@ uint16_t ctrlm_input_event_writer::write_event(ctrlm_key_code_t code, ctrlm_key_
 }
 
 bool ctrlm_input_event_writer::get_meta_data(struct stat &file_meta_data) {
-    int ret = fstat(fd_, &file_meta_data);
+    std::ostringstream oss;
+    oss << "/sys/devices/virtual/input/" << sysfs_name_;
+    std::string dir_path = oss.str();
+    XLOGD_DEBUG("virtual input path = %s", dir_path.c_str());
+
+    DIR *dir = opendir(dir_path.c_str());
+    if (dir == nullptr) {
+        int errsv = errno;
+        XLOGD_ERROR("Failed to open virtual input device dir at path <%s>: error = <%d>, <%s>",
+              dir_path.c_str(), errsv, strerror(errsv));
+        return false;
+    }
+
+    struct dirent *entry;
+    std::string stat_path = "/dev/input/";
+    bool event_node_found = false;
+
+    while ((entry = readdir(dir)) != nullptr) {
+        std::string filename = entry->d_name;
+        if (filename.find("event") == 0) {
+            event_node_found = true;
+            stat_path += filename;
+            break;
+        }
+    }
+    closedir(dir);
+
+    XLOGD_DEBUG("dev input event path = %s", stat_path.c_str());
+    if (!event_node_found) {
+        XLOGD_ERROR("no event node found in virtual device dir <%s>", dir_path.c_str());
+        return false;
+    }
+
+    int ret = stat(stat_path.c_str(), &file_meta_data);
     if (ret == -1) {
         int errsv = errno;
-        XLOGD_ERROR("fstat() failed: error = <%d>, <%s>", errsv, std::strerror(errsv));
+        XLOGD_ERROR("stat() failed: error = <%d>, <%s>", errsv, std::strerror(errsv));
         return false;
     }
     return true;

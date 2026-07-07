@@ -31,9 +31,9 @@
 #include "rf4ce/controller/attributes/ctrlm_rf4ce_controller_attr_battery.h"
 #include "rf4ce/controller/attributes/ctrlm_rf4ce_controller_attr_voice.h"
 #include "rf4ce/controller/attributes/ctrlm_rf4ce_controller_attr_irdb.h"
-#ifdef ASB
+
 #include "ctrlm_asb.h"
-#endif
+
 #include "ctrlm_voice_obj.h"
 #include "ctrlm_input_event_writer.h"
 
@@ -45,9 +45,8 @@ class ctrlm_obj_network_rf4ce_t;
 #define CTRLM_RF4CE_CONST_RESPONSE_IDLE_TIME                (50) // time a device must wait after the successful transmission of a request command frame before enabling its receiver to receive a response command frame
 #define CTRLM_RF4CE_CONST_RESPONSE_IDLE_TIME_FF             (15) // time a device must wait after the successful transmission of a request command frame before enabling its receiver to receive a response command frame for Far Field Devices
 #define CTRLM_RF4CE_CONST_RESPONSE_WAIT_TIME               (100) // The maximum time in ms a device MUST wait after the aplcResponseIdle WaitTime expired, to receive a response command frame following a request command frame
-#ifdef ASB
+
 #define CTRLM_RF4CE_CONST_ASB_BLACKOUT_TIME                 (50) // The time dedicated to ASB key derivation during the pairing process.
-#endif
 
 #define CTRLM_RF4CE_VENDOR_ID_COMCAST                   (0x109D) //
 
@@ -173,24 +172,23 @@ class ctrlm_obj_network_rf4ce_t;
 
 #define CTRLM_RF4CE_RIB_ATTR_LEN_CONTROLLER_IRDB_STATUS_MINUS_LOAD_STATUS_BYTES (13)
 
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_SOFTWARE          (0x00)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_HARDWARE          (0x01)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_IRDB              (0x02)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_BUILD_ID          (0x03)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_DSP               (0x04)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_KEYWORD_MODEL     (0x05)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_ARM               (0x06)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_DSP_BUILD_ID      (0x07)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_UPDATE_VERSIONING_BOOTLOADER (0x01)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_UPDATE_VERSIONING_GOLDEN     (0x02)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_UPDATE_VERSIONING_AUDIO_DATA (0x10)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_TARGET_ID_DATA_RECEIVER_ID   (0x01)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_TARGET_ID_DATA_DEVICE_ID     (0x02)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_POLLING_CONFIGURATION_MAC    (0x01)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_SOFTWARE             (0x00)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_HARDWARE             (0x01)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_IRDB                 (0x02)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_BUILD_ID             (0x03)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_DSP                  (0x04)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_KEYWORD_MODEL        (0x05)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_ARM                  (0x06)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_VERSIONING_DSP_BUILD_ID         (0x07)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_UPDATE_VERSIONING_BOOTLOADER    (0x01)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_UPDATE_VERSIONING_GOLDEN        (0x02)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_UPDATE_VERSIONING_AUDIO_DATA    (0x10)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_TARGET_ID_DATA_DEVICE_ID        (0x02)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_POLLING_CONFIGURATION_MAC       (0x01)
 #define CTRLM_RF4CE_RIB_ATTR_INDEX_POLLING_CONFIGURATION_HEARTBEAT (0x00)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_MFG_TEST                     (0x00)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_MFG_TEST_RESULT              (0x01)
-#define CTRLM_RF4CE_RIB_ATTR_INDEX_GENERAL                      (0x00)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_MFG_TEST                        (0x00)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_MFG_TEST_RESULT                 (0x01)
+#define CTRLM_RF4CE_RIB_ATTR_INDEX_GENERAL                         (0x00)
 
 
 #define CTRLM_RF4CE_LEN_VOICE_METRICS                      (44)
@@ -594,7 +592,7 @@ public:
    void last_key_time_update(void);
 
    void push_ir_codes(void);
-   void irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, ctrlm_irdb_ir_entry_id_t irdb_ir_entry_id);
+   void irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, const std::string &irdb_ir_entry_id);
 
    virtual void    ota_failure_type_z_cnt_set(uint8_t ota_failures);
    virtual uint8_t ota_failure_type_z_cnt_get(void) const;
@@ -602,12 +600,8 @@ public:
 
    bool init_uinput_writer(void);
 
-   // These functions are HACKS for XR15-704
-#ifdef XR15_704
    void set_reset();
    bool needs_reset();
-#endif
-   // These functions are HACKS for XR15-704
 
    ctrlm_sw_version_t     version_software_get();
    ctrlm_sw_version_t     version_audio_data_get();
@@ -656,12 +650,12 @@ public:
    
    void binding_security_type_set(ctrlm_rcu_binding_security_type_t type);
    ctrlm_rcu_binding_security_type_t binding_security_type_get();
-#ifdef ASB
+
    void asb_key_derivation_method_set(asb_key_derivation_method_t method);
    asb_key_derivation_method_t asb_key_derivation_method_get();
    void asb_key_derivation_start(ctrlm_network_id_t network_id);
    void asb_key_derivation_perform();
-#endif
+
    ctrlm_timestamp_t last_mac_poll_checkin_time_get();
 
    void handle_controller_metrics(void *data = NULL, int size = 0);
@@ -763,21 +757,17 @@ private:
    // End Polling variables
    ctrlm_rf4ce_rib_configuration_complete_status_t rib_configuration_complete_status_; // NEXT
 
-#ifdef ASB
    // ASB variables
    asb_key_derivation_method_t             asb_key_derivation_method_used_; // NEXT
    ctrlm_timestamp_t                       asb_key_derivation_ts_start_;
    guint                                   asb_tag_;
    // End ASB variables
-#endif
+
    guint                                   metrics_tag_;
 
-   // HACK for XR15-704
-#ifdef XR15_704
    gboolean                                needs_reset_;
    gboolean                                did_reset_;
-#endif
-   // HACK for XR15-704
+   
    guint8                                  mfg_test_result_;
 
    ctrlm_timestamp_t                       checkin_time_;    ///< OUT - Timestamp indicating the most recent poll indication of the controller
@@ -843,7 +833,6 @@ private:
    guchar property_read_reboot_diagnostics(guchar *data, guchar length);
    guchar property_read_memory_statistics(guchar *data, guchar length);
    guchar property_read_time_last_checkin_for_device_update(guchar *data, guchar length);
-   guchar property_read_receiver_id(guchar *data, guchar length);
    guchar property_read_device_id(guchar *data, guchar length);
    guchar property_read_mfg_test(guchar *data, guchar length);
    guchar property_read_mfg_test_result(guchar *data, guchar length);
@@ -900,7 +889,6 @@ private:
 
    guchar property_write_reboot_stats(guchar *data, guchar length);
    guchar property_write_memory_stats(guchar *data, guchar length);
-   guchar property_write_receiver_id(guchar *data, guchar length);
    guchar property_write_device_id(guchar *data, guchar length);
    guchar property_write_mfg_test(guchar *data, guchar length);
    guchar property_write_mfg_test_result(guchar *data, guchar length);

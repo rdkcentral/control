@@ -543,7 +543,7 @@ typedef struct {
 /// linked with Control Manager. The provided network id must be used by the network in all communication with the Control Manager.
 /// @param[in] main_init - Pointer to main initialization parameters
 /// @return Zero for success, all other values indicate an error
-void *ctrlm_hal_rf4ce_main(ctrlm_hal_rf4ce_main_init_t *main_init);
+typedef void *(*ctrlm_hal_rf4ce_main_t)(ctrlm_hal_rf4ce_main_init_t *main_init);
 /// @}
 
 /// @addtogroup CTRLM_RF4CE_Functions Control Manager Function Prototypes

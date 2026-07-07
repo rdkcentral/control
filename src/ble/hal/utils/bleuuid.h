@@ -104,6 +104,7 @@ public:
         AdvertisingConfig = 0xed05,
         AdvertisingConfigCustomList = 0xed06,
         AssertReport = 0xed07,
+        RawBatteryVoltage = 0xed08,
     };
 
     enum DescriptorType {

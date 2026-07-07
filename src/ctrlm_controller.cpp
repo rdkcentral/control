@@ -28,7 +28,7 @@
 
 using namespace std;
 
-#define OTA_MAX_RETRIES (2)
+#define OTA_MAX_RETRIES (0)
 
 ctrlm_obj_controller_t::ctrlm_obj_controller_t(ctrlm_controller_id_t controller_id, ctrlm_obj_network_t &network, unsigned long long ieee_address) :
    controller_id_(controller_id),
@@ -43,15 +43,15 @@ ctrlm_obj_controller_t::ctrlm_obj_controller_t(ctrlm_controller_id_t controller_
    voice_metrics_(std::make_shared<ctrlm_voice_metrics_t>(&network, controller_id)),
    ota_failure_cnt_from_last_success_(std::make_shared<ctrlm_uint64_db_attr_t>("OTA Failure Count From Last Success", 0, &network, controller_id, "ota_failure_cnt_last_success"))
 {
-   XLOGD_INFO("constructor - %u", controller_id_);
+   XLOGD_DEBUG("constructor - %u", controller_id_);
 }
 
 ctrlm_obj_controller_t::ctrlm_obj_controller_t() {
-   XLOGD_INFO("constructor - default");
+   XLOGD_DEBUG("constructor - default");
 }
 
 ctrlm_obj_controller_t::~ctrlm_obj_controller_t() {
-   XLOGD_INFO("deconstructor - %u", controller_id_);
+   XLOGD_DEBUG("destructor - %u", controller_id_);
 }
 
 void ctrlm_obj_controller_t::db_load() {
@@ -106,10 +106,6 @@ ctrlm_network_id_t ctrlm_obj_controller_t::network_id_get() const {
    return(obj_network_->network_id_get());
 }
 
-string ctrlm_obj_controller_t::receiver_id_get() const {
-   return(obj_network_->receiver_id_get());
-}
-
 string ctrlm_obj_controller_t::device_id_get() const {
    return(obj_network_->device_id_get());
 }
@@ -120,10 +116,6 @@ string ctrlm_obj_controller_t::service_account_id_get() const {
 
 string ctrlm_obj_controller_t::partner_id_get() const {
    return(obj_network_->partner_id_get());
-}
-
-string ctrlm_obj_controller_t::experience_get() const {
-   return(obj_network_->experience_get());
 }
 
 string ctrlm_obj_controller_t::stb_name_get() const {
@@ -176,18 +168,25 @@ void ctrlm_obj_controller_t::process_event_key(ctrlm_key_status_t key_status, ui
    last_key_code_->set_value((uint64_t)key_code);
    last_key_time_update();
 
-   XLOGD_TELEMETRY("ind_process_keypress: %s - MAC Address <%s>, code = <%d> (%s key), status = <%s>", controller_type_str_get().c_str(),
-                                                                                 ieee_address_get().to_string().c_str(),
-                                                                                 mask ? -1 : key_code,
-                                                                                 ctrlm_linux_key_code_str(key_code, mask),
-                                                                                 ctrlm_key_status_str(key_status));
+   xlog_level_t level = XLOG_LEVEL_TELEMETRY;
+   const char *color = XLOG_COLOR_BLU;
+   // Proximity key (KEY_F17) is logged to debug while the rest is logged to telemetry
+   if(key_code == KEY_F17) {
+      level = XLOG_LEVEL_DEBUG;
+      color = XLOG_COLOR_GRN;
+   }
+   XLOGD(level, XLOG_OPTS_DEFAULT, color, XLOG_BUF_SIZE_DEFAULT, "ind_process_keypress: %s - MAC Address <%s>, code = <%d> (%s key), status = <%s>", controller_type_str_get().c_str(),
+                                                                                                                                                     ieee_address_get().to_string().c_str(),
+                                                                                                                                                     mask ? -1 : key_code,
+                                                                                                                                                     ctrlm_linux_key_code_str(key_code, mask),
+                                                                                                                                                     ctrlm_key_status_str(key_status));
 }
 
 ctrlm_controller_capabilities_t ctrlm_obj_controller_t::get_capabilities() const {
    return(ctrlm_controller_capabilities_t()); // return empty capabilities object
 }
 
-void ctrlm_obj_controller_t::irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, ctrlm_irdb_ir_entry_id_t irdb_entry_id_name) {
+void ctrlm_obj_controller_t::irdb_entry_id_name_set(ctrlm_irdb_dev_type_t type, const std::string &irdb_entry_id_name) {
    switch(type) {
       case CTRLM_IRDB_DEV_TYPE_TV:
          if (irdb_entry_id_name_tv_->to_string() != irdb_entry_id_name) {
@@ -413,4 +412,21 @@ uint8_t ctrlm_obj_controller_t::get_upgrade_increment() const {
 
 bool ctrlm_obj_controller_t::is_upgrade_progress_at_increment() const {
     return ((upgrade_progress_ % upgrade_increment_ == 0) || (upgrade_progress_ == 100));
+}
+
+void ctrlm_obj_controller_t::update_controller_id_and_db_entry(std::string db_name, ctrlm_network_id_t network_id, ctrlm_controller_id_t new_id) {
+    controller_id_ = new_id;
+    std::stringstream new_controller_db_table;
+    new_controller_db_table << db_name << "_" << COUT_HEX_MODIFIER << (int)network_id << "_controller_" << COUT_HEX_MODIFIER << (int)new_id;
+    std::string new_table = new_controller_db_table.str();
+
+    ieee_address_->set_table(new_table);
+    time_binding_->set_table(new_table);
+    last_activity_time_->set_table(new_table);
+    last_key_time_->set_table(new_table);
+    last_key_code_->set_table(new_table);
+    irdb_entry_id_name_tv_->set_table(new_table);
+    irdb_entry_id_name_avr_->set_table(new_table);
+    voice_metrics_->set_table(new_table);
+    ota_failure_cnt_from_last_success_->set_table(new_table);
 }

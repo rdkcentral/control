@@ -43,7 +43,7 @@ public:
     ctrlm_ir_rf_db_t(bool power_toggle_favor_tv = true, bool power_discrete_favor_tv = false);
 
     /**
-     * Default Deconstructor
+     * Default destructor
      */
     virtual ~ctrlm_ir_rf_db_t();
 
@@ -60,7 +60,7 @@ public:
      * @param ir_codes A keymap supplied from the CTRLM IRDB component
      * @reutrn True if the entries were added to the IRRF Database, False otherwise.
      */
-    bool add_irdb_codes(ctrlm_irdb_ir_code_set_t *ir_codes);
+    bool add_irdb_codes(ctrlm_irdb_ir_code_set_t *ir_codes, unsigned char ir_vendor_id = 0, const std::string &ir_vendor_name = "");
 
     /**
      * Function to clear all TV IR codes stored in the IR RF Database
@@ -121,10 +121,35 @@ public:
     std::string get_tv_ir_code_id();
 
     /**
+     * Function used to get the TV IR vendor ID in the ControlMgr Database.
+     * @return the TV IR vendor ID as unsigned char
+     */
+    unsigned char get_tv_ir_vendor_id();
+
+    /**
+     * Function used to get the TV IR vendor name in the ControlMgr Database.
+     * @return the TV IR vendor name in string form.
+     */
+    std::string get_tv_ir_vendor_name();
+
+    /**
      * Function used to get the AVR IR code ID in the ControlMgr Database.
      * @return the AVR IR code ID in string form.
      */
     std::string get_avr_ir_code_id();
+    
+    /**
+     * Function used to get the AVR IR vendor ID in the ControlMgr Database.
+     * @return the AVR IR vendor ID as unsigned char
+     */
+    unsigned char get_avr_ir_vendor_id();
+
+    /**
+     * Function used to get the AVR IR vendor name in the ControlMgr Database.
+     * @return the AVR IR vendor name in string form.
+     */
+    std::string get_avr_ir_vendor_name();
+
 
 private:
     /**
@@ -157,7 +182,11 @@ private:
     bool power_toggle_favor_tv;
     bool power_discrete_favor_tv;
     std::string tv_ir_code_id_;
+    unsigned char tv_ir_vendor_id_;
+    std::string tv_ir_vendor_name_;
     std::string avr_ir_code_id_;
+    unsigned char avr_ir_vendor_id_;
+    std::string avr_ir_vendor_name_;
 };
 
 

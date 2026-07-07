@@ -41,10 +41,11 @@
 #include "ctrlm_log_ble.h"
 
 #include <algorithm>
+#include "ctrlm_utils.h"
 
 using namespace std;
 
-
+typedef gmain_loop_obj_user_data<BleRcuAdapterBluez> BleRcuAdapterBluez_userData;
 static gboolean onDiscoveryWatchdog(gpointer user_data);
 
 // -----------------------------------------------------------------------------
@@ -737,7 +738,8 @@ bool BleRcuAdapterBluez::setAdapterDiscoveryFilter()
         // stopped later
         m_discoveryRequested = StopDiscovery;
         if (m_discoveryWatchdogID > 0) { g_source_remove(m_discoveryWatchdogID); }
-        m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, this);
+        BleRcuAdapterBluez_userData *onDiscoveryWatchdog_userdata = new BleRcuAdapterBluez_userData(this->m_isAlive, this);
+        m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, onDiscoveryWatchdog_userdata);
     }
 
     string error;
@@ -858,7 +860,8 @@ bool BleRcuAdapterBluez::startDiscovery()
     m_discoveryRequests++;
 
     if (m_discoveryWatchdogID > 0) { g_source_remove(m_discoveryWatchdogID); }
-    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, this);
+    BleRcuAdapterBluez_userData *onDiscoveryWatchdog_userdata = new BleRcuAdapterBluez_userData(this->m_isAlive, this);
+    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, onDiscoveryWatchdog_userdata);
 
     XLOGD_DEBUG("starting discoveryWatchdog, m_discoveryRequests = %d, m_discoveryWatchdogID = %u", 
             m_discoveryRequests, m_discoveryWatchdogID);
@@ -882,7 +885,8 @@ void BleRcuAdapterBluez::onStartDiscoveryReply(PendingReply<> *reply)
 {
     // reset the discovery watchdog and decrement the discovery pending count
     if (m_discoveryWatchdogID > 0) { g_source_remove(m_discoveryWatchdogID); }
-    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, this);
+    BleRcuAdapterBluez_userData *onDiscoveryWatchdog_userdata = new BleRcuAdapterBluez_userData(this->m_isAlive, this);
+    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, onDiscoveryWatchdog_userdata);
 
     m_discoveryRequests--;
     XLOGD_DEBUG("starting discoveryWatchdog, m_discoveryRequests = %d", m_discoveryRequests);
@@ -929,7 +933,8 @@ bool BleRcuAdapterBluez::stopDiscovery()
     m_discoveryRequests++;
     XLOGD_DEBUG("starting discoveryWatchdog, m_discoveryRequests = %d", m_discoveryRequests);
     if (m_discoveryWatchdogID > 0) { g_source_remove(m_discoveryWatchdogID); }
-    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, this);
+    BleRcuAdapterBluez_userData *onDiscoveryWatchdog_userdata = new BleRcuAdapterBluez_userData(this->m_isAlive, this);
+    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, onDiscoveryWatchdog_userdata);
 
     // send the request to stop discovery
     m_adapterProxy->StopDiscovery(
@@ -951,7 +956,8 @@ void BleRcuAdapterBluez::onStopDiscoveryReply(PendingReply<> *reply)
 {
     // reset the discovery watchdog and decrement the discovery pending count
     if (m_discoveryWatchdogID > 0) { g_source_remove(m_discoveryWatchdogID); }
-    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, this);
+    BleRcuAdapterBluez_userData *onDiscoveryWatchdog_userdata = new BleRcuAdapterBluez_userData(this->m_isAlive, this);
+    m_discoveryWatchdogID = g_timeout_add(m_discoveryWatchdogTimeout, onDiscoveryWatchdog, onDiscoveryWatchdog_userdata);
 
     m_discoveryRequests--;
     XLOGD_DEBUG("starting discoveryWatchdog, m_discoveryRequests = %d", m_discoveryRequests);
@@ -986,11 +992,17 @@ void BleRcuAdapterBluez::onStopDiscoveryReply(PendingReply<> *reply)
  */
 static gboolean onDiscoveryWatchdog(gpointer user_data)
 {
-    BleRcuAdapterBluez *rcuAdapter = (BleRcuAdapterBluez*)user_data;
-    if (rcuAdapter == nullptr) {
+    BleRcuAdapterBluez_userData *userData = (BleRcuAdapterBluez_userData*)user_data;
+    if (userData == nullptr) {
+        return false;
+    } else if (!userData->is_alive()) {
+        XLOGD_ERROR("BleRcuAdapterBluez is not alive");
+        delete userData;
         return false;
     }
+
     XLOGD_DEBUG("Enter...");
+    BleRcuAdapterBluez *rcuAdapter = userData->m_ptr;
     rcuAdapter->m_discoveryWatchdogID = 0;
 
     // wait for any outstanding requests to finish
@@ -1014,6 +1026,8 @@ static gboolean onDiscoveryWatchdog(gpointer user_data)
             rcuAdapter->stopDiscovery();
         }
     }
+
+    delete userData;
     return false;
 }
 // -----------------------------------------------------------------------------
@@ -1202,10 +1216,10 @@ bool BleRcuAdapterBluez::isDeviceConnected(const BleAddress &address) const
 
 // -----------------------------------------------------------------------------
 /*!
-    \fn void BleRcuManager::addDevice(const BleAddress &address)
+    \fn void BleRcuManager::addDevice(const BleAddress &address, int retries)
 
     Sends a request to the bluez daemon to pair the device with the given
-    \a address.  The request is sent even if the device is already paired,
+    \a address and \a retries.  The request is sent even if the device is already paired,
     this is to handle the case where a pending unpair notification is sitting
     in the dbus queue but not yet processed.
 
@@ -1213,7 +1227,7 @@ bool BleRcuAdapterBluez::isDeviceConnected(const BleAddress &address) const
 
     \sa isDevicePaired(), removeDevice()
  */
-bool BleRcuAdapterBluez::addDevice(const BleAddress &address)
+bool BleRcuAdapterBluez::addDevice(const BleAddress &address, int retries)
 {
     if (!m_stateMachine.inState(AdapterPoweredOnState)) {
         return false;
@@ -1231,10 +1245,10 @@ bool BleRcuAdapterBluez::addDevice(const BleAddress &address)
     XLOGD_INFO("requesting bluez pair %s", device->address().toString().c_str());
 
 
-    device->addPairingErrorSlot(Slot<const std::string&>(m_isAlive,
-            std::bind(&BleRcuAdapterBluez::onDevicePairingError, this, address, std::placeholders::_1)));
+    device->addPairingErrorSlot(Slot<const std::string&, int, bool>(m_isAlive,
+            std::bind(&BleRcuAdapterBluez::onDevicePairingError, this, address, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)));
 
-    device->pair(0);
+    device->pair(0, retries);
 
     return true;
 }
@@ -1243,14 +1257,22 @@ bool BleRcuAdapterBluez::addDevice(const BleAddress &address)
 /*!
     \internal
 
-    Sends a request to bluez to reconnect all devices stored in our internal map
+    Sends a request to bluez to reconnect all devices stored in our internal map if paired
 
  */
 void BleRcuAdapterBluez::reconnectAllDevices()
 {
     for (auto const &device : m_devices) {
-        XLOGD_INFO("reconnecting to %s", device.first.toString().c_str());
-        device.second->connect();
+        bool isPaired = false;
+        if (device.second->m_deviceProxy) {
+            device.second->m_deviceProxy->paired(isPaired);
+        }
+        if (isPaired) {
+            XLOGD_INFO("reconnecting to %s", device.first.toString().c_str());
+            device.second->connect();
+        } else {
+            XLOGD_INFO("not paired, skipping reconnecting to %s", device.first.toString().c_str());
+        }
     }
 }
 
@@ -1666,9 +1688,11 @@ void BleRcuAdapterBluez::onDeviceNameChanged(const BleAddress &address,
 
  */
 void BleRcuAdapterBluez::onDevicePairingError(const BleAddress &address,
-                                             const std::string &error)
+                                             const std::string &error,
+                                             int retryCnt,
+                                             bool finalRetry)
 {
-    m_devicePairingErrorSlots.invoke(address, error);
+    m_devicePairingErrorSlots.invoke(address, error, retryCnt, finalRetry);
 }
 
 // -----------------------------------------------------------------------------
@@ -1707,7 +1731,7 @@ void BleRcuAdapterBluez::onDevicePairedChanged(const BleAddress &address,
 void BleRcuAdapterBluez::onDeviceReadyChanged(const BleAddress &address,
                                               bool ready)
 {
-    XLOGD_INFO("device with address %s is %sREADY", address.toString().c_str(), ready ? "" : "NOT ");
+    XLOGD_AUTOMATION_INFO("device with address %s is %sREADY", address.toString().c_str(), ready ? "" : "NOT ");
 
     map<BleAddress, shared_ptr<BleRcuDeviceBluez>>::const_iterator it = m_devices.find(address);
 
@@ -1754,7 +1778,7 @@ bool BleRcuAdapterBluez::setConnectionParams(BleAddress address, double minInter
 
             if (address == deviceInfo.address) {
 
-                XLOGD_INFO("HCI connection handle: %u, device: %s requesting an update of connection parameters to " 
+                XLOGD_AUTOMATION_INFO("HCI connection handle: %u, device: %s requesting an update of connection parameters to "
                         "minInterval=%f, maxInterval=%f, latency=%d, supervisionTimeout=%d",
                         deviceInfo.handle, deviceInfo.address.toString().c_str(),
                         minInterval, maxInterval, latency, supervisionTimeout);

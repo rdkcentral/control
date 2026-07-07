@@ -39,11 +39,12 @@
 
 #include "dbus/dbusobjectmanager.h"
 #include "ctrlm_log_ble.h"
+#include "ctrlm_utils.h"
 
 using namespace std;
 
 static gboolean notifyUpdateCompleted(gpointer user_data);
-
+typedef gmain_loop_obj_user_data<BleGattProfileBluez> BleGattProfileBluez_userdata;
 
 BleGattProfileBluez::BleGattProfileBluez(const GDBusConnection *bluezDBusConn,
                                          const std::string &bluezDBusPath)
@@ -276,18 +277,22 @@ void BleGattProfileBluez::onGetObjectsReply(PendingReply<DBusManagedObjectList> 
 
     // finally finished so notify the original caller that all objects are fetched, 
     // use a singleShot timer so the event is triggered from the main event loop
-    g_timeout_add(0, notifyUpdateCompleted, this);
+    BleGattProfileBluez_userdata *notifyUpdateCompleted_userdata = new BleGattProfileBluez_userdata(this->m_isAlive, this);
+    g_timeout_add(0, notifyUpdateCompleted, notifyUpdateCompleted_userdata);
     
 }
 
 static gboolean notifyUpdateCompleted(gpointer user_data)
 {
-    BleGattProfileBluez *profile = (BleGattProfileBluez*)user_data;
+    BleGattProfileBluez_userdata *profile = (BleGattProfileBluez_userdata *)user_data;
     if (profile == nullptr) {
         XLOGD_ERROR("user_data is NULL!!!!!!!!!!");
+    } else if (!profile->is_alive()) {
+        XLOGD_ERROR("BleGattProfileBluez is not alive");
     } else {
-        profile->m_updateCompletedSlots.invoke();
+        profile->m_ptr->m_updateCompletedSlots.invoke();
     }
+    delete profile;
     return false;
 }
 

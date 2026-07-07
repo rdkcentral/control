@@ -16,11 +16,13 @@
 #include <ctrlm_fta_platform.h>
 
 #ifdef CTRLMF_WSS_ENABLED
+#include "rdkcertselector.h"
 #include <openssl/pkcs12.h>
 #define CTRLMF_WS_CIPHER_LIST       "AES256-SHA256:AES128-GCM-SHA256:AES128-SHA256"
 #define CTRLMF_WS_TLS_CERT_KEY_FILE "/tmp/serverXXXXXX"
 #define CTRLMF_WS_CERT_NAME_LEN     (1024)
 #define CTRLMF_WS_CERT_PW_LEN       (128)
+#define CTRLMF_CERT_FILENAME_PREFIX "file://"
 #endif
 
 typedef enum {
@@ -37,6 +39,7 @@ typedef struct {
    uint32_t *             audio_frame_qty;
    uint32_t               audio_frame_size;
    ctrlmf_ws_callbacks_t *callbacks;
+   bool                  *has_valid_cert;
 } ctrlmf_ws_thread_params_t;
 
 typedef struct {
@@ -72,7 +75,7 @@ static bool        ctrlmf_ws_add_chain(FILE *cert_key_fp, STACK_OF(X509) *additi
 
 ctrlmf_ws_global_t g_ctrlmf_ws;
 
-bool ctrlmf_ws_init(uint32_t audio_frame_size, uint16_t port, bool log_enable, ctrlmf_ws_callbacks_t *callbacks) {
+bool ctrlmf_ws_init(uint32_t audio_frame_size, uint16_t port, bool log_enable, ctrlmf_ws_callbacks_t *callbacks, bool *has_valid_cert) {
    ctrlmf_ws_thread_params_t params;
 
    sem_t semaphore;
@@ -87,6 +90,7 @@ bool ctrlmf_ws_init(uint32_t audio_frame_size, uint16_t port, bool log_enable, c
    params.audio_frame_qty  = &g_ctrlmf_ws.audio_frame_qty;
    params.audio_frame_size = audio_frame_size;
    params.callbacks        = callbacks;
+   params.has_valid_cert   = has_valid_cert;
 
    g_ctrlmf_ws.nopoll_ctx      = NULL;
    g_ctrlmf_ws.audio_frames    = NULL;
@@ -146,52 +150,56 @@ void *ctrlmf_ws_main(void *param) {
       return(NULL);
    }
 
-   #ifdef CTRLMF_WSS_ENABLED
-   int cert_key_fd   = -1;
-   FILE *cert_key_fp = NULL;
    char tmp_cert[32] = {0};
-   int err_store;
+   bool cert_valid = false;
+   #ifdef CTRLMF_WSS_ENABLED
+   do {
+      int cert_key_fd   = -1;
+      FILE *cert_key_fp = NULL;
+      int err_store;
 
-   safec_rc = sprintf_s(tmp_cert, sizeof(tmp_cert), "%s", CTRLMF_WS_TLS_CERT_KEY_FILE);
-   if(safec_rc < EOK) {
-      ERR_CHK(safec_rc);
-   }
-
-   umask(0600);
-   cert_key_fd = mkstemp(tmp_cert);
-   if (cert_key_fd == -1)
-   {
-      err_store = errno;
-      XLOGD_ERROR("mkstemp failed: <%s>", strerror(err_store));
-      return(NULL);
-   }
-
-   cert_key_fp = fdopen(cert_key_fd, "w");
-   if(cert_key_fp == NULL) {
-      err_store = errno;
-      XLOGD_ERROR("fdopen failed: <%s>", strerror(err_store));
-      if(0 != unlink(&tmp_cert[0])) {
-         err_store = errno;
-         XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
+      safec_rc = sprintf_s(tmp_cert, sizeof(tmp_cert), "%s", CTRLMF_WS_TLS_CERT_KEY_FILE);
+      if(safec_rc < EOK) {
+         ERR_CHK(safec_rc);
       }
-      return(NULL);
-   }
 
-   if(!ctrlmf_ws_cert_config(cert_key_fp)) {
-      XLOGD_ERROR("failed to set cert or key, exit");
+      umask(0600);
+      cert_key_fd = mkstemp(tmp_cert);
+      if (cert_key_fd == -1)
+      {
+         err_store = errno;
+         XLOGD_ERROR("mkstemp failed: <%s>", strerror(err_store));
+         break;
+      }
+
+      cert_key_fp = fdopen(cert_key_fd, "w");
+      if(cert_key_fp == NULL) {
+         err_store = errno;
+         XLOGD_ERROR("fdopen failed: <%s>", strerror(err_store));
+         if(0 != unlink(&tmp_cert[0])) {
+            err_store = errno;
+            XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
+         }
+         break;
+      }
+
+      if(!ctrlmf_ws_cert_config(cert_key_fp)) {
+         XLOGD_ERROR("failed to set cert or key");
+         fclose(cert_key_fp);
+         if(0 != unlink(&tmp_cert[0])) {
+            err_store = errno;
+            XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
+         }
+         break;
+      }
       fclose(cert_key_fp);
-      if(0 != unlink(&tmp_cert[0])) {
-         err_store = errno;
-         XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
-      }
-      return(NULL);
-   }
-   fclose(cert_key_fp);
 
-   // Init OpenSSL
-   SSL_library_init();
-   SSL_load_error_strings();
-   OpenSSL_add_all_algorithms();
+      // Init OpenSSL
+      SSL_library_init();
+      SSL_load_error_strings();
+      OpenSSL_add_all_algorithms();
+      cert_valid = true;
+   } while(0);
    #endif
    
    if(params.log_enable) {
@@ -203,17 +211,17 @@ void *ctrlmf_ws_main(void *param) {
    nopoll_ctx_set_on_ready(g_ctrlmf_ws.nopoll_ctx, ctrlmf_ws_on_ready, &state);
    nopoll_ctx_set_on_msg(g_ctrlmf_ws.nopoll_ctx, ctrlmf_ws_on_message, &state);
    
-   #ifdef CTRLMF_WSS_ENABLED
-   nopoll_conn_opts_set_ssl_protocol(opts, NOPOLL_METHOD_TLSV1_2);
-   nopoll_conn_opts_ssl_host_verify(opts, nopoll_false); //localhost will not match host specified in certificate
+   if(cert_valid) {
+      nopoll_conn_opts_set_ssl_protocol(opts, NOPOLL_METHOD_TLSV1_2);
+      nopoll_conn_opts_ssl_host_verify(opts, nopoll_false); //localhost will not match host specified in certificate
 
-   if(!nopoll_conn_opts_set_ssl_certs(opts, &tmp_cert[0], &tmp_cert[0], NULL, NULL)) {
-      XLOGD_ERROR("Failed to add cert/key files to nopoll_conn");
-      nopoll_ctx_unref(g_ctrlmf_ws.nopoll_ctx);
-      nopoll_conn_opts_free(opts);
-      return(NULL);
+      if(!nopoll_conn_opts_set_ssl_certs(opts, &tmp_cert[0], &tmp_cert[0], NULL, NULL)) {
+         XLOGD_ERROR("Failed to add cert/key files to nopoll_conn");
+         nopoll_ctx_unref(g_ctrlmf_ws.nopoll_ctx);
+         nopoll_conn_opts_free(opts);
+         return(NULL);
+      }
    }
-   #endif
 
    char port[6];
    safec_rc = sprintf_s(port, sizeof(port), "%u", params.port);
@@ -222,16 +230,20 @@ void *ctrlmf_ws_main(void *param) {
    }
 
    // Start IPv4/6 listener
-   #ifdef CTRLMF_WSS_ENABLED
-   state.nopoll_conn = nopoll_listener_tls_new_opts6(g_ctrlmf_ws.nopoll_ctx, opts, "::", port);
-   #else
-   state.nopoll_conn = nopoll_listener_new_opts6(g_ctrlmf_ws.nopoll_ctx, opts, "::", port);
-   #endif
+   if(cert_valid) {
+      state.nopoll_conn = nopoll_listener_tls_new_opts6(g_ctrlmf_ws.nopoll_ctx, opts, "::", port);
+   } else {
+      state.nopoll_conn = nopoll_listener_new_opts6(g_ctrlmf_ws.nopoll_ctx, opts, "::", port);
+   }
    if(!nopoll_conn_is_ok(state.nopoll_conn)) {
       XLOGD_ERROR("Listener connection IPv6 NOT ok");
       nopoll_ctx_unref(g_ctrlmf_ws.nopoll_ctx);
       g_ctrlmf_ws.nopoll_ctx = NULL;
       return(NULL);
+   }
+
+   if(params.has_valid_cert != NULL) {
+      *(params.has_valid_cert) = cert_valid;
    }
 
    // Unblock the caller that launched this thread
@@ -247,12 +259,12 @@ void *ctrlmf_ws_main(void *param) {
    nopoll_ctx_unref(g_ctrlmf_ws.nopoll_ctx);
    g_ctrlmf_ws.nopoll_ctx = NULL;
 
-   #ifdef CTRLMF_WSS_ENABLED
-   if(0 != unlink(tmp_cert)) {
-      int err_store = errno;
-      XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
+   if(cert_valid) {
+     if(0 != unlink(tmp_cert)) {
+         int err_store = errno;
+         XLOGD_ERROR("failed to remove temp cert <%s>", strerror(err_store));
+      }
    }
-   #endif
 
    return(NULL);
 }
@@ -372,9 +384,9 @@ void ctrlmf_ws_on_close(noPollCtx *ctx, noPollConn *conn, noPollPtr user_data) {
 
 #ifdef CTRLMF_WSS_ENABLED
 bool ctrlmf_ws_cert_config(FILE* cert_key_fp) {
-
    bool ret = false;
-   ctrlm_fta_platform_cert_info_t *cert_info = NULL;
+   
+   rdkcertselector_h cert_selector = NULL;
    do {
       FILE *device_cert_fp             = NULL;
       PKCS12 *p12_cert                 = NULL;
@@ -382,18 +394,33 @@ bool ctrlmf_ws_cert_config(FILE* cert_key_fp) {
       X509 *x509_cert                  = NULL;
       STACK_OF(X509) *additional_certs = NULL;
 
-      cert_info = ctrlm_fta_platform_cert_info_get(false);
-      if(cert_info == NULL) {
-         XLOGD_ERROR("unable to get certificate info");
+      char *cert_path     = NULL;
+      char *cert_password = NULL;
+      cert_selector = rdkcertselector_new(NULL, NULL, "FBK_MTLS");
+
+      if(cert_selector == NULL){
+         XLOGD_TELEMETRY("cert selector init failed");
          break;
       }
 
-      if(cert_info->type != CTRLM_FTA_PLATFORM_VOICE_CERT_TYPE_P12) {
-         XLOGD_ERROR("unable to parse certificates that are not of PKCS12 type");
+      rdkcertselectorStatus_t cert_status = rdkcertselector_getCert(cert_selector, &cert_path, &cert_password);
+
+      if(cert_status != certselectorOk) {
+         XLOGD_TELEMETRY("cert selector retrieval failed");
+         break;
+      }
+      
+      if(cert_path == NULL || cert_password == NULL) {
+         XLOGD_TELEMETRY("cert selector get failed");
          break;
       }
 
-      device_cert_fp = fopen(cert_info->filename, "rb");
+      char *local_path = cert_path;
+      if(strncmp(local_path, CTRLMF_CERT_FILENAME_PREFIX, strlen(CTRLMF_CERT_FILENAME_PREFIX)) == 0) {
+         local_path += strlen(CTRLMF_CERT_FILENAME_PREFIX);
+      }
+
+      device_cert_fp = fopen(local_path, "rb");
       if(device_cert_fp == NULL) {
          XLOGD_ERROR("unable to open P12 certificate");
          break;
@@ -408,7 +435,7 @@ bool ctrlmf_ws_cert_config(FILE* cert_key_fp) {
          break;
       }
 
-      if(1 != PKCS12_parse(p12_cert, cert_info->password, &pkey, &x509_cert, &additional_certs)) {
+      if(1 != PKCS12_parse(p12_cert, cert_password, &pkey, &x509_cert, &additional_certs)) {
          XLOGD_ERROR("unable to parse P12 certificate");
          break;
       }
@@ -423,7 +450,7 @@ bool ctrlmf_ws_cert_config(FILE* cert_key_fp) {
          break;
       }
 
-      if(1 != PEM_write_PrivateKey(cert_key_fp, pkey, NULL, (unsigned char*)cert_info->password, strlen(cert_info->password), NULL, NULL)) {
+      if(1 != PEM_write_PrivateKey(cert_key_fp, pkey, NULL, (unsigned char*)cert_password, strlen(cert_password), NULL, NULL)) {
          XLOGD_ERROR("failed to write temp key");
          break;
        }
@@ -431,8 +458,8 @@ bool ctrlmf_ws_cert_config(FILE* cert_key_fp) {
       ret = true;
    }while(0);
 
-   if(cert_info != NULL) {
-      ctrlm_fta_platform_cert_info_free(cert_info);
+   if(cert_selector != NULL) {
+      rdkcertselector_free(&cert_selector);
    }
 
    return ret;

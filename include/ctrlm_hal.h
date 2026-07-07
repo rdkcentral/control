@@ -45,8 +45,8 @@
 #define CTRLM_HAL_IP_API_VERSION                      (1)  ///< Version of the HAL IP API
 #endif
 
-#if CTRLM_HAL_RF4CE_API_VERSION < 8 || CTRLM_HAL_RF4CE_API_VERSION > 16
-#error "Values for CTRLM_HAL_RF4CE_API_VERSION must be in range 8 - 16"
+#if CTRLM_HAL_RF4CE_API_VERSION < 16 || CTRLM_HAL_RF4CE_API_VERSION > 16
+#error "Values for CTRLM_HAL_RF4CE_API_VERSION must be 16"
 #endif
 
 #if CTRLM_HAL_RF4CE_API_VERSION < 12 && defined(ASB)

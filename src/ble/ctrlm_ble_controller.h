@@ -131,9 +131,9 @@ public:
 
    virtual void                     check_upgrade_error(void);
 
-   void                             setSupportedIrdbs(ctrlm_irdb_vendor_t* vendors, int num_supported);
-   std::vector<ctrlm_irdb_vendor_t> getSupportedIrdbs() const;
-   bool                             isSupportedIrdb(ctrlm_irdb_vendor_t vendor);
+   void                             setSupportedIrdbs(uint8_t vendors);
+   uint8_t                          getSupportedIrdbs() const;
+   bool                             isSupportedIrdb(const ctrlm_irdb_vendor_info_t &vendor_info);
 
    void                             print_status();
 
@@ -146,6 +146,8 @@ public:
    void                             setVoiceStartTime(ctrlm_timestamp_t startTimeKey);
    ctrlm_timestamp_t                getVoiceStartTimeKey() const;
    ctrlm_timestamp_t                getVoiceStartTimeLocal() const;
+
+   void                             update_controller_id_and_db_entry(std::string name, ctrlm_network_id_t network_id, ctrlm_controller_id_t new_id);
 
 private:
    ctrlm_obj_network_ble_t                *obj_network_ble_ = NULL;
@@ -188,7 +190,7 @@ private:
    ctrlm_rcu_wakeup_config_t               wakeup_config_        = CTRLM_RCU_WAKEUP_CONFIG_INVALID;
    std::vector<uint16_t>                   wakeup_custom_list_;
 
-   std::vector<ctrlm_irdb_vendor_t>        irdbs_supported_;
+   uint8_t                                 irdbs_supported_;
 
    std::string                             ota_product_name_;
    std::string                             controller_type_str_;

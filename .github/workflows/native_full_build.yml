@@ -1,0 +1,29 @@
+name: Build Control Manager in Native Environment
+
+on:
+  push:
+    branches: [ main, 'sprint/**', 'release/**', develop ]
+  pull_request:
+    branches: [ main, 'sprint/**', 'release/**', topic/RDK*, develop ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-control-on-pr:
+    name: Build Control Manager in github rdkcentral
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/rdkcentral/docker-rdk-ci:latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: build dependencies
+        run: |
+          sh -x ci/build_dependencies.sh
+
+      - name: cov build
+        run: |
+          sh -x ci/cov_build.sh

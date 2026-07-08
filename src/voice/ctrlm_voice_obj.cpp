@@ -3093,6 +3093,7 @@ const char *ctrlm_voice_device_str(ctrlm_voice_device_t device) {
        case CTRLM_VOICE_DEVICE_FF:             return("FF");
        case CTRLM_VOICE_DEVICE_MICROPHONE:     return("MICROPHONE");
        case CTRLM_VOICE_DEVICE_MICROPHONE_TAP: return("MICROPHONE_TAP");
+       case CTRLM_VOICE_DEVICE_MFV:            return("MFV");
        case CTRLM_VOICE_DEVICE_INVALID:        return("INVALID");
    }
    return("UNKNOWN");
@@ -3159,6 +3160,10 @@ ctrlm_voice_device_t xrsr_to_voice_device(xrsr_src_t device) {
         }
         case XRSR_SRC_MICROPHONE_TAP: {
             ret = CTRLM_VOICE_DEVICE_MICROPHONE_TAP;
+            break;
+        }
+        case XRSR_SRC_RCU_MFV: {
+            ret = CTRLM_VOICE_DEVICE_MFV;
             break;
         }
         default: {
@@ -3304,6 +3309,7 @@ bool ctrlm_voice_t::is_voice_assistant(ctrlm_voice_device_t device) {
     bool voice_assistant = false;
     switch(device) {
         case CTRLM_VOICE_DEVICE_MICROPHONE:
+        case CTRLM_VOICE_DEVICE_MFV:
         case CTRLM_VOICE_DEVICE_FF:  {
             voice_assistant = true;
             break;

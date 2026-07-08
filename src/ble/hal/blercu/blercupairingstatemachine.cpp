@@ -284,6 +284,7 @@ void BleRcuPairingStateMachine::startAutoWithTimeout(int timeoutMs)
     m_pairingAttempts++;
     m_pairingSucceeded = false;
     XLOGD_INFO("Started auto pairing procedure");
+    XLOGD_DEBUG("timeouts - discovery <%d ms> pairing <%d ms> setup <%d ms> unpairing <%d ms>", m_discoveryTimeout, m_config->pairingTimeout(), m_config->setupTimeout(), m_config->upairingTimeout());
 }
 
 
@@ -301,7 +302,7 @@ void BleRcuPairingStateMachine::startWithCode(uint8_t pairingCode)
         return;
     }
 
-    m_discoveryTimeout = m_config->discoveryTimeout();
+    m_discoveryTimeout = m_config->discoveryTimeout(); // use the default discovery timeout for this pairing method
     m_isAutoPairing = false;
 
     // clear the target device
@@ -342,6 +343,7 @@ void BleRcuPairingStateMachine::startWithCode(uint8_t pairingCode)
     m_pairingAttempts++;
     m_pairingSucceeded = false;
     XLOGD_INFO("started pairing, searching for device with prefix code %03d or MAC hash 0x%02X", m_pairingCode, m_pairingMacHash);
+    XLOGD_DEBUG("timeouts - discovery <%d ms> pairing <%d ms> setup <%d ms> unpairing <%d ms>", m_discoveryTimeout, m_config->pairingTimeout(), m_config->setupTimeout(), m_config->upairingTimeout());
 }
 
 // -----------------------------------------------------------------------------
@@ -356,6 +358,8 @@ void BleRcuPairingStateMachine::startWithMacList(const std::vector<BleAddress> &
         XLOGD_ERROR("scanner already running");
         return;
     }
+
+    m_discoveryTimeout = m_config->discoveryTimeout(); // use the default discovery timeout for this pairing method
 
     // clear the target device
     m_targetAddress.clear();
@@ -386,7 +390,7 @@ void BleRcuPairingStateMachine::startWithMacList(const std::vector<BleAddress> &
     for (const auto &address : macList) {
         XLOGD_INFO("<%s>", address.toString().c_str());
     }
-
+    XLOGD_DEBUG("timeouts - discovery <%d ms> pairing <%d ms> setup <%d ms> unpairing <%d ms>", m_discoveryTimeout, m_config->pairingTimeout(), m_config->setupTimeout(), m_config->upairingTimeout());
 }
 
 

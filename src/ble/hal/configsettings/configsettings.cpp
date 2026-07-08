@@ -209,6 +209,12 @@ std::shared_ptr<ConfigSettings> ConfigSettings::parseJson(json_t *jsonConfig)
 bool ConfigSettings::updateJson(json_t *jsonConfig)
 {
     bool updated = false;
+
+    if (jsonConfig == nullptr || !json_is_object(jsonConfig)) {
+        XLOGD_WARN("invalid json config");
+        return(updated);
+    }
+
     // find the timeout params
     json_t *timeoutsObj = json_object_get(jsonConfig, "timeouts");
     if (timeoutsObj && json_is_object(timeoutsObj)) {
@@ -219,7 +225,7 @@ bool ConfigSettings::updateJson(json_t *jsonConfig)
     // find the model details array
     json_t *modelArray = json_object_get(jsonConfig, "models");
     if (modelArray && json_is_array(modelArray)) {
-        XLOGD_WARN( "models cannot be updated");
+        XLOGD_WARN("models cannot be updated");
     }
 
     return(updated);

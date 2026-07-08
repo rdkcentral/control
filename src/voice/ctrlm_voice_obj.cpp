@@ -2925,11 +2925,15 @@ void ctrlm_voice_t::voice_stream_end_callback(ctrlm_voice_stream_end_cb_t *strea
 
         if(session->packets_processed > 0) {
             uint32_t stream_duration    = session->packets_processed * 20; // assume 20 ms per packet
+            #ifdef TELEMETRY_SUPPORT
             uint32_t samples_per_packet = 320; // 16 kHz samples at 20 ms per packet
+            #endif
             if(session->format.type == CTRLM_VOICE_FORMAT_ADPCM_FRAME) {
                 uint32_t frame_duration_us = (session->format.value.adpcm_frame.size_packet - session->format.value.adpcm_frame.size_header) * 125; // 125 us per byte for ADPCM at 16 kHz
                 stream_duration    = (session->packets_processed * frame_duration_us) / 1000;
+                #ifdef TELEMETRY_SUPPORT
                 samples_per_packet = (session->format.value.adpcm_frame.size_packet - session->format.value.adpcm_frame.size_header) * 2; // 2 samples per byte for ADPCM
+                #endif
             }
             XLOGD_AUTOMATION_TELEMETRY("src <%s> Packets Lost/Total <%u/%u> %.02f%% duration <%u> ms", ctrlm_voice_device_str(session->voice_device), session->packets_lost, session->packets_lost + session->packets_processed, 100.0 * ((double)session->packets_lost / (double)(session->packets_lost + session->packets_processed)), stream_duration);
             #ifdef TELEMETRY_SUPPORT

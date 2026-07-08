@@ -25,6 +25,7 @@
 #include <archive.h>
 #include <algorithm>
 #include <cctype>
+#include <tuple>
 #include "ctrlm.h"
 #include "ctrlm_utils.h"
 #include <xr_mq.h>
@@ -46,6 +47,11 @@
 #include "dsDisplay.h"
 #include <regex>
 // end dsMgr includes
+
+using std::get;
+using std::map;
+using std::string;
+using std::tuple;
 
 #define BLOCK_SIZE     (1024 * 4 * 10) /* bytes */
 #define MAX_RECURSE_DEPTH 20

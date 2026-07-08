@@ -44,6 +44,10 @@ apt install -y \
     libevdev-dev \
     libdrm-dev \
     libbsd-dev \
+    autoconf \
+    automake \
+    libtool \
+    make \
     gperf \
     python3-pip
 python3 -m pip install jsonref
@@ -69,6 +73,14 @@ git -C rdkversion sparse-checkout set src
 
 git clone --depth 1 --filter=blob:none --sparse https://github.com/rdkcentral/meta-rdk-oss-reference.git
 git -C meta-rdk-oss-reference sparse-checkout set recipes-common/safec-common-wrapper/files
+
+# Build and install nopoll for xr-voice-sdk WS-enabled native CI build.
+git clone --depth 1 https://github.com/ASPLes/nopoll.git
+cd nopoll
+./autogen.sh --prefix=/usr
+make -j$(nproc)
+make install
+cd "${GITHUB_WORKSPACE}"
 
 IARMMGRS_DIR="$GITHUB_WORKSPACE/iarmmgrs"
 DEEPSLEEP_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-deepsleep_manager"
@@ -118,6 +130,8 @@ cmake -G Ninja \
     -DCMAKE_C_FLAGS="-I${HEADERS_DIR} -DSAFEC_DUMMY_API" \
     -DSTAGING_BINDIR_NATIVE="/usr/bin" \
     -DCMAKE_PROJECT_VERSION="${XRSDK_REF}" \
+    -DWS_ENABLED=ON \
+    -DWS_NOPOLL_PATCHES=OFF \
     -DINSTALL_INTERNAL_HEADERS=ON
 
 cmake --build "$GITHUB_WORKSPACE/build/xr-voice-sdk"

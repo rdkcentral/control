@@ -2798,51 +2798,29 @@ void ctrlm_obj_network_ble_t::power_state_change(gboolean waking_up) {
 }
 
 void ctrlm_obj_network_ble_t::rfc_retrieved_handler(const ctrlm_rfc_attr_t &attr) {
-   // Process timeout object
-   int timeout = -1;
-   attr.get_rfc_value(JSON_INT_NAME_NETWORK_BLE_TIMEOUTS_DISCOVERY,   timeout, 0, 600000);
-   if(timeout > 0) {
-      XLOGD_INFO("discovery timeout set to <%d>", timeout);
-      //setTimeoutDiscovery(timeout);
-   }
-   
-   timeout = -1;
-   attr.get_rfc_value(JSON_INT_NAME_NETWORK_BLE_TIMEOUTS_PAIR,        timeout, 0, 600000);
-   if(timeout > 0) {
-      XLOGD_INFO("pair timeout set to <%d>", timeout);
-      //setTimeoutPair(timeout);
-   }
-   
-   timeout = -1;
-   attr.get_rfc_value(JSON_INT_NAME_NETWORK_BLE_TIMEOUTS_SETUP,       timeout, 0, 600000);
-   if(timeout > 0) {
-      XLOGD_INFO("setup timeout set to <%d>", timeout);
-      //setTimeoutSetup(timeout);
+   XLOGD_INFO("process BLE RFC values");
+
+   auto config = getConfigSettings();
+   if (config == nullptr) {
+      XLOGD_ERROR("config not available");
+      return;
    }
 
-   timeout = -1;
-   attr.get_rfc_value(JSON_INT_NAME_NETWORK_BLE_TIMEOUTS_UNPAIR,      timeout, 0, 600000);
-   if(timeout > 0) {
-      XLOGD_INFO("unpair timeout set to <%d>", timeout);
-      //setTimeoutUnpair(timeout);
+   json_t *obj = nullptr;
+   if(!attr.get_rfc_json_value(&obj)) {
+      XLOGD_ERROR("failed to get RFC json object");
+      return;
    }
-   
-   /* DO WE EVEN NEED THESE TIMEOUTS?
-   timeout = -1;
-   attr.get_rfc_value(JSON_INT_NAME_NETWORK_BLE_TIMEOUTS_HIDRAWPOLL,  timeout, 0, 600000);
-   if(timeout > 0) {
-      XLOGD_INFO("hidrawpoll timeout set to <%d>", timeout);
-      setTimeoutHidrawpoll(timeout);
-   }
-   
-   timeout = -1;
-   attr.get_rfc_value(JSON_INT_NAME_NETWORK_BLE_TIMEOUTS_HIDRAWLIMIT, timeout, 0, 600000);
-   if(timeout > 0) {
-      XLOGD_INFO("hidrawlimit timeout set to <%d>", timeout);
-      setTimeoutHidrawlimit(timeout);
-   }*/
 
-   //attr.get_rfc_value(JSON_INT_NAME_NETWORK_BLE_MODELS,class_inc_line_of_sight_,0,15);
+   // Update config settings from RFC json object
+   config->updateFromJson(obj);
+   
+   // Process options object
+   //bool disable_voice = false;
+   //if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_BLE_OPTIONS JSON_PATH_SEPERATOR JSON_BOOL_NAME_NETWORK_BLE_OPTIONS_DISABLE_VOICE, disable_voice);) {
+   //   XLOGD_INFO("disable voice set to <%s>", disable_voice ? "true" : "false");
+      //setDisableVoice(disable_voice);
+   //}
 }
 
 std::vector<ctrlm_obj_controller_t *> ctrlm_obj_network_ble_t::get_controller_obj_list() const {

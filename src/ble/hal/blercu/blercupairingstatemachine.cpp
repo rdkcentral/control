@@ -44,11 +44,8 @@ BleRcuPairingStateMachine::BleRcuPairingStateMachine(const shared_ptr<const Conf
     , m_isAutoPairing(false)
     , m_pairingCode(-1)
     , m_pairingMacHash(-1)
+    , m_config(config)
     , m_discoveryTimeout(config->discoveryTimeout())
-    , m_discoveryTimeoutDefault(config->discoveryTimeout())
-    , m_pairingTimeout(config->pairingTimeout())
-    , m_setupTimeout(config->setupTimeout())
-    , m_unpairingTimeout(config->upairingTimeout())
     , m_pairingAttempts(0)
     , m_pairingSuccesses(0)
     , m_pairingSucceeded(false)
@@ -304,7 +301,7 @@ void BleRcuPairingStateMachine::startWithCode(uint8_t pairingCode)
         return;
     }
 
-    m_discoveryTimeout = m_discoveryTimeoutDefault;
+    m_discoveryTimeout = m_config->discoveryTimeout();
     m_isAutoPairing = false;
 
     // clear the target device
@@ -511,9 +508,9 @@ void BleRcuPairingStateMachine::onStateTransition(int oldState, int newState)
         }
     } else if (newState == UnpairingState) {
         if (oldState == EnablePairableState || oldState == PairingState) {
-            XLOGD_AUTOMATION_WARN("timed-out in pairing phase (rcu device didn't pair within %dms)", m_pairingTimeout);
+            XLOGD_AUTOMATION_WARN("timed-out in pairing phase (rcu device didn't pair within %dms)", m_config->pairingTimeout());
         } else if (oldState == SetupState) {
-            XLOGD_AUTOMATION_WARN("timed-out in setup phase (rcu didn't response to all requests within %dms)", m_setupTimeout);
+            XLOGD_AUTOMATION_WARN("timed-out in setup phase (rcu didn't response to all requests within %dms)", m_config->setupTimeout());
         }
     }
 
@@ -643,7 +640,7 @@ void BleRcuPairingStateMachine::onExitedDiscoverySuperState()
 void BleRcuPairingStateMachine::onEnteredStoppingDiscoveryState()
 {
     // start the pairing timeout timer
-    m_stateMachine.postDelayedEvent(PairingTimeoutEvent, m_pairingTimeout);
+    m_stateMachine.postDelayedEvent(PairingTimeoutEvent, m_config->pairingTimeout());
 
     // if we've got to this state it means we have a target device
     if (m_targetAddress.isNull()) {
@@ -708,7 +705,7 @@ void BleRcuPairingStateMachine::onEnteredEnablePairableState()
     // in pairable mode because we don't know if the previous timeout is long enough for our purposes.
     // The timeout is set to 5 seconds past the overall time we've given the state machine
     // to pair with the rcu.
-    m_adapter->enablePairable(m_pairingTimeout + 5000);
+    m_adapter->enablePairable(m_config->pairingTimeout() + 5000);
 
     if (m_adapter->isPairable()) {
         // is already pairable so just post the 'enabled' event
@@ -748,8 +745,8 @@ void BleRcuPairingStateMachine::onEnteredPairingState()
 void BleRcuPairingStateMachine::onEnteredSetupState()
 {
     // start the setup timeout timer
-    m_stateMachine.postDelayedEvent(SetupTimeoutEvent, m_setupTimeout);
-    XLOGD_DEBUG("starting setup timeout timer for %dms", m_setupTimeout);
+    m_stateMachine.postDelayedEvent(SetupTimeoutEvent, m_config->setupTimeout());
+    XLOGD_DEBUG("starting setup timeout timer for %dms", m_config->setupTimeout());
 }
 
 // -----------------------------------------------------------------------------
@@ -781,7 +778,7 @@ void BleRcuPairingStateMachine::onExitedPairingSuperState()
 void BleRcuPairingStateMachine::onEnteredUnpairingState()
 {
     // start the unpairing timeout timer
-    m_stateMachine.postDelayedEvent(UnpairingTimeoutEvent, m_unpairingTimeout);
+    m_stateMachine.postDelayedEvent(UnpairingTimeoutEvent, m_config->upairingTimeout());
 
     // if we've got to this state it means we have a target device
     if (m_targetAddress.isNull()) {

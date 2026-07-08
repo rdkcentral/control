@@ -202,6 +202,31 @@ std::shared_ptr<ConfigSettings> ConfigSettings::parseJson(json_t *jsonConfig)
 
 // -----------------------------------------------------------------------------
 /*!
+    Parses a json config file and updates the existing object.  Any unrecognized fields are ignored.
+
+    \see defaults()
+ */
+bool ConfigSettings::updateJson(json_t *jsonConfig)
+{
+    bool updated = false;
+    // find the timeout params
+    json_t *timeoutsObj = json_object_get(jsonConfig, "timeouts");
+    if (timeoutsObj && json_is_object(timeoutsObj)) {
+        m_timeOuts = parseTimeouts(timeoutsObj);
+        updated = true;
+    }
+
+    // find the model details array
+    json_t *modelArray = json_object_get(jsonConfig, "models");
+    if (modelArray && json_is_array(modelArray)) {
+        XLOGD_WARN( "models cannot be updated");
+    }
+
+    return(updated);
+}
+
+// -----------------------------------------------------------------------------
+/*!
     Parses a json config file and returns a \l{std::shared_ptr} to a
     \l{ConfigSettings} object.  If the json is not valid or one or more of
     mandatory fields is missing or malformed then a null shared pointer is
@@ -378,3 +403,11 @@ int ConfigSettings::hidrawWaitLimitTimeout() const
     return m_timeOuts.hidrawWaitLimitMSecs;
 }
 
+// -----------------------------------------------------------------------------
+/*!
+    Returns true if any of the config fields are updated. Otherwise, returns false.
+ */
+bool ConfigSettings::updateFromJson(json_t *jsonConfig)
+{
+    return updateJson(jsonConfig);
+}

@@ -745,8 +745,9 @@ void BleRcuPairingStateMachine::onEnteredPairingState()
 void BleRcuPairingStateMachine::onEnteredSetupState()
 {
     // start the setup timeout timer
-    m_stateMachine.postDelayedEvent(SetupTimeoutEvent, m_config->setupTimeout());
-    XLOGD_DEBUG("starting setup timeout timer for %dms", m_config->setupTimeout());
+    int timeout = m_config->setupTimeout();
+    m_stateMachine.postDelayedEvent(SetupTimeoutEvent, timeout);
+    XLOGD_DEBUG("starting setup timeout timer for %dms", timeout);
 }
 
 // -----------------------------------------------------------------------------

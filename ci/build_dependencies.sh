@@ -118,9 +118,8 @@ cmake -G Ninja \
     -DCMAKE_C_FLAGS="-I${HEADERS_DIR}" \
     -DSTAGING_BINDIR_NATIVE="/usr/bin" \
     -DCMAKE_PROJECT_VERSION="${XRSDK_REF}" \
-    -DUSE_SAFEC=OFF \
-    -DVAD_ENABLED=OFF \
-    -DINSTALL_INTERNAL_HEADERS=ON
+    -DINSTALL_INTERNAL_HEADERS=ON \
+    -DCMAKE_C_FLAGS="-DSAFEC_DUMMY_API"
 
 cmake --build "$GITHUB_WORKSPACE/build/xr-voice-sdk"
 cmake --install "$GITHUB_WORKSPACE/build/xr-voice-sdk" --component headers

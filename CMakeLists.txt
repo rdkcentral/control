@@ -264,7 +264,7 @@ install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json DESTINATION ${CMAKE_INSTALL_
 # GENERATED FILES
 add_custom_command( OUTPUT ctrlm_version_build.h
    COMMAND echo -n "#define CTRLM_MAIN_BRANCH    \"" >> ctrlm_version_build.h
-   COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} branch --all --contains | sed -n -e "s/^\\s*remotes\\/origin\\///" -e "2p" | tr -d "\\n" >> ctrlm_version_build.h
+   COMMAND sh -c "src=\"${CMAKE_CURRENT_SOURCE_DIR}\"; ref=$(git -C \"$src\" describe --tags --exact-match 2>/dev/null || git -C \"$src\" branch -a --format='%(refname:short)' --contains HEAD 2>/dev/null | sed -n '2{p;q}'); echo -n \"$ref\" >> ctrlm_version_build.h"
    COMMAND echo "\"" >> ctrlm_version_build.h
    COMMAND echo -n "#define CTRLM_MAIN_COMMIT_ID " >> ctrlm_version_build.h
    COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} log --format=\"%H\" -n 1 >> ctrlm_version_build.h

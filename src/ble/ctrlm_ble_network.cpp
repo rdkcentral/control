@@ -2820,7 +2820,11 @@ void ctrlm_obj_network_ble_t::rfc_retrieved_handler(const ctrlm_rfc_attr_t &attr
    }
 
    // Update config settings from RFC json object
-   config->updateFromJson(obj);
+   bool updated = config->updateFromJson(obj);
+   if(!updated) {
+      XLOGD_WARN("no BLE config updates found in RFC");
+   }
+   json_decref(obj);
 }
 
 std::vector<ctrlm_obj_controller_t *> ctrlm_obj_network_ble_t::get_controller_obj_list() const {

@@ -2800,6 +2800,13 @@ void ctrlm_obj_network_ble_t::power_state_change(gboolean waking_up) {
 void ctrlm_obj_network_ble_t::rfc_retrieved_handler(const ctrlm_rfc_attr_t &attr) {
    XLOGD_INFO("process BLE RFC values");
 
+   // Process options object
+   bool disable_voice = false;
+   if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_BLE_OPTIONS JSON_PATH_SEPERATOR JSON_BOOL_NAME_NETWORK_BLE_OPTIONS_DISABLE_VOICE, disable_voice)) {
+      voice_disabled_ = disable_voice;
+      XLOGD_INFO("BLE voice support is %s by config", voice_disabled_ ? "disabled" : "enabled");
+   }
+
    auto config = getConfigSettings();
    if (config == nullptr) {
       XLOGD_ERROR("config not available");
@@ -2814,13 +2821,6 @@ void ctrlm_obj_network_ble_t::rfc_retrieved_handler(const ctrlm_rfc_attr_t &attr
 
    // Update config settings from RFC json object
    config->updateFromJson(obj);
-   
-   // Process options object
-   //bool disable_voice = false;
-   //if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_BLE_OPTIONS JSON_PATH_SEPERATOR JSON_BOOL_NAME_NETWORK_BLE_OPTIONS_DISABLE_VOICE, disable_voice);) {
-   //   XLOGD_INFO("disable voice set to <%s>", disable_voice ? "true" : "false");
-      //setDisableVoice(disable_voice);
-   //}
 }
 
 std::vector<ctrlm_obj_controller_t *> ctrlm_obj_network_ble_t::get_controller_obj_list() const {

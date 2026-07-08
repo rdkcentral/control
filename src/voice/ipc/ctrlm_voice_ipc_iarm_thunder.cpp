@@ -941,6 +941,7 @@ const char *voice_device_str(ctrlm_voice_device_t device) {
         case CTRLM_VOICE_DEVICE_FF:             return("ff");
         case CTRLM_VOICE_DEVICE_MICROPHONE:     return("mic");
         case CTRLM_VOICE_DEVICE_MICROPHONE_TAP: return("mic_tap");
+        case CTRLM_VOICE_DEVICE_MFV:            return("mfv");
         default: break;
     }
     return("invalid");

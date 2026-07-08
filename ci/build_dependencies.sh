@@ -51,7 +51,7 @@ python3 -m pip install jsonref
 ###########################################
 # 2. Clone the required repositories
 
-git clone --depth 1 --filter=blob:none https://github.com/rdkcentral/xr-voice-sdk.git
+git clone --depth 1 --filter=blob:none --branch develop https://github.com/rdkcentral/xr-voice-sdk.git
 
 git clone --depth 1 --filter=blob:none https://github.com/rdkcentral/entservices-testframework.git
 

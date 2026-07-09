@@ -503,7 +503,7 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
             {
                 XLOGD_INFO("BLE RCU %s MFV detection type = 0x%02X", address.toString().c_str(), static_cast<uint8_t>(type));
 
-                ctrlm_hal_ble_RcuStatusData_t params;
+                ctrlm_hal_ble_RcuStatusData_t params = {};
                 params.property_updated = CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_TYPE;
                 params.rcu_data.ieee_address = address.toUInt64();
                 params.rcu_data.mfv_detection_type = static_cast<ctrlm_hal_ble_MfvDetectionType_t>(type);
@@ -516,7 +516,7 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
                 XLOGD_INFO("BLE RCU %s MFV detection data: start=%u end=%u confidence=%.1f%%",
                     address.toString().c_str(), data.start, data.end, data.confidence / 10.0);
 
-                ctrlm_hal_ble_RcuStatusData_t params;
+                ctrlm_hal_ble_RcuStatusData_t params = {};
                 params.property_updated = CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_DATA;
                 params.rcu_data.ieee_address = address.toUInt64();
                 params.rcu_data.mfv_ww_start = data.start;
@@ -530,7 +530,7 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
             {
                 XLOGD_INFO("BLE RCU %s MFV privacy = %s", address.toString().c_str(), enabled ? "enabled" : "disabled");
 
-                ctrlm_hal_ble_RcuStatusData_t params;
+                ctrlm_hal_ble_RcuStatusData_t params = {};
                 params.property_updated = CTRLM_HAL_BLE_PROPERTY_MFV_PRIVACY;
                 params.rcu_data.ieee_address = address.toUInt64();
                 params.rcu_data.mfv_privacy_enabled = enabled;
@@ -542,7 +542,7 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
             {
                 XLOGD_INFO("BLE RCU %s MFV capabilities = 0x%02X", address.toString().c_str(), caps);
 
-                ctrlm_hal_ble_RcuStatusData_t params;
+                ctrlm_hal_ble_RcuStatusData_t params = {};
                 params.property_updated = CTRLM_HAL_BLE_PROPERTY_MFV_CAPABILITIES;
                 params.rcu_data.ieee_address = address.toUInt64();
                 params.rcu_data.mfv_capabilities = caps;

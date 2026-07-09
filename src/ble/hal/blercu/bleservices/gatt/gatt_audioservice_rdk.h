@@ -95,7 +95,6 @@ private:
     void requestMfvModelVersion();
     void requestMfvPrivacy();
     void requestMfvModelConfig();
-    bool areMfvInitialReadsComplete() const;
     void onMfvInitialReadComplete();
     void maybeEnableMfvNotifications();
 

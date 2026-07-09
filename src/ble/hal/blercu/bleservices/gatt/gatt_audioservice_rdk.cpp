@@ -539,11 +539,6 @@ void GattAudioServiceRdk::requestGainLevel()
     m_audioGainCharacteristic->readValue(PendingReply<std::vector<uint8_t>>(getIsAlivePtr(), replyHandler));
 }
 
-bool GattAudioServiceRdk::areMfvInitialReadsComplete() const
-{
-    return m_mfvState.areInitialReadsComplete();
-}
-
 // -----------------------------------------------------------------------------
 /*!
     \internal
@@ -755,7 +750,7 @@ void GattAudioServiceRdk::onMfvInitialReadComplete()
 
 void GattAudioServiceRdk::maybeEnableMfvNotifications()
 {
-    if (!m_mfvState.supported || !areMfvInitialReadsComplete() || m_mfvState.notificationsEnabled) {
+    if (!m_mfvState.supported || !m_mfvState.areInitialReadsComplete() || m_mfvState.notificationsEnabled) {
         return;
     }
 

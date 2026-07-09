@@ -2091,7 +2091,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                case CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_TYPE: {
                   const ctrlm_hal_ble_MfvDetectionType_t detection_type = dqm->rcu_data.mfv_detection_type;
                   controller->setMfvDetectionType(detection_type);
-                  XLOGD_INFO("Controller <%s> MFV detection type = 0x%02X", controller->ieee_address_get().to_string().c_str(), detection_type);
+                  XLOGD_INFO("Controller <%s> MFV detection type = 0x%02X", controller->ieee_address_get().to_string().c_str(), static_cast<unsigned int>(detection_type));
 
                   // Start a voice session for FullPower and AAD detections. BelowThreshold is a low-confidence
                   // secondary detection which is controlled by a config (mfv_below_threshold_session_enabled) and

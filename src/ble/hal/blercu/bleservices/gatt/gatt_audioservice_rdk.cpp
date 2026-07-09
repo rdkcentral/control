@@ -161,9 +161,13 @@ void GattAudioServiceRdk::onEnteredIdle() {
     m_mfvModelVersionCharacteristic.reset();
     m_mfvModelConfigCharacteristic.reset();
     m_mfvCapabilitiesCharacteristic.reset();
+    if (m_mfvPromiseResults) {
+        m_mfvPromiseResults->setError("MFV operation cancelled");
+        m_mfvPromiseResults->finish();
+        m_mfvPromiseResults.reset();
+    }
     m_mfvSupported = false;
     m_mfvInitialReadsRemaining = 0;
-
     GattAudioService::onEnteredIdle();
 }
 
@@ -936,15 +940,14 @@ void GattAudioServiceRdk::onMfvSessionStartChanged(const std::vector<uint8_t> &n
         return;
     }
 
-    uint8_t raw = newValue[0];
+    const uint8_t raw = newValue[0];
     if (raw < 0x01 || raw > 0x03) {
         XLOGD_WARN("MFV Session Start notification has unknown detection type 0x%02X", raw);
+        return;
     }
 
     m_mfvDetectionType = static_cast<DetectionType>(raw);
     XLOGD_INFO("MFV Session Start: detection type = 0x%02X", raw);
-
-    m_mfvDetectionTypeChangedSlots.invoke(m_mfvDetectionType);
 }
 
 // -----------------------------------------------------------------------------

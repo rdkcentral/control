@@ -130,7 +130,7 @@ private:
     bool m_mfvSupported = false;
     int  m_mfvInitialReadsRemaining = 0;
 
-    DetectionType m_mfvDetectionType = FullPower;
+    DetectionType m_mfvDetectionType = Unknown;
     DetectionData m_mfvDetectionData;
     ModelVersion  m_mfvModelVersionData;
     bool          m_mfvPrivacyEnabled = false;

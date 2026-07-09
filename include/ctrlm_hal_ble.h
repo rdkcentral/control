@@ -59,7 +59,7 @@ typedef enum {
    CTRLM_HAL_BLE_MFV_DETECTION_FULL_POWER      = 0x01,
    CTRLM_HAL_BLE_MFV_DETECTION_AAD             = 0x02,
    CTRLM_HAL_BLE_MFV_DETECTION_BELOW_THRESHOLD = 0x03,
-} ctrlm_hal_ble_MfvDetectionType_t;
+} ctrlm_hal_ble_MfvDetType_t;
 
 /// @brief Supported voice data encoding types.
 typedef enum {
@@ -135,7 +135,7 @@ typedef struct {
    int                           wakeup_custom_list[CTRLM_WAKEUP_CONFIG_LIST_MAX_SIZE];
    int                           wakeup_custom_list_size;
    uint8_t                       irdbs_supported;
-   ctrlm_hal_ble_MfvDetectionType_t mfv_detection_type;
+   ctrlm_hal_ble_MfvDetType_t    mfv_detection_type;
    uint16_t                      mfv_ww_start;
    uint16_t                      mfv_ww_end;
    uint16_t                      mfv_confidence; // encoded as percentage * 10 (e.g. 976 = 97.6%)

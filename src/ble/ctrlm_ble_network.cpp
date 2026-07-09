@@ -2116,6 +2116,8 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
 
                      ctrlm_main_queue_msg_voice_session_t msg;
                      errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
+                     ERR_CHK(safec_rc);
+                     msg.params = &v_params;
 
                      req_process_voice_session_begin(&msg, sizeof(msg));
                   }
@@ -2300,6 +2302,10 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::controller_add(ctrlm_hal_ble_rcu_
       if (rcu_data.wakeup_config != 0xFF) { controller->setWakeupConfig(rcu_data.wakeup_config); }
       if (rcu_data.wakeup_custom_list_size != 0) { controller->setWakeupCustomList(rcu_data.wakeup_custom_list, rcu_data.wakeup_custom_list_size); }
       if (rcu_data.last_wakeup_key != 0xFF) { controller->setLastWakeupKey(rcu_data.last_wakeup_key); }
+      controller->setMfvDetectionType(rcu_data.mfv_detection_type);
+      controller->setMfvDetectionData(rcu_data.mfv_ww_start, rcu_data.mfv_ww_end, rcu_data.mfv_confidence);
+      controller->setMfvPrivacy(rcu_data.mfv_privacy_enabled);
+      controller->setMfvCapabilities(rcu_data.mfv_capabilities);
 
       controller->db_store();
    }

@@ -127,11 +127,15 @@ public:
 
     virtual void writeMfvPrivacy(bool enabled, PendingReply<> &&reply)
     {
+        (void)enabled;
         reply.setError("MFV not supported");
         reply.finish();
     }
     virtual void writeMfvModelConfiguration(uint8_t sensitivity, uint8_t secondary, uint8_t aad, PendingReply<> &&reply)
     {
+        (void)sensitivity;
+        (void)secondary;
+        (void)aad;
         reply.setError("MFV not supported");
         reply.finish();
     }

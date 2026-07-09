@@ -84,6 +84,8 @@ BleUuid GattAudioServiceRdk::uuid()
 bool GattAudioServiceRdk::start(const shared_ptr<const BleGattService> &gattService)
 {
     m_mfvNotificationsEnabled = false;
+    m_mfvSupported = false;
+    m_mfvInitialReadsRemaining = 0;
 
     // sanity check the supplied info is valid
     if (!gattService->isValid() || (gattService->uuid() != m_serviceUuid)) {
@@ -168,6 +170,16 @@ void GattAudioServiceRdk::onEnteredIdle() {
         m_mfvPromiseResults->finish();
         m_mfvPromiseResults.reset();
     }
+
+    // Reset cached MFV values so callers don't observe stale data after stop/disconnect.
+    m_mfvDetectionType = Unknown;
+    m_mfvDetectionData = {};
+    m_mfvModelVersionData = {};
+    m_mfvPrivacyEnabled = false;
+    m_mfvModelConfigurationData.clear();
+    m_mfvCapabilitiesValue = 0;
+    m_mfvStreamStatsData = {};
+
     m_mfvSupported = false;
     m_mfvInitialReadsRemaining = 0;
     GattAudioService::onEnteredIdle();

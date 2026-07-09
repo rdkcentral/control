@@ -43,7 +43,6 @@
 #include "blercu/bleservices/blercuupgradeservice.h"
 #include "blercu/bleservices/blercufindmeservice.h"
 #include "blercu/bleservices/blercuremotecontrolservice.h"
-#include "blercu/bleservices/blercuaudioservice.h"
 
 #include "interfaces/bluezdeviceinterface.h"
 

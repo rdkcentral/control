@@ -83,13 +83,7 @@ BleUuid GattAudioServiceRdk::uuid()
  */
 bool GattAudioServiceRdk::start(const shared_ptr<const BleGattService> &gattService)
 {
-    m_mfvNotificationsEnabled = false;
-    m_mfvSupported = false;
-    m_mfvInitialReadsRemaining = 0;
-    m_mfvCapabilitiesReadValid = false;
-    m_mfvModelVersionReadValid = false;
-    m_mfvPrivacyReadValid = false;
-    m_mfvModelConfigReadValid = false;
+    m_mfvState.reset();
 
     // sanity check the supplied info is valid
     if (!gattService->isValid() || (gattService->uuid() != m_serviceUuid)) {
@@ -115,8 +109,8 @@ bool GattAudioServiceRdk::start(const shared_ptr<const BleGattService> &gattServ
 
     // Discover MFV characteristics (optional - not all remotes support MFV)
     if (getMfvCharacteristics(gattService)) {
-        m_mfvSupported = true;
-        m_mfvInitialReadsRemaining = MFV_INITIAL_READ_COUNT;
+        m_mfvState.supported = true;
+        m_mfvState.initialReadsRemaining = MFV_INITIAL_READ_COUNT;
         requestMfvCapabilities();
         requestMfvModelVersion();
         requestMfvPrivacy();
@@ -139,11 +133,7 @@ void GattAudioServiceRdk::stop()
 void GattAudioServiceRdk::onEnteredIdle() {
     stateMachineCancelDelayedEvents(RetryStartNotifyEvent);
     stateMachineCancelDelayedEvents(GattErrorEvent);
-    m_mfvNotificationsEnabled = false;
-    m_mfvCapabilitiesReadValid = false;
-    m_mfvModelVersionReadValid = false;
-    m_mfvPrivacyReadValid = false;
-    m_mfvModelConfigReadValid = false;
+    m_mfvState.reset();
 
     if (m_audioDataCharacteristic) {
         XLOGD_INFO("Disabling notifications for m_audioDataCharacteristic");
@@ -189,8 +179,6 @@ void GattAudioServiceRdk::onEnteredIdle() {
     m_mfvCapabilitiesValue = 0;
     m_mfvStreamStatsData = {};
 
-    m_mfvSupported = false;
-    m_mfvInitialReadsRemaining = 0;
     GattAudioService::onEnteredIdle();
 }
 
@@ -553,7 +541,7 @@ void GattAudioServiceRdk::requestGainLevel()
 
 bool GattAudioServiceRdk::areMfvInitialReadsComplete() const
 {
-    return m_mfvSupported && (m_mfvInitialReadsRemaining == 0);
+    return m_mfvState.areInitialReadsComplete();
 }
 
 // -----------------------------------------------------------------------------
@@ -753,10 +741,10 @@ bool GattAudioServiceRdk::getMfvCharacteristics(const shared_ptr<const BleGattSe
 void GattAudioServiceRdk::onMfvInitialReadComplete()
 {
     // Publish only values that were successfully read during initialization.
-    if (m_mfvCapabilitiesReadValid) {
+    if (m_mfvState.capabilitiesReadValid) {
         m_mfvCapabilitiesChangedSlots.invoke(m_mfvCapabilitiesValue);
     }
-    if (m_mfvPrivacyReadValid) {
+    if (m_mfvState.privacyReadValid) {
         m_mfvPrivacyChangedSlots.invoke(m_mfvPrivacyEnabled);
     }
 
@@ -767,18 +755,28 @@ void GattAudioServiceRdk::onMfvInitialReadComplete()
 
 void GattAudioServiceRdk::maybeEnableMfvNotifications()
 {
-    if (!m_mfvSupported || !areMfvInitialReadsComplete() || m_mfvNotificationsEnabled) {
+    if (!m_mfvState.supported || !areMfvInitialReadsComplete() || m_mfvState.notificationsEnabled) {
         return;
     }
 
     // Only request notification enables that are not already enabled.
-    if (m_mfvSessionStartCharacteristic && !m_mfvSessionStartCharacteristic->notificationsEnabled()) {
+    if (m_mfvSessionStartCharacteristic &&
+        !m_mfvSessionStartCharacteristic->notificationsEnabled() &&
+        !m_mfvState.sessionStartNotifyRequested) {
+        m_mfvState.sessionStartNotifyRequested = true;
         requestStartMfvSessionStartNotify();
     }
-    if (m_mfvDetectionDataCharacteristic && !m_mfvDetectionDataCharacteristic->notificationsEnabled()) {
+    if (m_mfvDetectionDataCharacteristic &&
+        !m_mfvDetectionDataCharacteristic->notificationsEnabled() &&
+        !m_mfvState.detectionDataNotifyRequested) {
+        m_mfvState.detectionDataNotifyRequested = true;
         requestStartMfvDetectionDataNotify();
     }
-    if (m_mfvPrivacyReadValid && m_mfvPrivacyCharacteristic && !m_mfvPrivacyCharacteristic->notificationsEnabled()) {
+    if (m_mfvState.privacyReadValid &&
+        m_mfvPrivacyCharacteristic &&
+        !m_mfvPrivacyCharacteristic->notificationsEnabled() &&
+        !m_mfvState.privacyNotifyRequested) {
+        m_mfvState.privacyNotifyRequested = true;
         requestStartMfvPrivacyNotify();
     }
 
@@ -787,8 +785,8 @@ void GattAudioServiceRdk::maybeEnableMfvNotifications()
     if (m_mfvSessionStartCharacteristic && m_mfvDetectionDataCharacteristic &&
         m_mfvSessionStartCharacteristic->notificationsEnabled() &&
         m_mfvDetectionDataCharacteristic->notificationsEnabled() &&
-        (!m_mfvPrivacyReadValid || (m_mfvPrivacyCharacteristic && m_mfvPrivacyCharacteristic->notificationsEnabled()))) {
-        m_mfvNotificationsEnabled = true;
+        (!m_mfvState.privacyReadValid || (m_mfvPrivacyCharacteristic && m_mfvPrivacyCharacteristic->notificationsEnabled()))) {
+        m_mfvState.notificationsEnabled = true;
     }
 }
 
@@ -802,7 +800,7 @@ void GattAudioServiceRdk::requestMfvCapabilities()
 {
     auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
     {
-        if (!m_mfvSupported || (m_mfvInitialReadsRemaining <= 0)) {
+        if (!m_mfvState.supported || (m_mfvState.initialReadsRemaining <= 0)) {
             XLOGD_DEBUG("ignoring late MFV Capabilities read callback (MFV inactive)");
             return;
         }
@@ -813,7 +811,7 @@ void GattAudioServiceRdk::requestMfvCapabilities()
             std::vector<uint8_t> value = reply->result();
             if (value.size() == 1) {
                 m_mfvCapabilitiesValue = value[0];
-                m_mfvCapabilitiesReadValid = true;
+                m_mfvState.capabilitiesReadValid = true;
                 XLOGD_INFO("MFV Capabilities = 0x%02X (midfield=%d privacy_ctrl=%d soww_eoww=%d aad_ctrl=%d)",
                     m_mfvCapabilitiesValue,
                     !!(m_mfvCapabilitiesValue & MidfieldVoiceCapable),
@@ -824,7 +822,7 @@ void GattAudioServiceRdk::requestMfvCapabilities()
                 XLOGD_ERROR("MFV Capabilities has invalid length (%zu bytes, expected 1)", value.size());
             }
         }
-        if (--m_mfvInitialReadsRemaining == 0) {
+        if (--m_mfvState.initialReadsRemaining == 0) {
             onMfvInitialReadComplete();
         }
     };
@@ -842,7 +840,7 @@ void GattAudioServiceRdk::requestMfvModelVersion()
 {
     auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
     {
-        if (!m_mfvSupported || (m_mfvInitialReadsRemaining <= 0)) {
+        if (!m_mfvState.supported || (m_mfvState.initialReadsRemaining <= 0)) {
             XLOGD_DEBUG("ignoring late MFV Model Version read callback (MFV inactive)");
             return;
         }
@@ -854,13 +852,13 @@ void GattAudioServiceRdk::requestMfvModelVersion()
             if (value.size() == 2) {
                 m_mfvModelVersionData.major = value[0];
                 m_mfvModelVersionData.minor = value[1];
-                m_mfvModelVersionReadValid = true;
+                m_mfvState.modelVersionReadValid = true;
                 XLOGD_INFO("MFV Wake Word Model Version = %u.%u", m_mfvModelVersionData.major, m_mfvModelVersionData.minor);
             } else {
                 XLOGD_ERROR("MFV Model Version has invalid length (%zu bytes, expected 2)", value.size());
             }
         }
-        if (--m_mfvInitialReadsRemaining == 0) {
+        if (--m_mfvState.initialReadsRemaining == 0) {
             onMfvInitialReadComplete();
         }
     };
@@ -878,7 +876,7 @@ void GattAudioServiceRdk::requestMfvPrivacy()
 {
     auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
     {
-        if (!m_mfvSupported || (m_mfvInitialReadsRemaining <= 0)) {
+        if (!m_mfvState.supported || (m_mfvState.initialReadsRemaining <= 0)) {
             XLOGD_DEBUG("ignoring late MFV Privacy read callback (MFV inactive)");
             return;
         }
@@ -889,13 +887,13 @@ void GattAudioServiceRdk::requestMfvPrivacy()
             std::vector<uint8_t> value = reply->result();
             if (value.size() == 1) {
                 m_mfvPrivacyEnabled = (value[0] != 0);
-                m_mfvPrivacyReadValid = true;
+                m_mfvState.privacyReadValid = true;
                 XLOGD_INFO("MFV Privacy = %s", m_mfvPrivacyEnabled ? "enabled" : "disabled");
             } else {
                 XLOGD_ERROR("MFV Privacy has invalid length (%zu bytes, expected 1)", value.size());
             }
         }
-        if (--m_mfvInitialReadsRemaining == 0) {
+        if (--m_mfvState.initialReadsRemaining == 0) {
             onMfvInitialReadComplete();
         }
     };
@@ -914,7 +912,7 @@ void GattAudioServiceRdk::requestMfvModelConfig()
 {
     auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
     {
-        if (!m_mfvSupported || (m_mfvInitialReadsRemaining <= 0)) {
+        if (!m_mfvState.supported || (m_mfvState.initialReadsRemaining <= 0)) {
             XLOGD_DEBUG("ignoring late MFV Model Config read callback (MFV inactive)");
             return;
         }
@@ -925,14 +923,14 @@ void GattAudioServiceRdk::requestMfvModelConfig()
             std::vector<uint8_t> value = reply->result();
             if (value.size() == 3) {
                 m_mfvModelConfigurationData = value;
-                m_mfvModelConfigReadValid = true;
+                m_mfvState.modelConfigReadValid = true;
                 XLOGD_INFO("MFV Model Config: sensitivity=%u secondary=%u aad=%u",
                     value[0], value[1], value[2]);
             } else {
                 XLOGD_ERROR("MFV Model Config has invalid length (%zu bytes, expected 3)", value.size());
             }
         }
-        if (--m_mfvInitialReadsRemaining == 0) {
+        if (--m_mfvState.initialReadsRemaining == 0) {
             onMfvInitialReadComplete();
         }
     };
@@ -951,10 +949,12 @@ void GattAudioServiceRdk::requestStartMfvSessionStartNotify()
     auto replyHandler = [this](PendingReply<> *reply)
     {
         if (reply->isError()) {
+            m_mfvState.sessionStartNotifyRequested = false;
             XLOGD_ERROR("failed to enable MFV Session Start notifications due to <%s>",
                 reply->errorMessage().c_str());
         } else {
             XLOGD_DEBUG("MFV Session Start notifications enabled successfully");
+            maybeEnableMfvNotifications();
         }
     };
 
@@ -975,10 +975,12 @@ void GattAudioServiceRdk::requestStartMfvDetectionDataNotify()
     auto replyHandler = [this](PendingReply<> *reply)
     {
         if (reply->isError()) {
+            m_mfvState.detectionDataNotifyRequested = false;
             XLOGD_ERROR("failed to enable MFV Detection Data notifications due to <%s>",
                 reply->errorMessage().c_str());
         } else {
             XLOGD_DEBUG("MFV Detection Data notifications enabled successfully");
+            maybeEnableMfvNotifications();
         }
     };
 
@@ -999,10 +1001,12 @@ void GattAudioServiceRdk::requestStartMfvPrivacyNotify()
     auto replyHandler = [this](PendingReply<> *reply)
     {
         if (reply->isError()) {
+            m_mfvState.privacyNotifyRequested = false;
             XLOGD_ERROR("failed to enable MFV Privacy notifications due to <%s>",
                 reply->errorMessage().c_str());
         } else {
             XLOGD_DEBUG("MFV Privacy notifications enabled successfully");
+            maybeEnableMfvNotifications();
         }
     };
 
@@ -1127,7 +1131,7 @@ BleRcuAudioService::StreamStatsRaw GattAudioServiceRdk::mfvStreamStats() const
 
 void GattAudioServiceRdk::writeMfvPrivacy(bool enabled, PendingReply<> &&reply)
 {
-    if (!m_mfvSupported) {
+    if (!m_mfvState.supported) {
         reply.setError("MFV not supported on this remote");
         reply.finish();
         return;
@@ -1174,7 +1178,7 @@ void GattAudioServiceRdk::onWriteMfvPrivacyReply(PendingReply<> *reply)
 
 void GattAudioServiceRdk::writeMfvModelConfiguration(uint8_t sensitivity, uint8_t secondary, uint8_t aad, PendingReply<> &&reply)
 {
-    if (!m_mfvSupported) {
+    if (!m_mfvState.supported) {
         reply.setError("MFV not supported on this remote");
         reply.finish();
         return;

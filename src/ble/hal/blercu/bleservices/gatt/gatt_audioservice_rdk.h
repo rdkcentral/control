@@ -127,14 +127,44 @@ private:
     std::shared_ptr<BleGattCharacteristic> m_audioInfoCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_audioCodecsCharacteristic;
 
-    // MFV characteristics and data
-    bool m_mfvSupported = false;
-    int  m_mfvInitialReadsRemaining = 0;
-    bool m_mfvNotificationsEnabled = false;
-    bool m_mfvCapabilitiesReadValid = false;
-    bool m_mfvModelVersionReadValid = false;
-    bool m_mfvPrivacyReadValid = false;
-    bool m_mfvModelConfigReadValid = false;
+    struct MfvState {
+        bool supported = false;
+        int  initialReadsRemaining = 0;
+        bool notificationsEnabled = false;
+
+        bool capabilitiesReadValid = false;
+        bool modelVersionReadValid = false;
+        bool privacyReadValid = false;
+        bool modelConfigReadValid = false;
+
+        bool sessionStartNotifyRequested = false;
+        bool detectionDataNotifyRequested = false;
+        bool privacyNotifyRequested = false;
+
+        void reset()
+        {
+            supported = false;
+            initialReadsRemaining = 0;
+            notificationsEnabled = false;
+
+            capabilitiesReadValid = false;
+            modelVersionReadValid = false;
+            privacyReadValid = false;
+            modelConfigReadValid = false;
+
+            sessionStartNotifyRequested = false;
+            detectionDataNotifyRequested = false;
+            privacyNotifyRequested = false;
+        }
+
+        bool areInitialReadsComplete() const
+        {
+            return supported && (initialReadsRemaining == 0);
+        }
+    };
+
+    // MFV characteristics and state
+    MfvState m_mfvState;
 
     DetectionType m_mfvDetectionType = Unknown;
     DetectionData m_mfvDetectionData;

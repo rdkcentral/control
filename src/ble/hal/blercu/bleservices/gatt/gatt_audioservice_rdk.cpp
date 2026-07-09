@@ -42,7 +42,6 @@
 #define AUDIO_PACKET_DURATION_USEC (12000)
 
 #define AUDIO_FRAME_SIZE           (100)
-#define MFV_INITIAL_READ_COUNT     (4)
 
 #define AUDIO_SEQ_NUM_MAX          (0xFF)
 
@@ -110,10 +109,14 @@ bool GattAudioServiceRdk::start(const shared_ptr<const BleGattService> &gattServ
     // Discover MFV characteristics (optional - not all remotes support MFV)
     if (getMfvCharacteristics(gattService)) {
         m_mfvState.supported = true;
-        m_mfvState.initialReadsRemaining = MFV_INITIAL_READ_COUNT;
+        m_mfvState.initialReadsRemaining = 0;
+        ++m_mfvState.initialReadsRemaining;
         requestMfvCapabilities();
+        ++m_mfvState.initialReadsRemaining;
         requestMfvModelVersion();
+        ++m_mfvState.initialReadsRemaining;
         requestMfvPrivacy();
+        ++m_mfvState.initialReadsRemaining;
         requestMfvModelConfig();
     }
 

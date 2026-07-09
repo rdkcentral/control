@@ -83,6 +83,8 @@ BleUuid GattAudioServiceRdk::uuid()
  */
 bool GattAudioServiceRdk::start(const shared_ptr<const BleGattService> &gattService)
 {
+    m_mfvNotificationsEnabled = false;
+
     // sanity check the supplied info is valid
     if (!gattService->isValid() || (gattService->uuid() != m_serviceUuid)) {
         XLOGD_WARN("invalid voice gatt service info");
@@ -191,6 +193,8 @@ void GattAudioServiceRdk::onEnteredEnableNotificationsState()
                 stateMachineCancelDelayedEvents(RetryStartNotifyEvent);
                 stateMachinePostDelayedEvent(RetryStartNotifyEvent, 2000);
             } else {
+                maybeEnableMfvNotifications();
+
                 // notifications enabled so post an event to the state machine
                 stateMachinePostEvent(NotificationsEnabledEvent);
             }
@@ -214,6 +218,8 @@ void GattAudioServiceRdk::onEnteredEnableNotificationsState()
     }
 
     if (m_audioDataCharacteristic->notificationsEnabled()) {
+        maybeEnableMfvNotifications();
+
         // notifications already enabled so post an event to the state machine
         stateMachinePostEvent(NotificationsEnabledEvent);
     } else {
@@ -224,14 +230,6 @@ void GattAudioServiceRdk::onEnteredEnableNotificationsState()
     }
 
     GattAudioService::onEnteredEnableNotificationsState();
-
-    // Enable MFV notifications here if initial reads have already completed,
-    // otherwise onMfvInitialReadComplete() will enable them when they finish.
-    if (areMfvInitialReadsComplete()) {
-        requestStartMfvSessionStartNotify();
-        requestStartMfvDetectionDataNotify();
-        requestStartMfvPrivacyNotify();
-    }
 }
 
 // -----------------------------------------------------------------------------
@@ -667,41 +665,58 @@ void GattAudioServiceRdk::setGainLevel(uint8_t level)
  */
 bool GattAudioServiceRdk::getMfvCharacteristics(const shared_ptr<const BleGattService> &gattService)
 {
-    m_mfvSessionStartCharacteristic = gattService->characteristic(m_mfvSessionStartCharUuid);
-    if (!m_mfvSessionStartCharacteristic || !m_mfvSessionStartCharacteristic->isValid()) {
+    // TODO: Figure out if some characteristics are optional and if so, which ones. For now, require all of them to be present.
+
+    // Reset any previous discovery result so failure paths are unambiguous.
+    m_mfvSessionStartCharacteristic.reset();
+    m_mfvDetectionDataCharacteristic.reset();
+    m_mfvModelVersionCharacteristic.reset();
+    m_mfvPrivacyCharacteristic.reset();
+    m_mfvModelConfigCharacteristic.reset();
+    m_mfvCapabilitiesCharacteristic.reset();
+
+    auto mfvSessionStartCharacteristic = gattService->characteristic(m_mfvSessionStartCharUuid);
+    if (!mfvSessionStartCharacteristic || !mfvSessionStartCharacteristic->isValid()) {
         XLOGD_INFO("MFV Session Start characteristic not found (MFV not supported)");
         return false;
     }
 
-    m_mfvDetectionDataCharacteristic = gattService->characteristic(m_mfvDetectionDataCharUuid);
-    if (!m_mfvDetectionDataCharacteristic || !m_mfvDetectionDataCharacteristic->isValid()) {
+    auto mfvDetectionDataCharacteristic = gattService->characteristic(m_mfvDetectionDataCharUuid);
+    if (!mfvDetectionDataCharacteristic || !mfvDetectionDataCharacteristic->isValid()) {
         XLOGD_INFO("MFV Detection Data characteristic not found");
         return false;
     }
 
-    m_mfvModelVersionCharacteristic = gattService->characteristic(m_mfvModelVersionCharUuid);
-    if (!m_mfvModelVersionCharacteristic || !m_mfvModelVersionCharacteristic->isValid()) {
+    auto mfvModelVersionCharacteristic = gattService->characteristic(m_mfvModelVersionCharUuid);
+    if (!mfvModelVersionCharacteristic || !mfvModelVersionCharacteristic->isValid()) {
         XLOGD_INFO("MFV Wake Word Model Version characteristic not found");
         return false;
     }
 
-    m_mfvPrivacyCharacteristic = gattService->characteristic(m_mfvPrivacyCharUuid);
-    if (!m_mfvPrivacyCharacteristic || !m_mfvPrivacyCharacteristic->isValid()) {
+    auto mfvPrivacyCharacteristic = gattService->characteristic(m_mfvPrivacyCharUuid);
+    if (!mfvPrivacyCharacteristic || !mfvPrivacyCharacteristic->isValid()) {
         XLOGD_INFO("MFV Privacy Settings characteristic not found");
         return false;
     }
 
-    m_mfvModelConfigCharacteristic = gattService->characteristic(m_mfvModelConfigCharUuid);
-    if (!m_mfvModelConfigCharacteristic || !m_mfvModelConfigCharacteristic->isValid()) {
+    auto mfvModelConfigCharacteristic = gattService->characteristic(m_mfvModelConfigCharUuid);
+    if (!mfvModelConfigCharacteristic || !mfvModelConfigCharacteristic->isValid()) {
         XLOGD_INFO("MFV Model Configuration characteristic not found");
         return false;
     }
 
-    m_mfvCapabilitiesCharacteristic = gattService->characteristic(m_mfvCapabilitiesCharUuid);
-    if (!m_mfvCapabilitiesCharacteristic || !m_mfvCapabilitiesCharacteristic->isValid()) {
+    auto mfvCapabilitiesCharacteristic = gattService->characteristic(m_mfvCapabilitiesCharUuid);
+    if (!mfvCapabilitiesCharacteristic || !mfvCapabilitiesCharacteristic->isValid()) {
         XLOGD_INFO("MFV Capabilities characteristic not found");
         return false;
     }
+
+    m_mfvSessionStartCharacteristic = std::move(mfvSessionStartCharacteristic);
+    m_mfvDetectionDataCharacteristic = std::move(mfvDetectionDataCharacteristic);
+    m_mfvModelVersionCharacteristic = std::move(mfvModelVersionCharacteristic);
+    m_mfvPrivacyCharacteristic = std::move(mfvPrivacyCharacteristic);
+    m_mfvModelConfigCharacteristic = std::move(mfvModelConfigCharacteristic);
+    m_mfvCapabilitiesCharacteristic = std::move(mfvCapabilitiesCharacteristic);
 
     XLOGD_INFO("All MFV characteristics discovered successfully");
     return true;
@@ -720,14 +735,21 @@ void GattAudioServiceRdk::onMfvInitialReadComplete()
     m_mfvCapabilitiesChangedSlots.invoke(m_mfvCapabilitiesValue);
     m_mfvPrivacyChangedSlots.invoke(m_mfvPrivacyEnabled);
 
-    // Enable notifications now only if the audio state machine has already passed
-    // through EnableNotificationsState (i.e. the service is already ready/streaming).
-    // If not, onEnteredEnableNotificationsState() will handle it when the time comes.
-    if (isReady()) {
-        requestStartMfvSessionStartNotify();
-        requestStartMfvDetectionDataNotify();
-        requestStartMfvPrivacyNotify();
+    // Attempt to enable MFV notifications once initial reads are complete.
+    // This may run before audio notifications are enabled, which is acceptable.
+    maybeEnableMfvNotifications();
+}
+
+void GattAudioServiceRdk::maybeEnableMfvNotifications()
+{
+    if (!m_mfvSupported || !areMfvInitialReadsComplete() || m_mfvNotificationsEnabled) {
+        return;
     }
+
+    m_mfvNotificationsEnabled = true;
+    requestStartMfvSessionStartNotify();
+    requestStartMfvDetectionDataNotify();
+    requestStartMfvPrivacyNotify();
 }
 
 // -----------------------------------------------------------------------------

@@ -117,7 +117,7 @@ public:
 
 // MFV accessors (default no-ops for audio services without MFV support)
 public:
-    virtual DetectionType mfvDetectionType() const { return FullPower; }
+    virtual DetectionType mfvDetectionType() const { return Unknown; }
     virtual DetectionData mfvDetectionData() const { return {}; }
     virtual ModelVersion mfvModelVersion() const { return {}; }
     virtual bool mfvPrivacyEnabled() const { return false; }

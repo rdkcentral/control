@@ -947,6 +947,7 @@ void GattAudioServiceRdk::onMfvSessionStartChanged(const std::vector<uint8_t> &n
     }
 
     m_mfvDetectionType = static_cast<DetectionType>(raw);
+    m_mfvDetectionTypeChangedSlots.invoke(m_mfvDetectionType);
     XLOGD_INFO("MFV Session Start: detection type = 0x%02X", raw);
 }
 

@@ -723,7 +723,7 @@ void GattAudioServiceRdk::onMfvInitialReadComplete()
     // Enable notifications now only if the audio state machine has already passed
     // through EnableNotificationsState (i.e. the service is already ready/streaming).
     // If not, onEnteredEnableNotificationsState() will handle it when the time comes.
-    if (!stateMachineIsIdle()) {
+    if (isReady()) {
         requestStartMfvSessionStartNotify();
         requestStartMfvDetectionDataNotify();
         requestStartMfvPrivacyNotify();

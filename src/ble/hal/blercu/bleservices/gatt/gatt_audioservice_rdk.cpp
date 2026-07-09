@@ -758,10 +758,24 @@ void GattAudioServiceRdk::maybeEnableMfvNotifications()
         return;
     }
 
-    m_mfvNotificationsEnabled = true;
-    requestStartMfvSessionStartNotify();
-    requestStartMfvDetectionDataNotify();
-    requestStartMfvPrivacyNotify();
+    // Only request notification enables that are not already enabled.
+    if (m_mfvSessionStartCharacteristic && !m_mfvSessionStartCharacteristic->notificationsEnabled()) {
+        requestStartMfvSessionStartNotify();
+    }
+    if (m_mfvDetectionDataCharacteristic && !m_mfvDetectionDataCharacteristic->notificationsEnabled()) {
+        requestStartMfvDetectionDataNotify();
+    }
+    if (m_mfvPrivacyCharacteristic && !m_mfvPrivacyCharacteristic->notificationsEnabled()) {
+        requestStartMfvPrivacyNotify();
+    }
+
+    // Mark enabled once all required characteristics report notifications enabled.
+    if (m_mfvSessionStartCharacteristic && m_mfvDetectionDataCharacteristic && m_mfvPrivacyCharacteristic &&
+        m_mfvSessionStartCharacteristic->notificationsEnabled() &&
+        m_mfvDetectionDataCharacteristic->notificationsEnabled() &&
+        m_mfvPrivacyCharacteristic->notificationsEnabled()) {
+        m_mfvNotificationsEnabled = true;
+    }
 }
 
 // -----------------------------------------------------------------------------

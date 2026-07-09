@@ -87,6 +87,7 @@ public:
 // MFV types
 public:
     enum DetectionType {
+        Unknown = 0x00,
         FullPower = 0x01,
         Aad = 0x02,
         BelowThreshold = 0x03,

@@ -131,6 +131,10 @@ private:
     bool m_mfvSupported = false;
     int  m_mfvInitialReadsRemaining = 0;
     bool m_mfvNotificationsEnabled = false;
+    bool m_mfvCapabilitiesReadValid = false;
+    bool m_mfvModelVersionReadValid = false;
+    bool m_mfvPrivacyReadValid = false;
+    bool m_mfvModelConfigReadValid = false;
 
     DetectionType m_mfvDetectionType = Unknown;
     DetectionData m_mfvDetectionData;

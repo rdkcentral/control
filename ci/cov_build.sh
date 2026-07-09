@@ -28,9 +28,7 @@ ls -la "${GITHUB_WORKSPACE}"
 echo "building control (ctrlm-main)"
 
 XRSDK_REAL_HEADERS="$GITHUB_WORKSPACE/ci/headers/xr-voice-sdk"
-XLOG_COMPAT="$GITHUB_WORKSPACE/ci/mocks/xlog_ci_compat.h"
 MOCK_DIR="$GITHUB_WORKSPACE/entservices-testframework/Tests/mocks"
-MOCK_OVERRIDES="$GITHUB_WORKSPACE/ci/mocks/testframework_overrides.h"
 HEADERS_DIR="$GITHUB_WORKSPACE/ci/headers"
 EMPTY_JSON="$GITHUB_WORKSPACE/install/usr/include/ctrlm_config_empty.json"
 GLIB_CFLAGS="$(pkg-config --cflags glib-2.0)"
@@ -77,13 +75,10 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -I ${GITHUB_WORKSPACE}/install/usr/include \
 -I /usr/include/libdrm \
 ${GLIB_CFLAGS} \
--include ${XLOG_COMPAT} \
 -include ${MOCK_DIR}/Iarm.h \
--include ${MOCK_OVERRIDES} \
 -include ${MOCK_DIR}/devicesettings.h \
 -include ${MOCK_DIR}/Rfc.h \
 -Wall -Wno-error \
--DSAFEC_DUMMY_API \
 -DDISABLE_SECURITY_TOKEN" \
 -DCMAKE_C_FLAGS=" \
 -I ${XRSDK_REAL_HEADERS} \
@@ -96,7 +91,6 @@ ${GLIB_CFLAGS} \
 -I /usr/include/libdrm \
 ${GLIB_CFLAGS} \
 -Wall -Wno-error \
--DSAFEC_DUMMY_API \
 -DDISABLE_SECURITY_TOKEN" \
 -DCMAKE_EXE_LINKER_FLAGS="-L${GITHUB_WORKSPACE}/install/usr/lib -Wl,--unresolved-symbols=ignore-all"
 

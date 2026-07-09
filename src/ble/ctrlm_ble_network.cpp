@@ -2111,13 +2111,11 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                         controller->ieee_address_get().to_string().c_str());
                      XLOGD_INFO("------------------------------------------------------------------------");
 
-                     ctrlm_voice_iarm_call_voice_session_t v_params;
+                     ctrlm_voice_iarm_call_voice_session_t v_params = {};
                      v_params.ieee_address = dqm->rcu_data.ieee_address;
 
                      ctrlm_main_queue_msg_voice_session_t msg;
                      errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
-                     ERR_CHK(safec_rc);
-                     msg.params = &v_params;
 
                      req_process_voice_session_begin(&msg, sizeof(msg));
                   }

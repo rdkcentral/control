@@ -762,6 +762,11 @@ void GattAudioServiceRdk::requestMfvCapabilities()
 {
     auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
     {
+        if (!m_mfvSupported || (m_mfvInitialReadsRemaining <= 0)) {
+            XLOGD_DEBUG("ignoring late MFV Capabilities read callback (MFV inactive)");
+            return;
+        }
+
         if (reply->isError()) {
             XLOGD_ERROR("failed to read MFV Capabilities due to <%s>", reply->errorMessage().c_str());
         } else {
@@ -778,7 +783,7 @@ void GattAudioServiceRdk::requestMfvCapabilities()
                 XLOGD_ERROR("MFV Capabilities has invalid length (%zu bytes, expected 1)", value.size());
             }
         }
-        if (--m_mfvInitialReadsRemaining <= 0) {
+        if (--m_mfvInitialReadsRemaining == 0) {
             onMfvInitialReadComplete();
         }
     };
@@ -796,6 +801,11 @@ void GattAudioServiceRdk::requestMfvModelVersion()
 {
     auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
     {
+        if (!m_mfvSupported || (m_mfvInitialReadsRemaining <= 0)) {
+            XLOGD_DEBUG("ignoring late MFV Model Version read callback (MFV inactive)");
+            return;
+        }
+
         if (reply->isError()) {
             XLOGD_ERROR("failed to read MFV Model Version due to <%s>", reply->errorMessage().c_str());
         } else {
@@ -808,7 +818,7 @@ void GattAudioServiceRdk::requestMfvModelVersion()
                 XLOGD_ERROR("MFV Model Version has invalid length (%zu bytes, expected 2)", value.size());
             }
         }
-        if (--m_mfvInitialReadsRemaining <= 0) {
+        if (--m_mfvInitialReadsRemaining == 0) {
             onMfvInitialReadComplete();
         }
     };
@@ -826,6 +836,11 @@ void GattAudioServiceRdk::requestMfvPrivacy()
 {
     auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
     {
+        if (!m_mfvSupported || (m_mfvInitialReadsRemaining <= 0)) {
+            XLOGD_DEBUG("ignoring late MFV Privacy read callback (MFV inactive)");
+            return;
+        }
+
         if (reply->isError()) {
             XLOGD_ERROR("failed to read MFV Privacy due to <%s>", reply->errorMessage().c_str());
         } else {
@@ -837,7 +852,7 @@ void GattAudioServiceRdk::requestMfvPrivacy()
                 XLOGD_ERROR("MFV Privacy has invalid length (%zu bytes, expected 1)", value.size());
             }
         }
-        if (--m_mfvInitialReadsRemaining <= 0) {
+        if (--m_mfvInitialReadsRemaining == 0) {
             onMfvInitialReadComplete();
         }
     };
@@ -856,6 +871,11 @@ void GattAudioServiceRdk::requestMfvModelConfig()
 {
     auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
     {
+        if (!m_mfvSupported || (m_mfvInitialReadsRemaining <= 0)) {
+            XLOGD_DEBUG("ignoring late MFV Model Config read callback (MFV inactive)");
+            return;
+        }
+
         if (reply->isError()) {
             XLOGD_ERROR("failed to read MFV Model Config due to <%s>", reply->errorMessage().c_str());
         } else {
@@ -868,7 +888,7 @@ void GattAudioServiceRdk::requestMfvModelConfig()
                 XLOGD_ERROR("MFV Model Config has invalid length (%zu bytes, expected 3)", value.size());
             }
         }
-        if (--m_mfvInitialReadsRemaining <= 0) {
+        if (--m_mfvInitialReadsRemaining == 0) {
             onMfvInitialReadComplete();
         }
     };

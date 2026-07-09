@@ -742,12 +742,12 @@ void ctrlm_obj_controller_ble_t::print_status() {
    XLOGD_INFO("");
    voice_metrics_->print(__FUNCTION__);
    XLOGD_INFO("");
-   XLOGD_INFO("MFV Detection Type           : 0x%02X", mfv_detection_type_);
+   XLOGD_INFO("MFV Detection Type           : 0x%02X", static_cast<unsigned int>(mfv_detection_type_));
    XLOGD_INFO("MFV WW Start                 : %u", mfv_ww_start_);
    XLOGD_INFO("MFV WW End                   : %u", mfv_ww_end_);
    XLOGD_INFO("MFV Confidence               : %.1f%%", mfv_confidence_ / 10.0);
    XLOGD_INFO("MFV Privacy                  : %s", mfv_privacy_enabled_ ? "enabled" : "disabled");
-   XLOGD_INFO("MFV Capabilities             : 0x%02X", mfv_capabilities_);
+   XLOGD_INFO("MFV Capabilities             : 0x%02X", static_cast<unsigned int>(mfv_capabilities_));
    XLOGD_WARN("------------------------------------------------------------");
 }
 

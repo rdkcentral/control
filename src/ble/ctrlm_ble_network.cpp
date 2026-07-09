@@ -2134,7 +2134,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   break;
                case CTRLM_HAL_BLE_PROPERTY_MFV_CAPABILITIES:
                   controller->setMfvCapabilities(dqm->rcu_data.mfv_capabilities);
-                  XLOGD_INFO("Controller <%s> MFV capabilities = 0x%02X", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.mfv_capabilities);
+                  XLOGD_INFO("Controller <%s> MFV capabilities = 0x%02X", controller->ieee_address_get().to_string().c_str(), static_cast<unsigned int>(dqm->rcu_data.mfv_capabilities));
                   break;
                default:
                   XLOGD_WARN("Unhandled Property: %d !!!!!!!!!!!!!!!!!!!!!!!!", dqm->property_updated);

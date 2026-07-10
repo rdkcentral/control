@@ -1273,7 +1273,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
     request_params.type = XRSR_SESSION_REQUEST_TYPE_INVALID;
 
     uint8_t dst_index = 0;
-    
+
     if(is_session_by_text) {
         XLOGD_INFO("Requesting the speech router start a text-only session with transcription = <%s>", l_transcription_in);
         if(session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING || session->state_dst != CTRLM_VOICE_STATE_DST_READY) {

@@ -110,7 +110,7 @@ bool ctrlmf_audio_control_attenuate(bool enable, bool relative, double vol) {
    bool action = enable;      // true = start ducking, false = stop ducking
    bool type   = relative;    // true = relative, false = absolute
 
-   auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
+   auto *ds = Thunder::DisplaySettings::ctrlmf_thunder_plugin_display_settings_t::getInstance();
    if(!ds) {
       XLOGD_ERROR("DisplaySettings plugin not available");
       return(false);

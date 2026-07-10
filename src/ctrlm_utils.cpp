@@ -36,7 +36,6 @@
 #include <uuid/uuid.h>
 
 #ifdef CTRLM_USE_THUNDER_FR_DS
-#include <curl/curl.h>
 #include "thunder/plugins/ctrlm_thunder_plugin_display_settings.h"
 #include "thunder/plugins/ctrlm_thunder_plugin_front_panel.h"
 #else
@@ -1597,9 +1596,9 @@ bool ctrlm_dsmgr_mute_audio(bool mute) {
    bool type   = false;       // false = absolute ducking
    bool ret = ds->set_audio_ducking(action, type, mute ? 0 : 100);
    if(ret) {
-      XLOGD_INFO("Audio is %smuted", mute ? "" : "un-");
+      XLOGD_INFO("Audio is %smuted", mute?"":"un-");
    } else {
-      XLOGD_WARN("Muting sound via Thunder failed");
+      XLOGD_WARN("Muting sound error");
    }
    return ret;
 #else
@@ -1639,7 +1638,7 @@ bool ctrlm_dsmgr_duck_audio(bool enable, bool relative, double vol) {
          XLOGD_INFO("Audio ducking disabled");
       }
    } else {
-      XLOGD_WARN("Ducking sound via Thunder failed");
+      XLOGD_WARN("Muting sound error");
    }
    return ret;
 #else
@@ -1674,7 +1673,7 @@ bool ctrlm_dsmgr_LED(bool on) {
    }
    bool ret = on ? fp->power_led_on(100) : fp->power_led_off();
    if(!ret) {
-      XLOGD_WARN("LED control via Thunder failed");
+      XLOGD_WARN("LED error");
    }
    return ret;
 #else

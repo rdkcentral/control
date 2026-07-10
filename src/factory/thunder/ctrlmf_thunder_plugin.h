@@ -101,20 +101,11 @@ protected:
      * This functions is used to call a Thunder Plugin method.
      * @param method The method in which the user wants to call.
      * @param params The WPEFramework JsonObject containing the parameters for the call. (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
-     * @param params The WPEFramework JsonObject containing the response from the call.  (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
+     * @param response The WPEFramework JsonObject containing the response from the call.  (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
+     * @param retries The number of retries if the call times out (defaults to 0).
      * @return True if the call succeeded, otherwise False.
      */
-    bool call_plugin(std::string method, void *params, void *response);
-
-    /**
-     * This functions is used to call a Thunder Plugin method with retry support.
-     * @param method The method in which the user wants to call.
-     * @param params The WPEFramework JsonObject containing the parameters for the call.
-     * @param response The WPEFramework JsonObject containing the response from the call.
-     * @param retries The number of retries if the call times out.
-     * @return True if the call succeeded, otherwise False.
-     */
-    bool call_plugin(std::string method, void *params, void *response, unsigned int retries);
+    bool call_plugin(std::string method, void *params, void *response, unsigned int retries = 0);
 
     /**
      * This functions is used to call a Thunder Controller method.

@@ -1217,12 +1217,12 @@ void GattAudioServiceRdk::writeMfvModelConfiguration(uint8_t sensitivity, uint8_
         sensitivity, secondary, aad);
 
     m_mfvModelConfigCharacteristic->writeValue(value, PendingReply<>(getIsAlivePtr(),
-        [this, value, previousConfig = std::move(previousConfig), previousValid](PendingReply<> *writeReply) mutable {
+        [this, value, previousConfig, previousValid](PendingReply<> *writeReply) mutable {
             if (writeReply->isError()) {
                 XLOGD_ERROR("failed to write MFV Model Config due to <%s>", writeReply->errorMessage().c_str());
 
                 // Restore last-known-good config on failure.
-                m_mfvModelConfigurationData = std::move(previousConfig);
+                m_mfvModelConfigurationData = previousConfig;
                 m_mfvState.modelConfigReadValid = previousValid;
 
                 if (m_mfvPromiseResults) {

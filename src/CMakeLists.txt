@@ -144,17 +144,6 @@ if(BUILD_CTRLM_SERVER)
    add_subdirectory(server)
 endif()
 
-if(USE_IARM_POWER_MANAGER)
-   target_sources(controlMgr PRIVATE
-      ipc/ctrlm_ipc_iarm_powermanager.cpp
-   )
-else()
-   target_sources(controlMgr PRIVATE
-      thunder/ctrlm_thunder_powermanager.cpp
-      thunder/ctrlm_thunder_plugin_powermanager.cpp
-   )
-endif()
-
 if(RF4CE_ENABLED)
    target_sources(controlMgr PRIVATE
       rf4ce/controller/attributes/ctrlm_rf4ce_controller_attr_battery.cpp
@@ -192,6 +181,8 @@ if(THUNDER)
       thunder/ctrlm_thunder_controller.cpp
       thunder/ctrlm_thunder_plugin.cpp
       thunder/ctrlm_thunder_plugin_system_audio_player.cpp
+      thunder/ctrlm_thunder_powermanager.cpp
+      thunder/ctrlm_thunder_plugin_powermanager.cpp
       thunder/helpers/ctrlm_thunder_helpers.cpp
       thunder/plugins/ctrlm_thunder_plugin_cec_sink.cpp
       thunder/plugins/ctrlm_thunder_plugin_cec_source.cpp

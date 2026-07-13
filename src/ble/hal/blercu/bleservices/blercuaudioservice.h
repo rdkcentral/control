@@ -104,9 +104,10 @@ public:
         uint8_t minor = 0;
     };
 
-    struct StreamStatsRaw {
-        std::vector<uint8_t> bytes;
-    };
+    // TODO: All bytes are currently Reserved/TBD in the firmware spec, check to make sure this is still the case and delete if so
+    // struct StreamStatsRaw {
+    //     std::vector<uint8_t> bytes;
+    // };
 
     enum Capabilities {
         MidfieldVoiceCapable = (1 << 0),
@@ -123,7 +124,8 @@ public:
     virtual bool mfvPrivacyEnabled() const { return false; }
     virtual std::vector<uint8_t> mfvModelConfiguration() const { return {}; }
     virtual uint8_t mfvCapabilities() const { return 0; }
-    virtual StreamStatsRaw mfvStreamStats() const { return {}; }
+    // Not yet implemented: stream stats characteristic is Reserved/TBD in the firmware spec.
+    // virtual StreamStatsRaw mfvStreamStats() const { return {}; }
 
     virtual void writeMfvPrivacy(bool enabled, PendingReply<> &&reply)
     {
@@ -171,10 +173,11 @@ public:
     {
         m_mfvCapabilitiesChangedSlots.addSlot(func);
     }
-    inline void addMfvStreamStatsChangedSlot(const Slot<const StreamStatsRaw &> &func)
-    {
-        m_mfvStreamStatsChangedSlots.addSlot(func);
-    }
+    // Not yet implemented: stream stats characteristic is Reserved/TBD in the firmware spec.
+    // inline void addMfvStreamStatsChangedSlot(const Slot<const StreamStatsRaw &> &func)
+    // {
+    //     m_mfvStreamStatsChangedSlots.addSlot(func);
+    // }
 
 protected:
     Slots<bool> m_streamingChangedSlots;
@@ -185,7 +188,7 @@ protected:
     Slots<const DetectionData &> m_mfvDetectionDataChangedSlots;
     Slots<bool> m_mfvPrivacyChangedSlots;
     Slots<uint8_t> m_mfvCapabilitiesChangedSlots;
-    Slots<const StreamStatsRaw &> m_mfvStreamStatsChangedSlots;
+    // Slots<const StreamStatsRaw &> m_mfvStreamStatsChangedSlots;
 };
 
 

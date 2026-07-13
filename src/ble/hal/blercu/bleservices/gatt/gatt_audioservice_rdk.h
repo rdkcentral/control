@@ -74,7 +74,8 @@ public:
     bool mfvPrivacyEnabled() const override;
     std::vector<uint8_t> mfvModelConfiguration() const override;
     uint8_t mfvCapabilities() const override;
-    StreamStatsRaw mfvStreamStats() const override;
+    // Not yet implemented: stream stats characteristic is Reserved/TBD in the firmware spec.
+    // StreamStatsRaw mfvStreamStats() const override;
 
     void writeMfvPrivacy(bool enabled, PendingReply<> &&reply) override;
     void writeMfvModelConfiguration(uint8_t sensitivity, uint8_t secondary, uint8_t aad, PendingReply<> &&reply) override;
@@ -171,7 +172,7 @@ private:
     bool          m_mfvPrivacyEnabled = false;
     std::vector<uint8_t> m_mfvModelConfigurationData;
     uint8_t       m_mfvCapabilitiesValue = 0;
-    StreamStatsRaw m_mfvStreamStatsData;
+    // StreamStatsRaw m_mfvStreamStatsData;
 
     std::shared_ptr<PendingReply<>> m_mfvPromiseResults;
 

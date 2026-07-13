@@ -180,7 +180,7 @@ void GattAudioServiceRdk::onEnteredIdle() {
     m_mfvPrivacyEnabled = false;
     m_mfvModelConfigurationData.clear();
     m_mfvCapabilitiesValue = 0;
-    m_mfvStreamStatsData = {};
+    // m_mfvStreamStatsData = {};
 
     GattAudioService::onEnteredIdle();
 }
@@ -1117,10 +1117,10 @@ uint8_t GattAudioServiceRdk::mfvCapabilities() const
     return m_mfvCapabilitiesValue;
 }
 
-BleRcuAudioService::StreamStatsRaw GattAudioServiceRdk::mfvStreamStats() const
-{
-    return m_mfvStreamStatsData;
-}
+// BleRcuAudioService::StreamStatsRaw GattAudioServiceRdk::mfvStreamStats() const
+// {
+//     return m_mfvStreamStatsData;
+// }
 
 // =============================================================================
 // MFV write handlers

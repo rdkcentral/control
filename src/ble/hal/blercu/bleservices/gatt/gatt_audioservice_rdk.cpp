@@ -947,9 +947,16 @@ void GattAudioServiceRdk::requestStartMfvSessionStartNotify()
     auto replyHandler = [this](PendingReply<> *reply)
     {
         if (reply->isError()) {
-            m_mfvState.sessionStartNotifyRequested = false;
-            XLOGD_ERROR("failed to enable MFV Session Start notifications due to <%s>",
-                reply->errorMessage().c_str());
+            // "Notify acquired" means BlueZ already has the CCCD set (e.g. leftover from a
+            // prior connection). Treat it as success so MFV initialisation can complete.
+            if (reply->errorMessage().find("Notify acquired") != std::string::npos) {
+                XLOGD_WARN("MFV Session Start notifications already acquired by BlueZ, treating as success");
+                maybeEnableMfvNotifications();
+            } else {
+                m_mfvState.sessionStartNotifyRequested = false;
+                XLOGD_ERROR("failed to enable MFV Session Start notifications due to <%s>",
+                    reply->errorMessage().c_str());
+            }
         } else {
             XLOGD_DEBUG("MFV Session Start notifications enabled successfully");
             maybeEnableMfvNotifications();
@@ -973,9 +980,14 @@ void GattAudioServiceRdk::requestStartMfvDetectionDataNotify()
     auto replyHandler = [this](PendingReply<> *reply)
     {
         if (reply->isError()) {
-            m_mfvState.detectionDataNotifyRequested = false;
-            XLOGD_ERROR("failed to enable MFV Detection Data notifications due to <%s>",
-                reply->errorMessage().c_str());
+            if (reply->errorMessage().find("Notify acquired") != std::string::npos) {
+                XLOGD_WARN("MFV Detection Data notifications already acquired by BlueZ, treating as success");
+                maybeEnableMfvNotifications();
+            } else {
+                m_mfvState.detectionDataNotifyRequested = false;
+                XLOGD_ERROR("failed to enable MFV Detection Data notifications due to <%s>",
+                    reply->errorMessage().c_str());
+            }
         } else {
             XLOGD_DEBUG("MFV Detection Data notifications enabled successfully");
             maybeEnableMfvNotifications();
@@ -999,9 +1011,14 @@ void GattAudioServiceRdk::requestStartMfvPrivacyNotify()
     auto replyHandler = [this](PendingReply<> *reply)
     {
         if (reply->isError()) {
-            m_mfvState.privacyNotifyRequested = false;
-            XLOGD_ERROR("failed to enable MFV Privacy notifications due to <%s>",
-                reply->errorMessage().c_str());
+            if (reply->errorMessage().find("Notify acquired") != std::string::npos) {
+                XLOGD_WARN("MFV Privacy notifications already acquired by BlueZ, treating as success");
+                maybeEnableMfvNotifications();
+            } else {
+                m_mfvState.privacyNotifyRequested = false;
+                XLOGD_ERROR("failed to enable MFV Privacy notifications due to <%s>",
+                    reply->errorMessage().c_str());
+            }
         } else {
             XLOGD_DEBUG("MFV Privacy notifications enabled successfully");
             maybeEnableMfvNotifications();

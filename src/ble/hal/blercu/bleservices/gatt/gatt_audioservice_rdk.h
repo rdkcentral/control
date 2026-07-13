@@ -98,6 +98,8 @@ private:
     void requestMfvModelConfig();
     void onMfvInitialReadComplete();
     void maybeEnableMfvNotifications();
+    void scheduleMfvNotifyRetry();
+    void disableMfvAfterNotifyFailures(const char *reason);
 
     // MFV notification enable
     void requestStartMfvSessionStartNotify();
@@ -140,6 +142,10 @@ private:
         bool detectionDataNotifyRequested = false;
         bool privacyNotifyRequested = false;
 
+        uint8_t sessionStartNotifyRetries = 0;
+        uint8_t detectionDataNotifyRetries = 0;
+        uint8_t privacyNotifyRetries = 0;
+
         void reset()
         {
             supported = false;
@@ -154,6 +160,10 @@ private:
             sessionStartNotifyRequested = false;
             detectionDataNotifyRequested = false;
             privacyNotifyRequested = false;
+
+            sessionStartNotifyRetries = 0;
+            detectionDataNotifyRetries = 0;
+            privacyNotifyRetries = 0;
         }
 
         bool areInitialReadsComplete() const
@@ -181,6 +191,8 @@ private:
     std::shared_ptr<BleGattCharacteristic> m_mfvPrivacyCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_mfvModelConfigCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_mfvCapabilitiesCharacteristic;
+
+    int64_t m_mfvNotifyRetryEventId = -1;
 
     static const BleUuid m_mfvSessionStartCharUuid;
     static const BleUuid m_mfvDetectionDataCharUuid;

@@ -545,8 +545,10 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
          XLOGD_ERROR("Controller doesn't exist!");
          dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
       } else {
-         // Currently BLE RCUs only support push-to-talk, so hardcoding here for now
-         ctrlm_voice_device_t device = CTRLM_VOICE_DEVICE_PTT;
+         // BLE RCUs use PTT for keypress-triggered sessions and FF for MFV wake-word sessions.
+         // The voice_device field of the message is set by the caller; it defaults to
+         // CTRLM_VOICE_DEVICE_PTT (0) when the struct is zeroed via memset.
+         ctrlm_voice_device_t device = dqm->voice_device;
          ctrlm_voice_session_response_status_t voice_status;
 
          // only support ADPCM from ble-rcu component
@@ -2118,6 +2120,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                      errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
                      ERR_CHK(safec_rc);
                      msg.params = &v_params;
+                     msg.voice_device = CTRLM_VOICE_DEVICE_FF;
 
                      req_process_voice_session_begin(&msg, sizeof(msg));
                   }

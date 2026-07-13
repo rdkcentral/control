@@ -770,8 +770,7 @@ void GattAudioServiceRdk::maybeEnableMfvNotifications()
         m_mfvState.detectionDataNotifyRequested = true;
         requestStartMfvDetectionDataNotify();
     }
-    if (m_mfvState.privacyReadValid &&
-        m_mfvPrivacyCharacteristic &&
+    if (m_mfvPrivacyCharacteristic &&
         !m_mfvPrivacyCharacteristic->notificationsEnabled() &&
         !m_mfvState.privacyNotifyRequested) {
         m_mfvState.privacyNotifyRequested = true;
@@ -1153,7 +1152,13 @@ void GattAudioServiceRdk::writeMfvPrivacy(bool enabled, PendingReply<> &&reply)
     XLOGD_INFO("Writing MFV Privacy = %s", enabled ? "enabled" : "disabled");
 
     m_mfvPrivacyCharacteristic->writeValue(value, PendingReply<>(getIsAlivePtr(),
-        std::bind(&GattAudioServiceRdk::onWriteMfvPrivacyReply, this, std::placeholders::_1)));
+        [this, enabled](PendingReply<> *reply) {
+            if (m_mfvState.supported && m_mfvPromiseResults && !reply->isError()) {
+                m_mfvPrivacyEnabled = enabled;
+                m_mfvState.privacyReadValid = true;
+            }
+            this->onWriteMfvPrivacyReply(reply);
+        }));
 }
 
 void GattAudioServiceRdk::onWriteMfvPrivacyReply(PendingReply<> *reply)

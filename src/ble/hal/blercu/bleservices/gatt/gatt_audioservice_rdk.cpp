@@ -1206,17 +1206,41 @@ void GattAudioServiceRdk::writeMfvModelConfiguration(uint8_t sensitivity, uint8_
         return;
     }
 
+    auto previousConfig = m_mfvModelConfigurationData;
+    auto previousValid  = m_mfvState.modelConfigReadValid;
+
     m_mfvPromiseResults = make_shared<PendingReply<>>(std::move(reply));
 
     const vector<uint8_t> value = { sensitivity, secondary, aad };
     XLOGD_INFO("Writing MFV Model Config: sensitivity=%u secondary=%u aad=%u",
         sensitivity, secondary, aad);
 
-    m_mfvModelConfigurationData = value;
-    m_mfvState.modelConfigReadValid = true;
-
     m_mfvModelConfigCharacteristic->writeValue(value, PendingReply<>(getIsAlivePtr(),
-        std::bind(&GattAudioServiceRdk::onWriteMfvModelConfigReply, this, std::placeholders::_1)));
+        [this, value, previousConfig = std::move(previousConfig), previousValid](PendingReply<> *writeReply) mutable {
+            if (writeReply->isError()) {
+                XLOGD_ERROR("failed to write MFV Model Config due to <%s>", writeReply->errorMessage().c_str());
+
+                // Restore last-known-good config on failure.
+                m_mfvModelConfigurationData = std::move(previousConfig);
+                m_mfvState.modelConfigReadValid = previousValid;
+
+                if (m_mfvPromiseResults) {
+                    m_mfvPromiseResults->setError(writeReply->errorMessage());
+                    m_mfvPromiseResults->finish();
+                    m_mfvPromiseResults.reset();
+                }
+            } else {
+                XLOGD_INFO("MFV Model Config written successfully");
+
+                m_mfvModelConfigurationData = value;
+                m_mfvState.modelConfigReadValid = true;
+
+                if (m_mfvPromiseResults) {
+                    m_mfvPromiseResults->finish();
+                    m_mfvPromiseResults.reset();
+                }
+            }
+        }));
 }
 
 void GattAudioServiceRdk::onWriteMfvModelConfigReply(PendingReply<> *reply)

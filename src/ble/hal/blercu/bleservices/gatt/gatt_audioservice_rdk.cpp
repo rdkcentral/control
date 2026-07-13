@@ -1157,6 +1157,7 @@ void GattAudioServiceRdk::writeMfvPrivacy(bool enabled, PendingReply<> &&reply)
             if (m_mfvState.supported && m_mfvPromiseResults && !reply->isError()) {
                 m_mfvPrivacyEnabled = enabled;
                 m_mfvState.privacyReadValid = true;
+                m_mfvPrivacyChangedSlots.invoke(m_mfvPrivacyEnabled);
             }
             this->onWriteMfvPrivacyReply(reply);
         }));

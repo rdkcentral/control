@@ -45,6 +45,9 @@
 
 #define AUDIO_SEQ_NUM_MAX          (0xFF)
 
+// Number of async characteristic reads issued during MFV initialization (capabilities, model version, privacy, model configuration)
+#define MFV_TOTAL_INITIAL_READS    (4)
+
 using namespace std;
 
 const BleUuid GattAudioServiceRdk::m_serviceUuid(BleUuid::RdkVoice);
@@ -109,14 +112,12 @@ bool GattAudioServiceRdk::start(const shared_ptr<const BleGattService> &gattServ
     // Discover MFV characteristics (optional - not all remotes support MFV)
     if (getMfvCharacteristics(gattService)) {
         m_mfvState.supported = true;
-        m_mfvState.initialReadsRemaining = 0;
-        ++m_mfvState.initialReadsRemaining;
+        // Set the total count before issuing any reads so that early or synchronous
+        // completion of one read cannot prematurely trigger onMfvInitialReadComplete().
+        m_mfvState.initialReadsRemaining = MFV_TOTAL_INITIAL_READS;
         requestMfvCapabilities();
-        ++m_mfvState.initialReadsRemaining;
         requestMfvModelVersion();
-        ++m_mfvState.initialReadsRemaining;
         requestMfvPrivacy();
-        ++m_mfvState.initialReadsRemaining;
         requestMfvModelConfig();
     }
 
@@ -1241,24 +1242,4 @@ void GattAudioServiceRdk::writeMfvModelConfiguration(uint8_t sensitivity, uint8_
                 }
             }
         }));
-}
-
-void GattAudioServiceRdk::onWriteMfvModelConfigReply(PendingReply<> *reply)
-{
-    if (reply->isError()) {
-        XLOGD_ERROR("failed to write MFV Model Config due to <%s>", reply->errorMessage().c_str());
-        m_mfvModelConfigurationData.clear();
-        m_mfvState.modelConfigReadValid = false;
-        if (m_mfvPromiseResults) {
-            m_mfvPromiseResults->setError(reply->errorMessage());
-            m_mfvPromiseResults->finish();
-            m_mfvPromiseResults.reset();
-        }
-    } else {
-        XLOGD_INFO("MFV Model Config written successfully");
-        if (m_mfvPromiseResults) {
-            m_mfvPromiseResults->finish();
-            m_mfvPromiseResults.reset();
-        }
-    }
 }

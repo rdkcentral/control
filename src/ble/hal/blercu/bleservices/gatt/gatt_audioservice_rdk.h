@@ -111,7 +111,6 @@ private:
 
     // MFV write handlers
     void onWriteMfvPrivacyReply(PendingReply<> *reply);
-    void onWriteMfvModelConfigReply(PendingReply<> *reply);
 
     void requestGainLevel();
     void requestAudioCodecs();

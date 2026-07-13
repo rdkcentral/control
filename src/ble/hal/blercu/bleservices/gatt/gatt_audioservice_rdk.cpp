@@ -1207,6 +1207,9 @@ void GattAudioServiceRdk::writeMfvModelConfiguration(uint8_t sensitivity, uint8_
     XLOGD_INFO("Writing MFV Model Config: sensitivity=%u secondary=%u aad=%u",
         sensitivity, secondary, aad);
 
+    m_mfvModelConfigurationData = value;
+    m_mfvState.modelConfigReadValid = true;
+
     m_mfvModelConfigCharacteristic->writeValue(value, PendingReply<>(getIsAlivePtr(),
         std::bind(&GattAudioServiceRdk::onWriteMfvModelConfigReply, this, std::placeholders::_1)));
 }
@@ -1215,6 +1218,8 @@ void GattAudioServiceRdk::onWriteMfvModelConfigReply(PendingReply<> *reply)
 {
     if (reply->isError()) {
         XLOGD_ERROR("failed to write MFV Model Config due to <%s>", reply->errorMessage().c_str());
+        m_mfvModelConfigurationData.clear();
+        m_mfvState.modelConfigReadValid = false;
         if (m_mfvPromiseResults) {
             m_mfvPromiseResults->setError(reply->errorMessage());
             m_mfvPromiseResults->finish();

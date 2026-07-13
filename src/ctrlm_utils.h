@@ -259,6 +259,9 @@ void ctrlm_utils_message_queue_close(int *msgq);
 bool ctrlm_utils_queue_msg_push(int msgq, const char *msg, size_t msg_len);
 std::string ctrlm_utils_time_as_string(time_t time);
 
+// Returns the current wall-clock time in epoch milliseconds.
+uint64_t ctrlm_timestamp_get_ms(void);
+
 ctrlm_fmr_alarm_level_t ctrlm_utils_str_to_fmr_level(const std::string &level);
 ctrlm_rcu_wakeup_config_t ctrlm_utils_str_to_wakeup_config(const std::string &wakeup_config);
 int ctrlm_utils_custom_key_str_to_array(const std::string &custom_keys, int *custom_list);

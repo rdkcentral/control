@@ -2613,6 +2613,13 @@ guchar ctrlm_obj_network_rf4ce_t::target_irdb_status_flags_get() {
    return(target_irdb_status_.flags);
 }
 
+void ctrlm_obj_network_rf4ce_t::ir_prog_state_set(ctrlm_ir_state_t state) {
+   THREAD_ID_VALIDATE();
+   XLOGD_INFO("RF4CE remote IR programming state changed to <%s>", ctrlm_ir_state_str(state));
+   ir_state_ = state;
+   iarm_event_rcu_status();
+}
+
 ctrlm_rf4ce_controller_irdb_status_t ctrlm_obj_network_rf4ce_t::most_recent_controller_irdb_status_get(void) {
    THREAD_ID_VALIDATE();
    ctrlm_rf4ce_controller_irdb_status_t most_recent_controller_irdb_status;
@@ -4423,6 +4430,8 @@ void ctrlm_obj_network_rf4ce_t::req_process_program_ir_codes(void *data, int siz
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_program_ir_codes_t));
 
+   bool success = false;
+
    if(controller_exists(dqm->controller_id)) {
       if(dqm->ir_codes) {
          XLOGD_INFO("Setting IR Codes on Controller %u", dqm->controller_id);
@@ -4433,16 +4442,17 @@ void ctrlm_obj_network_rf4ce_t::req_process_program_ir_codes(void *data, int siz
          controllers_[dqm->controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, ir_rf_database_.get_tv_ir_code_id());
          controllers_[dqm->controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, ir_rf_database_.get_avr_ir_code_id());
          this->ir_rf_database_.store_db();
-         if(dqm->success) *dqm->success = true;
+         success = true;
       } else {
          XLOGD_ERROR("Invalid IR Codes");
-         if(dqm->success) *dqm->success = false;
       }
    } else {
       XLOGD_ERROR("Controller %u doesn't exist", dqm->controller_id);
-      if(dqm->success) *dqm->success = false;
    }
 
+   ir_prog_state_set(success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED);
+
+   if(dqm->success) *dqm->success = success;
    // post the semaphore
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
@@ -4454,6 +4464,8 @@ void ctrlm_obj_network_rf4ce_t::req_process_ir_clear_codes(void *data, int size)
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_ir_clear_t));
 
+   bool success = false;
+
    if(controller_exists(dqm->controller_id)) {
       XLOGD_INFO("Clearing IR Codes on Controller %u", dqm->controller_id);
       unsigned char status[1] = {IR_RF_DATABASE_STATUS_DB_DOWNLOAD_YES | IR_RF_DATABASE_STATUS_FORCE_DOWNLOAD};
@@ -4463,12 +4475,14 @@ void ctrlm_obj_network_rf4ce_t::req_process_ir_clear_codes(void *data, int size)
       controllers_[dqm->controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, "0");
       controllers_[dqm->controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, "0");
       controllers_[dqm->controller_id]->rf4ce_rib_set_target(CTRLM_RF4CE_RIB_ATTR_ID_IR_RF_DATABASE_STATUS, CTRLM_RF4CE_RIB_ATTR_INDEX_GENERAL, CTRLM_RF4CE_RIB_ATTR_LEN_IR_RF_DATABASE_STATUS, status);
-      if(dqm->success) *dqm->success = true;
+      success = true;
    } else {
       XLOGD_ERROR("Controller %u doesn't exist", dqm->controller_id);
-      if(dqm->success) *dqm->success = false;
    }
 
+   ir_prog_state_set(success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED);
+
+   if(dqm->success) *dqm->success = success;
    // post the semaphore
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);

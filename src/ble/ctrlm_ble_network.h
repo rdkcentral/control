@@ -134,11 +134,13 @@ public:
    void                          ind_rcu_paired(ctrlm_hal_ble_IndPaired_params_t *params);
    void                          ind_rcu_unpaired(ctrlm_hal_ble_IndUnPaired_params_t *params);
    void                          ind_keypress(ctrlm_hal_ble_IndKeypress_params_t *params);
+   void                          ind_rcu_pairing_outcome(const BleRcuPairingOutcome &outcome);
 
    void                          ind_process_rcu_status(void *data, int size);
    void                          ind_process_paired(void *data, int size);
    void                          ind_process_unpaired(void *data, int size);
    void                          ind_process_keypress(void *data, int size);
+   void                          ind_process_rcu_pairing_outcome(void *data, int size);
 
    virtual void                  req_process_network_status(void *data, int size);
    virtual void                  req_process_controller_status(void *data, int size);
@@ -167,6 +169,11 @@ public:
    virtual void                  req_process_start_controller_upgrade(void *data, int size);
    virtual void                  req_process_cancel_controller_upgrade(void *data, int size);
    virtual void                  req_process_status_controller_upgrade(void *data, int size);
+
+   void                          schedule_status_print(bool immediately = false);
+   void                          schedule_status_event(bool immediately = false);
+   virtual void                  req_process_print_status(void *data, int size);
+   virtual void                  req_process_event_status(void *data, int size);
 
    virtual json_t *              xconf_export_controllers();
    void                          addUpgradeImage(const ctrlm_ble_upgrade_image_info_t &image_info);
@@ -209,12 +216,15 @@ private:
    ctrlm_controller_id_t                     get_last_used_controller(void);
    bool                                      end_voice_session_for_controller(uint64_t ieee_address, ctrlm_voice_session_end_reason_t reason, int32_t audioDuration = -1, int32_t startLag = -1, rdkx_timestamp_t *keyDownTime = NULL, rdkx_timestamp_t *keyUpTime = NULL);
    ctrlm_controller_id_t                     find_controller_from_upgrade_session_uuid(const std::string &uuid);
+   void                                      emit_irdb_program_result(int ir_state, const std::string &fail_reason, uint8_t rcu_bitmask, const std::string &vendor_name, uint8_t vendor_bitmask);
 
    json_t *                                  json_config_               = NULL;
    bool                                      voice_disabled_            = false;
    bool                                      upgrade_in_progress_       = false;
    bool                                      unpair_on_remote_request_  = true;
    ctrlm_ble_unpair_metrics_t                last_rcu_unpair_metrics_;
+   int                                       print_status_defer_count_  = 0;
+   int                                       event_status_defer_count_  = 0;
 
    std::map <ctrlm_controller_id_t, ctrlm_obj_controller_ble_t *> controllers_;
    std::map <std::string, ctrlm_ble_upgrade_image_info_t>         upgrade_images_;

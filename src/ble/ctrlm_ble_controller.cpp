@@ -31,8 +31,10 @@
 #include "ctrlm_controller.h"
 #include "ctrlm_hal_ip.h"
 #include "blercu/bleservices/blercuupgradeservice.h"
+#include "ctrlm_telemetry_event.h"
 
 #include <sstream>
+#include <iomanip>
 #include <iterator>
 #include <iostream>
 #include <algorithm>
@@ -58,7 +60,7 @@ ctrlm_obj_controller_ble_t::ctrlm_obj_controller_ble_t(ctrlm_controller_id_t con
    wakeup_custom_list_(),
    irdbs_supported_(0)
 {
-   XLOGD_INFO("constructor - controller id <%u>", controller_id);
+   XLOGD_DEBUG("constructor - controller id <%u>", controller_id);
 
    voice_metrics_->read_config();
    ieee_address_->set_num_bytes(6);
@@ -66,7 +68,7 @@ ctrlm_obj_controller_ble_t::ctrlm_obj_controller_ble_t(ctrlm_controller_id_t con
 }
 
 ctrlm_obj_controller_ble_t::ctrlm_obj_controller_ble_t() {
-   XLOGD_INFO("default constructor");
+   XLOGD_DEBUG("default constructor");
 }
 
 void ctrlm_obj_controller_ble_t::db_create() {
@@ -527,6 +529,24 @@ ctrlm_timestamp_t ctrlm_obj_controller_ble_t::getVoiceStartTimeLocal() const {
    return(voice_start_time_local_);
 }
 
+void ctrlm_obj_controller_ble_t::emit_irdb_vendor_set(
+      int set_result, uint8_t rcu_bitmask,
+      const std::string &vendor_name, uint8_t vendor_bitmask, int supported)
+{
+#ifdef TELEMETRY_SUPPORT
+   std::ostringstream ss;
+   ss << "[" << MARKER_IRDB_VENDOR_SET_VERSION
+      << "," << set_result
+      << ",0x" << std::hex << std::setfill('0') << std::setw(2) << (int)rcu_bitmask
+      << ",\"" << vendor_name << "\""
+      << ",0x" << std::setw(2) << (int)vendor_bitmask << std::dec
+      << "," << supported
+      << "," << ctrlm_timestamp_get_ms() << "]";
+   ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_VENDOR_SET, ss.str());
+   ev.event();
+#endif
+}
+
 void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmask) {
    this->irdbs_supported_ = vendor_support_bitmask;
 
@@ -534,19 +554,25 @@ void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmas
 
    if (irdb == NULL) {
       XLOGD_ERROR("IRDB interface is NULL!!!");
+      emit_irdb_vendor_set(0, vendor_support_bitmask, "unknown", 0x00, 0);
       return;
    }
 
    ctrlm_irdb_vendor_info_t rcu_vendor_info{};
    rcu_vendor_info.rcu_support_bitmask = vendor_support_bitmask;
-   if (!irdb->set_vendor(rcu_vendor_info)) {
+   bool set_result = irdb->set_vendor(rcu_vendor_info);
+   if (!set_result) {
       XLOGD_ERROR("Failed to set IRDB vendor info for controller <%s> with bitmask <0x%X>.", 
             ieee_address_get().to_string().c_str(), vendor_support_bitmask);
    }
 
    ctrlm_irdb_vendor_info_t vendor_info{};
+   vendor_info.name = "unknown";
+   vendor_info.rcu_support_bitmask = 0xFF;
+   bool supported = false;
    if (irdb->get_vendor_info(vendor_info)) {
-      if (isSupportedIrdb(vendor_info)) {
+      supported = isSupportedIrdb(vendor_info);
+      if (supported) {
          XLOGD_INFO("Controller <%s> IRDBs supported bitmask = <0x%X>, which DOES support the loaded IRDB plugin vendor <%s>", 
                ieee_address_get().to_string().c_str(), vendor_support_bitmask, vendor_info.name.c_str());
       } else {
@@ -557,6 +583,8 @@ void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmas
       XLOGD_WARN("Controller <%s> IRDBs supported bitmask = <0x%X>, couldn't retrieve IRDB plugin vendor info.", 
             ieee_address_get().to_string().c_str(), vendor_support_bitmask);
    }
+   emit_irdb_vendor_set((int)set_result, vendor_support_bitmask,
+                        vendor_info.name, vendor_info.rcu_support_bitmask, (int)supported);
 }
 
 uint8_t ctrlm_obj_controller_ble_t::getSupportedIrdbs() const {

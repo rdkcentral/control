@@ -18,11 +18,14 @@
 */
 
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 #include "ctrlm_irdb_ipc_iarm_thunder.h"
 #include "ctrlm.h"
 #include "ctrlm_log.h"
 #include "json_config.h"
 #include "ctrlm_utils.h"
+#include "ctrlm_telemetry_event.h"
 
 namespace {
     constexpr char const* NET_TYPE      = "netType";
@@ -37,6 +40,25 @@ namespace {
     constexpr char const* SUCCESS       = "success";
     constexpr char const* TV            = "TV";
     constexpr char const* AMP           = "AMP";
+
+    void emit_irdb_manual_result(ctrlm_irdb_interface_t *irdb, const char *method, bool success)
+    {
+#ifdef TELEMETRY_SUPPORT
+        ctrlm_irdb_vendor_info_t vendor_info{};
+        if (irdb) {
+            irdb->get_vendor_info(vendor_info);
+        }
+        std::ostringstream ss;
+        ss << "[" << MARKER_IRDB_MANUAL_RESULT_VERSION
+           << ",\"" << vendor_info.name << "\""
+           << ",0x" << std::hex << std::setfill('0') << std::setw(2) << (int)vendor_info.rcu_support_bitmask << std::dec
+           << ",\"" << method << "\""
+           << "," << (int)success
+           << "," << ctrlm_timestamp_get_ms() << "]";
+        ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_MANUAL_RESULT, ss.str());
+        ev.event();
+#endif
+    }
 }
 
 ctrlm_irdb_ipc_iarm_thunder_t::ctrlm_irdb_ipc_iarm_thunder_t() : ctrlm_ipc_iarm_t() {
@@ -152,6 +174,8 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_manufacturers(void *arg) {
         }
     }
 
+    emit_irdb_manual_result(irdb, CTRLM_MAIN_IARM_CALL_IR_MANUFACTURERS, success);
+
     // Assemble the return
     json_object_set_new(ret, SUCCESS, json_boolean(success));
     if(success) {
@@ -225,6 +249,8 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_models(void *arg) {
             }
         }
     }
+
+    emit_irdb_manual_result(irdb, CTRLM_MAIN_IARM_CALL_IR_MODELS, success);
 
     // Assemble the return
     json_object_set_new(ret, SUCCESS, json_boolean(success));
@@ -365,6 +391,8 @@ IARM_Result_t ctrlm_irdb_ipc_iarm_thunder_t::get_irdb_entry_ids(void *arg) {
             }
         }
     }
+
+    emit_irdb_manual_result(irdb, CTRLM_MAIN_IARM_CALL_IR_CODES, success);
 
     // Assemble the return
     json_object_set_new(ret, SUCCESS, json_boolean(success));

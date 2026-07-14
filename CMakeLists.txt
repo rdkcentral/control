@@ -39,6 +39,7 @@ option(BLE_ENABLED "Enable BLE" ON)
 option(BLE_SERVICES "Enable BLE Services" OFF)
 option(BREAKPAD "Enable BREAKPAD" OFF)
 option(BUILD_CTRLM_FACTORY "Build Control Factory Test" OFF)
+option(BUILD_CTRLM_SERVER "Build Control Server Daemon" OFF)
 option(FDC_ENABLED "Enable FDC" OFF)
 option(IP_ENABLED "Enable IP" OFF)
 option(RF4CE_ENABLED "Enable RF4CE" ON)
@@ -46,12 +47,10 @@ option(TELEMETRY_SUPPORT "Enable TELEMETRY_SUPPORT" OFF)
 option(THUNDER "Enable THUNDER" ON)
 option(THUNDER_SECURITY "Enable THUNDER_SECURITY" OFF)
 option(USE_SAFEC "Use safec" OFF)
-option(USE_IARM_POWER_MANAGER "Use IARM Power Manager" OFF)
 option(XRSR_HTTP "Enable XRSR_HTTP" OFF)
 option(XRSR_SDT "Enable XRSR_SDT" OFF)
 option(ENABLE_ASYNC_SRVR_MSG "Enable Asynchronous Server Messaging Feature" OFF)
 option(ENABLE_AVS_WITH_SDT "Enable SDT Based AVS Support" OFF)
-option(USE_DEPRECATED_HDMI_INPUT_PLUGIN "Use deprecated HDMI Input plugin instead of AV Input plugin" OFF)
 
 # BUILD SYSTEM
 set(STAGING_BINDIR_NATIVE, "invalid" CACHE PATH "staging bin dir native")
@@ -238,10 +237,6 @@ if(THUNDER)
    endif()
 endif()
 
-if(USE_IARM_POWER_MANAGER)
-   add_compile_definitions(USE_IARM_POWER_MANAGER)
-endif()
-
 if(USE_SAFEC)
    find_package(PkgConfig)
    pkg_check_modules(SAFEC REQUIRED libsafec)
@@ -252,10 +247,6 @@ else()
    add_compile_definitions(SAFEC_DUMMY_API)
 endif()
 
-if(USE_DEPRECATED_HDMI_INPUT_PLUGIN)
-   add_compile_definitions(USE_DEPRECATED_HDMI_INPUT_PLUGIN)
-endif()
-
 install(TARGETS  controlMgr RUNTIME DESTINATION bin)
 
 install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json DESTINATION ${CMAKE_INSTALL_SYSCONFDIR} COMPONENT config )
@@ -263,7 +254,7 @@ install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json DESTINATION ${CMAKE_INSTALL_
 # GENERATED FILES
 add_custom_command( OUTPUT ctrlm_version_build.h
    COMMAND echo -n "#define CTRLM_MAIN_BRANCH    \"" >> ctrlm_version_build.h
-   COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} branch --all --contains | sed -n -e "s/^\\s*remotes\\/origin\\///" -e "2p" | tr -d "\\n" >> ctrlm_version_build.h
+   COMMAND sh -c "src=\"${CMAKE_CURRENT_SOURCE_DIR}\"; ref=$(git -C \"$src\" describe --tags --exact-match 2>/dev/null || git -C \"$src\" branch -a --format='%(refname:short)' --contains HEAD 2>/dev/null | sed -n '2{p;q}'); echo -n \"$ref\" >> ctrlm_version_build.h"
    COMMAND echo "\"" >> ctrlm_version_build.h
    COMMAND echo -n "#define CTRLM_MAIN_COMMIT_ID " >> ctrlm_version_build.h
    COMMAND git -C ${CMAKE_CURRENT_SOURCE_DIR} log --format=\"%H\" -n 1 >> ctrlm_version_build.h

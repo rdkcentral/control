@@ -67,7 +67,9 @@ static void ctrlm_voice_data_post_processing_cb(int bytes_sent, void *user_data)
 
 static ctrlm_voice_session_group_t voice_device_to_session_group(ctrlm_voice_device_t device_type);
 
+#ifdef CTRLM_THUNDER
 static void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t event, void *user_data);
+#endif
 
 static xrsr_power_mode_t voice_xrsr_power_map(ctrlm_power_state_t ctrlm_power_state);
 
@@ -268,12 +270,20 @@ ctrlm_voice_t::ctrlm_voice_t() {
     sem_init(&this->vsr_semaphore, 0, 0);
 
     if(this->beep_on_kwd_supported) {
+        #ifdef CTRLM_THUNDER
         this->obj_sap = Thunder::SystemAudioPlayer::ctrlm_thunder_plugin_system_audio_player_t::getInstance();
         this->obj_sap->add_event_handler(ctrlm_voice_system_audio_player_event_handler, this);
         this->sap_opened = this->obj_sap->open(SYSTEM_AUDIO_PLAYER_AUDIO_TYPE_WAV, SYSTEM_AUDIO_PLAYER_SOURCE_TYPE_FILE, SYSTEM_AUDIO_PLAYER_PLAY_MODE_SYSTEM);
         if(!this->sap_opened) {
             XLOGD_WARN("unable to open system audio player");
         }
+        #else
+        this->obj_sap               = NULL;
+        this->sap_opened            = false;
+        this->beep_on_kwd_supported = false;
+        this->beep_on_kwd_file      = NULL;
+        XLOGD_WARN("beep on keyword is not supported without Thunder");
+        #endif
     }
 
     // Set audio mode to default
@@ -313,12 +323,14 @@ ctrlm_voice_t::~ctrlm_voice_t() {
         }
     }
 
+    #ifdef CTRLM_THUNDER
     if(this->beep_on_kwd_supported && this->sap_opened) {
         if(!this->obj_sap->close()) {
             XLOGD_WARN("unable to close system audio player");
         }
         this->sap_opened = false;
     }
+    #endif
 
     /* Close Voice SDK */
 
@@ -1259,7 +1271,9 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
 
     xrsr_session_request_t request_params;
     request_params.type = XRSR_SESSION_REQUEST_TYPE_INVALID;
-    
+
+    uint8_t dst_index = 0;
+
     if(is_session_by_text) {
         XLOGD_INFO("Requesting the speech router start a text-only session with transcription = <%s>", l_transcription_in);
         if(session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING || session->state_dst != CTRLM_VOICE_STATE_DST_READY) {
@@ -1270,7 +1284,9 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
         request_params.value.text.text = l_transcription_in;
 
         xrsr_audio_format_t xrsr_format = { .type = XRSR_AUDIO_FORMAT_NONE};
-        if (false == xrsr_session_request(voice_device_to_xrsr(device_type), xrsr_format, request_params, uuid, false, false)) {
+
+
+        if (false == xrsr_session_request(voice_device_to_xrsr(device_type), dst_index, xrsr_format, request_params, uuid, false, false)) {
             XLOGD_ERROR("Failed to acquire the text-only session from the speech router.");
             return VOICE_SESSION_RESPONSE_BUSY;
         }
@@ -1290,7 +1306,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
             xrsr_format.type = XRSR_AUDIO_FORMAT_PCM;
         }
 
-        if (false == xrsr_session_request(voice_device_to_xrsr(device_type), xrsr_format, request_params, uuid, false, false)) {
+        if (false == xrsr_session_request(voice_device_to_xrsr(device_type), dst_index, xrsr_format, request_params, uuid, false, false)) {
             XLOGD_ERROR("Failed to acquire the audio file session from the speech router.");
             return VOICE_SESSION_RESPONSE_BUSY;
         }
@@ -1307,7 +1323,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
        request_params.type = XRSR_SESSION_REQUEST_TYPE_AUDIO_MIC;
        request_params.value.audio_mic.stream_params_required = this->nsm_voice_session;
 
-       if(false == xrsr_session_request(voice_device_to_xrsr(device_type), xrsr_format, request_params, uuid, low_latency, low_cpu_util)) {
+       if(false == xrsr_session_request(voice_device_to_xrsr(device_type), dst_index, xrsr_format, request_params, uuid, low_latency, low_cpu_util)) {
            XLOGD_ERROR("Failed to acquire the microphone session from the speech router.");
            return VOICE_SESSION_RESPONSE_BUSY;
        }
@@ -1336,7 +1352,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
             request_params.value.audio_fd.callback     = (create_pipe) ? NULL : ctrlm_voice_data_post_processing_cb; // RF4CE does not use pipe read callback
             request_params.value.audio_fd.user_data    = (create_pipe) ? NULL : (void *)this;
 
-            if(false == xrsr_session_request(voice_device_to_xrsr(device_type), voice_format_to_xrsr(format), request_params, uuid, false, false)) {
+            if(false == xrsr_session_request(voice_device_to_xrsr(device_type), dst_index, voice_format_to_xrsr(format), request_params, uuid, false, false)) {
                 XLOGD_TELEMETRY("Failed to acquire voice session");
                 this->voice_session_notify_abort(network_id, controller_id, 0, CTRLM_VOICE_SESSION_ABORT_REASON_BUSY);
                 if(create_pipe) {
@@ -2809,11 +2825,15 @@ void ctrlm_voice_t::voice_stream_end_callback(ctrlm_voice_stream_end_cb_t *strea
 
         if(session->packets_processed > 0) {
             uint32_t stream_duration    = session->packets_processed * 20; // assume 20 ms per packet
+            #ifdef TELEMETRY_SUPPORT
             uint32_t samples_per_packet = 320; // 16 kHz samples at 20 ms per packet
+            #endif
             if(session->format.type == CTRLM_VOICE_FORMAT_ADPCM_FRAME) {
                 uint32_t frame_duration_us = (session->format.value.adpcm_frame.size_packet - session->format.value.adpcm_frame.size_header) * 125; // 125 us per byte for ADPCM at 16 kHz
                 stream_duration    = (session->packets_processed * frame_duration_us) / 1000;
+                #ifdef TELEMETRY_SUPPORT
                 samples_per_packet = (session->format.value.adpcm_frame.size_packet - session->format.value.adpcm_frame.size_header) * 2; // 2 samples per byte for ADPCM
+                #endif
             }
             XLOGD_AUTOMATION_TELEMETRY("src <%s> Packets Lost/Total <%u/%u> %.02f%% duration <%u> ms", ctrlm_voice_device_str(session->voice_device), session->packets_lost, session->packets_lost + session->packets_processed, 100.0 * ((double)session->packets_lost / (double)(session->packets_lost + session->packets_processed)), stream_duration);
             #ifdef TELEMETRY_SUPPORT
@@ -2911,6 +2931,7 @@ void ctrlm_voice_t::voice_action_keyword_verification_callback(const uuid_t uuid
 }
 
 void ctrlm_voice_t::voice_keyword_verified_action(void) {
+   #ifdef CTRLM_THUNDER
    if(this->beep_on_kwd_supported && (this->beep_on_kwd_file != NULL) && this->audio_ducking_beep_enabled) { // play beep audio before ducking audio
       if(this->audio_ducking_beep_in_progress) {
          XLOGD_WARN("audio ducking beep already in progress!");
@@ -2952,6 +2973,7 @@ void ctrlm_voice_t::voice_keyword_verified_action(void) {
       } while(retry >= 0);
    }
    this->audio_state_set(true);
+   #endif
 }
 
 void ctrlm_voice_t::voice_keyword_beep_completed_normal(void *data, int size) {
@@ -3745,6 +3767,7 @@ void ctrlm_voice_t::voice_device_disable(ctrlm_voice_device_t device, bool db_wr
     sem_post(&this->device_status_semaphore);
 }
 
+#ifdef CTRLM_THUNDER
 void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t event, void *user_data) {
    if(user_data == NULL) {
       return;
@@ -3784,6 +3807,7 @@ void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t e
       }
    }
 }
+#endif
 
 void ctrlm_voice_t::voice_nsm_session_request(void) {
     ctrlm_network_id_t network_id = CTRLM_MAIN_NETWORK_ID_DSP;
@@ -3847,7 +3871,8 @@ xrsr_power_mode_t voice_xrsr_power_map(ctrlm_power_state_t ctrlm_power_state) {
 
 void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
     bool enabled = true;
-    bool reroute = false;
+
+    XLOGD_INFO("processing RFC values");
 
     attr.get_rfc_value(JSON_INT_NAME_VOICE_VREX_REQUEST_TIMEOUT,         this->prefs.timeout_vrex_connect,0);
     attr.get_rfc_value(JSON_INT_NAME_VOICE_VREX_RESPONSE_TIMEOUT,        this->prefs.timeout_vrex_session,0);
@@ -3895,22 +3920,34 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
     }
 
     attr.get_rfc_value(JSON_INT_NAME_VOICE_PACKET_LOSS_THRESHOLD,        this->packet_loss_threshold, 0);
-    if(attr.get_rfc_value(JSON_INT_NAME_VOICE_AUDIO_MODE, this->audio_mode) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_AUDIO_TIMING, this->audio_timing) |
-       attr.get_rfc_value(JSON_FLOAT_NAME_VOICE_AUDIO_CONFIDENCE_THRESHOLD, this->audio_confidence_threshold, 0.0, 1.0) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_AUDIO_DUCKING_TYPE, this->audio_ducking_type, CTRLM_VOICE_AUDIO_DUCKING_TYPE_ABSOLUTE, CTRLM_VOICE_AUDIO_DUCKING_TYPE_RELATIVE) |
-       attr.get_rfc_value(JSON_FLOAT_NAME_VOICE_AUDIO_DUCKING_LEVEL, this->audio_ducking_level, 0.0, 1.0) |
-       attr.get_rfc_value(JSON_BOOL_NAME_VOICE_AUDIO_DUCKING_BEEP, this->audio_ducking_beep_enabled)) {
+
+    bool audio_mode_updated = false;
+    audio_mode_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_AUDIO_MODE, this->audio_mode);
+    audio_mode_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_AUDIO_TIMING, this->audio_timing);
+    audio_mode_updated |= attr.get_rfc_value(JSON_FLOAT_NAME_VOICE_AUDIO_CONFIDENCE_THRESHOLD, this->audio_confidence_threshold, 0.0, 1.0);
+    audio_mode_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_AUDIO_DUCKING_TYPE, this->audio_ducking_type, CTRLM_VOICE_AUDIO_DUCKING_TYPE_ABSOLUTE, CTRLM_VOICE_AUDIO_DUCKING_TYPE_RELATIVE);
+    audio_mode_updated |= attr.get_rfc_value(JSON_FLOAT_NAME_VOICE_AUDIO_DUCKING_LEVEL, this->audio_ducking_level, 0.0, 1.0);
+    
+    // JSON_BOOL_NAME_VOICE_AUDIO_DUCKING_BEEP is updated via Voice Control plugin so it cannot be overridden via RFC
+
+    XLOGD_INFO("audio mode updated <%s>", audio_mode_updated ? "YES" : "NO");
+
+    if(audio_mode_updated) {
         ctrlm_voice_audio_settings_t audio_settings = {this->audio_mode, this->audio_timing, this->audio_confidence_threshold, this->audio_ducking_type, this->audio_ducking_level, this->audio_ducking_beep_enabled};
         this->set_audio_mode(&audio_settings);
     }
 
     // All attributes that need capture configuration to be set
-    if(attr.get_rfc_value(JSON_ARRAY_NAME_VOICE_SAVE_LAST_UTTERANCE,   this->prefs.utterance_save, ctrlm_is_production_build() ? CTRLM_JSON_ARRAY_INDEX_PRD : CTRLM_JSON_ARRAY_INDEX_DEV) |
-       attr.get_rfc_value(JSON_BOOL_NAME_VOICE_UTTERANCE_USE_CURTAIL,  this->prefs.utterance_use_curtail) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_UTTERANCE_FILE_QTY_MAX,  this->prefs.utterance_file_qty_max, 1, 100000) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_UTTERANCE_FILE_SIZE_MAX, this->prefs.utterance_file_size_max, 4 * 1024) |
-       attr.get_rfc_value(JSON_STR_NAME_VOICE_UTTERANCE_PATH,          this->prefs.utterance_path)) {
+    bool capture_config_updated = false;
+    capture_config_updated |= attr.get_rfc_value(JSON_ARRAY_NAME_VOICE_SAVE_LAST_UTTERANCE,   this->prefs.utterance_save, ctrlm_is_production_build() ? CTRLM_JSON_ARRAY_INDEX_PRD : CTRLM_JSON_ARRAY_INDEX_DEV);
+    capture_config_updated |= attr.get_rfc_value(JSON_BOOL_NAME_VOICE_UTTERANCE_USE_CURTAIL,  this->prefs.utterance_use_curtail);
+    capture_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_UTTERANCE_FILE_QTY_MAX,  this->prefs.utterance_file_qty_max, 1, 100000);
+    capture_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_UTTERANCE_FILE_SIZE_MAX, this->prefs.utterance_file_size_max, 4 * 1024);
+    capture_config_updated |= attr.get_rfc_value(JSON_STR_NAME_VOICE_UTTERANCE_PATH,          this->prefs.utterance_path);
+
+    XLOGD_INFO("capture config updated <%s>", capture_config_updated ? "YES" : "NO");
+
+    if(capture_config_updated) {
         xrsr_capture_config_t capture_config = {
            .delete_files  = !this->prefs.utterance_save,
            .enable        = this->prefs.utterance_save,
@@ -3933,22 +3970,21 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
     }
 
     // All attributes that need a re-route to apply
-    if(attr.get_rfc_value(JSON_INT_NAME_VOICE_MINIMUM_DURATION,                              this->prefs.utterance_duration_min) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL,     this->prefs.dst_params_standby.connect_check_interval) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,            this->prefs.dst_params_standby.timeout_connect) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,         this->prefs.dst_params_standby.timeout_inactivity) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_SESSION,            this->prefs.dst_params_standby.timeout_session) |
-       attr.get_rfc_value(JSON_BOOL_NAME_VOICE_DST_PARAMS_STANDBY_IPV4_FALLBACK,             this->prefs.dst_params_standby.ipv4_fallback) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_BACKOFF_DELAY,              this->prefs.dst_params_standby.backoff_delay) |
+    bool routing_config_updated = false;
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_MINIMUM_DURATION,                              this->prefs.utterance_duration_min);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_CONNECT_CHECK_INTERVAL,     this->prefs.dst_params_standby.connect_check_interval);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_CONNECT,            this->prefs.dst_params_standby.timeout_connect);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_INACTIVITY,         this->prefs.dst_params_standby.timeout_inactivity);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_TIMEOUT_SESSION,            this->prefs.dst_params_standby.timeout_session);
+    routing_config_updated |= attr.get_rfc_value(JSON_BOOL_NAME_VOICE_DST_PARAMS_STANDBY_IPV4_FALLBACK,             this->prefs.dst_params_standby.ipv4_fallback);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_STANDBY_BACKOFF_DELAY,              this->prefs.dst_params_standby.backoff_delay);
     
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_CONNECT_CHECK_INTERVAL, this->prefs.dst_params_low_latency.connect_check_interval) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_CONNECT,        this->prefs.dst_params_low_latency.timeout_connect) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_INACTIVITY,     this->prefs.dst_params_low_latency.timeout_inactivity) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_SESSION,        this->prefs.dst_params_low_latency.timeout_session) |
-       attr.get_rfc_value(JSON_BOOL_NAME_VOICE_DST_PARAMS_LOW_LATENCY_IPV4_FALLBACK,         this->prefs.dst_params_low_latency.ipv4_fallback) |
-       attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_BACKOFF_DELAY,          this->prefs.dst_params_low_latency.backoff_delay)) {
-        reroute = true;
-    }
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_CONNECT_CHECK_INTERVAL, this->prefs.dst_params_low_latency.connect_check_interval);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_CONNECT,        this->prefs.dst_params_low_latency.timeout_connect);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_INACTIVITY,     this->prefs.dst_params_low_latency.timeout_inactivity);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_TIMEOUT_SESSION,        this->prefs.dst_params_low_latency.timeout_session);
+    routing_config_updated |= attr.get_rfc_value(JSON_BOOL_NAME_VOICE_DST_PARAMS_LOW_LATENCY_IPV4_FALLBACK,         this->prefs.dst_params_low_latency.ipv4_fallback);
+    routing_config_updated |= attr.get_rfc_value(JSON_INT_NAME_VOICE_DST_PARAMS_LOW_LATENCY_BACKOFF_DELAY,          this->prefs.dst_params_low_latency.backoff_delay);
 
     std::vector<std::string> obj_server_hosts;
     if(attr.get_rfc_value(JSON_ARRAY_NAME_VOICE_SERVER_HOSTS, obj_server_hosts)) {
@@ -3966,9 +4002,12 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
                 this->voice_device_disable((ctrlm_voice_device_t)i, true, NULL);
             }
         }
-        reroute = true;
+        routing_config_updated = true;
     }
-    if(reroute) {
+
+    XLOGD_INFO("routing config updated <%s>", routing_config_updated ? "YES" : "NO");
+
+    if(routing_config_updated) {
         this->voice_sdk_update_routes();
     }
 }

@@ -94,7 +94,7 @@ public:
     bool isDevicePaired(const BleAddress &address) const override;
     bool isDeviceConnected(const BleAddress &address) const override;
 
-    bool addDevice(const BleAddress &address) override;
+    bool addDevice(const BleAddress &address, int retries) override;
     bool removeDevice(const BleAddress &address) override;
 
     bool setConnectionParams(BleAddress address, double minInterval, double maxInterval,
@@ -113,7 +113,7 @@ public:
                                   const std::vector<std::string> &interfaces);
 
     void onDeviceNameChanged(const BleAddress &address, const std::string &name);
-    void onDevicePairingError(const BleAddress &address, const std::string &error);
+    void onDevicePairingError(const BleAddress &address, const std::string &error, int retryCnt, bool finalRetry);
     void onDevicePairedChanged(const BleAddress &address, bool paired);
     void onDeviceReadyChanged(const BleAddress &address, bool ready);
 

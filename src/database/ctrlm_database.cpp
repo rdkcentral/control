@@ -71,7 +71,11 @@ using namespace std;
 #define CTRLM_DB_IR_COMMAND_REPEATS               "ir_command_repeats"
 #define CTRLM_DB_DEVICE_UPDATE_SESSION_STATE      "du_session_state"
 #define CTRLM_DB_TV_IR_CODE_ID                    "tv_ir_code_id"
+#define CTRLM_DB_TV_IR_VENDOR_ID                  "tv_ir_vendor_id"
+#define CTRLM_DB_TV_IR_VENDOR_NAME                "tv_ir_vendor_name"
 #define CTRLM_DB_AVR_IR_CODE_ID                   "avr_ir_code_id"
+#define CTRLM_DB_AVR_IR_VENDOR_ID                 "avr_ir_vendor_id"
+#define CTRLM_DB_AVR_IR_VENDOR_NAME               "avr_ir_vendor_name"
 
 #define CTRLM_DB_TABLE_VOICE                      "ctrlm_voice"
 
@@ -706,11 +710,13 @@ void ctrlm_db_ir_command_repeats_read(guchar **data, guint32 *length) {
    ctrlm_db_read_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_IR_COMMAND_REPEATS, data, length);
 }
 
-void ctrlm_db_tv_ir_code_id_write(const std::string id) {
+void ctrlm_db_tv_ir_code_id_write(const std::string id, unsigned char vendor_id, const std::string vendor_name) {
    ctrlm_db_write_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_TV_IR_CODE_ID, (const guchar*) id.c_str(), id.length());
+   ctrlm_db_write_uint64(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_TV_IR_VENDOR_ID, vendor_id);
+   ctrlm_db_write_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_TV_IR_VENDOR_NAME, (const guchar*) vendor_name.c_str(), vendor_name.length());
 }
 
-void ctrlm_db_tv_ir_code_id_read(std::string &id) {
+void ctrlm_db_tv_ir_code_id_read(std::string &id, unsigned char &vendor_id, std::string &vendor_name) {
    guchar *data = NULL;
    guint32 length = 0;
    ctrlm_db_read_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_TV_IR_CODE_ID, &data, &length);
@@ -718,15 +724,31 @@ void ctrlm_db_tv_ir_code_id_read(std::string &id) {
       id.assign((char *)data, length);
       ctrlm_db_free(data);
    } else {
-      XLOGD_WARN("Failed to load tv_ir_code_id from db");
+      XLOGD_WARN("Failed to load %s from db", CTRLM_DB_TV_IR_CODE_ID);
+   }
+
+   guint64 vendor_id_64 = 0;
+   ctrlm_db_read_uint64(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_TV_IR_VENDOR_ID, (sqlite_uint64*)&vendor_id_64);
+   vendor_id = vendor_id_64;
+
+   data = NULL;
+   length = 0;
+   ctrlm_db_read_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_TV_IR_VENDOR_NAME, &data, &length);
+   if(NULL != data) {
+      vendor_name.assign((char *)data, length);
+      ctrlm_db_free(data);
+   } else {
+      XLOGD_WARN("Failed to load %s from db", CTRLM_DB_TV_IR_VENDOR_NAME);
    }
 }
 
-void ctrlm_db_avr_ir_code_id_write(const std::string id) {
+void ctrlm_db_avr_ir_code_id_write(const std::string id, unsigned char vendor_id, const std::string vendor_name) {
    ctrlm_db_write_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_AVR_IR_CODE_ID, (const guchar*) id.c_str(), id.length());
+   ctrlm_db_write_uint64(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_AVR_IR_VENDOR_ID, vendor_id);
+   ctrlm_db_write_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_AVR_IR_VENDOR_NAME, (const guchar*) vendor_name.c_str(), vendor_name.length());
 }
 
-void ctrlm_db_avr_ir_code_id_read(std::string &id) {
+void ctrlm_db_avr_ir_code_id_read(std::string &id, unsigned char &vendor_id, std::string &vendor_name) {
    guchar *data = NULL;
    guint32 length = 0;
    ctrlm_db_read_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_AVR_IR_CODE_ID, &data, &length);
@@ -734,7 +756,21 @@ void ctrlm_db_avr_ir_code_id_read(std::string &id) {
       id.assign((char *)data, length);
       ctrlm_db_free(data);
    } else {
-      XLOGD_WARN("Failed to load avr_ir_code_id from db");
+      XLOGD_WARN("Failed to load %s from db", CTRLM_DB_AVR_IR_CODE_ID);
+   }
+
+   guint64 vendor_id_64 = 0;
+   ctrlm_db_read_uint64(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_AVR_IR_VENDOR_ID, (sqlite_uint64*)&vendor_id_64);
+   vendor_id = vendor_id_64;
+
+   data = NULL;
+   length = 0;
+   ctrlm_db_read_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_AVR_IR_VENDOR_NAME, &data, &length);
+   if(NULL != data) {
+      vendor_name.assign((char *)data, length);
+      ctrlm_db_free(data);
+   } else {
+      XLOGD_WARN("Failed to load %s from db", CTRLM_DB_AVR_IR_VENDOR_NAME);
    }
 }
 
@@ -2183,7 +2219,7 @@ void ctrlm_db_controller_create(ctrlm_network_id_t network_id, ctrlm_controller_
    char table_name_controller_entry[CONTROLLER_TABLE_NAME_MAX_LEN];
    char key[3];
 
-   XLOGD_INFO("network id %u controller id %u", network_id, controller_id);
+   XLOGD_DEBUG("network id %u controller id %u", network_id, controller_id);
 
    switch(ctrlm_network_type_get(network_id)) {
       case CTRLM_NETWORK_TYPE_IP:

@@ -275,7 +275,7 @@ void GattBatteryService::onBatteryLevelChanged(const std::vector<uint8_t> &newVa
         return;
     }
 
-    XLOGD_INFO("battery level changed to %u%%", newValue[0]);
+    XLOGD_DEBUG("battery level changed to %u%%", newValue[0]);
 
     // clamp the reply between 0 and 100
     unsigned int level = sanitiseBatteryLevel(newValue[0]);

@@ -183,7 +183,7 @@ BleGattNotifyPipe::BleGattNotifyPipe(int notifyPipeFd, uint16_t mtu, BleUuid uui
 
     m_notifyThread.name = "ble_notify";
     sem_init(&m_notifyThreadSem, 0, 0);
-    XLOGD_INFO("Launching thread <%s> for %s...", m_notifyThread.name, m_uuid.toString().c_str());
+    XLOGD_DEBUG("Launching thread <%s> for %s...", m_notifyThread.name, m_uuid.toString().c_str());
     if (false == ThreadCreate(&m_notifyThread, NotifyThread, this)) {
         sem_destroy(&m_notifyThreadSem);
     } else  {

@@ -2,7 +2,7 @@
  * If not stated otherwise in this file or this component's license file the
  * following copyright and licenses apply:
  *
- * Copyright 2015 RDK Management
+ * Copyright 2014 RDK Management
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,25 +16,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-#include "ctrlm_ipc.h"
-#include "ctrlm_powermanager.h"
-#include <semaphore.h>
+#pragma once
 
-class ctrlm_ipc_iarm_powermanager_t : public ctrlm_powermanager_t {
-public:
-    ctrlm_ipc_iarm_powermanager_t();
-    ~ctrlm_ipc_iarm_powermanager_t();
+#include <stdint.h>
+#include <stdbool.h>
+#include <jansson.h>
 
-    ctrlm_power_state_t get_power_state();
-    bool get_networked_standby_mode();
-    bool get_wakeup_reason_voice();
+class ctrlms_app_interface_t
+{
+   public:
+   virtual ~ctrlms_app_interface_t() {};
 
+   virtual void ws_connected(void);
+   virtual void ws_disconnected(void);
+   virtual bool ws_receive_audio(const unsigned char *payload, int payload_size);
+   virtual bool ws_receive_json(const json_t *json_obj);
+           void ws_send_json(const json_t *json_obj);
+           void ws_handle_set(void *handle);
 
-private:
-    sem_t           semaphore;
+   private:
+   void *ws_handle = NULL;
 };
 
-#if CTRLM_HAL_RF4CE_API_VERSION >= 10 && !defined(CTRLM_DPI_CONTROL_NOT_SUPPORTED)
-IARM_Result_t ctrlm_iarm_powermanager_event_handler_power_pre_change(void* pArgs);
+#ifdef __cplusplus
+extern "C" {
 #endif
-IARM_Result_t ctrlm_iarm_powermanager_call_power_state_change(void *arg);
+
+ctrlms_app_interface_t *ctrlms_app_interface_create(void);
+
+#ifdef __cplusplus
+}
+#endif

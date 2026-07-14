@@ -51,7 +51,6 @@
 #include <sstream>
 #include <iomanip>
 #include "ctrlm_telemetry_event.h"
-#include "tv_audio/ctrlm_tv_audio_cap.h"
 
 using namespace std;
 
@@ -2078,14 +2077,14 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                case CTRLM_HAL_BLE_PROPERTY_WAKEUP_CONFIG:
                   controller->setWakeupConfig(dqm->rcu_data.wakeup_config);
                   XLOGD_INFO("Controller <%s> notified wakeup config = <%s>", controller->ieee_address_get().to_string().c_str(), ctrlm_rcu_wakeup_config_str(controller->get_wakeup_config()));
-                  schedule_status_print();
-                  schedule_status_event();
+                  //schedule_status_print();
+                  //schedule_status_event();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_WAKEUP_CUSTOM_LIST:
                   controller->setWakeupCustomList(dqm->rcu_data.wakeup_custom_list, dqm->rcu_data.wakeup_custom_list_size);
                   XLOGD_INFO("Controller <%s> notified wakeup custom list = <%s>", controller->ieee_address_get().to_string().c_str(), controller->wakeupCustomListToString().c_str());
-                  schedule_status_print();
-                  schedule_status_event();
+                  //schedule_status_print();
+                  //schedule_status_event();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_IRDBS_SUPPORTED:
                   controller->setSupportedIrdbs(dqm->rcu_data.irdbs_supported);
@@ -2852,9 +2851,6 @@ void ctrlm_obj_network_ble_t::power_state_change(gboolean waking_up) {
       for(auto &controller : controllers_) {
          controller.second->setLastWakeupKey(CTRLM_KEY_CODE_INVALID);
       }
-   } else {
-      // When waking from deep sleep, re-evaluate mid-field voice device quantity
-      update_tv_audio_device_qty();
    }
 
    if (ble_rcu_interface_) {
@@ -2970,17 +2966,4 @@ void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start
 
 bool ctrlm_obj_network_ble_t::is_managed_by_network(ctrlm_controller_id_t id) {
     return (id >= BLE_RCU_ID_RANGE_MIN && id < BLE_RCU_ID_RANGE_MAX);
-}
-
-void ctrlm_obj_network_ble_t::update_tv_audio_device_qty() {
-   uint32_t mid_field_device_qty = 0;
-   for (auto const &it : controllers_) {
-      if (it.second->get_connected() && it.second->get_mid_field_voice_capable()) {
-         mid_field_device_qty++;
-      }
-   }
-   ctrlm_tv_audio_cap_t *tv_audio = ctrlm_tv_audio_cap_t::get_instance();
-   if (tv_audio) {
-      tv_audio->update_device_qty(mid_field_device_qty);
-   }
 }

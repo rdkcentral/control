@@ -555,6 +555,11 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
         {
             reply.setName(dbusReply->getName());
             if (dbusReply->isError()) {
+                XLOGD_WARN("AcquireNotify failed for characteristic %s at %s due to <%s:%s>",
+                    m_uuid.toString().c_str(),
+                    m_path.c_str(),
+                    dbusReply->getName().c_str(),
+                    dbusReply->errorMessage().c_str());
                 reply.setError(dbusReply->errorMessage());
                 reply.finish();
                 return;

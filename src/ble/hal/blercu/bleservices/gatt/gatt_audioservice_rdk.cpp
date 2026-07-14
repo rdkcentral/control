@@ -48,7 +48,6 @@
 // Number of async characteristic reads issued during MFV initialization (capabilities, model version, privacy, model configuration)
 #define MFV_TOTAL_INITIAL_READS    (4)
 #define MFV_NOTIFY_RETRY_DELAY_MS  (1000)
-#define MFV_NOTIFY_MAX_RETRIES     (3)
 
 using namespace std;
 
@@ -813,31 +812,6 @@ void GattAudioServiceRdk::scheduleMfvNotifyRetry()
         }, this);
 }
 
-void GattAudioServiceRdk::disableMfvAfterNotifyFailures(const char *reason)
-{
-    XLOGD_ERROR("disabling MFV notifications after repeated failures (%s)", reason);
-    if (m_mfvNotifyRetryTimer > 0) {
-        g_source_remove(m_mfvNotifyRetryTimer);
-        m_mfvNotifyRetryTimer = 0;
-    }
-
-    if (m_mfvSessionStartCharacteristic && m_mfvSessionStartCharacteristic->notificationsEnabled()) {
-        m_mfvSessionStartCharacteristic->disableNotifications();
-    }
-    if (m_mfvDetectionDataCharacteristic && m_mfvDetectionDataCharacteristic->notificationsEnabled()) {
-        m_mfvDetectionDataCharacteristic->disableNotifications();
-    }
-    if (m_mfvPrivacyCharacteristic && m_mfvPrivacyCharacteristic->notificationsEnabled()) {
-        m_mfvPrivacyCharacteristic->disableNotifications();
-    }
-
-    m_mfvState.supported = false;
-    m_mfvState.notificationsEnabled = false;
-    m_mfvState.sessionStartNotifyRequested = false;
-    m_mfvState.detectionDataNotifyRequested = false;
-    m_mfvState.privacyNotifyRequested = false;
-}
-
 // -----------------------------------------------------------------------------
 /*!
     \internal
@@ -1001,18 +975,13 @@ void GattAudioServiceRdk::requestStartMfvSessionStartNotify()
             ++m_mfvState.sessionStartNotifyRetries;
 
             if (reply->errorMessage().find("Notify acquired") != std::string::npos) {
-                XLOGD_WARN("MFV Session Start notify returned 'Notify acquired' but notification state is still disabled; retrying (%u/%u)",
-                    m_mfvState.sessionStartNotifyRetries, MFV_NOTIFY_MAX_RETRIES);
+                XLOGD_WARN("MFV Session Start notify returned 'Notify acquired' but notification state is still disabled; retrying (attempt %u)",
+                    m_mfvState.sessionStartNotifyRetries);
             } else {
-                XLOGD_ERROR("failed to enable MFV Session Start notifications due to <%s> (retry %u/%u)",
-                    reply->errorMessage().c_str(), m_mfvState.sessionStartNotifyRetries, MFV_NOTIFY_MAX_RETRIES);
+                XLOGD_ERROR("failed to enable MFV Session Start notifications due to <%s> (retry attempt %u)",
+                    reply->errorMessage().c_str(), m_mfvState.sessionStartNotifyRetries);
             }
-
-            if (m_mfvState.sessionStartNotifyRetries >= MFV_NOTIFY_MAX_RETRIES) {
-                disableMfvAfterNotifyFailures("Session Start notify");
-            } else {
-                scheduleMfvNotifyRetry();
-            }
+            scheduleMfvNotifyRetry();
         } else {
             m_mfvState.sessionStartNotifyRetries = 0;
             XLOGD_DEBUG("MFV Session Start notifications enabled successfully");
@@ -1041,18 +1010,13 @@ void GattAudioServiceRdk::requestStartMfvDetectionDataNotify()
             ++m_mfvState.detectionDataNotifyRetries;
 
             if (reply->errorMessage().find("Notify acquired") != std::string::npos) {
-                XLOGD_WARN("MFV Detection Data notify returned 'Notify acquired' but notification state is still disabled; retrying (%u/%u)",
-                    m_mfvState.detectionDataNotifyRetries, MFV_NOTIFY_MAX_RETRIES);
+                XLOGD_WARN("MFV Detection Data notify returned 'Notify acquired' but notification state is still disabled; retrying (attempt %u)",
+                    m_mfvState.detectionDataNotifyRetries);
             } else {
-                XLOGD_ERROR("failed to enable MFV Detection Data notifications due to <%s> (retry %u/%u)",
-                    reply->errorMessage().c_str(), m_mfvState.detectionDataNotifyRetries, MFV_NOTIFY_MAX_RETRIES);
+                XLOGD_ERROR("failed to enable MFV Detection Data notifications due to <%s> (retry attempt %u)",
+                    reply->errorMessage().c_str(), m_mfvState.detectionDataNotifyRetries);
             }
-
-            if (m_mfvState.detectionDataNotifyRetries >= MFV_NOTIFY_MAX_RETRIES) {
-                disableMfvAfterNotifyFailures("Detection Data notify");
-            } else {
-                scheduleMfvNotifyRetry();
-            }
+            scheduleMfvNotifyRetry();
         } else {
             m_mfvState.detectionDataNotifyRetries = 0;
             XLOGD_DEBUG("MFV Detection Data notifications enabled successfully");
@@ -1081,18 +1045,13 @@ void GattAudioServiceRdk::requestStartMfvPrivacyNotify()
             ++m_mfvState.privacyNotifyRetries;
 
             if (reply->errorMessage().find("Notify acquired") != std::string::npos) {
-                XLOGD_WARN("MFV Privacy notify returned 'Notify acquired' but notification state is still disabled; retrying (%u/%u)",
-                    m_mfvState.privacyNotifyRetries, MFV_NOTIFY_MAX_RETRIES);
+                XLOGD_WARN("MFV Privacy notify returned 'Notify acquired' but notification state is still disabled; retrying (attempt %u)",
+                    m_mfvState.privacyNotifyRetries);
             } else {
-                XLOGD_ERROR("failed to enable MFV Privacy notifications due to <%s> (retry %u/%u)",
-                    reply->errorMessage().c_str(), m_mfvState.privacyNotifyRetries, MFV_NOTIFY_MAX_RETRIES);
+                XLOGD_ERROR("failed to enable MFV Privacy notifications due to <%s> (retry attempt %u)",
+                    reply->errorMessage().c_str(), m_mfvState.privacyNotifyRetries);
             }
-
-            if (m_mfvState.privacyNotifyRetries >= MFV_NOTIFY_MAX_RETRIES) {
-                disableMfvAfterNotifyFailures("Privacy notify");
-            } else {
-                scheduleMfvNotifyRetry();
-            }
+            scheduleMfvNotifyRetry();
         } else {
             m_mfvState.privacyNotifyRetries = 0;
             XLOGD_DEBUG("MFV Privacy notifications enabled successfully");

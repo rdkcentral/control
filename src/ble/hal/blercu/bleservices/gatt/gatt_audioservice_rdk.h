@@ -98,7 +98,6 @@ private:
     void onMfvInitialReadComplete();
     void maybeEnableMfvNotifications();
     void scheduleMfvNotifyRetry();
-    void disableMfvAfterNotifyFailures(const char *reason);
 
     // MFV notification enable
     void requestStartMfvSessionStartNotify();

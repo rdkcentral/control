@@ -74,8 +74,7 @@ public:
     bool mfvPrivacyEnabled() const override;
     std::vector<uint8_t> mfvModelConfiguration() const override;
     uint8_t mfvCapabilities() const override;
-    // Not yet implemented: stream stats characteristic is Reserved/TBD in the firmware spec.
-    // StreamStatsRaw mfvStreamStats() const override;
+    //StreamStatsRaw mfvStreamStats() const override;
 
     void writeMfvPrivacy(bool enabled, PendingReply<> &&reply) override;
     void writeMfvModelConfiguration(uint8_t sensitivity, uint8_t secondary, uint8_t aad, PendingReply<> &&reply) override;
@@ -192,7 +191,7 @@ private:
     std::shared_ptr<BleGattCharacteristic> m_mfvModelConfigCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_mfvCapabilitiesCharacteristic;
 
-    int64_t m_mfvNotifyRetryEventId = -1;
+    unsigned int m_mfvNotifyRetryTimer = 0;
 
     static const BleUuid m_mfvSessionStartCharUuid;
     static const BleUuid m_mfvDetectionDataCharUuid;

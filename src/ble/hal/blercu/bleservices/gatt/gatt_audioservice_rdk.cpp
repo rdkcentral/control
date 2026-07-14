@@ -67,9 +67,9 @@ GattAudioServiceRdk::GattAudioServiceRdk(GMainLoop* mainLoop) : GattAudioService
 
 GattAudioServiceRdk::~GattAudioServiceRdk()
 {
-    if (m_mfvNotifyRetryEventId >= 0) {
-        stateMachineCancelDelayedEvent(m_mfvNotifyRetryEventId);
-        m_mfvNotifyRetryEventId = -1;
+    if (m_mfvNotifyRetryTimer > 0) {
+        g_source_remove(m_mfvNotifyRetryTimer);
+        m_mfvNotifyRetryTimer = 0;
     }
 }
 
@@ -144,10 +144,9 @@ void GattAudioServiceRdk::onEnteredIdle() {
     stateMachineCancelDelayedEvents(RetryStartNotifyEvent);
     stateMachineCancelDelayedEvents(GattErrorEvent);
     m_mfvState.reset();
-
-    if (m_mfvNotifyRetryEventId >= 0) {
-        stateMachineCancelDelayedEvent(m_mfvNotifyRetryEventId);
-        m_mfvNotifyRetryEventId = -1;
+    if (m_mfvNotifyRetryTimer > 0) {
+        g_source_remove(m_mfvNotifyRetryTimer);
+        m_mfvNotifyRetryTimer = 0;
     }
 
     if (m_audioDataCharacteristic) {
@@ -208,9 +207,6 @@ void GattAudioServiceRdk::onEnteredIdle() {
  */
 void GattAudioServiceRdk::onEnteredEnableNotificationsState()
 {
-    // If we got here via delayed retry event, mark it consumed.
-    m_mfvNotifyRetryEventId = -1;
-
     auto replyHandlerData = [this](PendingReply<> *reply)
         {
             if (reply->isError()) {
@@ -804,16 +800,37 @@ void GattAudioServiceRdk::maybeEnableMfvNotifications()
 
 void GattAudioServiceRdk::scheduleMfvNotifyRetry()
 {
-    if (!m_mfvState.supported || m_mfvState.notificationsEnabled || (m_mfvNotifyRetryEventId >= 0)) {
+    if (!m_mfvState.supported || m_mfvState.notificationsEnabled || (m_mfvNotifyRetryTimer > 0)) {
         return;
     }
 
-    m_mfvNotifyRetryEventId = stateMachinePostDelayedEvent(RetryEnableNotificationsEvent, MFV_NOTIFY_RETRY_DELAY_MS);
+    m_mfvNotifyRetryTimer = g_timeout_add(MFV_NOTIFY_RETRY_DELAY_MS,
+        [](gpointer userData) -> gboolean {
+            auto *self = static_cast<GattAudioServiceRdk *>(userData);
+            self->m_mfvNotifyRetryTimer = 0;
+            self->maybeEnableMfvNotifications();
+            return G_SOURCE_REMOVE;
+        }, this);
 }
 
 void GattAudioServiceRdk::disableMfvAfterNotifyFailures(const char *reason)
 {
     XLOGD_ERROR("disabling MFV notifications after repeated failures (%s)", reason);
+    if (m_mfvNotifyRetryTimer > 0) {
+        g_source_remove(m_mfvNotifyRetryTimer);
+        m_mfvNotifyRetryTimer = 0;
+    }
+
+    if (m_mfvSessionStartCharacteristic && m_mfvSessionStartCharacteristic->notificationsEnabled()) {
+        m_mfvSessionStartCharacteristic->disableNotifications();
+    }
+    if (m_mfvDetectionDataCharacteristic && m_mfvDetectionDataCharacteristic->notificationsEnabled()) {
+        m_mfvDetectionDataCharacteristic->disableNotifications();
+    }
+    if (m_mfvPrivacyCharacteristic && m_mfvPrivacyCharacteristic->notificationsEnabled()) {
+        m_mfvPrivacyCharacteristic->disableNotifications();
+    }
+
     m_mfvState.supported = false;
     m_mfvState.notificationsEnabled = false;
     m_mfvState.sessionStartNotifyRequested = false;

@@ -70,7 +70,7 @@ void ctrlm_rfc_attr_t::set_rfc_value(const std::string &value) {
                 // Convert to JSON
                 json_t *temp = this->value_json;
                 json_error_t json_error;
-                this->value_json = json_loads((const char *)decoded_buf, JSON_REJECT_DUPLICATES, &json_error);
+                this->value_json = json_loadb((const char *)decoded_buf, decoded_buf_len, JSON_REJECT_DUPLICATES, &json_error);
                 free(decoded_buf);
                 decoded_buf = NULL;
                 if(this->value_json) {

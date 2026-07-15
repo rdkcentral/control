@@ -140,9 +140,9 @@ private:
         bool detectionDataNotifyRequested = false;
         bool privacyNotifyRequested = false;
 
-        uint8_t sessionStartNotifyRetries = 0;
-        uint8_t detectionDataNotifyRetries = 0;
-        uint8_t privacyNotifyRetries = 0;
+        unsigned int sessionStartNotifyRetries = 0;
+        unsigned int detectionDataNotifyRetries = 0;
+        unsigned int privacyNotifyRetries = 0;
 
         void reset()
         {

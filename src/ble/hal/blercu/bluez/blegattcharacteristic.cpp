@@ -509,8 +509,19 @@ void BleGattCharacteristicBluez::enableDbusNotifications(const Slot<const std::v
         return;
     }
 
-    proxy->StartNotify(notifyCB, std::move(reply));
-    m_notifyEnabled.store(true);
+    // StartNotify is async; only mark enabled after the reply reports success.
+    auto wrappedReply = PendingReply<>(m_isAlive, [this, reply = std::move(reply)](PendingReply<> *inner) mutable {
+        reply.setName(inner->getName());
+        if (inner->isError()) {
+            m_notifyEnabled.store(false);
+            reply.setError(inner->errorMessage());
+        } else {
+            m_notifyEnabled.store(true);
+        }
+        reply.finish();
+    });
+
+    proxy->StartNotify(notifyCB, std::move(wrappedReply));
 }
 
 

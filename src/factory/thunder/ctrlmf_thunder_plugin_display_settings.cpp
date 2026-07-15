@@ -40,6 +40,7 @@ ctrlmf_thunder_plugin_display_settings_t *ctrlmf_thunder_plugin_display_settings
 
 bool ctrlmf_thunder_plugin_display_settings_t::set_audio_ducking(
         bool action, bool type, unsigned char level) {
+    XLOGD_INFO("[CTRLMF_THUNDER_DS_DUCKING] Function called: action=%d (%s), type=%d (%s), level=%u", action, action ? "start" : "stop", type, type ? "relative" : "absolute", level);
     JsonObject params, response;
     params["audioPort"]   = "SPEAKER0";
     params["mode"]        = "raw";
@@ -47,15 +48,25 @@ bool ctrlmf_thunder_plugin_display_settings_t::set_audio_ducking(
     params["duckingType"] = type ? "relative" : "absolute";
     params["level"]       = (int)level;
 
+    std::string params_str;
+    params.ToString(params_str);
+    XLOGD_INFO("[CTRLMF_THUNDER_DS_DUCKING] JSON params: %s", params_str.c_str());
+    
+    XLOGD_INFO("[CTRLMF_THUNDER_DS_DUCKING] Calling DisplaySettings plugin 'setAudioDucking'...");
     if(!this->call_plugin("setAudioDucking", (void *)&params, (void *)&response)) {
         XLOGD_ERROR("DisplaySettings setAudioDucking call failed");
         return false;
     }
+    XLOGD_INFO("[CTRLMF_THUNDER_DS_DUCKING] call_plugin returned true, checking response...");
+    
+    std::string response_str;
+    response.ToString(response_str);
+    XLOGD_INFO("[CTRLMF_THUNDER_DS_DUCKING] Response JSON: %s", response_str.c_str());
+
     if(!response["success"].Boolean()) {
-        std::string resp_str;
-        response.ToString(resp_str);
-        XLOGD_ERROR("DisplaySettings setAudioDucking returned failure: %s", resp_str.c_str());
+        XLOGD_ERROR("DisplaySettings setAudioDucking returned failure: %s", response_str.c_str());
         return false;
     }
+    XLOGD_INFO("[CTRLMF_THUNDER_DS_DUCKING] SUCCESS: Returning true");
     return true;
 }

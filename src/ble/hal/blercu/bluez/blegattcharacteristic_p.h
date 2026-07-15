@@ -33,6 +33,8 @@
 #include "../blegattcharacteristic.h"
 #include "interfaces/bluezgattcharacteristicinterface.h"
 
+#include <atomic>
+
 
 class BleGattNotifyPipe;
 class BleGattDescriptorBluez;
@@ -136,8 +138,8 @@ private:
     uint16_t m_flags;
     BleUuid m_uuid;
     int m_instanceId;
-
-    bool m_notifyEnabled;
+    // TODO: Making this thread safe temporarily with atomic until we fix the notify issue
+    std::atomic<bool> m_notifyEnabled;
     std::shared_ptr<BleGattNotifyPipe> m_notifyPipe;
 
     std::map<BleUuid, std::shared_ptr<BleGattDescriptorBluez>> m_descriptors;

@@ -422,7 +422,7 @@ void BleGattCharacteristicBluez::writeValueWithoutResponse(const std::vector<uin
 
 bool BleGattCharacteristicBluez::notificationsEnabled()
 {
-    return m_notifyEnabled;
+    return m_notifyEnabled.load();
 }
 
 
@@ -442,7 +442,7 @@ void BleGattCharacteristicBluez::disableNotifications()
     }
 
     // check if notifications are already disabled
-    if (!m_notifyEnabled) {
+    if (!m_notifyEnabled.load()) {
         return;
     }
 
@@ -456,7 +456,7 @@ void BleGattCharacteristicBluez::disableNotifications()
         proxy->StopNotifySync();
     }
     
-    m_notifyEnabled = false;
+    m_notifyEnabled.store(false);
 }
 
 
@@ -503,14 +503,14 @@ void BleGattCharacteristicBluez::enableDbusNotifications(const Slot<const std::v
     }
 
     // check if notifications are already enabled
-    if (m_notifyEnabled) {
+    if (m_notifyEnabled.load()) {
         XLOGD_WARN("notifications already enabled for %s, not enabling again...", m_uuid.toString().c_str());
         reply.finish();
         return;
     }
 
     proxy->StartNotify(notifyCB, std::move(reply));
-    m_notifyEnabled = true;
+    m_notifyEnabled.store(true);
 }
 
 
@@ -543,7 +543,7 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
     }
 
     // check if notifications are already enabled / disabled
-    if (m_notifyEnabled) {
+    if (m_notifyEnabled.load()) {
         XLOGD_WARN("notifications already enabled for %s, not enabling again...", m_uuid.toString().c_str());
         reply.finish();
         return;
@@ -572,7 +572,7 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
                     auto wrappedReply = PendingReply<>(m_isAlive, [this, reply = std::move(reply)](PendingReply<> *inner) mutable {
                         reply.setName(inner->getName());
                         if (inner->isError()) {
-                            m_notifyEnabled = false;
+                            m_notifyEnabled.store(false);
                             reply.setError(inner->errorMessage());
                         }
                         reply.finish();
@@ -627,7 +627,7 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
                 return;
             }
 
-            m_notifyEnabled = true;
+            m_notifyEnabled.store(true);
 
             m_notifyPipe->addNotificationSlot(notifyCB);
 
@@ -655,5 +655,5 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
 void BleGattCharacteristicBluez::onNotifyPipeClosed()
 {
     XLOGD_INFO("notification pipe closed for %s, clearing notify state", m_uuid.toString().c_str());
-    m_notifyEnabled = false;
+    m_notifyEnabled.store(false);
 }

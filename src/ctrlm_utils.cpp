@@ -1616,21 +1616,30 @@ bool ctrlm_dsmgr_mute_audio(bool mute) {
 }
 
 bool ctrlm_dsmgr_duck_audio(bool enable, bool relative, double vol) {
+   XLOGD_INFO("[CTRLM_DUCK_AUDIO] Function called: enable=%d, relative=%d, vol=%f", enable, relative, vol);
    if(vol < 0 || vol > 1) {
+      XLOGD_ERROR("[CTRLM_DUCK_AUDIO] Invalid volume %f (must be 0.0-1.0)", vol);
       XLOGD_ERROR("Invalid volume");
       return false;
    }
 #ifdef CTRLM_USE_THUNDER_FR_DS
+   XLOGD_INFO("[CTRLM_DUCK_AUDIO] Using CTRLM_USE_THUNDER_FR_DS path");
    unsigned char level = (unsigned char)((vol * 100) + 0.5);
    bool action = enable;      // true = start ducking, false = stop ducking
    bool type   = relative;    // true = relative, false = absolute
+   XLOGD_INFO("[CTRLM_DUCK_AUDIO] Calculated: action=%d, type=%d, level=%u", action, type, level);
 
+   XLOGD_INFO("[CTRLM_DUCK_AUDIO] Getting DisplaySettings instance...");
    auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
    if(!ds) {
+      XLOGD_ERROR("[CTRLM_DUCK_AUDIO] DisplaySettings plugin not available");
       XLOGD_ERROR("DisplaySettings plugin not available");
       return false;
    }
+   XLOGD_INFO("[CTRLM_DUCK_AUDIO] DisplaySettings instance obtained successfully");
+   XLOGD_INFO("[CTRLM_DUCK_AUDIO] Calling set_audio_ducking...");
    bool ret = ds->set_audio_ducking(action, type, level);
+   XLOGD_INFO("[CTRLM_DUCK_AUDIO] set_audio_ducking returned: %d", ret);
    if(ret) {
       if(enable) {
          XLOGD_INFO("Audio ducking enabled - type <%s> level <%u%%>", relative ? "RELATIVE" : "ABSOLUTE", level);
@@ -1640,15 +1649,20 @@ bool ctrlm_dsmgr_duck_audio(bool enable, bool relative, double vol) {
    } else {
       XLOGD_WARN("Muting sound error");
    }
+   XLOGD_INFO("[CTRLM_DUCK_AUDIO] Returning: %d", ret);
    return ret;
 #else
+   XLOGD_INFO("[CTRLM_DUCK_AUDIO] Using device::Host (non-Thunder) path");
    try {
       unsigned char level = (unsigned char)((vol * 100) + 0.5);
 
       dsAudioDuckingAction_t action = enable   ? dsAUDIO_DUCKINGACTION_START  : dsAUDIO_DUCKINGACTION_STOP;
       dsAudioDuckingType_t   type   = relative ? dsAUDIO_DUCKINGTYPE_RELATIVE : dsAUDIO_DUCKINGTYPE_ABSOLUTE;
+      XLOGD_INFO("[CTRLM_DUCK_AUDIO] Calculated: action=%d, type=%d, level=%u", action, type, level);
 
+      XLOGD_INFO("[CTRLM_DUCK_AUDIO] Calling device::Host::getInstance().getAudioOutputPort(SPEAKER0).setAudioDucking...");
       device::Host::getInstance().getAudioOutputPort("SPEAKER0").setAudioDucking(action, type, level);
+      XLOGD_INFO("[CTRLM_DUCK_AUDIO] setAudioDucking call completed successfully");
 
       if(enable) {
          XLOGD_INFO("Audio ducking enabled - type <%s> level <%u%%>", relative ? "RELATIVE" : "ABSOLUTE", level);
@@ -1660,6 +1674,7 @@ bool ctrlm_dsmgr_duck_audio(bool enable, bool relative, double vol) {
       XLOGD_WARN("Ducking sound error : %s", error.what());
       return false;
    }
+   XLOGD_INFO("[CTRLM_DUCK_AUDIO] Returning: true");
    return true;
 #endif
 }

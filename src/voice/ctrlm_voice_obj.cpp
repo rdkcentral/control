@@ -4018,11 +4018,13 @@ void ctrlm_voice_t::vsdk_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
         XLOGD_INFO("VSDK values from XCONF, reopening xrsr..");
         if(this->vsdk_config) {
             json_object_update_missing(obj_vsdk, this->vsdk_config);
-            json_decref(this->vsdk_config);
-            this->vsdk_config = NULL;
         }
         // This is temporary until the VSDK supports receiving a config on the fly
         this->voice_sdk_close();
+        if(this->vsdk_config) {
+            json_decref(this->vsdk_config);
+            this->vsdk_config = NULL;
+        }
         this->vsdk_config = obj_vsdk; // Transfer ownership
         this->voice_sdk_open(this->vsdk_config);
         this->voice_sdk_update_routes();

@@ -61,9 +61,7 @@ typedef enum {
    CTRLM_HAL_BLE_MFV_DETECTION_BELOW_THRESHOLD = 0x03,
 } ctrlm_hal_ble_MfvDetectionType_t;
 
-/// @brief Supported voice data encoding types.
-typedef enum {
-   CTRLM_HAL_BLE_PROPERTY_IEEE_ADDDRESS = 0,
+/// @brief BLE RCU property identifiers used in ctrlm_hal_ble_RcuStatusData_t::property_updated.
    CTRLM_HAL_BLE_PROPERTY_DEVICE_ID,
    CTRLM_HAL_BLE_PROPERTY_NAME,
    CTRLM_HAL_BLE_PROPERTY_MANUFACTURER,

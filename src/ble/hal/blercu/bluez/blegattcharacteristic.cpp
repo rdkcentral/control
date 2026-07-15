@@ -572,8 +572,15 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
                     auto wrappedReply = PendingReply<>(m_isAlive, [this, reply = std::move(reply)](PendingReply<> *inner) mutable {
                         reply.setName(inner->getName());
                         if (inner->isError()) {
-                            m_notifyEnabled.store(false);
-                            reply.setError(inner->errorMessage());
+                            // If StartNotify also reports "Notify acquired", treat it as success.
+                            // We already registered the Value property callback, and this condition
+                            // indicates BlueZ considers notifications active.
+                            if (inner->errorMessage().find("Notify acquired") != std::string::npos) {
+                                XLOGD_WARN("StartNotify returned 'Notify acquired' for %s; treating as success", m_uuid.toString().c_str());
+                            } else {
+                                m_notifyEnabled.store(false);
+                                reply.setError(inner->errorMessage());
+                            }
                         }
                         reply.finish();
                     });

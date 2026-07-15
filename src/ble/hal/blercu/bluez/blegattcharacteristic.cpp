@@ -567,7 +567,18 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
                 // receive notifications instead of failing forever on AcquireNotify.
                 if (dbusReply->errorMessage().find("Notify acquired") != std::string::npos) {
                     XLOGD_WARN("falling back to StartNotify for %s after AcquireNotify NotPermitted", m_uuid.toString().c_str());
-                    enableDbusNotifications(notifyCB, std::move(reply));
+
+                    // enableDbusNotifications() sets m_notifyEnabled immediately, so wrap the reply to clear state on failure.
+                    auto wrappedReply = PendingReply<>(m_isAlive, [this, reply = std::move(reply)](PendingReply<> *inner) mutable {
+                        reply.setName(inner->getName());
+                        if (inner->isError()) {
+                            m_notifyEnabled = false;
+                            reply.setError(inner->errorMessage());
+                        }
+                        reply.finish();
+                    });
+
+                    enableDbusNotifications(notifyCB, std::move(wrappedReply));
                     return;
                 }
 

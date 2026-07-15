@@ -560,6 +560,17 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
                     m_path.c_str(),
                     dbusReply->getName().c_str(),
                     dbusReply->errorMessage().c_str());
+
+                // Some BlueZ versions/devices return NotPermitted: Notify acquired
+                // when CCCD state is already active across reconnects. In that case,
+                // fall back to StartNotify (DBus notifications) so we can still
+                // receive notifications instead of failing forever on AcquireNotify.
+                if (dbusReply->errorMessage().find("Notify acquired") != std::string::npos) {
+                    XLOGD_WARN("falling back to StartNotify for %s after AcquireNotify NotPermitted", m_uuid.toString().c_str());
+                    enableDbusNotifications(notifyCB, std::move(reply));
+                    return;
+                }
+
                 reply.setError(dbusReply->errorMessage());
                 reply.finish();
                 return;

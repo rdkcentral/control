@@ -627,9 +627,13 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
     Slot called when the notification pipe is closed, bluez does this if the remote
     device disconnects.
 
+    We must release the notify pipe here so BlueZ marks the acquisition as released.
+    Without this, BlueZ continues to report NotifyAcquired=true after reconnect,
+    causing all subsequent AcquireNotify calls to fail with NotPermitted.
+
  */
 void BleGattCharacteristicBluez::onNotifyPipeClosed()
 {
-    // Nothing to be done here.  This callback is invoked from inside the 
-    // m_notifyPipe object itself, which will get cleaned up later
+    XLOGD_INFO("notification pipe closed for %s, clearing notify state", m_uuid.toString().c_str());
+    m_notifyEnabled = false;
 }

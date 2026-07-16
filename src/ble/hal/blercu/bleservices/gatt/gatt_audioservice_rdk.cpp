@@ -35,6 +35,7 @@
 
 #include "ctrlm_log_ble.h"
 
+#include <algorithm>
 #include <unistd.h>
 #include <errno.h>
 

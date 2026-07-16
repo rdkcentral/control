@@ -422,7 +422,7 @@ void BleGattCharacteristicBluez::writeValueWithoutResponse(const std::vector<uin
 
 bool BleGattCharacteristicBluez::notificationsEnabled()
 {
-    return m_notifyEnabled.load();
+    return m_notifyEnabled;
 }
 
 
@@ -442,7 +442,7 @@ void BleGattCharacteristicBluez::disableNotifications()
     }
 
     // check if notifications are already disabled
-    if (!m_notifyEnabled.load()) {
+    if (!m_notifyEnabled) {
         return;
     }
 
@@ -456,7 +456,7 @@ void BleGattCharacteristicBluez::disableNotifications()
         proxy->StopNotifySync();
     }
     
-    m_notifyEnabled.store(false);
+    m_notifyEnabled = false;
 }
 
 
@@ -503,25 +503,14 @@ void BleGattCharacteristicBluez::enableDbusNotifications(const Slot<const std::v
     }
 
     // check if notifications are already enabled
-    if (m_notifyEnabled.load()) {
+    if (m_notifyEnabled) {
         XLOGD_WARN("notifications already enabled for %s, not enabling again...", m_uuid.toString().c_str());
         reply.finish();
         return;
     }
 
-    // StartNotify is async; only mark enabled after the reply reports success.
-    auto wrappedReply = PendingReply<>(m_isAlive, [this, reply = std::move(reply)](PendingReply<> *inner) mutable {
-        reply.setName(inner->getName());
-        if (inner->isError()) {
-            m_notifyEnabled.store(false);
-            reply.setError(inner->errorMessage());
-        } else {
-            m_notifyEnabled.store(true);
-        }
-        reply.finish();
-    });
-
-    proxy->StartNotify(notifyCB, std::move(wrappedReply));
+    proxy->StartNotify(notifyCB, std::move(reply));
+    m_notifyEnabled = true;
 }
 
 
@@ -554,7 +543,7 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
     }
 
     // check if notifications are already enabled / disabled
-    if (m_notifyEnabled.load()) {
+    if (m_notifyEnabled) {
         XLOGD_WARN("notifications already enabled for %s, not enabling again...", m_uuid.toString().c_str());
         reply.finish();
         return;
@@ -571,34 +560,6 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
                     m_path.c_str(),
                     dbusReply->getName().c_str(),
                     dbusReply->errorMessage().c_str());
-
-                // Some BlueZ versions/devices return NotPermitted: Notify acquired
-                // when CCCD state is already active across reconnects. In that case,
-                // fall back to StartNotify (DBus notifications) so we can still
-                // receive notifications instead of failing forever on AcquireNotify.
-                if (dbusReply->errorMessage().find("Notify acquired") != std::string::npos) {
-                    XLOGD_WARN("falling back to StartNotify for %s after AcquireNotify NotPermitted", m_uuid.toString().c_str());
-
-                    // enableDbusNotifications() sets m_notifyEnabled immediately, so wrap the reply to clear state on failure.
-                    auto wrappedReply = PendingReply<>(m_isAlive, [this, reply = std::move(reply)](PendingReply<> *inner) mutable {
-                        reply.setName(inner->getName());
-                        if (inner->isError()) {
-                            // If StartNotify also reports "Notify acquired", treat it as success.
-                            // We already registered the Value property callback, and this condition
-                            // indicates BlueZ considers notifications active.
-                            if (inner->errorMessage().find("Notify acquired") != std::string::npos) {
-                                XLOGD_WARN("StartNotify returned 'Notify acquired' for %s; treating as success", m_uuid.toString().c_str());
-                            } else {
-                                m_notifyEnabled.store(false);
-                                reply.setError(inner->errorMessage());
-                            }
-                        }
-                        reply.finish();
-                    });
-
-                    enableDbusNotifications(notifyCB, std::move(wrappedReply));
-                    return;
-                }
 
                 reply.setError(dbusReply->errorMessage());
                 reply.finish();
@@ -645,7 +606,7 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
                 return;
             }
 
-            m_notifyEnabled.store(true);
+            m_notifyEnabled = true;
 
             m_notifyPipe->addNotificationSlot(notifyCB);
 
@@ -672,6 +633,6 @@ void BleGattCharacteristicBluez::enablePipeNotifications(const Slot<const std::v
  */
 void BleGattCharacteristicBluez::onNotifyPipeClosed()
 {
-    XLOGD_INFO("notification pipe closed for %s, clearing notify state", m_uuid.toString().c_str());
-    m_notifyEnabled.store(false);
+    // Nothing to be done here.  This callback is invoked from inside the
+    // m_notifyPipe object itself, which will get cleaned up later
 }

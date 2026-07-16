@@ -25,6 +25,7 @@
 #include <archive.h>
 #include <algorithm>
 #include <cctype>
+#include <tuple>
 #include "ctrlm.h"
 #include "ctrlm_utils.h"
 #include <xr_mq.h>
@@ -46,6 +47,11 @@
 #include "dsDisplay.h"
 #include <regex>
 // end dsMgr includes
+
+using std::get;
+using std::map;
+using std::string;
+using std::tuple;
 
 #define BLOCK_SIZE     (1024 * 4 * 10) /* bytes */
 #define MAX_RECURSE_DEPTH 20
@@ -126,6 +132,14 @@ void ctrlm_timestamp_get_monotonic(ctrlm_timestamp_t *timestamp) {
    if(timestamp == NULL || clock_gettime(CLOCK_MONOTONIC_RAW, timestamp)) {
       XLOGD_ERROR("Unable to get time.");
    }
+}
+
+uint64_t ctrlm_timestamp_get_ms(void) {
+   struct timespec ts;
+   if(clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+      return 0;
+   }
+   return ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL);
 }
 
 //  1 : one is greater than two
@@ -1376,33 +1390,6 @@ const char *ctrlm_linux_key_code_str(uint16_t code, bool mask) {
       return "Unknown";
    }
 }
-
-#ifdef USE_IARM_POWER_MANAGER
-const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason) {
-    switch(wakeup_reason) {
-        case DEEPSLEEP_WAKEUPREASON_IR:               return("IR");
-        case DEEPSLEEP_WAKEUPREASON_RCU_BT:           return("RCU_BT");
-        case DEEPSLEEP_WAKEUPREASON_RCU_RF4CE:        return("RCU_RF4CE");
-        case DEEPSLEEP_WAKEUPREASON_GPIO:             return("GPIO");
-        case DEEPSLEEP_WAKEUPREASON_LAN:              return("LAN");
-        case DEEPSLEEP_WAKEUPREASON_WLAN:             return("WLAN");
-        case DEEPSLEEP_WAKEUPREASON_TIMER:            return("TIMER");
-        case DEEPSLEEP_WAKEUPREASON_FRONT_PANEL:      return("FRONT_PANEL");
-        case DEEPSLEEP_WAKEUPREASON_WATCHDOG:         return("WATCHDOG");
-        case DEEPSLEEP_WAKEUPREASON_SOFTWARE_RESET:   return("SOFTWARE_RESET");
-        case DEEPSLEEP_WAKEUPREASON_THERMAL_RESET:    return("THERMAL_RESET");
-        case DEEPSLEEP_WAKEUPREASON_WARM_RESET:       return("WARM_RESET");
-        case DEEPSLEEP_WAKEUPREASON_COLDBOOT:         return("COLDBOOT");
-        case DEEPSLEEP_WAKEUPREASON_STR_AUTH_FAILURE: return("STR_AUTH_FAILURE");
-        case DEEPSLEEP_WAKEUPREASON_CEC:              return("CEC");
-        case DEEPSLEEP_WAKEUPREASON_PRESENCE:         return("PRESENCE");
-        case DEEPSLEEP_WAKEUPREASON_VOICE:            return("VOICE");
-        case DEEPSLEEP_WAKEUPREASON_UNKNOWN:          return("UNKNOWN");
-        case DEEPSLEEP_WAKEUPREASON_MAX:              return("MAX");
-    }
-    return(ctrlm_invalid_return(wakeup_reason));
-}
-#endif
 
 bool ctrlm_file_copy(const char* src, const char* dst, bool overwrite, bool follow_dst_symbolic_link) {
    bool    ret   = FALSE;

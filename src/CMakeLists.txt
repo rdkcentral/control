@@ -187,7 +187,6 @@ if(THUNDER)
       thunder/plugins/ctrlm_thunder_plugin_cec_sink.cpp
       thunder/plugins/ctrlm_thunder_plugin_cec_source.cpp
       thunder/plugins/ctrlm_thunder_plugin_display_settings.cpp
-      thunder/plugins/ctrlm_thunder_plugin_front_panel.cpp
       thunder/plugins/ctrlm_thunder_plugin_device_info.cpp
       thunder/plugins/ctrlm_thunder_plugin_av_input.cpp
       thunder/plugins/ctrlm_thunder_plugin_system.cpp
@@ -204,10 +203,6 @@ if(THUNDER)
          auth/ctrlm_thunder_plugin_authservice.cpp
       )
   endif()
-endif()
-
-if(CTRLM_USE_THUNDER_FR_DS)
-   target_compile_definitions(controlMgr PRIVATE CTRLM_USE_THUNDER_FR_DS)
 endif()
 
 if(XRSR_HTTP)

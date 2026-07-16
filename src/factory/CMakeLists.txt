@@ -49,10 +49,6 @@ target_sources(ctrlm-fta PRIVATE
 target_link_libraries(ctrlm-fta c rdkversion dbus-1 glib-2.0 IARMBus xr-voice-sdk pthread nopoll secure_wrapper)
 target_link_libraries(controlFactory c ctrlm-fta secure_wrapper)
 
-if(NOT CTRLM_USE_THUNDER_FR_DS)
-   target_link_libraries(ctrlm-fta ds)
-endif()
-
 if(AUTH_ENABLED)
    add_compile_definitions(PRIVATE CTRLMF_WSS_ENABLED)
    target_link_libraries(ctrlm-fta RdkCertSelector rdkconfig)
@@ -65,12 +61,8 @@ if(THUNDER)
       thunder/ctrlmf_thunder_controller.cpp
       thunder/ctrlmf_thunder_plugin.cpp
       thunder/ctrlmf_thunder_plugin_system_audio_player.cpp
+      thunder/ctrlmf_thunder_plugin_display_settings.cpp
    )
-   if(CTRLM_USE_THUNDER_FR_DS)
-      target_sources(ctrlm-fta PRIVATE
-         thunder/ctrlmf_thunder_plugin_display_settings.cpp
-      )
-   endif()
 
    target_link_libraries(ctrlm-fta WPEFrameworkCore WPEFrameworkPlugins)
    if(WPE_FRAMEWORK_COM_SOCKET)
@@ -84,10 +76,6 @@ if(THUNDER)
       add_compile_definitions(PRIVATE THUNDER_SECURITY)
       target_link_libraries(ctrlm-fta WPEFrameworkSecurityUtil secure_wrapper)
    endif()
-endif()
-
-if(CTRLM_USE_THUNDER_FR_DS)
-   target_compile_definitions(ctrlm-fta PRIVATE CTRLM_USE_THUNDER_FR_DS)
 endif()
 
 install(TARGETS controlFactory DESTINATION bin)

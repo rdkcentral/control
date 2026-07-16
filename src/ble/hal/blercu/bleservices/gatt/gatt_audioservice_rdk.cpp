@@ -46,7 +46,7 @@
 #define AUDIO_SEQ_NUM_MAX          (0xFF)
 
 // Number of async characteristic reads issued during MFV initialization (capabilities, model version, privacy, model configuration)
-#define MFV_TOTAL_INITIAL_READS    (4)
+#define MFV_TOTAL_INITIAL_READS        (4)
 #define MFV_NOTIFY_RETRY_DELAY_MS      (1000)
 #define MFV_NOTIFY_RETRY_MAX_DELAY_MS  (32000)
 

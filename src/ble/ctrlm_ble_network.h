@@ -219,13 +219,13 @@ private:
    void                                      emit_irdb_program_result(int ir_state, const std::string &fail_reason, uint8_t rcu_bitmask, const std::string &vendor_name, uint8_t vendor_bitmask);
 
    json_t *                                  json_config_               = NULL;
-   bool                                      voice_disabled_                          = false;
-   bool                                      mfv_below_threshold_session_enabled_     = false;
+   bool                                      voice_disabled_            = false;
    bool                                      upgrade_in_progress_       = false;
    bool                                      unpair_on_remote_request_  = true;
    ctrlm_ble_unpair_metrics_t                last_rcu_unpair_metrics_;
    int                                       print_status_defer_count_  = 0;
    int                                       event_status_defer_count_  = 0;
+   bool                                      mfv_below_threshold_session_enabled_ = false;
 
    std::map <ctrlm_controller_id_t, ctrlm_obj_controller_ble_t *> controllers_;
    std::map <std::string, ctrlm_ble_upgrade_image_info_t>         upgrade_images_;

@@ -768,6 +768,13 @@ void GattAudioServiceRdk::maybeEnableMfvNotifications()
         return;
     }
 
+    // If a backoff retry timer is pending, don't bypass it — let the timer drive the next
+    // attempt. The timer callback zeroes m_mfvNotifyRetryTimer before calling back here,
+    // so timer-driven retries are not affected by this guard.
+    if (m_mfvNotifyRetryTimer > 0) {
+        return;
+    }
+
     // Only request notification enables that are not already enabled.
     if (m_mfvSessionStartCharacteristic &&
         !m_mfvSessionStartCharacteristic->notificationsEnabled() &&

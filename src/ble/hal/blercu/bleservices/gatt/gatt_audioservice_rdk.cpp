@@ -47,7 +47,8 @@
 
 // Number of async characteristic reads issued during MFV initialization (capabilities, model version, privacy, model configuration)
 #define MFV_TOTAL_INITIAL_READS    (4)
-#define MFV_NOTIFY_RETRY_DELAY_MS  (1000)
+#define MFV_NOTIFY_RETRY_DELAY_MS      (1000)
+#define MFV_NOTIFY_RETRY_MAX_DELAY_MS  (32000)
 
 using namespace std;
 
@@ -803,7 +804,17 @@ void GattAudioServiceRdk::scheduleMfvNotifyRetry()
         return;
     }
 
-    m_mfvNotifyRetryTimer = g_timeout_add(MFV_NOTIFY_RETRY_DELAY_MS,
+    // Exponential backoff: base * 2^(retryCount-1), capped at MFV_NOTIFY_RETRY_MAX_DELAY_MS.
+    // Use the max retry count across all MFV characteristics as the backoff index.
+    unsigned int retryCount = std::max({m_mfvState.sessionStartNotifyRetries,
+                                        m_mfvState.detectionDataNotifyRetries,
+                                        m_mfvState.privacyNotifyRetries});
+    unsigned int shift = (retryCount > 0) ? std::min(retryCount - 1u, 5u) : 0u;
+    guint delay = std::min((guint)(MFV_NOTIFY_RETRY_DELAY_MS << shift), (guint)MFV_NOTIFY_RETRY_MAX_DELAY_MS);
+
+    XLOGD_DEBUG("scheduling MFV notify retry in %u ms (retry count %u)", delay, retryCount);
+
+    m_mfvNotifyRetryTimer = g_timeout_add(delay,
         [](gpointer userData) -> gboolean {
             auto *self = static_cast<GattAudioServiceRdk *>(userData);
             self->m_mfvNotifyRetryTimer = 0;

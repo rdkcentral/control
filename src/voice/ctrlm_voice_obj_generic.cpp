@@ -183,7 +183,8 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
                 case CTRLM_VOICE_DEVICE_MICROPHONE:
                 case CTRLM_VOICE_DEVICE_MFV:
                 case CTRLM_VOICE_DEVICE_FF: {
-                    url = &this->prefs.server_url_src_ff;
+                    // If FF URL is not configured, fall back to PTT URL.
+                    url = this->prefs.server_url_src_ff.empty() ? &this->prefs.server_url_src_ptt : &this->prefs.server_url_src_ff;
                     break;
                 }
                 case CTRLM_VOICE_DEVICE_MICROPHONE_TAP: {

@@ -409,9 +409,9 @@ bool ctrlm_irdb_interface_t::get_irdb_entry_ids(ctrlm_irdb_entry_id_list_t &code
         ret = (*g_irdb.pluginGetEntryIds)(codes, type, manufacturer, model);
     }
     if(ret) {
-        m_last_entry_id_manufacturer = manufacturer;
-        m_last_entry_id_model        = model;
-        m_last_entry_ids             = codes;
+        m_last_entry_id_manufacturer[type] = manufacturer;
+        m_last_entry_id_model[type]        = model;
+        m_last_entry_ids[type]             = codes;
     }
     return ret;
 }
@@ -562,6 +562,26 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
         codes[CTRLM_IRDB_DEV_TYPE_AVR].erase( unique( codes[CTRLM_IRDB_DEV_TYPE_AVR].begin(), codes[CTRLM_IRDB_DEV_TYPE_AVR].end() ), codes[CTRLM_IRDB_DEV_TYPE_AVR].end() );
     }
 
+    m_last_entry_ids.clear();
+    m_last_entry_id_manufacturer.clear();
+    m_last_entry_id_model.clear();
+    for(const auto &type_codes : codes) {
+        ctrlm_irdb_entry_id_list_t entry_ids;
+        entry_ids.reserve(type_codes.second.size());
+        for(const auto &entry : type_codes.second) {
+            entry_ids.push_back(entry.id);
+        }
+        m_last_entry_ids[type_codes.first] = entry_ids;
+
+        // The different auto lookup methods may return a different manufacturer and model for the same device.
+        // There is no way of knowing which one is correct. For now, just use the highest ranked which is the first one in the list.
+        if(!type_codes.second.empty()) {
+            m_last_entry_id_manufacturer[type_codes.first] = type_codes.second.front().manufacturer;
+            m_last_entry_id_model[type_codes.first]        = type_codes.second.front().model;
+        }
+    }
+    
+
     return(ret);
 }
 
@@ -571,12 +591,25 @@ bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctr
     std::string manufacturer;
     std::string model;
 
-    XLOGD_INFO("Programming IR codes for (%u, %u) with database id <%s>", network_id, controller_id, id.c_str());
 
-    if(std::find(m_last_entry_ids.begin(), m_last_entry_ids.end(), id) != m_last_entry_ids.end()) {
-        manufacturer = m_last_entry_id_manufacturer;
-        model        = m_last_entry_id_model;
+    auto ids_itr = m_last_entry_ids.find(type);
+    if(ids_itr != m_last_entry_ids.end() && std::find(ids_itr->second.begin(), ids_itr->second.end(), id) != ids_itr->second.end()) {
+        auto manufacturer_itr = m_last_entry_id_manufacturer.find(type);
+        auto model_itr        = m_last_entry_id_model.find(type);
+        if(manufacturer_itr != m_last_entry_id_manufacturer.end()) {
+            manufacturer = manufacturer_itr->second;
+        }
+        if(model_itr != m_last_entry_id_model.end()) {
+            model = model_itr->second;
+        }
     }
+    
+    XLOGD_INFO("Programming IR codes for (%u, %u) with database id <%s>, manufacturer <%s>, model <%s>",
+               network_id,
+               controller_id,
+               id.c_str(),
+               manufacturer.empty() ? "INVALID" : manufacturer.c_str(),
+               model.empty() ? "INVALID" : model.c_str());
 
     ctrlm_irdb_ir_code_set_t code_set;
     if (g_irdb.pluginGetCodeSet) {

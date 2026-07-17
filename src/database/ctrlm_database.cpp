@@ -476,7 +476,7 @@ gpointer ctrlm_db_thread(gpointer param) {
          case CTRLM_DB_QUEUE_MSG_TYPE_WRITE_BLOB: {
             ctrlm_db_queue_msg_write_blob_t *blob = (ctrlm_db_queue_msg_write_blob_t *)msg;
             XLOGD_DEBUG("WRITE BLOB %s:%s:%u", blob->table, blob->key, blob->length);
-            ctrlm_print_data_hex(__FUNCTION__, blob->value, blob->length, 16);
+            // ctrlm_print_data_hex(__FUNCTION__, blob->value, blob->length, 16);
             ctrlm_db_write_blob_(blob->table, blob->key, blob->value, blob->length);
             break;
          }

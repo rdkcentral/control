@@ -4433,7 +4433,7 @@ void ctrlm_obj_network_rf4ce_t::req_process_program_ir_codes(void *data, int siz
    bool success = false;
 
    if(!is_managed_by_network(dqm->controller_id)) {
-      XLOGD_ERROR("controller %d is not managed by the %s network", dqm->controller_id, name_get());
+      XLOGD_WARN("controller %d is not managed by the %s network", dqm->controller_id, name_get());
    } else if(controller_exists(dqm->controller_id)) {
       if(dqm->ir_codes) {
          XLOGD_INFO("Setting IR Codes on Controller %u", dqm->controller_id);

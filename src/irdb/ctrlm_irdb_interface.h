@@ -101,9 +101,9 @@ private:
    ctrlm_irdb_mode_t mode;
    bool              m_platform_tv;
    std::mutex        m_mutex;
-   std::string       m_last_entry_id_manufacturer;
-   std::string       m_last_entry_id_model;
-   ctrlm_irdb_entry_id_list_t m_last_entry_ids;
+   std::map<ctrlm_irdb_dev_type_t, std::string> m_last_entry_id_manufacturer;
+   std::map<ctrlm_irdb_dev_type_t, std::string> m_last_entry_id_model;
+   std::map<ctrlm_irdb_dev_type_t, ctrlm_irdb_entry_id_list_t> m_last_entry_ids;
 };
 
 #endif

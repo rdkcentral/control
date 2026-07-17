@@ -76,7 +76,7 @@ bool ctrlm_string_db_attr_t::read_db(ctrlm_db_ctx_t ctx) {
     if(blob.read_db(ctx)) {
         this->value = blob.to_string();
         ret = true;
-        XLOGD_INFO("%s read from database: %s", this->get_name().c_str(), this->to_string().c_str());
+        XLOGD_DEBUG("%s read from database: %s", this->get_name().c_str(), this->to_string().c_str());
     } else {
         XLOGD_ERROR("failed to read from db <%s>", this->get_name().c_str());
     }
@@ -87,7 +87,9 @@ bool ctrlm_string_db_attr_t::write_db(ctrlm_db_ctx_t ctx) {
     bool ret = false;
     ctrlm_db_blob_t blob(this->get_key(), this->get_table());
 
-    if(blob.from_string(this->value)) {
+    if (this->value.empty()) {
+        XLOGD_DEBUG("value is empty for db key <%s>", this->get_name().c_str());
+    } else if(blob.from_string(this->value)) {
         if(blob.write_db(ctx)) {
             ret = true;
             XLOGD_INFO("%s written to database: %s", this->get_name().c_str(), this->to_string().c_str());
@@ -157,7 +159,7 @@ bool ctrlm_uint64_db_attr_t::read_db(ctrlm_db_ctx_t ctx) {
     if(data.read_db(ctx)) {
         this->set_value(data.get_uint64());
         ret = true;
-        XLOGD_INFO("%s read from database: %s", this->get_name().c_str(), this->to_string().c_str());
+        XLOGD_DEBUG("%s read from database: %s", this->get_name().c_str(), this->to_string().c_str());
     } else {
         XLOGD_ERROR("failed to read from db <%s>", this->get_name().c_str());
     }
@@ -237,7 +239,7 @@ bool ctrlm_ieee_db_addr_t::read_db(ctrlm_db_ctx_t ctx) {
     if(data.read_db(ctx)) {
         this->set_value(data.get_uint64());
         ret = true;
-        XLOGD_INFO("%s read from database: %s", this->get_name().c_str(), this->to_string().c_str());
+        XLOGD_DEBUG("%s read from database: %s", this->get_name().c_str(), this->to_string().c_str());
     } else {
         XLOGD_ERROR("failed to read from db <%s>", this->get_name().c_str());
     }

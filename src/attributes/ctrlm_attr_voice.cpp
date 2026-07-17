@@ -256,7 +256,7 @@ bool ctrlm_voice_metrics_t::read_db(ctrlm_db_ctx_t ctx) {
                 this->utterances_exceeding_packet_loss_threshold_today      = ((buf[39] << 24) | (buf[38] << 16) | (buf[37] << 8) | buf[36]);
                 this->utterances_exceeding_packet_loss_threshold_yesterday  = ((buf[43] << 24) | (buf[42] << 16) | (buf[41] << 8) | buf[40]);
                 ret = true;
-                XLOGD_INFO("%s read from database: %s", this->get_name().c_str(), this->to_string().c_str());
+                XLOGD_DEBUG("%s read from database: %s", this->get_name().c_str(), this->to_string().c_str());
             } else {
                 XLOGD_ERROR("data from db is too small <%s>", this->get_name().c_str());
             }

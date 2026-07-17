@@ -770,7 +770,7 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
    } else {
       ctrlm_controller_id_t controller_id = dqm->controller_id;
       if (!is_managed_by_network(controller_id)) {
-         XLOGD_ERROR("Controller %d is not managed by the %s network", controller_id, name_get());
+         XLOGD_WARN("Controller %d is not managed by the %s network", controller_id, name_get());
       } else if (!controller_exists(controller_id)) {
          XLOGD_ERROR("Controller doesn't exist!");
       } else if (!controllers_[controller_id]->isSupportedIrdb(dqm->vendor_info)) {

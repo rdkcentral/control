@@ -288,6 +288,9 @@ public:
    virtual void         power_state_change(gboolean waking_up);
    time_t               stale_remote_time_threshold_get();
 
+   virtual void         req_process_print_status(void *data, int size);
+   virtual void         req_process_event_status(void *data, int size);
+
    virtual void         iarm_event_rcu_status(void);
    virtual void         iarm_event_rcu_validation_status(void);
    virtual void         iarm_event_rcu_firmware_status(const ctrlm_obj_controller_t &rcu);

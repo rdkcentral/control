@@ -150,6 +150,8 @@ public:
    void                             update_controller_id_and_db_entry(std::string name, ctrlm_network_id_t network_id, ctrlm_controller_id_t new_id);
 
 private:
+   void                                    emit_irdb_vendor_set(int set_result, uint8_t rcu_bitmask, const std::string &vendor_name, uint8_t vendor_bitmask, int supported);
+
    ctrlm_obj_network_ble_t                *obj_network_ble_ = NULL;
 
    bool                                    connected_       = false;

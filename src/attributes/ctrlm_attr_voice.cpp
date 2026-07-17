@@ -322,7 +322,7 @@ bool ctrlm_voice_metrics_t::write_db(ctrlm_db_ctx_t ctx) {
     if(blob.from_buffer(buf, sizeof(buf))) {
         if(blob.write_db(ctx)) {
             ret = true;
-            XLOGD_INFO("%s written to database: %s", this->get_name().c_str(), this->to_string().c_str());
+            XLOGD_DEBUG("%s written to database: %s", this->get_name().c_str(), this->to_string().c_str());
         } else {
             XLOGD_ERROR("failed to write to db <%s>", this->get_name().c_str());
         }

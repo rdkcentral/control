@@ -386,6 +386,7 @@ public:
    gboolean                             target_irdb_status_read_from_db();
    void                                 target_irdb_status_set(ctrlm_rf4ce_controller_irdb_status_t controller_irdb_status);
    guchar                               target_irdb_status_flags_get();
+   void                                 ir_prog_state_set(ctrlm_ir_state_t state);
    ctrlm_rf4ce_controller_irdb_status_t most_recent_controller_irdb_status_get();
    virtual void                         disable_hal_calls();
 
@@ -635,10 +636,6 @@ private:
    static gboolean       binding_in_progress_timeout(gpointer user_data);
    void                  default_polling_configuration();
    void                  polling_config_read(json_config *conf);
-   void                  polling_config_tr181_read();
-   void                  process_xconf();
-
-   void                  dsp_configuration_xconf();
 
    gboolean              is_asb_active(ctrlm_hal_rf4ce_ieee_address_t ieee_address);
    static gboolean       asb_link_validation_timeout(gpointer user_data);

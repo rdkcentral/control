@@ -2,7 +2,7 @@
  * If not stated otherwise in this file or this component's license file the
  * following copyright and licenses apply:
  *
- * Copyright 2015 RDK Management
+ * Copyright 2014 RDK Management
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,35 +16,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-#include <cstddef>
-#include "ctrlm_powermanager.h"
-#include "ctrlm_thunder_powermanager.h"
+#ifndef _CTRLMS_VERSION_H_
+#define _CTRLMS_VERSION_H_
 
-#ifdef CTRLM_THUNDER
-static ctrlm_powermanager_t *instance = NULL;
+#include <stdint.h>
+#include <stdbool.h>
+#include <rdkx_logger.h>
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-ctrlm_powermanager_t* ctrlm_powermanager_t::get_instance() {
-   #ifdef CTRLM_THUNDER
-   if(instance == NULL) {
-      instance = new ctrlm_thunder_powermanager_t();
-   }
-   
-   return(instance);
-   #else
-   return(NULL);
-   #endif
-}
+bool ctrlms_init(xlog_level_t level);
+void ctrlms_term(void);
 
-void ctrlm_powermanager_t::destroy_instance() {
-   #ifdef CTRLM_THUNDER
-   if(instance != NULL) {
-      delete instance;
-      instance = NULL;
-   }
-   #endif
-}
+bool ctrlms_is_initialized(void);
+bool ctrlms_is_production(void);
 
-ctrlm_powermanager_t::~ctrlm_powermanager_t() {
+#ifdef __cplusplus
 }
+#endif
 
+#endif

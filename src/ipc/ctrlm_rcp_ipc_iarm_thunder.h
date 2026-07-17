@@ -23,6 +23,7 @@
 #include <semaphore.h>
 #include <mutex>
 #include <memory>
+#include <map>
 #include "ctrlm_ipc_iarm.h"
 #include "ctrlm_ipc.h"
 #include "ctrlm_utils.h"
@@ -93,6 +94,12 @@ protected:
     static IARM_Result_t cancel_fw_update(void *arg);
     static IARM_Result_t status_fw_update(void *arg);
     static IARM_Result_t unpair(void *arg);
+
+
+    static json_t *build_rcu_status_json(const std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> &status_map,
+                                  ctrlm_ir_state_t      ir_prog_state,
+                                  ctrlm_rf_pair_state_t rf_pair_state,
+                                  ctrlm_network_type_t  type);
 
     template <typename T1, typename T2>
     static void sync_send_netw_handler_to_main_queue(T1 params, ctrlm_msg_handler_network_t handler)

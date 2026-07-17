@@ -44,14 +44,14 @@ BleRcuPairingStateMachine::BleRcuPairingStateMachine(const shared_ptr<const Conf
     , m_isAutoPairing(false)
     , m_pairingCode(-1)
     , m_pairingMacHash(-1)
+    , m_config(config)
     , m_discoveryTimeout(config->discoveryTimeout())
-    , m_discoveryTimeoutDefault(config->discoveryTimeout())
-    , m_pairingTimeout(config->pairingTimeout())
-    , m_setupTimeout(config->setupTimeout())
-    , m_unpairingTimeout(config->upairingTimeout())
     , m_pairingAttempts(0)
     , m_pairingSuccesses(0)
     , m_pairingSucceeded(false)
+    , m_pairingMethod(AUTO_TIMEOUT)
+    , m_failureReason(SUCCESS)
+    , m_bluezRetries(0)
 {
 
     // constructs a list of name printf style formats for searching for device names that match
@@ -84,8 +84,8 @@ BleRcuPairingStateMachine::BleRcuPairingStateMachine(const shared_ptr<const Conf
             std::bind(&BleRcuPairingStateMachine::onDevicePairingChanged, this, std::placeholders::_1, std::placeholders::_2)));
     m_adapter->addPoweredChangedSlot(Slot<bool>(m_isAlive,
             std::bind(&BleRcuPairingStateMachine::onAdapterPoweredChanged, this, std::placeholders::_1)));
-    m_adapter->addDevicePairingErrorSlot(Slot<const BleAddress&, const std::string&>(m_isAlive,
-            std::bind(&BleRcuPairingStateMachine::onDevicePairingError, this, std::placeholders::_1, std::placeholders::_2)));
+    m_adapter->addDevicePairingErrorSlot(Slot<const BleAddress&, const std::string&, int, bool>(m_isAlive,
+            std::bind(&BleRcuPairingStateMachine::onDevicePairingError, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 }
 
 BleRcuPairingStateMachine::~BleRcuPairingStateMachine()
@@ -206,6 +206,37 @@ bool BleRcuPairingStateMachine::isScanningForAutoPair() const
     return isRunning() && m_isAutoPairing && m_stateMachine.inState(DiscoverySuperState);
 }
 
+BleRcuPairingStateMachine::PairingMethod BleRcuPairingStateMachine::pairingMethod() const
+{
+    return m_pairingMethod;
+}
+
+BleRcuPairingStateMachine::FailureReason BleRcuPairingStateMachine::failureReason() const
+{
+    return m_failureReason;
+}
+
+int BleRcuPairingStateMachine::discoveredDevices() const
+{
+    return m_discoveredDevices.size();
+}
+
+int BleRcuPairingStateMachine::bluezRetries() const
+{
+    return m_bluezRetries;
+}
+
+std::string BleRcuPairingStateMachine::pairedName() const
+{
+    auto it = m_discoveredDevices.find(m_pairedMac);
+    return (it != m_discoveredDevices.end()) ? it->second : "";
+}
+
+std::vector<std::string> BleRcuPairingStateMachine::bluezError() const
+{
+    return m_bluezErrorMsg;
+}
+
 
 // -----------------------------------------------------------------------------
 /*!
@@ -239,12 +270,21 @@ void BleRcuPairingStateMachine::startAutoWithTimeout(int timeoutMs)
         m_targetedPairingNames.push_back(name);
     }
 
+    // reset telemetry tracking state
+    m_pairingMethod = AUTO_TIMEOUT;
+    m_failureReason = SUCCESS;
+    m_discoveredDevices.clear();
+    m_bluezRetries = 0;
+    m_pairedMac.clear();
+    m_bluezErrorMsg.clear();
+
     // start the state machine
     m_stateMachine.start();
 
     m_pairingAttempts++;
     m_pairingSucceeded = false;
     XLOGD_INFO("Started auto pairing procedure");
+    XLOGD_DEBUG("timeouts - discovery <%d ms> pairing <%d ms> setup <%d ms> unpairing <%d ms>", m_discoveryTimeout, m_config->pairingTimeout(), m_config->setupTimeout(), m_config->upairingTimeout());
 }
 
 
@@ -262,7 +302,7 @@ void BleRcuPairingStateMachine::startWithCode(uint8_t pairingCode)
         return;
     }
 
-    m_discoveryTimeout = m_discoveryTimeoutDefault;
+    m_discoveryTimeout = m_config->discoveryTimeout(); // use the default discovery timeout for this pairing method
     m_isAutoPairing = false;
 
     // clear the target device
@@ -289,12 +329,21 @@ void BleRcuPairingStateMachine::startWithCode(uint8_t pairingCode)
         m_targetedPairingNames.push_back(std::regex(nameWithCode, std::regex_constants::ECMAScript));
     }
 
+    // reset telemetry tracking state
+    m_pairingMethod = IR_CODE;
+    m_failureReason = SUCCESS;
+    m_discoveredDevices.clear();
+    m_bluezRetries = 0;
+    m_pairedMac.clear();
+    m_bluezErrorMsg.clear();
+
     // start the state machine
     m_stateMachine.start();
 
     m_pairingAttempts++;
     m_pairingSucceeded = false;
     XLOGD_INFO("started pairing, searching for device with prefix code %03d or MAC hash 0x%02X", m_pairingCode, m_pairingMacHash);
+    XLOGD_DEBUG("timeouts - discovery <%d ms> pairing <%d ms> setup <%d ms> unpairing <%d ms>", m_discoveryTimeout, m_config->pairingTimeout(), m_config->setupTimeout(), m_config->upairingTimeout());
 }
 
 // -----------------------------------------------------------------------------
@@ -310,6 +359,8 @@ void BleRcuPairingStateMachine::startWithMacList(const std::vector<BleAddress> &
         return;
     }
 
+    m_discoveryTimeout = m_config->discoveryTimeout(); // use the default discovery timeout for this pairing method
+
     // clear the target device
     m_targetAddress.clear();
 
@@ -321,6 +372,14 @@ void BleRcuPairingStateMachine::startWithMacList(const std::vector<BleAddress> &
     // set the list of addresses to filter for
     m_pairingMacList = macList;
 
+    // reset telemetry tracking state
+    m_pairingMethod = MAC_LIST;
+    m_failureReason = SUCCESS;
+    m_discoveredDevices.clear();
+    m_bluezRetries = 0;
+    m_pairedMac.clear();
+    m_bluezErrorMsg.clear();
+
     // start the state machine
     m_stateMachine.start();
 
@@ -331,7 +390,7 @@ void BleRcuPairingStateMachine::startWithMacList(const std::vector<BleAddress> &
     for (const auto &address : macList) {
         XLOGD_INFO("<%s>", address.toString().c_str());
     }
-
+    XLOGD_DEBUG("timeouts - discovery <%d ms> pairing <%d ms> setup <%d ms> unpairing <%d ms>", m_discoveryTimeout, m_config->pairingTimeout(), m_config->setupTimeout(), m_config->upairingTimeout());
 }
 
 
@@ -352,6 +411,9 @@ void BleRcuPairingStateMachine::stop()
     }
 
     XLOGD_INFO("cancelling pairing");
+
+    // record the cancellation reason before posting the event
+    m_failureReason = FAIL_CANCELLED;
 
     // post a cancel event and let the state-machine clean up
     m_stateMachine.postEvent(CancelRequestEvent);
@@ -432,22 +494,33 @@ void BleRcuPairingStateMachine::onStateExit(int state)
  */
 void BleRcuPairingStateMachine::onStateTransition(int oldState, int newState)
 {
+    FailureReason newFailureReason = SUCCESS;
+
     if (newState == FinishedState) {
         if (oldState == UnpairingState) {
             XLOGD_AUTOMATION_WARN("timed-out in un-pairing phase (failed rcu may be left paired)");
+            newFailureReason = FAIL_PAIRING_TIMEOUT;
         } else if (oldState == StartingDiscoveryState) {
             XLOGD_AUTOMATION_ERROR("timed-out waiting for discovery started signal");
+            newFailureReason = FAIL_DISCOVERY_TIMEOUT;
         } else if (oldState == DiscoveringState) {
             XLOGD_AUTOMATION_ERROR("timed-out in discovery phase (didn't find target rcu device to pair to)");
+            newFailureReason = FAIL_TARGET_RCU_NOT_FOUND;
         } else if (oldState == StoppingDiscoveryState) {
             XLOGD_AUTOMATION_ERROR("timed-out waiting for discovery to stop (suggesting something has gone wrong inside bluez)");
+            newFailureReason = FAIL_DISCOVERY_STOP_TIMEOUT;
         }
     } else if (newState == UnpairingState) {
         if (oldState == EnablePairableState || oldState == PairingState) {
-            XLOGD_AUTOMATION_WARN("timed-out in pairing phase (rcu device didn't pair within %dms)", m_pairingTimeout);
+            XLOGD_AUTOMATION_WARN("timed-out in pairing phase (rcu device didn't pair within %dms)", m_config->pairingTimeout());
         } else if (oldState == SetupState) {
-            XLOGD_AUTOMATION_WARN("timed-out in setup phase (rcu didn't response to all requests within %dms)", m_setupTimeout);
+            XLOGD_AUTOMATION_WARN("timed-out in setup phase (rcu didn't response to all requests within %dms)", m_config->setupTimeout());
         }
+    }
+
+    // Change the failure reason only if it hasn't already been set elsewhere
+    if (newFailureReason != SUCCESS && m_failureReason == SUCCESS) {
+        m_failureReason = newFailureReason;
     }
 }
 
@@ -521,6 +594,9 @@ void BleRcuPairingStateMachine::onDiscoveryChanged(bool discovering)
     if (discovering) {
         m_stateMachine.postEvent(DiscoveryStartedEvent);
     } else {
+        if (m_stateMachine.inState(DiscoverySuperState)) {
+            m_failureReason = FAIL_DISCOVERY_STOPPED;
+        }
         m_stateMachine.postEvent(DiscoveryStoppedEvent);
     }
 }
@@ -543,6 +619,7 @@ void BleRcuPairingStateMachine::onEnteredDiscoveringState()
     map<BleAddress, string>::const_iterator it = deviceNames.begin();
     for (; it != deviceNames.end(); ++it) {
         processDevice(it->first, it->second);
+        m_discoveredDevices.emplace(it->first, it->second);
     }
 }
 
@@ -567,7 +644,7 @@ void BleRcuPairingStateMachine::onExitedDiscoverySuperState()
 void BleRcuPairingStateMachine::onEnteredStoppingDiscoveryState()
 {
     // start the pairing timeout timer
-    m_stateMachine.postDelayedEvent(PairingTimeoutEvent, m_pairingTimeout);
+    m_stateMachine.postDelayedEvent(PairingTimeoutEvent, m_config->pairingTimeout());
 
     // if we've got to this state it means we have a target device
     if (m_targetAddress.isNull()) {
@@ -632,7 +709,7 @@ void BleRcuPairingStateMachine::onEnteredEnablePairableState()
     // in pairable mode because we don't know if the previous timeout is long enough for our purposes.
     // The timeout is set to 5 seconds past the overall time we've given the state machine
     // to pair with the rcu.
-    m_adapter->enablePairable(m_pairingTimeout + 5000);
+    m_adapter->enablePairable(m_config->pairingTimeout() + 5000);
 
     if (m_adapter->isPairable()) {
         // is already pairable so just post the 'enabled' event
@@ -660,7 +737,7 @@ void BleRcuPairingStateMachine::onEnteredPairingState()
     m_pairingSlots.invoke();
 
     // request the manager to pair with the device
-    m_adapter->addDevice(m_targetAddress);
+    m_adapter->addDevice(m_targetAddress, MAX_PAIRING_RETRIES);
 }
 
 // -----------------------------------------------------------------------------
@@ -672,8 +749,9 @@ void BleRcuPairingStateMachine::onEnteredPairingState()
 void BleRcuPairingStateMachine::onEnteredSetupState()
 {
     // start the setup timeout timer
-    m_stateMachine.postDelayedEvent(SetupTimeoutEvent, m_setupTimeout);
-    XLOGD_DEBUG("starting setup timeout timer for %dms", m_setupTimeout);
+    int timeout = m_config->setupTimeout();
+    m_stateMachine.postDelayedEvent(SetupTimeoutEvent, timeout);
+    XLOGD_DEBUG("starting setup timeout timer for %dms", timeout);
 }
 
 // -----------------------------------------------------------------------------
@@ -705,7 +783,7 @@ void BleRcuPairingStateMachine::onExitedPairingSuperState()
 void BleRcuPairingStateMachine::onEnteredUnpairingState()
 {
     // start the unpairing timeout timer
-    m_stateMachine.postDelayedEvent(UnpairingTimeoutEvent, m_unpairingTimeout);
+    m_stateMachine.postDelayedEvent(UnpairingTimeoutEvent, m_config->upairingTimeout());
 
     // if we've got to this state it means we have a target device
     if (m_targetAddress.isNull()) {
@@ -714,6 +792,7 @@ void BleRcuPairingStateMachine::onEnteredUnpairingState()
 
     // remove (unpair) the target device because we've failed :-(
     if (m_adapter->removeDevice(m_targetAddress) == false) {
+        m_failureReason = FAIL_PAIRING_TIMEOUT;
         m_stateMachine.postEvent(DeviceUnpairedEvent);
     }
 }
@@ -883,6 +962,7 @@ void BleRcuPairingStateMachine::onDeviceFound(const BleAddress &address,
 
     XLOGD_DEBUG("device added %s %s (target %s)", 
             address.toString().c_str(), name.c_str(), m_targetAddress.toString().c_str());
+    m_discoveredDevices.emplace(address, name);
 
     processDevice(address, name);
 }
@@ -905,6 +985,11 @@ void BleRcuPairingStateMachine::onDeviceRemoved(const BleAddress &address)
 
     // check if the device removed is the one we're targeting
     if (!m_targetAddress.isNull() && (m_targetAddress == address)) {
+        if (m_stateMachine.inState(UnpairingState)) {
+            m_failureReason = FAIL_PAIRING_TIMEOUT;
+        } else {
+            m_failureReason = FAIL_DEVICE_REMOVED;
+        }
         m_stateMachine.postEvent(DeviceRemovedEvent);
     }
 }
@@ -927,6 +1012,7 @@ void BleRcuPairingStateMachine::onDeviceNameChanged(const BleAddress &address,
 
     XLOGD_DEBUG("device name changed %s %s (target %s)", 
             address.toString().c_str(), name.c_str(), m_targetAddress.toString().c_str());
+    m_discoveredDevices[address] = name;
 
     processDevice(address, name);
 }
@@ -941,9 +1027,20 @@ void BleRcuPairingStateMachine::onDeviceNameChanged(const BleAddress &address,
 
  */
 void BleRcuPairingStateMachine::onDevicePairingError(const BleAddress &address,
-                                                    const string &error)
+                                                    const string &error,
+                                                    int retryCnt,
+                                                    bool finalRetry)
 {
     if (!m_stateMachine.isRunning()) {
+        return;
+    }
+
+    m_failureReason = FAIL_BLUEZ_ERROR;
+    m_bluezRetries = retryCnt;
+    m_bluezErrorMsg.push_back(error);
+
+    if (!finalRetry) {
+        // Still retrying so don't stop pairing and timers yet
         return;
     }
 
@@ -979,6 +1076,11 @@ void BleRcuPairingStateMachine::onDevicePairingChanged(const BleAddress &address
         if (paired) {
             m_stateMachine.postEvent(DevicePairedEvent);
         } else {
+            if (m_stateMachine.inState(UnpairingState)) {
+                m_failureReason = FAIL_PAIRING_TIMEOUT;
+            } else {
+                m_failureReason = FAIL_DEVICE_UNPAIRED;
+            }
             m_stateMachine.postEvent(DeviceUnpairedEvent);
         }
     }
@@ -1006,6 +1108,7 @@ void BleRcuPairingStateMachine::onDeviceReadyChanged(const BleAddress &address,
         if (ready) {
             m_pairingSuccesses++;
             m_pairingSucceeded = true;
+            m_pairedMac = address;
             m_stateMachine.postEvent(DeviceReadyEvent);
         }
     }
@@ -1027,6 +1130,7 @@ void BleRcuPairingStateMachine::onAdapterPoweredChanged(bool powered)
     }
 
     if (!powered) {
+        m_failureReason = FAIL_ADAPTER_OFF;
         m_stateMachine.postEvent(AdapterPoweredOffEvent);
     }
 }

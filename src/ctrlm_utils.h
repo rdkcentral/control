@@ -36,9 +36,6 @@
 #include "libIBus.h"
 #include "libIBusDaemon.h"
 #include <jansson.h>
-#ifdef USE_IARM_POWER_MANAGER
-#include "deepSleepMgr.h"
-#endif
 #ifdef TELEMETRY_SUPPORT
 #include <telemetry2_0.h>
 #endif
@@ -205,9 +202,6 @@ const char *ctrlm_ir_state_str(ctrlm_ir_state_t state);
 const char *ctrlm_power_state_str(ctrlm_power_state_t state);
 const char *ctrlm_device_type_str(ctrlm_device_type_t device_type);
 
-#ifdef USE_IARM_POWER_MANAGER
-const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason);
-#endif
 const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config);
 
 #ifdef TELEMETRY_SUPPORT
@@ -264,6 +258,9 @@ bool ctrlm_utils_message_queue_open(int *msgq, uint8_t max_msg, size_t msgsize);
 void ctrlm_utils_message_queue_close(int *msgq);
 bool ctrlm_utils_queue_msg_push(int msgq, const char *msg, size_t msg_len);
 std::string ctrlm_utils_time_as_string(time_t time);
+
+// Returns the current wall-clock time in epoch milliseconds.
+uint64_t ctrlm_timestamp_get_ms(void);
 
 ctrlm_fmr_alarm_level_t ctrlm_utils_str_to_fmr_level(const std::string &level);
 ctrlm_rcu_wakeup_config_t ctrlm_utils_str_to_wakeup_config(const std::string &wakeup_config);

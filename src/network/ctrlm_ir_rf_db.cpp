@@ -42,11 +42,15 @@ ctrlm_ir_rf_db_t::ctrlm_ir_rf_db_t(bool power_toggle_favor_tv, bool power_discre
     this->power_toggle_favor_tv   = power_toggle_favor_tv;
     this->power_discrete_favor_tv = power_discrete_favor_tv;
     this->tv_ir_code_id_ = "0";
+    this->tv_ir_vendor_id_ = 0;
+    this->tv_ir_vendor_name_ = "INVALID";
     this->avr_ir_code_id_ = "0";
-    this->tv_manufacturer_ = "";
-    this->tv_model_ = "";
-    this->avr_manufacturer_ = "";
-    this->avr_model_ = "";
+    this->avr_ir_vendor_id_ = 0;
+    this->avr_ir_vendor_name_ = "INVALID";
+    this->tv_manufacturer_ = "INVALID";
+    this->tv_model_ = "INVALID";
+    this->avr_manufacturer_ = "INVALID";
+    this->avr_model_ = "INVALID";
 }
 
 ctrlm_ir_rf_db_t::~ctrlm_ir_rf_db_t() {
@@ -178,7 +182,7 @@ ctrlm_key_code_t to_ctrlm_keycode(ctrlm_irdb_key_code_t irdb_code) {
     }
 }
 
-bool ctrlm_ir_rf_db_t::add_irdb_codes(ctrlm_irdb_ir_code_set_t *ir_codes, const std::string &manufacturer, const std::string &model) {
+bool ctrlm_ir_rf_db_t::add_irdb_codes(ctrlm_irdb_ir_code_set_t *ir_codes, const std::string &manufacturer, const std::string &model, unsigned char ir_vendor_id, const std::string &ir_vendor_name) {
     bool ret = false;
     if(ir_codes) {
         ctrlm_ir_rf_db_dev_type_t type = ctrlm_ir_rf_db_entry_t::type_from_irdb(ir_codes->type);
@@ -187,12 +191,16 @@ bool ctrlm_ir_rf_db_t::add_irdb_codes(ctrlm_irdb_ir_code_set_t *ir_codes, const 
                 this->tv_ir_code_id_ = ir_codes->id;
                 this->tv_manufacturer_ = manufacturer;
                 this->tv_model_ = model;
+                this->tv_ir_vendor_id_ = ir_vendor_id;
+                this->tv_ir_vendor_name_ = ir_vendor_name;
                 break;
             }
             case CTRLM_IR_RF_DB_DEV_AVR: {
                 this->avr_ir_code_id_ = ir_codes->id;
                 this->avr_manufacturer_ = manufacturer;
                 this->avr_model_ = model;
+                this->avr_ir_vendor_id_ = ir_vendor_id;
+                this->avr_ir_vendor_name_ = ir_vendor_name;
                 break;
             }
             default: {
@@ -213,56 +221,79 @@ bool ctrlm_ir_rf_db_t::add_irdb_codes(ctrlm_irdb_ir_code_set_t *ir_codes, const 
 }
 
 void ctrlm_ir_rf_db_t::clear_tv_ir_codes() {
+    ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_TV_POWER_ON);
     this->remove_entry(CTRLM_KEY_CODE_TV_POWER_ON);
+
+    ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_TV_POWER_OFF);
     this->remove_entry(CTRLM_KEY_CODE_TV_POWER_OFF);
+
+    ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_TV_POWER);
     this->remove_entry(CTRLM_KEY_CODE_TV_POWER);
+
     if(this->has_entry(CTRLM_KEY_CODE_VOL_UP)) {
         if(this->ir_rf_db[CTRLM_KEY_CODE_VOL_UP]->get_type() == CTRLM_IR_RF_DB_DEV_TV) {
+            ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_VOL_UP);
             this->remove_entry(CTRLM_KEY_CODE_VOL_UP);
         }
     }
     if(this->has_entry(CTRLM_KEY_CODE_VOL_DOWN)) {
         if(this->ir_rf_db[CTRLM_KEY_CODE_VOL_DOWN]->get_type() == CTRLM_IR_RF_DB_DEV_TV) {
+            ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_VOL_DOWN);
             this->remove_entry(CTRLM_KEY_CODE_VOL_DOWN);
         }
     }
     if(this->has_entry(CTRLM_KEY_CODE_MUTE)) {
         if(this->ir_rf_db[CTRLM_KEY_CODE_MUTE]->get_type() == CTRLM_IR_RF_DB_DEV_TV) {
+            ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_MUTE);
             this->remove_entry(CTRLM_KEY_CODE_MUTE);
         }
     }
+    ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_INPUT_SELECT);
     this->remove_entry(CTRLM_KEY_CODE_INPUT_SELECT);
 
     this->fix_common_slots_and_ir_flags();
     this->tv_ir_code_id_ = "0";
-    this->tv_manufacturer_ = "";
-    this->tv_model_ = "";
+    this->tv_manufacturer_ = "INVALID";
+    this->tv_model_ = "INVALID";
+    this->tv_ir_vendor_id_ = 0;
+    this->tv_ir_vendor_name_ = "INVALID";
 }
 
 void ctrlm_ir_rf_db_t::clear_avr_ir_codes() {
+    ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_AVR_POWER_ON);
     this->remove_entry(CTRLM_KEY_CODE_AVR_POWER_ON);
+
+    ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_AVR_POWER_OFF);
     this->remove_entry(CTRLM_KEY_CODE_AVR_POWER_OFF);
+
+    ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_AVR_POWER_TOGGLE);
     this->remove_entry(CTRLM_KEY_CODE_AVR_POWER_TOGGLE);
+
     if(this->has_entry(CTRLM_KEY_CODE_VOL_UP)) {
         if(this->ir_rf_db[CTRLM_KEY_CODE_VOL_UP]->get_type() == CTRLM_IR_RF_DB_DEV_AVR) {
+            ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_VOL_UP);
             this->remove_entry(CTRLM_KEY_CODE_VOL_UP);
         }
     }
     if(this->has_entry(CTRLM_KEY_CODE_VOL_DOWN)) {
         if(this->ir_rf_db[CTRLM_KEY_CODE_VOL_DOWN]->get_type() == CTRLM_IR_RF_DB_DEV_AVR) {
+            ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_VOL_DOWN);
             this->remove_entry(CTRLM_KEY_CODE_VOL_DOWN);
         }
     }
     if(this->has_entry(CTRLM_KEY_CODE_MUTE)) {
         if(this->ir_rf_db[CTRLM_KEY_CODE_MUTE]->get_type() == CTRLM_IR_RF_DB_DEV_AVR) {
+            ctrlm_db_ir_rf_database_delete(CTRLM_KEY_CODE_MUTE);
             this->remove_entry(CTRLM_KEY_CODE_MUTE);
         }
     }
 
     this->fix_common_slots_and_ir_flags();
     this->avr_ir_code_id_ = "0";
-    this->avr_manufacturer_ = "";
-    this->avr_model_ = "";
+    this->avr_manufacturer_ = "INVALID";
+    this->avr_model_ = "INVALID";
+    this->avr_ir_vendor_id_ = 0;
+    this->avr_ir_vendor_name_ = "INVALID";
 }
 
 void ctrlm_ir_rf_db_t::clear_ir_codes() {
@@ -271,11 +302,15 @@ void ctrlm_ir_rf_db_t::clear_ir_codes() {
         this->remove_entry(itr->first);
     }
     this->tv_ir_code_id_ = "0";
+    this->tv_ir_vendor_id_ = 0;
+    this->tv_ir_vendor_name_ = "INVALID";
     this->avr_ir_code_id_ = "0";
-    this->tv_manufacturer_ = "";
-    this->tv_model_ = "";
-    this->avr_manufacturer_ = "";
-    this->avr_model_ = "";
+    this->tv_manufacturer_ = "INVALID";
+    this->tv_model_ = "INVALID";
+    this->avr_manufacturer_ = "INVALID";
+    this->avr_model_ = "INVALID";
+    this->avr_ir_vendor_id_ = 0;
+    this->avr_ir_vendor_name_ = "INVALID";
 }
 
 ctrlm_ir_rf_db_entry_t *ctrlm_ir_rf_db_t::get_ir_code(ctrlm_key_code_t key) {
@@ -289,9 +324,11 @@ ctrlm_ir_rf_db_entry_t *ctrlm_ir_rf_db_t::get_ir_code(ctrlm_key_code_t key) {
 std::string ctrlm_ir_rf_db_t::to_string(bool debug) const {
     std::stringstream ss;
     ss << "IR RF Database: "<< std::endl;
+    ss << "\tTV  IR Vendor Info <" << tv_ir_vendor_name_ << ": " << (unsigned int)tv_ir_vendor_id_ << ">" << std::endl;
     ss << "\tTV  IR Code ID <" << tv_ir_code_id_ << ">" << std::endl;
     ss << "\tTV  Manufacturer <" << tv_manufacturer_ << ">" << std::endl;
     ss << "\tTV  Model <" << tv_model_ << ">" << std::endl;
+    ss << "\tAVR IR Vendor Info <" << avr_ir_vendor_name_ << ": " << (unsigned int)avr_ir_vendor_id_ << ">" << std::endl;
     ss << "\tAVR IR Code ID <" << avr_ir_code_id_ << ">" << std::endl;
     ss << "\tAVR Manufacturer <" << avr_manufacturer_ << ">" << std::endl;
     ss << "\tAVR Model <" << avr_model_ << ">" << std::endl;
@@ -393,8 +430,8 @@ void ctrlm_ir_rf_db_t::load_db() {
             this->replace_entry(itr->first, entry);
         }
     }
-    ctrlm_db_tv_ir_code_id_read(tv_ir_code_id_);
-    ctrlm_db_avr_ir_code_id_read(avr_ir_code_id_);
+    ctrlm_db_tv_ir_code_id_read(tv_ir_code_id_, tv_ir_vendor_id_, tv_ir_vendor_name_);
+    ctrlm_db_avr_ir_code_id_read(avr_ir_code_id_, avr_ir_vendor_id_, avr_ir_vendor_name_);
     ctrlm_db_tv_manufacturer_read(tv_manufacturer_);
     ctrlm_db_tv_model_read(tv_model_);
     ctrlm_db_avr_manufacturer_read(avr_manufacturer_);
@@ -405,8 +442,8 @@ bool ctrlm_ir_rf_db_t::store_db() {
     for(auto itr = this->ir_rf_db.begin(); itr != this->ir_rf_db.end(); itr++) {
         this->store_entry(itr->first);
     }
-    ctrlm_db_tv_ir_code_id_write(tv_ir_code_id_);
-    ctrlm_db_avr_ir_code_id_write(avr_ir_code_id_);
+    ctrlm_db_tv_ir_code_id_write(tv_ir_code_id_, tv_ir_vendor_id_, tv_ir_vendor_name_);
+    ctrlm_db_avr_ir_code_id_write(avr_ir_code_id_, avr_ir_vendor_id_, avr_ir_vendor_name_);
     ctrlm_db_tv_manufacturer_write(tv_manufacturer_);
     ctrlm_db_tv_model_write(tv_model_);
     ctrlm_db_avr_manufacturer_write(avr_manufacturer_);
@@ -477,7 +514,22 @@ std::string ctrlm_ir_rf_db_t::get_tv_ir_code_id() {
    return tv_ir_code_id_;
 }
 
+unsigned char ctrlm_ir_rf_db_t::get_tv_ir_vendor_id() {
+   return tv_ir_vendor_id_;
+}
+
+std::string ctrlm_ir_rf_db_t::get_tv_ir_vendor_name() {
+   return tv_ir_vendor_name_;
+}
+
 std::string ctrlm_ir_rf_db_t::get_avr_ir_code_id() {
    return avr_ir_code_id_;
 }
 
+unsigned char ctrlm_ir_rf_db_t::get_avr_ir_vendor_id() {
+   return avr_ir_vendor_id_;
+}
+
+std::string ctrlm_ir_rf_db_t::get_avr_ir_vendor_name() {
+   return avr_ir_vendor_name_;
+}

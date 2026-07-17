@@ -212,7 +212,7 @@ ctrlm_obj_controller_rf4ce_t::ctrlm_obj_controller_rf4ce_t() {
 }
 
 ctrlm_obj_controller_rf4ce_t::~ctrlm_obj_controller_rf4ce_t() {
-   XLOGD_INFO("deconstructor");
+   XLOGD_INFO("destructor");
 
    if (metrics_tag_ != 0) {
       XLOGD_WARN("metrics timer destroyed");

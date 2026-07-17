@@ -26,6 +26,7 @@
 #include <string>
 #include <memory>
 #include <string.h>
+#include <map>
 #include "ctrlm_hal.h"
 #include "ctrlm_hal_rf4ce.h"
 #include "ctrlm_hal_ble.h"
@@ -53,6 +54,7 @@ class ctrlm_voice_endpoint_t;
 class ctrlm_irdb_interface_t;
 class ctrlm_auth_t;
 class ctrlm_telemetry_t;
+class ctrlm_rcp_ipc_net_status_t;
 typedef enum {
    CTRLM_THREAD_MONITOR_RESPONSE_DEAD  = 0,
    CTRLM_THREAD_MONITOR_RESPONSE_ALIVE = 1
@@ -467,7 +469,6 @@ gboolean                           ctrlm_pairing_window_active_get(void);
 void                               ctrlm_pairing_window_bind_status_set(ctrlm_bind_status_t bind_status);
 void                               ctrlm_discovery_remote_type_set(const char *remote_type_str);
 ctrlm_pairing_restrict_by_remote_t restrict_pairing_by_remote_get();
-void                               ctrlm_event_handler_ir(const char *owner, IARM_EventId_t event_id, void *data, size_t len);
 void                               ctrlm_quit_main_loop();
 gboolean                           ctrlm_power_state_change(ctrlm_power_state_t power_state);
 
@@ -508,6 +509,7 @@ void        ctrlm_update_last_key_info(int controller_id, ctrlm_key_source_t sou
 ctrlm_irdb_interface_t* ctrlm_main_irdb_get();
 ctrlm_auth_t* ctrlm_main_auth_get();
 void          ctrlm_main_auth_start_poll();
+std::shared_ptr<void> ctrlm_main_all_network_rcu_status_get();
 std::string ctrlm_device_id_get();
 std::string ctrlm_stb_name_get();
 std::string ctrlm_device_mac_get();

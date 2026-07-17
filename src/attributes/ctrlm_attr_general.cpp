@@ -92,7 +92,7 @@ bool ctrlm_string_db_attr_t::write_db(ctrlm_db_ctx_t ctx) {
     } else if(blob.from_string(this->value)) {
         if(blob.write_db(ctx)) {
             ret = true;
-            XLOGD_INFO("%s written to database: %s", this->get_name().c_str(), this->to_string().c_str());
+            XLOGD_DEBUG("%s written to database: %s", this->get_name().c_str(), this->to_string().c_str());
         } else {
             XLOGD_ERROR("failed to write to db <%s>", this->get_name().c_str());
         }
@@ -171,7 +171,7 @@ bool ctrlm_uint64_db_attr_t::write_db(ctrlm_db_ctx_t ctx) {
     ctrlm_db_uint64_t data(this->get_key(), this->get_table(), this->get_value());
     if(data.write_db(ctx)) {
         ret = true;
-        XLOGD_INFO("%s written to database: %s", this->get_name().c_str(), this->to_string().c_str());
+        XLOGD_DEBUG("%s written to database: %s", this->get_name().c_str(), this->to_string().c_str());
     } else {
         XLOGD_ERROR("failed to write to db <%s>", this->get_name().c_str());
     }
@@ -251,7 +251,7 @@ bool ctrlm_ieee_db_addr_t::write_db(ctrlm_db_ctx_t ctx) {
     ctrlm_db_uint64_t data(this->get_key(), this->get_table(), this->get_value());
     if(data.write_db(ctx)) {
         ret = true;
-        XLOGD_INFO("%s written to database: %s", this->get_name().c_str(), this->to_string().c_str());
+        XLOGD_DEBUG("%s written to database: %s", this->get_name().c_str(), this->to_string().c_str());
     } else {
         XLOGD_ERROR("failed to write to db <%s>", this->get_name().c_str());
     }

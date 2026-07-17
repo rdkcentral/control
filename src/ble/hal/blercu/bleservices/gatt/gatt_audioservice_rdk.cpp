@@ -1243,6 +1243,7 @@ void GattAudioServiceRdk::onWriteMfvPrivacyReply(PendingReply<> *reply)
         }
     } else {
         XLOGD_INFO("MFV Privacy written successfully");
+        m_mfvPrivacyChangedSlots.invoke(m_mfvPrivacyEnabled);
         if (m_mfvPromiseResults) {
             m_mfvPromiseResults->finish();
             m_mfvPromiseResults.reset();

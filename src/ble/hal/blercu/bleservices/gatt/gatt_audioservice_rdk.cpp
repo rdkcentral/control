@@ -765,7 +765,7 @@ void GattAudioServiceRdk::onMfvInitialReadComplete()
 
 void GattAudioServiceRdk::maybeEnableMfvNotifications()
 {
-    if (!m_mfvState.supported || !m_mfvState.areInitialReadsComplete() || m_mfvState.notificationsEnabled) {
+    if (!m_mfvState.supported || !m_mfvState.areInitialReadsComplete()) {
         return;
     }
 

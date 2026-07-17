@@ -808,7 +808,7 @@ void GattAudioServiceRdk::maybeEnableMfvNotifications()
 
 void GattAudioServiceRdk::scheduleMfvNotifyRetry()
 {
-    if (!m_mfvState.supported || m_mfvState.notificationsEnabled || (m_mfvNotifyRetryTimer > 0)) {
+    if (!m_mfvState.supported || (m_mfvNotifyRetryTimer > 0)) {
         return;
     }
 

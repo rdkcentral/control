@@ -2784,8 +2784,11 @@ void ctrlm_obj_controller_rf4ce_t::log_binding_for_telemetry() {
       time_binding_str[0] = '\0';
       time_t time_binding = this->time_binding_get();
       struct tm time_info;
-      localtime_r(&time_binding, &time_info);
-      strftime(time_binding_str, 20, "%F %T", &time_info);
+      if(NULL == localtime_r(&time_binding, &time_info)) {
+         XLOGD_ERROR("Failed to convert time_binding to local time");
+      } else {
+         strftime(time_binding_str, 20, "%F %T", &time_info);
+      }
    }
    XLOGD_INFO("Model <%s>, Binding <%s>, Remote Bound (%u,%u), Time <%s>", product_name_->to_string().c_str(), ctrlm_rcu_binding_type_str(binding_type_), network_id_get(), controller_id_get(), time_binding_str);
    ctrlm_update_last_key_info(controller_id, CTRLM_KEY_SOURCE_RF, 0, product_name_->to_string().c_str(), false, true);
@@ -2797,8 +2800,11 @@ void ctrlm_obj_controller_rf4ce_t::log_unbinding_for_telemetry() {
 
    time_unbinding_str[0] = '\0';
    struct tm time_info;
-   localtime_r(&time_unbinding, &time_info);
-   strftime(time_unbinding_str, 20, "%F %T", &time_info);
+   if(NULL == localtime_r(&time_unbinding, &time_info)) {
+      XLOGD_ERROR("Failed to convert time_unbinding to local time");
+   } else {
+      strftime(time_unbinding_str, 20, "%F %T", &time_info);
+   }
    XLOGD_INFO("Model <%s>, Remote Unbound (%u,%u), Time <%s>", product_name_->to_string().c_str(), network_id_get(), controller_id_get(), time_unbinding_str);
 }
 

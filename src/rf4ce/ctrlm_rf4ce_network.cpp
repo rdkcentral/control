@@ -28,6 +28,7 @@
 #include <openssl/err.h>
 #include <openssl/conf.h>
 #endif
+#include <new>
 #include <iostream>
 #include <sstream>
 #include <fstream>

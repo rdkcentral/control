@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <new>
 #include <sstream>
 #include <vector>
 #include <algorithm>

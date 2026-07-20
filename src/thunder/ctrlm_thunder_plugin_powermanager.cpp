@@ -37,7 +37,8 @@ ctrlm_thunder_plugin_powermanager_t::ctrlm_thunder_plugin_powermanager_t() : ctr
 }
 
 ctrlm_thunder_plugin_powermanager_t::~ctrlm_thunder_plugin_powermanager_t() {
-   free(instance);
+   delete instance;
+   instance = NULL;
 }
 
 ctrlm_thunder_plugin_powermanager_t *ctrlm_thunder_plugin_powermanager_t::get_instance() {

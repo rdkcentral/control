@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <string.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 #include <ctrlm_log.h>
@@ -306,10 +307,18 @@ void ctrlmf_mic_test_audio_export(const char *filename, ctrlmf_audio_frame_t aud
    uint32_t pcm_data_size = frame_qty * SAMPLES_PER_FRAME * channel_qty * sample_size;
 
    errno = 0;
-   FILE *fh = fopen(filename, "w");
-   if(NULL == fh) {
+   int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR);
+   if(fd < 0) {
       int errsv = errno;
       XLOGD_ERROR("Unable to open file <%s> <%s>", filename, strerror(errsv));
+      return;
+   }
+   errno = 0;
+   FILE *fh = fdopen(fd, "w");
+   if(NULL == fh) {
+      int errsv = errno;
+      XLOGD_ERROR("Unable to fdopen file <%s> <%s>", filename, strerror(errsv));
+      close(fd);
       return;
    }
 

@@ -20,7 +20,7 @@ static void ctrlmf_audio_playback_event_handler(system_audio_player_event_t even
 static ctrlmf_audio_play_global_t g_audio_play;
 
 bool ctrlmf_audio_playback_init(void) {
-   g_audio_play.obj_sap = new Thunder::SystemAudioPlayer::ctrlm_thunder_plugin_system_audio_player_t;
+   g_audio_play.obj_sap = new(std::nothrow) Thunder::SystemAudioPlayer::ctrlm_thunder_plugin_system_audio_player_t;
 
    if(g_audio_play.obj_sap == NULL) {
       XLOGD_ERROR("out of memory");

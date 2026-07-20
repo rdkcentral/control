@@ -2251,7 +2251,7 @@ json_t *ctrlm_obj_network_rf4ce_t::xconf_export_controllers() {
       }
       else {
          // we dont have type in map so add it;
-         controller_type_details_t *new_type = new controller_type_details_t();
+         controller_type_details_t *new_type = new(std::nothrow) controller_type_details_t();
          if(new_type==NULL){
             XLOGD_ERROR("error on allocating.. aborting" );
             // if we could not malloc memory then we need to free our current mallocs and get out
@@ -3989,7 +3989,7 @@ vector<rf4ce_device_update_session_resume_info_t> *ctrlm_obj_network_rf4ce_t::de
       }
 
       if(sessions == NULL) {
-         sessions = new vector<rf4ce_device_update_session_resume_info_t>;
+         sessions = new(std::nothrow) vector<rf4ce_device_update_session_resume_info_t>;
          if(sessions == NULL) {
             XLOGD_ERROR("out of memory");
             break;

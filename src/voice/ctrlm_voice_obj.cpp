@@ -3870,8 +3870,6 @@ xrsr_power_mode_t voice_xrsr_power_map(ctrlm_power_state_t ctrlm_power_state) {
 }
 
 void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
-    bool enabled = true;
-
     XLOGD_INFO("processing RFC values");
 
     attr.get_rfc_value(JSON_INT_NAME_VOICE_VREX_REQUEST_TIMEOUT,         this->prefs.timeout_vrex_connect,0);
@@ -3992,6 +3990,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
     }
 
     if(attr.get_rfc_value(JSON_BOOL_NAME_VOICE_FORCE_VOICE_SETTINGS, this->prefs.force_voice_settings) && this->prefs.force_voice_settings) {
+        bool enabled = true;
         attr.get_rfc_value(JSON_BOOL_NAME_VOICE_ENABLE,                      enabled);
         attr.get_rfc_value(JSON_STR_NAME_VOICE_URL_SRC_PTT,                  this->prefs.server_url_src_ptt);
         attr.get_rfc_value(JSON_STR_NAME_VOICE_URL_SRC_FF,                   this->prefs.server_url_src_ff);
@@ -4013,6 +4012,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
 }
 
 void ctrlm_voice_t::vsdk_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
+    XLOGD_INFO("processing RFC values");
     json_t *obj_vsdk = NULL;
     if(attr.get_rfc_json_value(&obj_vsdk) && obj_vsdk) {
         XLOGD_INFO("VSDK values from XCONF, reopening xrsr..");
@@ -4021,7 +4021,12 @@ void ctrlm_voice_t::vsdk_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
         }
         // This is temporary until the VSDK supports receiving a config on the fly
         this->voice_sdk_close();
-        this->voice_sdk_open(obj_vsdk);
+        if(this->vsdk_config) {
+            json_decref(this->vsdk_config);
+            this->vsdk_config = NULL;
+        }
+        this->vsdk_config = obj_vsdk; // Transfer ownership
+        this->voice_sdk_open(this->vsdk_config);
         this->voice_sdk_update_routes();
 
         // Set init message if read from shared memory
@@ -4038,7 +4043,6 @@ void ctrlm_voice_t::vsdk_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
         } else {
             this->voice_init_set(init.c_str(), false);
         }
-        json_decref(obj_vsdk);
     }
 }
 

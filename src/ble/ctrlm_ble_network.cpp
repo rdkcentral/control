@@ -2120,7 +2120,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                      errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
                      ERR_CHK(safec_rc);
                      msg.params = &v_params;
-                     msg.voice_device = CTRLM_VOICE_DEVICE_FF;
+                     msg.voice_device = CTRLM_VOICE_DEVICE_MFV;
 
                      req_process_voice_session_begin(&msg, sizeof(msg));
                   }

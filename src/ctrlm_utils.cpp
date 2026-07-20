@@ -293,21 +293,27 @@ void ctrlm_print_controller_status(const char *prefix, ctrlm_controller_status_t
       ERR_CHK(safec_rc);
    } else {
       time_binding_str[0]        = '\0';
-      strftime(time_binding_str,        20, "%F %T", localtime((time_t *)&status->time_binding));
+      struct tm time_info;
+      localtime_r((time_t *)&status->time_binding, &time_info);
+      strftime(time_binding_str,        20, "%F %T", &time_info);
    }
    if(status->time_last_key == 0) {
       safec_rc = strcpy_s(time_last_key_str, sizeof(time_last_key_str), "NEVER");
       ERR_CHK(safec_rc);
    } else {
       time_last_key_str[0]       = '\0';
-      strftime(time_last_key_str,       20, "%F %T", localtime((time_t *)&status->time_last_key));
+      struct tm time_info;
+      localtime_r((time_t *)&status->time_last_key, &time_info);
+      strftime(time_last_key_str,       20, "%F %T", &time_info);
    }
    if(status->time_battery_update == 0) {
       safec_rc = strcpy_s(time_battery_update_str, sizeof(time_battery_update_str), "NEVER");
       ERR_CHK(safec_rc);
    } else {
       time_battery_update_str[0] = '\0';
-      strftime(time_battery_update_str, 20, "%F %T", localtime((time_t *)&status->time_battery_update));
+      struct tm time_info;
+      localtime_r((time_t *)&status->time_battery_update, &time_info);
+      strftime(time_battery_update_str, 20, "%F %T", &time_info);
    }
 
    const xlog_args_t xlog_args_info = {.options = XLOG_OPTS_DEFAULT, .color = XLOG_COLOR_NONE, .function = prefix, .line = XLOG_LINE_NONE, .level = XLOG_LEVEL_INFO, .id = XLOG_MODULE_ID, .size_max = XLOG_BUF_SIZE_DEFAULT};

@@ -8,7 +8,7 @@
 #include <ctrlmf_audio_playback.h>
 #include <ctrlmf_thunder_plugin_system_audio_player.h>
 #include <unistd.h>
-
+#include <new>
 
 typedef struct {
    Thunder::SystemAudioPlayer::ctrlm_thunder_plugin_system_audio_player_t *obj_sap;

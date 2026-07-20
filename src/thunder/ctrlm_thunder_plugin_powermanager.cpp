@@ -37,8 +37,10 @@ ctrlm_thunder_plugin_powermanager_t::ctrlm_thunder_plugin_powermanager_t() : ctr
 }
 
 ctrlm_thunder_plugin_powermanager_t::~ctrlm_thunder_plugin_powermanager_t() {
-   delete instance;
-   instance = NULL;
+   sem_destroy(&this->semaphore);
+   if(instance == this) {
+      instance = NULL;
+   }
 }
 
 ctrlm_thunder_plugin_powermanager_t *ctrlm_thunder_plugin_powermanager_t::get_instance() {

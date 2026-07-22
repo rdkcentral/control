@@ -414,8 +414,6 @@ void ctrlm_voice_t::voice_sdk_close() {
 
 bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *json_obj_vsdk, bool local_conf) {
     json_config                       conf;
-    ctrlm_voice_iarm_call_settings_t *voice_settings     = NULL;
-    uint32_t                          voice_settings_len = 0;
     std::string                       init;
     (void)local_conf;
 
@@ -566,6 +564,8 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
 
         ctrlm_db_voice_read_par_voice_status(this->prefs.par_voice_enabled);
     } else {
+        ctrlm_voice_iarm_call_settings_t *voice_settings     = NULL;
+        uint32_t                          voice_settings_len = 0;
         XLOGD_WARN("Reading voice settings from old style DB");
         ctrlm_db_voice_settings_read((guchar **)&voice_settings, &voice_settings_len);
         if(voice_settings_len == 0) {

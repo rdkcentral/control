@@ -77,8 +77,6 @@
 #define CTRLM_RF4CE_REGEX_BLACKOUT_TIME_INCREMENT    "(?<=blackout_time_increment=)[0-9]*"
 
 #define CTRLM_RF4CE_DPI_FRAME_CONTROL                (0x2F)
-#define CTRLM_RF4CE_QORVO_BAD_MAC_ADDRESS            (0xA5A5A5A5A5A5A5A5llu)
-#define CTRLM_RF4CE_QORVO_MAC_ADDRESS_PATTERN        (0x00155F0000000000llu)
 
 
 class controller_type_details_t {
@@ -4134,48 +4132,6 @@ void ctrlm_obj_network_rf4ce_t::req_process_network_status(void *data, int size)
    ctrlm_obj_network_t::req_process_network_status(data, size);
 }
 
-void ctrlm_obj_network_rf4ce_t::req_process_chip_status(void *data, int size) {
-   ctrlm_main_queue_msg_main_chip_status_t *dqm = (ctrlm_main_queue_msg_main_chip_status_t *)data;
-
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_main_chip_status_t));
-   g_assert(dqm->status != NULL);
-
-#if (CTRLM_HAL_RF4CE_API_VERSION >= 15)
-#ifndef  CTRLM_RF4CE_CHIP_CONNECTIVITY_CHECK_NOT_SUPPORTED
-      ctrlm_hal_network_property_network_stats_t network_stats;
-      network_stats.ieee_address = 0;  
-      ctrlm_hal_result_t result = property_get(CTRLM_HAL_NETWORK_PROPERTY_NETWORK_STATS, (void **)&network_stats);
-      if(result == CTRLM_HAL_RESULT_SUCCESS) { // Update cache on successful HAL call
-      // validate MAC address
-      // Qorvo MAC address range is 00;15;5F:xx;xx;xx;xx;xx. A valid MAC address should match the OUI i.e. MSB 3 bytes with Qorvo/Greenpeak.
-      // 0xA5 is default value read by SPI FIFO so that will indicate an invalid address if the serial communication is broken with the chip.
-         if (network_stats.ieee_address == CTRLM_RF4CE_QORVO_BAD_MAC_ADDRESS) {
-            dqm->status->chip_connected = 0;
-            XLOGD_ERROR("RF4CE Chip is not connected!");
-         } else if ((network_stats.ieee_address & CTRLM_RF4CE_QORVO_MAC_ADDRESS_PATTERN) != CTRLM_RF4CE_QORVO_MAC_ADDRESS_PATTERN) {
-            dqm->status->chip_connected = 0;
-            XLOGD_ERROR("Bad Chip MAC address %llu!", network_stats.ieee_address);
-         } else {
-            XLOGD_INFO("RF4CE Chip is connected!");
-            dqm->status->chip_connected = 1;
-         }
-      dqm->status->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-      }
-#else
-      dqm->status->chip_connected = 1;
-      XLOGD_ERROR("RF4CE Chip Connectivity is not supported on this platform!");
-      dqm->status->result = CTRLM_IARM_CALL_RESULT_ERROR_NOT_SUPPORTED;
-#endif
-      if(dqm->semaphore) {
-         sem_post(dqm->semaphore);
-      }
-#else
-      ctrlm_obj_network_t::req_process_chip_status(data, size);
-#endif
-}
-
-
 void ctrlm_obj_network_rf4ce_t::cs_values_set(const ctrlm_cs_values_t *values, bool db_load) {
    if(values == NULL) {
       XLOGD_ERROR("values are NULL");
@@ -4734,15 +4690,8 @@ void ctrlm_obj_network_rf4ce_t::req_process_start_pairing(void *data, int size) 
       dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
    } else {
       if(dqm->params->timeout != 0) { // use a timeout
-         ctrlm_main_iarm_call_property_t property = {};
-         property.api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION;
-         property.result       = CTRLM_IARM_CALL_RESULT_INVALID;
-         property.network_id   = CTRLM_MAIN_NETWORK_ID_ALL;
-         property.name         = CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND;
-         property.value        = dqm->params->timeout * 1000;
 
-         ctrlm_main_iarm_call_property_set_(&property);
-         if (property.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
+         if(!ctrlm_main_active_period_screenbind_timeout_set_(dqm->params->timeout * 1000)) {
             XLOGD_ERROR("Failed to set ACTIVE PERIOD SCREENBIND property");
             set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
             dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());

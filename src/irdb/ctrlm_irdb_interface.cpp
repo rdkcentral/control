@@ -20,6 +20,7 @@
 #include "ctrlm_irdb_interface.h"
 #include "ctrlm_network.h"
 #include "ctrlm_log.h"
+#include "ctrlm_utils.h"
 #include "ctrlm_irdb_stub.h"
 #include "ctrlm_telemetry_event.h"
 
@@ -32,11 +33,7 @@
 #include "ctrlm_thunder_plugin_display_settings.h"
 #include "ctrlm_thunder_plugin_cec_source.h"
 // TV Platforms
-#ifdef USE_DEPRECATED_HDMI_INPUT_PLUGIN
-#include "ctrlm_thunder_plugin_hdmi_input.h"
-#else
 #include "ctrlm_thunder_plugin_av_input.h"
-#endif
 #include "ctrlm_thunder_plugin_cec_sink.h"
 #endif
 
@@ -111,11 +108,7 @@ typedef struct {
     Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t   *display_settings;
     Thunder::CEC::ctrlm_thunder_plugin_cec_source_t                     *cec_source;
     Thunder::CECSink::ctrlm_thunder_plugin_cec_sink_t                   *cec_sink;
-    #ifdef USE_DEPRECATED_HDMI_INPUT_PLUGIN
-    Thunder::HDMIInput::ctrlm_thunder_plugin_hdmi_input_t               *av_input;
-    #else
     Thunder::AVInput::ctrlm_thunder_plugin_av_input_t                   *av_input;
-    #endif
    #endif
 } ctrlm_irdb_global_t;
 
@@ -383,11 +376,7 @@ void ctrlm_irdb_interface_t::on_thunder_ready() {
             }
         }
     } else {
-        #ifdef USE_DEPRECATED_HDMI_INPUT_PLUGIN
-        g_irdb.av_input = Thunder::HDMIInput::ctrlm_thunder_plugin_hdmi_input_t::getInstance();
-        #else
         g_irdb.av_input = Thunder::AVInput::ctrlm_thunder_plugin_av_input_t::getInstance();
-        #endif
         g_irdb.cec_sink = Thunder::CECSink::ctrlm_thunder_plugin_cec_sink_t::getInstance();
     }
     #endif
@@ -629,12 +618,14 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
     }
     std::string results = ss.str();
     ss.str("");
-    ss << "[\"" << t2_vendor_info.name << "\""
+    ss << "[" << MARKER_IRDB_AUTOLOOKUP_RESULT_VERSION
+       << ",\"" << t2_vendor_info.name << "\""
        << ",0x" << std::hex << std::setfill('0') << std::setw(2) << (int)t2_vendor_info.rcu_support_bitmask
        << "," << std::dec << (int)m_platform_tv
        << "," << tv_count
        << "," << avr_count
-       << "," << (results.empty() ? "\"\"" : results) << "]";
+       << "," << (results.empty() ? "\"\"" : results)
+       << "," << ctrlm_timestamp_get_ms() << "]";
     ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_AUTOLOOKUP_RESULT, ss.str());
     ev.event();
 #endif

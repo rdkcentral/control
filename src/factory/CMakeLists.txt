@@ -40,7 +40,6 @@ target_sources(ctrlm-fta PRIVATE
    ctrlmf_utils.c
    ctrlmf_audio_capture.cpp
    ctrlmf_audio_control.cpp
-   ctrlmf_audio_playback.cpp
    ctrlmf_mic_test.cpp
    ctrlmf_ws.c
    iarm/ctrlmf_iarm_client.cpp
@@ -58,6 +57,7 @@ endif()
 if(THUNDER)
    add_compile_definitions(PRIVATE CTRLMF_THUNDER)
    target_sources(ctrlm-fta PRIVATE
+      ctrlmf_audio_playback.cpp
       thunder/ctrlmf_thunder_controller.cpp
       thunder/ctrlmf_thunder_plugin.cpp
       thunder/ctrlmf_thunder_plugin_system_audio_player.cpp

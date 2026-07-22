@@ -49,6 +49,7 @@
 #include "ctrlm_rcp_ipc_iarm_thunder.h"
 #include "ctrlm_telemetry.h"
 #include <sstream>
+#include <iomanip>
 #include "ctrlm_telemetry_event.h"
 
 using namespace std;
@@ -773,6 +774,23 @@ void ctrlm_obj_network_ble_t::req_process_pair_with_code(void *data, int size) {
    }
 }
 
+void ctrlm_obj_network_ble_t::emit_irdb_program_result(int ir_state, const std::string &fail_reason,
+                                     uint8_t rcu_bitmask,
+                                     const std::string &vendor_name, uint8_t vendor_bitmask)
+{
+#ifdef TELEMETRY_SUPPORT
+   std::ostringstream ss;
+   ss << "[" << MARKER_IRDB_PROGRAM_RESULT_VERSION
+      << "," << ir_state
+      << ",\"" << fail_reason << "\""
+      << ",0x" << std::hex << std::setfill('0') << std::setw(2) << (int)rcu_bitmask
+      << ",\"" << vendor_name << "\""
+      << ",0x" << std::setw(2) << (int)vendor_bitmask << std::dec
+      << "," << ctrlm_timestamp_get_ms() << "]";
+   ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_PROGRAM_RESULT, ss.str());
+   ev.event();
+#endif
+}
 
 void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size) {
    XLOGD_DEBUG("Enter...");
@@ -793,16 +811,9 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
          XLOGD_ERROR("Controller doesn't exist!");
       } else if (!controllers_[controller_id]->isSupportedIrdb(dqm->vendor_info)) {
          XLOGD_ERROR("Unsupported IRDB - not continuing with ir code download!");
-#ifdef TELEMETRY_SUPPORT
-         char t2_buf[256];
-         snprintf(t2_buf, sizeof(t2_buf), "[%d,\"unsupported\",0x%02X,\"%s\",0x%02X]",
-                  (int)CTRLM_IR_STATE_FAILED,
-                  controllers_[controller_id]->getSupportedIrdbs(),
-                  dqm->vendor_info.name.c_str(),
-                  dqm->vendor_info.rcu_support_bitmask);
-         ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_PROGRAM_RESULT, t2_buf);
-         ev.event();
-#endif
+         emit_irdb_program_result((int)CTRLM_IR_STATE_FAILED, "unsupported",
+                                  controllers_[controller_id]->getSupportedIrdbs(),
+                                  dqm->vendor_info.name, dqm->vendor_info.rcu_support_bitmask);
       } else {
          if(dqm->ir_codes) {
 
@@ -1754,6 +1765,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_pairing_outcome(void *data, int si
           ss << ",";
       }
    }
+   ss << "," << ctrlm_timestamp_get_ms();
    ss << "]";
 
    ctrlm_telemetry_event_t<std::string> ev(MARKER_RCU_PAIRING_ATTEMPT, ss.str());
@@ -1806,37 +1818,24 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
          ir_state_ = dqm->ir_state;
          // send event immediately.
          schedule_status_event(true);
-#ifdef TELEMETRY_SUPPORT
-         {
+         if (dqm->ir_state == CTRLM_IR_STATE_COMPLETE || dqm->ir_state == CTRLM_IR_STATE_FAILED) {
              ctrlm_irdb_vendor_info_t vendor_info{};
              vendor_info.name = "unknown";
              vendor_info.rcu_support_bitmask = 0xFF;
-
              ctrlm_irdb_interface_t *irdb = ctrlm_main_irdb_get();
              if (irdb) { irdb->get_vendor_info(vendor_info); }
-             char t2_buf[256];
-             if (dqm->ir_state == CTRLM_IR_STATE_COMPLETE || dqm->ir_state == CTRLM_IR_STATE_FAILED) {
-                 ctrlm_controller_id_t controller_id;
-                 uint8_t rcu_bitmask = 0xFF;
-                 if (false == getControllerId(dqm->rcu_data.ieee_address, &controller_id)) {
-                    XLOGD_ERROR("Controller <%s> NOT found in the network!!",
-                          ctrlm_convert_mac_long_to_string(dqm->rcu_data.ieee_address).c_str());
-                 } else {
-                     auto controller = controllers_[controller_id];
-                     rcu_bitmask = controller->getSupportedIrdbs();
-                 }
 
-                 snprintf(t2_buf, sizeof(t2_buf), "[%d,\"%s\",0x%02X,\"%s\",0x%02X]",
-                          (int)dqm->ir_state,
-                          dqm->ir_fail_reason,
-                          rcu_bitmask,
-                          vendor_info.name.c_str(),
-                          vendor_info.rcu_support_bitmask);
-                 ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_PROGRAM_RESULT, t2_buf);
-                 ev.event();
+             ctrlm_controller_id_t controller_id;
+             uint8_t rcu_bitmask = 0xFF;
+             if (false == getControllerId(dqm->rcu_data.ieee_address, &controller_id)) {
+                XLOGD_ERROR("Controller <%s> NOT found in the network!!",
+                      ctrlm_convert_mac_long_to_string(dqm->rcu_data.ieee_address).c_str());
+             } else {
+                 rcu_bitmask = controllers_[controller_id]->getSupportedIrdbs();
              }
+             emit_irdb_program_result((int)dqm->ir_state, dqm->ir_fail_reason,
+                                      rcu_bitmask, vendor_info.name, vendor_info.rcu_support_bitmask);
          }
-#endif
          break;
       default:
       {
@@ -2798,7 +2797,33 @@ void ctrlm_obj_network_ble_t::power_state_change(gboolean waking_up) {
 }
 
 void ctrlm_obj_network_ble_t::rfc_retrieved_handler(const ctrlm_rfc_attr_t &attr) {
-   // TODO - No RFC parameters as of now
+   XLOGD_INFO("process BLE RFC values");
+
+   // Process options object
+   bool disable_voice = false;
+   if(attr.get_rfc_value(JSON_OBJ_NAME_NETWORK_BLE_OPTIONS JSON_PATH_SEPERATOR JSON_BOOL_NAME_NETWORK_BLE_OPTIONS_DISABLE_VOICE, disable_voice)) {
+      voice_disabled_ = disable_voice;
+      XLOGD_INFO("BLE voice support is %s by config", voice_disabled_ ? "disabled" : "enabled");
+   }
+
+   auto config = getConfigSettings();
+   if (config == nullptr) {
+      XLOGD_ERROR("config not available");
+      return;
+   }
+
+   json_t *obj = nullptr;
+   if(!attr.get_rfc_json_value(&obj)) {
+      XLOGD_ERROR("failed to get RFC json object");
+      return;
+   }
+
+   // Update config settings from RFC json object
+   bool updated = config->updateFromJson(obj);
+   if(!updated) {
+      XLOGD_WARN("no BLE config updates found in RFC");
+   }
+   json_decref(obj);
 }
 
 std::vector<ctrlm_obj_controller_t *> ctrlm_obj_network_ble_t::get_controller_obj_list() const {

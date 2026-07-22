@@ -22,15 +22,11 @@
 #include <glib.h>
 #include "libIBus.h"
 #include "libIBusDaemon.h"
-#ifdef USE_DEPRECATED_IRMGR
-#include "irMgr.h"
-#endif
 #include "sysMgr.h"
 #include "comcastIrKeyCodes.h"
 #include "ctrlm.h"
 #include "ctrlm_log.h"
 #include "ctrlm_ipc.h"
-#include "ctrlm_ipc_iarm_powermanager.h"
 #include "ctrlm_network.h"
 #include "ctrlm_tr181.h"
 #include "ctrlm_utils.h"
@@ -40,28 +36,16 @@
 static IARM_Result_t ctrlm_main_iarm_call_status_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_network_status_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_property_set(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_property_get(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_discovery_config_set(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_autobind_config_set(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_precommission_config_set(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_controller_unbind(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_ir_remote_usage_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_last_key_info_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_control_service_set_values(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_control_service_get_values(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_control_service_can_find_my_remote(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_control_service_start_pairing_mode(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_control_service_end_pairing_mode(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_pairing_metrics_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_voice_session_begin(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_voice_session_end(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_start_pair_with_code(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_chip_status_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_audio_capture_start(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_audio_capture_stop(void *arg);
-#if CTRLM_HAL_RF4CE_API_VERSION >= 10  && !defined(CTRLM_DPI_CONTROL_NOT_SUPPORTED)
-extern IARM_Result_t ctrlm_iarm_powermanager_event_handler_power_pre_change(void* pArgs);
-#endif
 
 typedef struct {
    const char *   name;
@@ -76,30 +60,16 @@ ctrlm_iarm_call_t ctrlm_iarm_calls[] = {
    {CTRLM_MAIN_IARM_CALL_STATUS_GET,                         ctrlm_main_iarm_call_status_get                         },
    {CTRLM_MAIN_IARM_CALL_NETWORK_STATUS_GET,                 ctrlm_main_iarm_call_network_status_get                 },
    {CTRLM_MAIN_IARM_CALL_PROPERTY_SET,                       ctrlm_main_iarm_call_property_set                       },
-   {CTRLM_MAIN_IARM_CALL_PROPERTY_GET,                       ctrlm_main_iarm_call_property_get                       },
-   {CTRLM_MAIN_IARM_CALL_DISCOVERY_CONFIG_SET,               ctrlm_main_iarm_call_discovery_config_set               },
-   {CTRLM_MAIN_IARM_CALL_AUTOBIND_CONFIG_SET,                ctrlm_main_iarm_call_autobind_config_set                },
-   {CTRLM_MAIN_IARM_CALL_PRECOMMISSION_CONFIG_SET,           ctrlm_main_iarm_call_precommission_config_set           },
    {CTRLM_MAIN_IARM_CALL_CONTROLLER_UNBIND,                  ctrlm_main_iarm_call_controller_unbind                  },
    {CTRLM_MAIN_IARM_CALL_IR_REMOTE_USAGE_GET,                ctrlm_main_iarm_call_ir_remote_usage_get                },
    {CTRLM_MAIN_IARM_CALL_LAST_KEY_INFO_GET,                  ctrlm_main_iarm_call_last_key_info_get                  },
    {CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_SET_VALUES,         ctrlm_main_iarm_call_control_service_set_values         },
    {CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_GET_VALUES,         ctrlm_main_iarm_call_control_service_get_values         },
-   {CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_CAN_FIND_MY_REMOTE, ctrlm_main_iarm_call_control_service_can_find_my_remote },
-   {CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_START_PAIRING_MODE, ctrlm_main_iarm_call_control_service_start_pairing_mode },
-   {CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_END_PAIRING_MODE,   ctrlm_main_iarm_call_control_service_end_pairing_mode   },
    {CTRLM_MAIN_IARM_CALL_PAIRING_METRICS_GET,                ctrlm_main_iarm_call_pairing_metrics_get                },
    {CTRLM_VOICE_IARM_CALL_SESSION_BEGIN,                     ctrlm_main_iarm_call_voice_session_begin                },
    {CTRLM_VOICE_IARM_CALL_SESSION_END,                       ctrlm_main_iarm_call_voice_session_end                  },
-   {CTRLM_MAIN_IARM_CALL_START_PAIR_WITH_CODE,               ctrlm_main_iarm_call_start_pair_with_code               },
-   {CTRLM_MAIN_IARM_CALL_CHIP_STATUS_GET,                    ctrlm_main_iarm_call_chip_status_get                    },
    {CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_START,                ctrlm_main_iarm_call_audio_capture_start                },
    {CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_STOP,                 ctrlm_main_iarm_call_audio_capture_stop                 },
-   #if USE_IARM_POWER_MANAGER      
-   #if CTRLM_HAL_RF4CE_API_VERSION >= 10 && !defined(CTRLM_DPI_CONTROL_NOT_SUPPORTED)
-   {IARM_BUS_COMMON_API_PowerPreChange,                      ctrlm_iarm_powermanager_event_handler_power_pre_change  },
-   #endif
-   #endif
 };
 
 
@@ -128,12 +98,6 @@ void ctrlm_main_iarm_terminate(void) {
 
    // Change to stopped or terminated state, so we do not accept new calls
    g_atomic_int_set(&running, 0);
-
-#ifdef USE_DEPRECATED_IRMGR
-   // IARM Events that we are listening to from other processes
-   IARM_Bus_RemoveEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_IRKEY, ctrlm_event_handler_ir);
-   IARM_Bus_RemoveEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_CONTROL, ctrlm_event_handler_ir);
-#endif
 
    // Unregister calls that can be invoked by IARM bus clients
    //for(index = 0; index < sizeof(ctrlm_iarm_calls)/sizeof(ctrlm_iarm_call_t); index++) {
@@ -252,103 +216,10 @@ IARM_Result_t ctrlm_main_iarm_call_property_set(void *arg) {
       g_assert(0);
       return(IARM_RESULT_INVALID_PARAM);
    }
-   XLOGD_INFO("");
+   XLOGD_INFO("not supported");
    
-   if(!ctrlm_main_iarm_call_property_set(property)) {
-      property->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_property_get(void *arg) {
-   ctrlm_main_iarm_call_property_t *property = (ctrlm_main_iarm_call_property_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(NULL == property) {
-      XLOGD_ERROR("NULL Property Argument");
-      g_assert(0);
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   XLOGD_INFO("");
+   property->result = CTRLM_IARM_CALL_RESULT_ERROR;
    
-   if(!ctrlm_main_iarm_call_property_get(property)) {
-      property->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_discovery_config_set(void *arg) {
-   ctrlm_main_iarm_call_discovery_config_t *config = (ctrlm_main_iarm_call_discovery_config_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(NULL == config) {
-      XLOGD_ERROR("NULL Property Argument");
-      g_assert(0);
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   
-   if(config->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-      XLOGD_INFO("Unsupported API Revision (%u, %u)", config->api_revision, CTRLM_MAIN_IARM_BUS_API_REVISION);
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-      return(IARM_RESULT_SUCCESS);
-   }
-   XLOGD_INFO("");
-   
-   if(!ctrlm_main_iarm_call_discovery_config_set(config)) {
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_autobind_config_set(void *arg) {
-   ctrlm_main_iarm_call_autobind_config_t *config = (ctrlm_main_iarm_call_autobind_config_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(NULL == config) {
-      XLOGD_ERROR("NULL Property Argument");
-      g_assert(0);
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(config->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-      XLOGD_INFO("Unsupported API Revision (%u, %u)", config->api_revision, CTRLM_MAIN_IARM_BUS_API_REVISION);
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-      return(IARM_RESULT_SUCCESS);
-   }
-   if(!ctrlm_main_iarm_call_autobind_config_set(config)) {
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_precommission_config_set(void *arg) {
-   ctrlm_main_iarm_call_precommision_config_t *config = (ctrlm_main_iarm_call_precommision_config_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(NULL == config) {
-      XLOGD_ERROR("NULL Property Argument");
-      g_assert(0);
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(config->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-      XLOGD_INFO("Unsupported API Revision (%u, %u)", config->api_revision, CTRLM_MAIN_IARM_BUS_API_REVISION);
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-      return(IARM_RESULT_SUCCESS);
-   }
-   if(!ctrlm_main_iarm_call_precommission_config_set(config)) {
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
    return(IARM_RESULT_SUCCESS);
 }
 
@@ -529,80 +400,6 @@ IARM_Result_t ctrlm_main_iarm_call_control_service_get_values(void *arg) {
    return(IARM_RESULT_SUCCESS);
 }
 
-IARM_Result_t ctrlm_main_iarm_call_control_service_can_find_my_remote(void *arg) {
-   ctrlm_main_iarm_call_control_service_can_find_my_remote_t *can_find_my_remote = (ctrlm_main_iarm_call_control_service_can_find_my_remote_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(NULL == can_find_my_remote) {
-      XLOGD_ERROR("NULL Can Find My Remote Argument");
-      g_assert(0);
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(can_find_my_remote->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-      XLOGD_INFO("Unsupported API Revision (%u, %u)", can_find_my_remote->api_revision, CTRLM_MAIN_IARM_BUS_API_REVISION);
-      can_find_my_remote->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-      return(IARM_RESULT_SUCCESS);
-   }
-   
-   if(!ctrlm_main_iarm_call_control_service_can_find_my_remote(can_find_my_remote)) {
-      can_find_my_remote->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_control_service_start_pairing_mode(void *arg) {
-   ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing = (ctrlm_main_iarm_call_control_service_pairing_mode_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(NULL == pairing) {
-      XLOGD_ERROR("NULL Pairing Mode Argument");
-      g_assert(0);
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(pairing->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-      XLOGD_INFO("Unsupported API Revision (%u, %u)", pairing->api_revision, CTRLM_MAIN_IARM_BUS_API_REVISION);
-      pairing->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-      return(IARM_RESULT_SUCCESS);
-   }
-   XLOGD_INFO("");
-   
-   if(!ctrlm_main_iarm_call_control_service_start_pairing_mode(pairing)) {
-      pairing->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_control_service_end_pairing_mode(void *arg) {
-   ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing = (ctrlm_main_iarm_call_control_service_pairing_mode_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(NULL == pairing) {
-      XLOGD_ERROR("NULL Pairing Mode Argument");
-      g_assert(0);
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(pairing->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-      XLOGD_INFO("Unsupported API Revision (%u, %u)", pairing->api_revision, CTRLM_MAIN_IARM_BUS_API_REVISION);
-      pairing->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-      return(IARM_RESULT_SUCCESS);
-   }
-   XLOGD_INFO("");
-   
-   if(!ctrlm_main_iarm_call_control_service_end_pairing_mode(pairing)) {
-      pairing->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-   return(IARM_RESULT_SUCCESS);
-}
-
 IARM_Result_t ctrlm_main_iarm_call_pairing_metrics_get(void *arg) {
    ctrlm_main_iarm_call_pairing_metrics_t *pairing_metrics = (ctrlm_main_iarm_call_pairing_metrics_t *) arg;
 
@@ -624,34 +421,6 @@ IARM_Result_t ctrlm_main_iarm_call_pairing_metrics_get(void *arg) {
    if(!ctrlm_main_iarm_call_pairing_metrics_get(pairing_metrics)) {
       pairing_metrics->result = CTRLM_IARM_CALL_RESULT_ERROR;
    }
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_chip_status_get(void *arg) {
-   ctrlm_main_iarm_call_chip_status_t *status = (ctrlm_main_iarm_call_chip_status_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(status == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(status->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-      XLOGD_INFO("Unsupported API Revision (%u, %u)", status->api_revision, CTRLM_MAIN_IARM_BUS_API_REVISION);
-      status->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-      return(IARM_RESULT_SUCCESS);
-   }
-   XLOGD_INFO("");
-
-#if CTRLM_HAL_RF4CE_API_VERSION < 15 || defined(CTRLM_RF4CE_CHIP_CONNECTIVITY_CHECK_NOT_SUPPORTED)
-   status->result = CTRLM_IARM_CALL_RESULT_ERROR_NOT_SUPPORTED;
-#else
-   if(!ctrlm_main_iarm_call_chip_status_get(status)) {
-      status->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-#endif
    return(IARM_RESULT_SUCCESS);
 }
 
@@ -736,45 +505,3 @@ IARM_Result_t ctrlm_main_iarm_call_voice_session_end(void *arg) {
 
    return(IARM_RESULT_SUCCESS);
 }
-
-IARM_Result_t ctrlm_main_iarm_call_start_pair_with_code(void *arg) {
-   ctrlm_iarm_call_StartPairWithCode_params_t *params = (ctrlm_iarm_call_StartPairWithCode_params_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(params == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(params->network_id == CTRLM_MAIN_NETWORK_ID_ALL) {
-      XLOGD_ERROR("Cannot start pair with code for multiple networks");
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-
-   XLOGD_AUTOMATION_INFO("params->network_id = <%d>, params->pair_code = 0x%X", params->network_id, params->pair_code);
-
-   // Signal completion of the operation
-   sem_t semaphore;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_pair_with_code_t msg;
-   errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
-   ERR_CHK(safec_rc);
-
-   sem_init(&semaphore, 0, 0);
-
-   msg.params            = params;
-   msg.params->result    = CTRLM_IARM_CALL_RESULT_ERROR;
-   msg.semaphore         = &semaphore;
-
-   ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_pair_with_code, &msg, sizeof(msg), NULL, params->network_id);
-
-   // Wait for the result semaphore to be signaled
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   return(IARM_RESULT_SUCCESS);
-}
-

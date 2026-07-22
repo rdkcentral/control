@@ -77,8 +77,6 @@
 #define CTRLM_RF4CE_REGEX_BLACKOUT_TIME_INCREMENT    "(?<=blackout_time_increment=)[0-9]*"
 
 #define CTRLM_RF4CE_DPI_FRAME_CONTROL                (0x2F)
-#define CTRLM_RF4CE_QORVO_BAD_MAC_ADDRESS            (0xA5A5A5A5A5A5A5A5llu)
-#define CTRLM_RF4CE_QORVO_MAC_ADDRESS_PATTERN        (0x00155F0000000000llu)
 
 
 class controller_type_details_t {
@@ -726,9 +724,6 @@ gboolean ctrlm_obj_network_rf4ce_t::load_config(json_t *json_obj_net_rf4ce) {
          sub_conf.config_value_get(JSON_INT_NAME_NETWORK_RF4CE_DSP_IC_DETECT, dsp_configuration_.ic_config_detect, 0x00, 0xFF);
       }
    }
-   //Read tr181 values here. tr181 values will override any config file values.
-   polling_config_tr181_read();
-   process_xconf();
 
    XLOGD_INFO("User String                   <%s>", user_string_.c_str());
    XLOGD_INFO("Timeout Key Release           %u ms", timeout_key_release_);
@@ -2620,6 +2615,13 @@ guchar ctrlm_obj_network_rf4ce_t::target_irdb_status_flags_get() {
    return(target_irdb_status_.flags);
 }
 
+void ctrlm_obj_network_rf4ce_t::ir_prog_state_set(ctrlm_ir_state_t state) {
+   THREAD_ID_VALIDATE();
+   XLOGD_INFO("RF4CE remote IR programming state changed to <%s>", ctrlm_ir_state_str(state));
+   ir_state_ = state;
+   iarm_event_rcu_status();
+}
+
 ctrlm_rf4ce_controller_irdb_status_t ctrlm_obj_network_rf4ce_t::most_recent_controller_irdb_status_get(void) {
    THREAD_ID_VALIDATE();
    ctrlm_rf4ce_controller_irdb_status_t most_recent_controller_irdb_status;
@@ -2924,110 +2926,6 @@ void ctrlm_obj_network_rf4ce_t::default_polling_configuration() {
           break;
         }
       }
-   }
-}
-
-void ctrlm_obj_network_rf4ce_t::polling_config_tr181_read() {
-   guint8 default_polling_methods = 0;
-   ctrlm_rf4ce_polling_configuration_t default_polling_config_hb = {0};
-
-   ctrlm_rf4ce_polling_configuration_t default_polling_config_mac;
-   errno_t safec_rc = memset_s(&default_polling_config_mac, sizeof(ctrlm_rf4ce_polling_configuration_t), 0, sizeof(ctrlm_rf4ce_polling_configuration_t));
-   ERR_CHK(safec_rc);
-   default_polling_config_mac.trigger = POLLING_TRIGGER_FLAG_TIME;
-   default_polling_config_mac.time_interval = JSON_INT_VALUE_NETWORK_RF4CE_POLLING_DEFAULT_MAC_TIME_INTERVAL;
-
-   bool b_has_default_config = false;
-
-   char tr181_buf[1024] = {0};
-   if(CTRLM_TR181_RESULT_SUCCESS == ctrlm_tr181_string_get(CTRLM_RF4CE_TR181_POLLING_CONFIGURATION_DEFAULT, tr181_buf, sizeof(tr181_buf))) {
-     if(4 == sscanf(tr181_buf, "%hhu:%hu:%hhu:%u:", &default_polling_methods, &default_polling_config_hb.trigger, &default_polling_config_hb.kp_counter, &default_polling_config_hb.time_interval)) {
-        XLOGD_INFO("Default HB Polling Configuration from TR181");
-        b_has_default_config = true;
-     }
-   }
-
-   bool b_has_default_mac_config = false;
-
-   bool mac_polling_enabled = false;
-   if(CTRLM_TR181_RESULT_SUCCESS == ctrlm_tr181_bool_get(CTRLM_RF4CE_TR181_MAC_POLLING_CONFIGURATION_ENABLE, &mac_polling_enabled)) {
-      XLOGD_INFO("Default Mac Polling Configuration from TR181");
-      b_has_default_mac_config = mac_polling_enabled;
-      ctrlm_tr181_int_get(CTRLM_RF4CE_TR181_MAC_POLLING_CONFIGURATION_INTERVAL, (int*)&default_polling_config_mac.time_interval, 1000, 60000);
-
-      if(mac_polling_enabled) {
-         polling_methods_ |= POLLING_METHODS_FLAG_MAC;
-      } else {
-         polling_methods_ &= ~POLLING_METHODS_FLAG_MAC;
-      }
-
-   }
-   for(int i = 0; i < RF4CE_CONTROLLER_TYPE_INVALID; i++) {
-     XLOGD_INFO("Polling Configuration Remote Type <%s>", ctrlm_rf4ce_controller_type_str((ctrlm_rf4ce_controller_type_t)i));
-     const char *controller_tr181_str = 0;
-
-     switch((ctrlm_rf4ce_controller_type_t)i) {
-        case RF4CE_CONTROLLER_TYPE_XR11: {
-           controller_tr181_str = CTRLM_RF4CE_TR181_POLLING_CONFIGURATION_XR11V2;
-           break;
-        }
-        case RF4CE_CONTROLLER_TYPE_XR15: {
-           controller_tr181_str = CTRLM_RF4CE_TR181_POLLING_CONFIGURATION_XR15V1;
-           break;
-        }
-        case RF4CE_CONTROLLER_TYPE_XR15V2: {
-           controller_tr181_str = CTRLM_RF4CE_TR181_POLLING_CONFIGURATION_XR15V2;
-           break;
-        }
-        case RF4CE_CONTROLLER_TYPE_XR16: {
-           controller_tr181_str = CTRLM_RF4CE_TR181_POLLING_CONFIGURATION_XR16V1;
-           break;
-        }
-        case RF4CE_CONTROLLER_TYPE_XR19: {
-           controller_tr181_str = CTRLM_RF4CE_TR181_POLLING_CONFIGURATION_XR19V1;
-           break;
-        }
-        case RF4CE_CONTROLLER_TYPE_XRA: {
-           controller_tr181_str = CTRLM_RF4CE_TR181_POLLING_CONFIGURATION_XRAV1;
-           break;
-        }
-        default: {
-           break;
-        }
-     }
-
-     if (b_has_default_mac_config) {
-        controller_polling_configuration_mac_[i] = default_polling_config_mac;
-     }
-
-     if(controller_tr181_str) {
-        if (b_has_default_config) {
-           controller_polling_methods_[i] = default_polling_methods;
-           controller_polling_configuration_heartbeat_[i] = default_polling_config_hb;
-        }
-        safec_rc = memset_s(tr181_buf, sizeof(tr181_buf), 0, sizeof(tr181_buf));
-        ERR_CHK(safec_rc);
-        ctrlm_rf4ce_polling_configuration_t controller_polling_configuration;
-        if(CTRLM_TR181_RESULT_SUCCESS == ctrlm_tr181_string_get(controller_tr181_str, tr181_buf, sizeof(tr181_buf))) {
-           if(4 == sscanf(tr181_buf, "%hhu:%hu:%hhu:%u:", &controller_polling_methods_[i],
-                 &controller_polling_configuration.trigger,
-                 &controller_polling_configuration.kp_counter,
-                 &controller_polling_configuration.time_interval)) {
-              //If MAC polling bit is set, save the mac config
-              if(controller_polling_methods_[i] & POLLING_METHODS_FLAG_MAC) {
-                 controller_polling_configuration_mac_[i].trigger = controller_polling_configuration.trigger;
-                 controller_polling_configuration_mac_[i].kp_counter = controller_polling_configuration.kp_counter;
-                 // The MAC polling period has been set above when MAC was enabled
-              }
-              //If Heartbeat polling bit is set, save the heartbeat config
-              if(controller_polling_methods_[i] & POLLING_METHODS_FLAG_HEARTBEAT) {
-                 controller_polling_configuration_heartbeat_[i] = controller_polling_configuration;
-              }
-              XLOGD_INFO("Controller Polling Configuration Read from TR181 <%s><%s>", ctrlm_rf4ce_controller_type_str((ctrlm_rf4ce_controller_type_t)i),ctrlm_rf4ce_controller_polling_methods_str(controller_polling_methods_[i]));
-           }
-        }
-     }
-     controller_polling_methods_[i] &= polling_methods_; // The controller polling_methods should only contain methods currently supported by target
    }
 }
 
@@ -3405,42 +3303,6 @@ void ctrlm_obj_network_rf4ce_t::polling_action_push(void *data, int size) {
    }
 }
 
-void ctrlm_obj_network_rf4ce_t::process_xconf() {
-   int result;
-   int value = 0;
-   bool b_value = true;
-   result = ctrlm_tr181_int_get(CTRLM_RF4CE_TR181_RF4CE_AUDIO_PROFILE_TARGET, &value, 1, 7);
-   if(result != CTRLM_TR181_RESULT_SUCCESS) {
-      XLOGD_INFO("audio profile target not present");
-   } else {
-      audio_profiles_targ_ = value;
-      XLOGD_INFO("audio profile target 0x%04X", audio_profiles_targ_);
-   }
-
-   result = ctrlm_tr181_int_get(CTRLM_RF4CE_TR181_RF4CE_RSP_IDLE_FF, &value, 0, 1000);
-   if(result != CTRLM_TR181_RESULT_SUCCESS) {
-      XLOGD_INFO("FF Rsp Idle time not present");
-   } else {
-      response_idle_time_ff_ = value;
-      XLOGD_INFO("FF Rsp Idle time %u", response_idle_time_ff_);
-   }
-
-   if(CTRLM_TR181_RESULT_SUCCESS != ctrlm_tr181_bool_get(CTRLM_RF4CE_TR181_RF4CE_VOICE_ENCRYPTION, &b_value)) {
-      XLOGD_INFO("TR181 RF4CE Voice Encryption not present");
-   } else {
-      XLOGD_TELEMETRY("TR181 RF4CE Voice Encryption set to %s", (b_value ? "TRUE" : "FALSE"));
-      voice_command_encryption_ = (b_value ? VOICE_COMMAND_ENCRYPTION_ENABLED : VOICE_COMMAND_ENCRYPTION_DISABLED);
-   }
-
-   if(CTRLM_TR181_RESULT_SUCCESS != ctrlm_tr181_bool_get(CTRLM_RF4CE_TR181_RF4CE_HOST_PACKET_DECRYPTION, &host_decryption_)) {
-      XLOGD_INFO("TR181 RF4CE Host Packet Decryption not present");
-   } else {
-      XLOGD_INFO("TR181 RF4CE Host Packet Decryption set to %s", (host_decryption_ ? "TRUE" : "FALSE"));
-   }
-
-   rsp_time_.legacy_rfc();
-}
-
 // ASB Functions
 bool ctrlm_obj_network_rf4ce_t::rf4ce_asb_init(void *data, int size) {
 
@@ -3518,8 +3380,6 @@ void ctrlm_obj_network_rf4ce_t::asb_link_key_derivation_perform(void *data, int 
 }
 
 void ctrlm_obj_network_rf4ce_t::asb_configuration(json_config *conf) {
-   int  temp_i;
-   bool temp_b;
    // Get JSON configuration first
    if(NULL != conf) {
       conf->config_value_get(JSON_BOOL_NAME_NETWORK_RF4CE_ASB_ENABLE, asb_enabled_);
@@ -3527,23 +3387,6 @@ void ctrlm_obj_network_rf4ce_t::asb_configuration(json_config *conf) {
       conf->config_value_get(JSON_INT_NAME_NETWORK_RF4CE_ASB_FALLBACK_THRESHOLD, asb_fallback_count_threshold_, 0x01, 0xFF);
       conf->config_value_get(JSON_BOOL_NAME_NETWORK_RF4CE_ASB_FORCE_SETTINGS, asb_force_settings_);
    }
-
-   // Now check TR181
-   if(CTRLM_TR181_RESULT_SUCCESS == ctrlm_tr181_bool_get(CTRLM_RF4CE_TR181_ASB_ENABLED, &temp_b)) {
-      asb_enabled_ = temp_b;
-      XLOGD_INFO("TR181 ASB Enable set to %s", (asb_enabled_ ? "TRUE" : "FALSE"));
-   }
-   if(asb_enabled_) {
-      if(CTRLM_TR181_RESULT_SUCCESS == ctrlm_tr181_int_get(CTRLM_RF4CE_TR181_ASB_DERIVATION_METHOD, &temp_i, 0x01, 0xFF)) {
-         asb_key_derivation_methods_ = temp_i;
-         XLOGD_INFO("TR181 ASB Key Derivation Method set to %d", asb_key_derivation_methods_);
-      }
-      if(CTRLM_TR181_RESULT_SUCCESS == ctrlm_tr181_int_get(CTRLM_RF4CE_TR181_ASB_FAIL_THRESHOLD, &temp_i, 0x01, 0xFF)) {
-         asb_fallback_count_threshold_ = temp_i;
-         XLOGD_INFO("TR181 ASB Fallback Threshold set to %d", asb_fallback_count_threshold_);
-      }
-   }
-   
 }
 
 void ctrlm_obj_network_rf4ce_t::rf4ce_asb_destroy(void *data, int size) {
@@ -3983,9 +3826,7 @@ void ctrlm_obj_network_rf4ce_t::set_timers() {
 }
 
 void ctrlm_obj_network_rf4ce_t::xconf_configuration() {
-   if(FALSE == force_dsp_configuration_) {
-      dsp_configuration_xconf();
-   } else {
+   if(FALSE != force_dsp_configuration_) {
       XLOGD_WARN("force dsp configuration is true, tell device(s) to read it");
       update_far_field_configuration(RF4CE_POLLING_ACTION_DSP_CONFIGURATION);
    }
@@ -4117,32 +3958,6 @@ void ctrlm_obj_network_rf4ce_t::update_far_field_configuration(ctrlm_rf4ce_polli
             break;
          }
       }
-   }
-}
-
-void ctrlm_obj_network_rf4ce_t::dsp_configuration_xconf() {
-   char   rfc_val[100]    = {'\0'};
-   unsigned char *decoded_buf     = NULL;
-   size_t decoded_buf_len = 0;
-   if(force_dsp_configuration_) {
-      XLOGD_WARN("not going to xconf for DSP configuration");
-      return;
-   }
-   if(CTRLM_TR181_RESULT_SUCCESS == ctrlm_tr181_string_get(CTRLM_RF4CE_TR181_XR19_DSP_CONFIGURATION, rfc_val, sizeof(rfc_val))) {
-      decoded_buf = g_base64_decode(rfc_val, &decoded_buf_len);
-      if(decoded_buf) {
-         if(decoded_buf_len == CTRLM_RF4CE_RIB_ATTR_LEN_DSP_CONFIGURATION) {
-            XLOGD_INFO("DSP configuration taken from XCONF");
-            property_write_dsp_configuration(decoded_buf, (uint8_t)decoded_buf_len);
-         } else {
-            XLOGD_WARN("incorrect length");
-         }
-         free(decoded_buf);
-      } else {
-         XLOGD_WARN("failed to decode base64");
-      }
-   } else {
-      XLOGD_INFO("no rfc value");
    }
 }
 
@@ -4317,48 +4132,6 @@ void ctrlm_obj_network_rf4ce_t::req_process_network_status(void *data, int size)
    ctrlm_obj_network_t::req_process_network_status(data, size);
 }
 
-void ctrlm_obj_network_rf4ce_t::req_process_chip_status(void *data, int size) {
-   ctrlm_main_queue_msg_main_chip_status_t *dqm = (ctrlm_main_queue_msg_main_chip_status_t *)data;
-
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_main_chip_status_t));
-   g_assert(dqm->status != NULL);
-
-#if (CTRLM_HAL_RF4CE_API_VERSION >= 15)
-#ifndef  CTRLM_RF4CE_CHIP_CONNECTIVITY_CHECK_NOT_SUPPORTED
-      ctrlm_hal_network_property_network_stats_t network_stats;
-      network_stats.ieee_address = 0;  
-      ctrlm_hal_result_t result = property_get(CTRLM_HAL_NETWORK_PROPERTY_NETWORK_STATS, (void **)&network_stats);
-      if(result == CTRLM_HAL_RESULT_SUCCESS) { // Update cache on successful HAL call
-      // validate MAC address
-      // Qorvo MAC address range is 00;15;5F:xx;xx;xx;xx;xx. A valid MAC address should match the OUI i.e. MSB 3 bytes with Qorvo/Greenpeak.
-      // 0xA5 is default value read by SPI FIFO so that will indicate an invalid address if the serial communication is broken with the chip.
-         if (network_stats.ieee_address == CTRLM_RF4CE_QORVO_BAD_MAC_ADDRESS) {
-            dqm->status->chip_connected = 0;
-            XLOGD_ERROR("RF4CE Chip is not connected!");
-         } else if ((network_stats.ieee_address & CTRLM_RF4CE_QORVO_MAC_ADDRESS_PATTERN) != CTRLM_RF4CE_QORVO_MAC_ADDRESS_PATTERN) {
-            dqm->status->chip_connected = 0;
-            XLOGD_ERROR("Bad Chip MAC address %llu!", network_stats.ieee_address);
-         } else {
-            XLOGD_INFO("RF4CE Chip is connected!");
-            dqm->status->chip_connected = 1;
-         }
-      dqm->status->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-      }
-#else
-      dqm->status->chip_connected = 1;
-      XLOGD_ERROR("RF4CE Chip Connectivity is not supported on this platform!");
-      dqm->status->result = CTRLM_IARM_CALL_RESULT_ERROR_NOT_SUPPORTED;
-#endif
-      if(dqm->semaphore) {
-         sem_post(dqm->semaphore);
-      }
-#else
-      ctrlm_obj_network_t::req_process_chip_status(data, size);
-#endif
-}
-
-
 void ctrlm_obj_network_rf4ce_t::cs_values_set(const ctrlm_cs_values_t *values, bool db_load) {
    if(values == NULL) {
       XLOGD_ERROR("values are NULL");
@@ -4452,6 +4225,8 @@ void ctrlm_obj_network_rf4ce_t::req_process_program_ir_codes(void *data, int siz
       XLOGD_ERROR("Controller %u doesn't exist", dqm->controller_id);
    }
 
+   ir_prog_state_set(success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED);
+
    if(dqm->success) dqm->success->push_back(success);
    // post the semaphore
    if(dqm->semaphore) {
@@ -4481,6 +4256,8 @@ void ctrlm_obj_network_rf4ce_t::req_process_ir_clear_codes(void *data, int size)
    } else {
       XLOGD_ERROR("Controller %u doesn't exist", dqm->controller_id);
    }
+
+   ir_prog_state_set(success ? CTRLM_IR_STATE_COMPLETE : CTRLM_IR_STATE_FAILED);
 
    if(dqm->success) dqm->success->push_back(success);
    // post the semaphore
@@ -4913,15 +4690,8 @@ void ctrlm_obj_network_rf4ce_t::req_process_start_pairing(void *data, int size) 
       dqm->params->set_result(CTRLM_IARM_CALL_RESULT_SUCCESS, network_id_get());
    } else {
       if(dqm->params->timeout != 0) { // use a timeout
-         ctrlm_main_iarm_call_property_t property = {};
-         property.api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION;
-         property.result       = CTRLM_IARM_CALL_RESULT_INVALID;
-         property.network_id   = CTRLM_MAIN_NETWORK_ID_ALL;
-         property.name         = CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND;
-         property.value        = dqm->params->timeout * 1000;
 
-         ctrlm_main_iarm_call_property_set_(&property);
-         if (property.result != CTRLM_IARM_CALL_RESULT_SUCCESS) {
+         if(!ctrlm_main_active_period_screenbind_timeout_set_(dqm->params->timeout * 1000)) {
             XLOGD_ERROR("Failed to set ACTIVE PERIOD SCREENBIND property");
             set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
             dqm->params->set_result(CTRLM_IARM_CALL_RESULT_ERROR, network_id_get());

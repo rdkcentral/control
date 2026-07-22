@@ -22,15 +22,11 @@
 #include <glib.h>
 #include "libIBus.h"
 #include "libIBusDaemon.h"
-#ifdef USE_DEPRECATED_IRMGR
-#include "irMgr.h"
-#endif
 #include "sysMgr.h"
 #include "comcastIrKeyCodes.h"
 #include "ctrlm.h"
 #include "ctrlm_log.h"
 #include "ctrlm_ipc.h"
-#include "ctrlm_ipc_iarm_powermanager.h"
 #include "ctrlm_network.h"
 #include "ctrlm_tr181.h"
 #include "ctrlm_utils.h"
@@ -50,9 +46,6 @@ static IARM_Result_t ctrlm_main_iarm_call_voice_session_begin(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_voice_session_end(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_audio_capture_start(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_audio_capture_stop(void *arg);
-#if CTRLM_HAL_RF4CE_API_VERSION >= 10  && !defined(CTRLM_DPI_CONTROL_NOT_SUPPORTED)
-extern IARM_Result_t ctrlm_iarm_powermanager_event_handler_power_pre_change(void* pArgs);
-#endif
 
 typedef struct {
    const char *   name;
@@ -77,11 +70,6 @@ ctrlm_iarm_call_t ctrlm_iarm_calls[] = {
    {CTRLM_VOICE_IARM_CALL_SESSION_END,                       ctrlm_main_iarm_call_voice_session_end                  },
    {CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_START,                ctrlm_main_iarm_call_audio_capture_start                },
    {CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_STOP,                 ctrlm_main_iarm_call_audio_capture_stop                 },
-   #if USE_IARM_POWER_MANAGER      
-   #if CTRLM_HAL_RF4CE_API_VERSION >= 10 && !defined(CTRLM_DPI_CONTROL_NOT_SUPPORTED)
-   {IARM_BUS_COMMON_API_PowerPreChange,                      ctrlm_iarm_powermanager_event_handler_power_pre_change  },
-   #endif
-   #endif
 };
 
 
@@ -110,12 +98,6 @@ void ctrlm_main_iarm_terminate(void) {
 
    // Change to stopped or terminated state, so we do not accept new calls
    g_atomic_int_set(&running, 0);
-
-#ifdef USE_DEPRECATED_IRMGR
-   // IARM Events that we are listening to from other processes
-   IARM_Bus_RemoveEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_IRKEY, ctrlm_event_handler_ir);
-   IARM_Bus_RemoveEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_CONTROL, ctrlm_event_handler_ir);
-#endif
 
    // Unregister calls that can be invoked by IARM bus clients
    //for(index = 0; index < sizeof(ctrlm_iarm_calls)/sizeof(ctrlm_iarm_call_t); index++) {

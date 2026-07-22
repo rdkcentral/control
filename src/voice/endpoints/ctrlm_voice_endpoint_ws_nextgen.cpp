@@ -292,9 +292,11 @@ void ctrlm_voice_endpoint_ws_nextgen_t::voice_session_begin_callback_ws_nextgen(
     config_in.ws.ocsp_expired_allow   = false;
 
     if(source == CTRLM_VOICE_DEVICE_MFV) {
-        // Reuse the audio profile/model to signal to Vrex that this transaction is from mid-field voice.
-        xrsv_ws_nextgen_update_audio_profile(this->xrsv_obj_ws_nextgen, NEXTGEN_AUDIO_PROFILE_MFV);
-        xrsv_ws_nextgen_update_audio_model(this->xrsv_obj_ws_nextgen, NEXTGEN_AUDIO_MODEL_MFV);
+        // TEMPORARY: hard-code MFV wuw sessions to send the same audio profile/model as the on-device
+        // HF microphone instead of the MFV-specific values.  Revert to NEXTGEN_AUDIO_PROFILE_MFV /
+        // NEXTGEN_AUDIO_MODEL_MFV to signal to Vrex that this transaction is from mid-field voice.
+        xrsv_ws_nextgen_update_audio_profile(this->xrsv_obj_ws_nextgen, NEXTGEN_AUDIO_PROFILE_HF);
+        xrsv_ws_nextgen_update_audio_model(this->xrsv_obj_ws_nextgen, NEXTGEN_AUDIO_MODEL_HF);
     } else if(is_mic) {
         xrsv_ws_nextgen_update_audio_profile(this->xrsv_obj_ws_nextgen, NEXTGEN_AUDIO_PROFILE_HF);
         xrsv_ws_nextgen_update_audio_model(this->xrsv_obj_ws_nextgen, NEXTGEN_AUDIO_MODEL_HF);

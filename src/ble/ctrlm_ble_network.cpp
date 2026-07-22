@@ -65,6 +65,10 @@ using namespace std;
 #define CTRLM_BLE_PRINT_STATUS_DEFER_MAX      (20)
 #define CTRLM_BLE_EVENT_STATUS_DEFER_MAX      (20)
 
+// Maximum time to wait for the MFV detection data (wake word timing/confidence) after audio streaming
+// has started before opening the voice session without the wake word stream parameters.
+#define CTRLM_BLE_MFV_DETECTION_DATA_TIMEOUT  (1500)        // 1.5 second
+
 #define CTRLM_VENDOR_BLE_NETWORK_DISABLE_FILE  "/etc/vendor/input/ble_network_disable"
 #define CTRLM_VENDOR_BLE_REMOTE_WHITELIST_FILE "/etc/vendor/input/ble_remote_whitelist.json"
 #define CTRLM_VENDOR_BLE_NETWORK_OPTIONS_FILE  "/etc/vendor/input/ble_network_options.json"
@@ -75,6 +79,8 @@ typedef struct {
    guint upgrade_pause_timer_tag;
    guint print_status_timer_tag;
    guint event_status_timer_tag;
+   guint mfv_detection_timer_tag;
+   unsigned long long mfv_detection_pending_ieee;
 } ctrlm_ble_network_t;
 
 static ctrlm_ble_network_t g_ctrlm_ble_network;
@@ -90,6 +96,7 @@ static const vector<ctrlm_key_code_t> ctrlm_ble_ir_key_names {
 
 static gboolean ctrlm_ble_print_status_timer_cb(gpointer user_data);
 static gboolean ctrlm_ble_event_status_timer_cb(gpointer user_data);
+static gboolean ctrlm_ble_mfv_detection_timer_cb(gpointer user_data);
 
 static gboolean ctrlm_ble_upgrade_controllers_timer_cb(gpointer user_data);
 static gboolean ctrlm_ble_upgrade_resume_timer_cb(gpointer user_data);
@@ -350,6 +357,7 @@ ctrlm_obj_network_ble_t::~ctrlm_obj_network_ble_t() {
    ctrlm_timeout_destroy(&g_ctrlm_ble_network.upgrade_pause_timer_tag);
    ctrlm_timeout_destroy(&g_ctrlm_ble_network.event_status_timer_tag);
    ctrlm_timeout_destroy(&g_ctrlm_ble_network.print_status_timer_tag);
+   ctrlm_timeout_destroy(&g_ctrlm_ble_network.mfv_detection_timer_tag);
 
    ctrlm_ble_iarm_terminate();
 
@@ -621,6 +629,40 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
    }
+}
+
+// Safety timeout - the MFV detection data was not received in time, so release the deferred voice
+// session connect anyway (without the wake word stream parameters).
+static gboolean ctrlm_ble_mfv_detection_timer_cb(gpointer user_data) {
+   XLOGD_DEBUG("Enter...");
+   ctrlm_network_id_t* net_id = (ctrlm_network_id_t*) user_data;
+   g_ctrlm_ble_network.mfv_detection_timer_tag = 0;
+   if (net_id != NULL) {
+      // Process on the ctrlm main thread to serialize with the other network handlers.
+      ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK,
+            (ctrlm_msg_handler_network_t)&ctrlm_obj_network_ble_t::req_process_mfv_detection_timeout,
+            NULL, 0, NULL, *net_id);
+   }
+   return false;
+}
+
+void ctrlm_obj_network_ble_t::req_process_mfv_detection_timeout(void *data, int size) {
+   THREAD_ID_VALIDATE();
+
+   unsigned long long ieee_address = g_ctrlm_ble_network.mfv_detection_pending_ieee;
+   ctrlm_controller_id_t controller_id;
+   if (!getControllerId(ieee_address, &controller_id)) {
+      XLOGD_WARN("MFV detection data timeout - controller no longer exists");
+      return;
+   }
+   if (!controllers_[controller_id]->isMfvDetectionPending()) {
+      // Detection data already arrived (or the session was cancelled) - nothing to do.
+      return;
+   }
+   controllers_[controller_id]->setMfvDetectionPending(false);
+   XLOGD_WARN("MFV detection data not received within timeout - releasing voice session connect without wake word stream parameters for device: %s",
+      controllers_[controller_id]->ieee_address_get().to_string().c_str());
+   ctrlm_get_voice_obj()->voice_session_stream_params_update(CTRLM_VOICE_DEVICE_MFV, false, 0, 0, 0.0, 0.0);
 }
 
 bool ctrlm_obj_network_ble_t::end_voice_session_for_controller(uint64_t ieee_address, ctrlm_voice_session_end_reason_t reason, int32_t audioDuration, int32_t startLag, rdkx_timestamp_t *keyDownTime, rdkx_timestamp_t *keyUpTime) {
@@ -2122,7 +2164,17 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                      msg.params = &v_params;
                      msg.voice_device = CTRLM_VOICE_DEVICE_MFV;
 
+                     // Open the voice session immediately so audio streams right away (draining the BLE
+                     // pipe).  Because this is an MFV wake-word session, the speech router holds its
+                     // connect/init in the buffering state until the wake word stream parameters are
+                     // supplied.  Those arrive in a separate detection-data notification; a safety timeout
+                     // releases the connect without them if they never come.
+                     controller->setMfvDetectionPending(true);
                      req_process_voice_session_begin(&msg, sizeof(msg));
+
+                     g_ctrlm_ble_network.mfv_detection_pending_ieee = dqm->rcu_data.ieee_address;
+                     ctrlm_timeout_destroy(&g_ctrlm_ble_network.mfv_detection_timer_tag);
+                     g_ctrlm_ble_network.mfv_detection_timer_tag = ctrlm_timeout_create(CTRLM_BLE_MFV_DETECTION_DATA_TIMEOUT, ctrlm_ble_mfv_detection_timer_cb, &id_);
                   }
                   break;
                }
@@ -2130,6 +2182,18 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   controller->setMfvDetectionData(dqm->rcu_data.mfv_ww_start, dqm->rcu_data.mfv_ww_end, dqm->rcu_data.mfv_confidence);
                   XLOGD_INFO("Controller <%s> MFV detection data: start=%u end=%u confidence=%.1f%%",
                      controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.mfv_ww_start, dqm->rcu_data.mfv_ww_end, dqm->rcu_data.mfv_confidence / 10.0);
+
+                  // If a wake-word session is waiting on this detection data, supply its wake word stream
+                  // parameters to the voice engine and release the deferred connect so the vrex init is
+                  // sent with them included.
+                  if (controller->isMfvDetectionPending()) {
+                     controller->setMfvDetectionPending(false);
+                     ctrlm_timeout_destroy(&g_ctrlm_ble_network.mfv_detection_timer_tag);
+                     // Confidence is encoded as percent * 10 (e.g. 991 = 99.1%); normalize to 0.0 - 1.0.
+                     double confidence = dqm->rcu_data.mfv_confidence / 1000.0;
+                     ctrlm_get_voice_obj()->voice_session_stream_params_update(CTRLM_VOICE_DEVICE_MFV, true,
+                        dqm->rcu_data.mfv_ww_start, dqm->rcu_data.mfv_ww_end, confidence, 0.0);
+                  }
                   break;
                case CTRLM_HAL_BLE_PROPERTY_MFV_PRIVACY:
                   controller->setMfvPrivacy(dqm->rcu_data.mfv_privacy_enabled);
@@ -2465,6 +2529,16 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
       if (key_status == CTRLM_KEY_STATUS_DOWN) {
 
          if (controller->isVoiceKey(dqm->event.code)) {
+            // The MFV remote also has a standard push-to-talk mic button.  If a wake-word (MFV) session
+            // is still held waiting on its detection data when the button is pressed, release its deferred
+            // connect so it is not left stuck in the buffering state.
+            if (controller->isMfvDetectionPending()) {
+               XLOGD_INFO("Push-to-talk pressed while an MFV wake-word session was pending - releasing it for device: %s", controller->ieee_address_get().to_string().c_str());
+               controller->setMfvDetectionPending(false);
+               ctrlm_timeout_destroy(&g_ctrlm_ble_network.mfv_detection_timer_tag);
+               ctrlm_get_voice_obj()->voice_session_stream_params_update(CTRLM_VOICE_DEVICE_MFV, false, 0, 0, 0.0, 0.0);
+            }
+
             rdkx_timestamp_t keyDownTime;
             keyDownTime.tv_sec  = dqm->event.time.tv_sec;
             keyDownTime.tv_nsec = dqm->event.time.tv_usec * 1000;

@@ -123,9 +123,6 @@ public:
    virtual std::vector<uint16_t>    get_wakeup_custom_list() const;
    std::string                      wakeupCustomListToString();
 
-   virtual void                     set_mid_field_voice_capable(bool capable);
-   virtual bool                     get_mid_field_voice_capable() const;
-
    void                             setUpgradePaused(bool paused);
    bool                             getUpgradePaused();
    bool                             getUpgradePauseSupported(void);
@@ -161,6 +158,15 @@ public:
    bool                             getMfvPrivacy() const;
    void                             setMfvCapabilities(uint8_t caps);
    uint8_t                          getMfvCapabilities() const;
+
+   // MFV wake-word (detection-triggered) session state.  Such a session starts audio streaming, waits
+   // for the detection data (wake word timing/confidence), then opens the voice session.  See
+   // ctrlm_obj_network_ble_t::req_process_detection_voice_session_begin().
+   void                             setMfvDetectionPending(bool pending, int audio_fd = -1);
+   bool                             isMfvDetectionPending() const;
+   int                              getMfvDetectionAudioFd() const;
+   void                             setMfvDetectionDataFresh(bool fresh); // fresh detection data received for the current pending session (stale-data safeguard)
+   bool                             isMfvDetectionDataFresh() const;
 
    void                             update_controller_id_and_db_entry(std::string name, ctrlm_network_id_t network_id, ctrlm_controller_id_t new_id);
 
@@ -220,6 +226,9 @@ private:
    uint16_t                                mfv_confidence_       = 0;    // encoded as integer * 10 (e.g. 953 = 95.3%)
    bool                                    mfv_privacy_enabled_  = false;
    uint8_t                                 mfv_capabilities_     = 0;
+   bool                                    mfv_detection_pending_    = false; // a wake-word session has started audio and is awaiting its detection data
+   bool                                    mfv_detection_data_fresh_ = false; // fresh detection data arrived for the current pending session
+   int                                     mfv_detection_audio_fd_   = -1;    // fd of the audio stream started for the pending session
 
    bool                                    conn_param_update_before_ota_supported_ = false;
    ctrlm_sw_version_t                      conn_param_update_before_ota_version_;
@@ -229,8 +238,6 @@ private:
 
    bool                                    upgrade_stuck_supported_ = false;
    ctrlm_sw_version_t                      upgrade_stuck_version_;
-
-   bool                                    mid_field_voice_capable_ = false;
 
 };
 // End Class ctrlm_obj_controller_ble_t

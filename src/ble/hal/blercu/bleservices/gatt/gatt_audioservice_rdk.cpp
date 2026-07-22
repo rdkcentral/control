@@ -126,6 +126,13 @@ bool GattAudioServiceRdk::start(const shared_ptr<const BleGattService> &gattServ
         requestMfvModelVersion();
         requestMfvPrivacy();
         requestMfvModelConfig();
+
+        // Enable the wake-word notifications (Session Start + Detection Data) as early as possible -
+        // right after the characteristics are discovered - rather than waiting for the initial value
+        // reads above to complete.  Subscribing does not depend on those values, and enabling early
+        // means wake-word detection data can be received while the service is idle/ready, without first
+        // having to start an audio stream.
+        maybeEnableMfvNotifications();
     }
 
     return(GattAudioService::start(gattService));
@@ -765,7 +772,12 @@ void GattAudioServiceRdk::onMfvInitialReadComplete()
 
 void GattAudioServiceRdk::maybeEnableMfvNotifications()
 {
-    if (!m_mfvState.supported || !m_mfvState.areInitialReadsComplete()) {
+    // Notification enabling is intentionally NOT gated on the initial value reads (capabilities /
+    // model version / privacy / model config).  Subscribing to the Session Start and Detection Data
+    // notifications does not depend on those values, so enabling them is decoupled from the reads and
+    // can happen as soon as the characteristics are discovered.  This lets the remote deliver wake-word
+    // detection data while the service is idle/ready, without first having to start an audio stream.
+    if (!m_mfvState.supported) {
         return;
     }
 
@@ -1003,7 +1015,7 @@ void GattAudioServiceRdk::requestStartMfvSessionStartNotify()
             scheduleMfvNotifyRetry();
         } else {
             m_mfvState.sessionStartNotifyRetries = 0;
-            XLOGD_DEBUG("MFV Session Start notifications enabled successfully");
+            XLOGD_INFO("MFV Session Start notifications enabled successfully");
             maybeEnableMfvNotifications();
         }
     };
@@ -1038,7 +1050,7 @@ void GattAudioServiceRdk::requestStartMfvDetectionDataNotify()
             scheduleMfvNotifyRetry();
         } else {
             m_mfvState.detectionDataNotifyRetries = 0;
-            XLOGD_DEBUG("MFV Detection Data notifications enabled successfully");
+            XLOGD_INFO("MFV Detection Data notifications enabled successfully");
             maybeEnableMfvNotifications();
         }
     };

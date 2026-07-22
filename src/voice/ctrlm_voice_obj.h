@@ -497,6 +497,10 @@ class ctrlm_voice_t {
     void                                  voice_session_rsp_confirm(bool result, signed long long rsp_time, unsigned int rsp_window, const std::string &err_str, ctrlm_timestamp_t *timestamp);
     bool                                  voice_session_data(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, const char *buffer, long unsigned int length, ctrlm_timestamp_t *timestamp=NULL, uint8_t *lqi=NULL);
     bool                                  voice_session_data(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, int fd, const uuid_t *uuid=NULL);
+    // Supplies wake word stream parameters (timing/confidence) that arrive after the session has begun
+    // (e.g. BLE MFV detection data) and releases the speech router's deferred connect.  Pass valid=false
+    // to release the connect without wake word parameters (e.g. on a detection-data timeout).
+    bool                                  voice_session_stream_params_update(ctrlm_voice_device_t device_type, bool valid, uint32_t keyword_sample_begin, uint32_t keyword_sample_end, double confidence, double signal_noise_ratio);
     void                                  voice_session_data_post_processing(int bytes_sent, const char *action, ctrlm_timestamp_t *timestamp);
     void                                  voice_session_end(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_voice_session_end_reason_t reason, ctrlm_timestamp_t *timestamp=NULL, ctrlm_voice_session_end_stats_t *stats=NULL);
     void                                  voice_session_end(ctrlm_voice_session_t *session, ctrlm_voice_session_end_reason_t reason, ctrlm_timestamp_t *timestamp=NULL, ctrlm_voice_session_end_stats_t *stats=NULL);

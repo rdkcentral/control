@@ -481,15 +481,6 @@ vector<uint16_t> ctrlm_obj_controller_ble_t::get_wakeup_custom_list() const {
    return wakeup_custom_list_;
 }
 
-void ctrlm_obj_controller_ble_t::set_mid_field_voice_capable(bool capable) {
-   XLOGD_DEBUG("Controller %u set mid-field voice capable to %s", controller_id_get(), capable ? "TRUE" : "FALSE");
-   mid_field_voice_capable_ = capable;
-}
-
-bool ctrlm_obj_controller_ble_t::get_mid_field_voice_capable() const {
-   return true;
-}
-
 std::string ctrlm_obj_controller_ble_t::wakeupCustomListToString() {
   std::ostringstream oss;
   if (!wakeup_custom_list_.empty()) {
@@ -599,6 +590,30 @@ void ctrlm_obj_controller_ble_t::setMfvCapabilities(uint8_t caps) {
 
 uint8_t ctrlm_obj_controller_ble_t::getMfvCapabilities() const {
    return mfv_capabilities_;
+}
+
+void ctrlm_obj_controller_ble_t::setMfvDetectionPending(bool pending, int audio_fd) {
+   mfv_detection_pending_  = pending;
+   mfv_detection_audio_fd_ = pending ? audio_fd : -1;
+   if (!pending) {
+      mfv_detection_data_fresh_ = false;
+   }
+}
+
+bool ctrlm_obj_controller_ble_t::isMfvDetectionPending() const {
+   return mfv_detection_pending_;
+}
+
+int ctrlm_obj_controller_ble_t::getMfvDetectionAudioFd() const {
+   return mfv_detection_audio_fd_;
+}
+
+void ctrlm_obj_controller_ble_t::setMfvDetectionDataFresh(bool fresh) {
+   mfv_detection_data_fresh_ = fresh;
+}
+
+bool ctrlm_obj_controller_ble_t::isMfvDetectionDataFresh() const {
+   return mfv_detection_data_fresh_;
 }
 
 void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmask) {

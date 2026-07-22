@@ -146,6 +146,7 @@ public:
    virtual void                  req_process_controller_status(void *data, int size);
    
    virtual void                  req_process_voice_session_begin(void *data, int size);
+   virtual void                  req_process_mfv_detection_timeout(void *data, int size);
    virtual void                  req_process_voice_session_end(void *data, int size);
 
    virtual void                  req_process_start_pairing(void *data, int size);

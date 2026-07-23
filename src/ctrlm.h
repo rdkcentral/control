@@ -30,7 +30,6 @@
 #include "ctrlm_hal.h"
 #include "ctrlm_hal_rf4ce.h"
 #include "ctrlm_hal_ble.h"
-#include "ctrlm_hal_ip.h"
 #include "ctrlm_ipc.h"
 #include "ctrlm_ipc_rcu.h"
 #include "ctrlm_ipc_voice.h"
@@ -197,7 +196,6 @@ typedef struct {
 typedef struct {
    union {
       ctrlm_hal_rf4ce_cfm_init_params_t rf4ce;
-      ctrlm_hal_ip_cfm_init_params_t    ip;
       ctrlm_hal_ble_cfm_init_params_t   ble;
    } params;
    sem_t                            *semaphore;

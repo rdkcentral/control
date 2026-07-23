@@ -29,7 +29,6 @@
 #include "ctrlm_ble_controller.h"
 #include "ctrlm_ble_utils.h"
 #include "ctrlm_controller.h"
-#include "ctrlm_hal_ip.h"
 #include "blercu/bleservices/blercuupgradeservice.h"
 #include "ctrlm_telemetry_event.h"
 

@@ -1299,11 +1299,9 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
         request_params.type = XRSR_SESSION_REQUEST_TYPE_AUDIO_FILE;
         request_params.value.audio_file.path = audio_file_in;
 
-        xrsr_audio_format_t xrsr_format;
+        xrsr_audio_format_t xrsr_format = { .type = XRSR_AUDIO_FORMAT_PCM};
         if(format.type == CTRLM_VOICE_FORMAT_OPUS) {
             xrsr_format.type = XRSR_AUDIO_FORMAT_OPUS;
-        } else {
-            xrsr_format.type = XRSR_AUDIO_FORMAT_PCM;
         }
 
         if (false == xrsr_session_request(voice_device_to_xrsr(device_type), dst_index, xrsr_format, request_params, uuid, false, false)) {

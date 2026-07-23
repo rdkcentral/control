@@ -848,21 +848,6 @@ void ctrlm_obj_network_t::req_process_polling_action_push(void *data, int size) 
    }
 }
 
-void ctrlm_obj_network_t::req_process_chip_status(void *data, int size) {
-   ctrlm_main_queue_msg_main_chip_status_t *dqm = (ctrlm_main_queue_msg_main_chip_status_t *)data;
-
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_main_chip_status_t));
-   g_assert(dqm->status != NULL);
-
-   XLOGD_WARN("not implemented for %s network", name_get());
-   dqm->status->result = CTRLM_IARM_CALL_RESULT_ERROR_NOT_SUPPORTED;
-
-   if(dqm->semaphore) {
-      sem_post(dqm->semaphore);
-   }
-}
-
 void ctrlm_obj_network_t::req_process_network_managed_upgrade(void *data, int size) {
    ctrlm_main_queue_msg_network_fw_upgrade_t *dqm = (ctrlm_main_queue_msg_network_fw_upgrade_t *)data;
 

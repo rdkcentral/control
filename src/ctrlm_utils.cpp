@@ -365,11 +365,6 @@ const char *ctrlm_main_queue_msg_type_str(ctrlm_main_queue_msg_type_t type) {
       case CTRLM_MAIN_QUEUE_MSG_TYPE_NETWORK_PROPERTY_SET:                    return("NETWORK_PROPERTY_SET");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_TERMINATE:                               return("TERMINATE");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STATUS:                             return("MAIN_STATUS");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_SET:                       return("MAIN_PROPERTY_SET");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_GET:                       return("MAIN_PROPERTY_GET");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_DISCOVERY_CONFIG_SET:               return("MAIN_DISCOVERY_CONFIG_SET");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_AUTOBIND_CONFIG_SET:                return("MAIN_AUTOBIND_CONFIG_SET");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PRECOMMISSION_CONFIG_SET:           return("MAIN_PRECOMMISSION_CONFIG_SET");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_FACTORY_RESET:                      return("MAIN_FACTORY_RESET");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROLLER_UNBIND:                  return("MAIN_CONTROLLER_UNBIND");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_TIMEOUT_LINE_OF_SIGHT:              return("MAIN_TIMEOUT_LINE_OF_SIGHT");
@@ -388,9 +383,6 @@ const char *ctrlm_main_queue_msg_type_str(ctrlm_main_queue_msg_type_t type) {
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STOP_BINDING_SCREEN:                return("MAIN_STOP_BINDING_SCREEN");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_SET_VALUES:         return("CONTROL_SERVICE_SET_VALUES");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES:         return("CONTROL_SERVICE_GET_VALUES");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_CAN_FIND_MY_REMOTE: return("CONTROL_SERVICE_CAN_FIND_MY_REMOTE");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_START_PAIRING_MODE: return("CONTROL_SERVICE_START_PAIRING_MODE");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_END_PAIRING_MODE:   return("CONTROL_SERVICE_END_PAIRING_MODE");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_EXPORT_CONTROLLER_LIST:                  return("EXPORT_CONTROLLER_LIST");
       default: if (type >= CTRLM_MAIN_QUEUE_MSG_TYPE_VENDOR_FIRST && type <= CTRLM_MAIN_QUEUE_MSG_TYPE_VENDOR_LAST) {
          return("VENDOR SPECIFIC MESSAGE");
@@ -689,15 +681,6 @@ const char *ctrlm_rcu_reverse_cmd_result_str(ctrlm_rcu_reverse_cmd_result_t resu
    return(ctrlm_invalid_return(result));
 }
 
-const char *ctrlm_voice_session_result_str(ctrlm_voice_session_result_t result) {
-   switch(result) {
-      case CTRLM_VOICE_SESSION_RESULT_SUCCESS: return("SUCCESS");
-      case CTRLM_VOICE_SESSION_RESULT_FAILURE: return("FAILURE");
-      case CTRLM_VOICE_SESSION_RESULT_MAX:     return("MAX");
-   }
-   return(ctrlm_invalid_return(result));
-}
-
 const char *ctrlm_voice_session_end_reason_str(ctrlm_voice_session_end_reason_t reason) {
    switch(reason) {
       case CTRLM_VOICE_SESSION_END_REASON_DONE:                 return("DONE");
@@ -729,16 +712,6 @@ const char *ctrlm_voice_session_abort_reason_str(ctrlm_voice_session_abort_reaso
       case CTRLM_VOICE_SESSION_ABORT_REASON_MAX:                   return("MAX");
    }
    return(ctrlm_invalid_return(reason));
-}
-
-const char *ctrlm_voice_internal_error_str(ctrlm_voice_internal_error_t error) {
-   switch(error) {
-      case CTRLM_VOICE_INTERNAL_ERROR_NONE:          return("NONE");
-      case CTRLM_VOICE_INTERNAL_ERROR_EXCEPTION:     return("EXCEPTION");
-      case CTRLM_VOICE_INTERNAL_ERROR_THREAD_CREATE: return("THREAD_CREATE");
-      case CTRLM_VOICE_INTERNAL_ERROR_MAX:           return("MAX");
-   }
-   return(ctrlm_invalid_return(error));
 }
 
 const char *ctrlm_voice_reset_type_str(ctrlm_voice_reset_type_t reset_type) {
@@ -777,16 +750,6 @@ const char *ctrlm_device_update_iarm_load_result_str(ctrlm_device_update_iarm_lo
       case CTRLM_DEVICE_UPDATE_IARM_LOAD_RESULT_MAX:            return("MAX");
    }
    return(ctrlm_invalid_return(load_result));
-}
-
-const char *ctrlm_device_update_image_type_str(ctrlm_device_update_image_type_t image_type) {
-   switch(image_type) {
-      case CTRLM_DEVICE_UPDATE_IMAGE_TYPE_FIRMWARE:   return("FIRMWARE");
-      case CTRLM_DEVICE_UPDATE_IMAGE_TYPE_AUDIO_DATA: return("AUDIO_DATA");
-      case CTRLM_DEVICE_UPDATE_IMAGE_TYPE_OTHER:      return("OTHER");
-      case CTRLM_DEVICE_UPDATE_IMAGE_TYPE_MAX:        return("MAX");
-   }
-   return(ctrlm_invalid_return(image_type));
 }
 
 const char *ctrlm_hal_result_str(ctrlm_hal_result_t result) {

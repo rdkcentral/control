@@ -348,7 +348,6 @@ public:
    void req_process_controller_status(void *dqm, int size);
    void req_process_controller_product_name(void *data, int size);
    void req_process_network_status(void *data, int size);
-   void req_process_chip_status(void *data, int size);
    void req_process_controller_link_key(void *data, int size);
    void req_process_dpi_control(void *data, int size);
    void req_process_polling_action_push(void *data, int size);

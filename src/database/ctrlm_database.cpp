@@ -591,10 +591,6 @@ void ctrlm_db_device_update_session_id_read(unsigned char *session_id) {
    *session_id = g_ctrlm_db_global.device_update_session_id;
 }
 
-void ctrlm_db_voice_settings_write(guchar *data, guint32 length) {
-   ctrlm_db_write_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_VOICE_KEY_SETTINGS, data, length);
-}
-
 void ctrlm_db_voice_settings_read(guchar **data, guint32 *length) {
    ctrlm_db_read_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_VOICE_KEY_SETTINGS, data, length);
 }

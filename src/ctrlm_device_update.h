@@ -111,16 +111,9 @@ void     ctrlm_device_update_rf4ce_end(ctrlm_network_id_t network_id, ctrlm_cont
 void     ctrlm_device_update_rf4ce_load_info(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, guint16 image_id, rf4ce_device_update_load_info_t *load_info);
 void     ctrlm_device_update_rf4ce_notify_reboot(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, gboolean session_resume);
 gboolean ctrlm_device_update_is_image_id_valid(ctrlm_device_update_image_id_t image_id);
-gboolean ctrlm_device_update_session_get_by_id(ctrlm_device_update_session_id_t session_id, ctrlm_device_update_iarm_call_session_t *session);
 gboolean ctrlm_device_update_image_device_get_by_id(ctrlm_device_update_session_id_t session_id, ctrlm_device_update_image_id_t *image_id, ctrlm_device_update_device_t *device);
-gboolean ctrlm_device_update_image_get_by_id(ctrlm_device_update_image_id_t image_id, ctrlm_device_update_image_t *image);
-gboolean ctrlm_device_update_status_info_get(ctrlm_device_update_iarm_call_status_t *status);
 gboolean ctrlm_device_update_interactive_download_start(ctrlm_device_update_session_id_t session_id, gboolean background, guchar percent_increment, gboolean load_image_immediately);
 gboolean ctrlm_device_update_interactive_load_start(ctrlm_device_update_session_id_t session_id, ctrlm_device_update_iarm_load_type_t load_type, guint32 time_to_load, guint32 time_after_inactive);
-void     ctrlm_device_update_iarm_event_ready_to_download(ctrlm_device_update_session_id_t session_id);
-void     ctrlm_device_update_iarm_event_download_status(ctrlm_device_update_session_id_t session_id, guchar percent_complete);
-void     ctrlm_device_update_iarm_event_load_begin(ctrlm_device_update_session_id_t session_id);
-void     ctrlm_device_update_iarm_event_load_end(ctrlm_device_update_session_id_t session_id, ctrlm_device_update_iarm_load_result_t result);
 gboolean ctrlm_device_update_is_controller_updating(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, bool ignore_load_waiting);
 gboolean ctrlm_device_update_process_xconf_update(std::string fileLocation);
 device_update_check_locations_t ctrlm_device_update_check_locations_get(void);

@@ -28,12 +28,10 @@
 #include "ctrlm_rcu.h"
 #include "ctrlm_utils.h"
 
-static IARM_Result_t ctrlm_rcu_iarm_call_validation_finish(void *arg);
 static IARM_Result_t ctrlm_rcu_iarm_call_controller_status(void *arg);
 static IARM_Result_t ctrlm_rcu_iarm_call_rib_request_get(void *arg);
 static IARM_Result_t ctrlm_rcu_iarm_call_rib_request_set(void *arg);
 static IARM_Result_t ctrlm_rcu_iarm_call_controller_link_key(void *arg);
-static IARM_Result_t ctrlm_rcu_iarm_call_reverse_cmd(void *arg);
 static IARM_Result_t ctrlm_rcu_iarm_call_rf4ce_polling_action(void *arg);
 
 typedef struct {
@@ -42,12 +40,10 @@ typedef struct {
 } iarm_call_handler_t;
 
 static iarm_call_handler_t handlers[] = {
-      { CTRLM_RCU_IARM_CALL_VALIDATION_FINISH,    &ctrlm_rcu_iarm_call_validation_finish },
       { CTRLM_RCU_IARM_CALL_CONTROLLER_STATUS,    &ctrlm_rcu_iarm_call_controller_status },
       { CTRLM_RCU_IARM_CALL_RIB_REQUEST_GET,      &ctrlm_rcu_iarm_call_rib_request_get },
       { CTRLM_RCU_IARM_CALL_RIB_REQUEST_SET,      &ctrlm_rcu_iarm_call_rib_request_set },
       { CTRLM_RCU_IARM_CALL_CONTROLLER_LINK_KEY,  &ctrlm_rcu_iarm_call_controller_link_key },
-      { CTRLM_RCU_IARM_CALL_REVERSE_CMD,          &ctrlm_rcu_iarm_call_reverse_cmd },
       { CTRLM_RCU_IARM_CALL_RF4CE_POLLING_ACTION, &ctrlm_rcu_iarm_call_rf4ce_polling_action }
 };
 
@@ -226,12 +222,6 @@ static IARM_Result_t ctrlm_rcu_iarm_call_dispatch(iarm_call_struct* params, gboo
    return(IARM_RESULT_SUCCESS);
 }
 
-IARM_Result_t ctrlm_rcu_iarm_call_validation_finish(void *arg) {
-   ctrlm_rcu_iarm_call_validation_finish_t *params = (ctrlm_rcu_iarm_call_validation_finish_t *) arg;
-   XLOGD_INFO("(%u, %u) Validation Result <%s>", params->network_id, params->controller_id, ctrlm_rcu_validation_result_str(params->validation_result));
-   return ctrlm_rcu_iarm_call_dispatch(params, &ctrlm_rcu_validation_finish);
-}
-
 IARM_Result_t ctrlm_rcu_iarm_call_controller_status(void *arg) {
    ctrlm_rcu_iarm_call_controller_status_t *params = (ctrlm_rcu_iarm_call_controller_status_t *) arg;
    return ctrlm_rcu_iarm_call_dispatch(params, &ctrlm_rcu_controller_status);
@@ -250,11 +240,6 @@ IARM_Result_t ctrlm_rcu_iarm_call_rib_request_set(void *arg) {
 IARM_Result_t ctrlm_rcu_iarm_call_controller_link_key(void *arg) {
    ctrlm_rcu_iarm_call_controller_link_key_t *params = (ctrlm_rcu_iarm_call_controller_link_key_t *) arg;
    return ctrlm_rcu_iarm_call_dispatch(params, &ctrlm_rcu_controller_link_key);
-    }
-
-IARM_Result_t ctrlm_rcu_iarm_call_reverse_cmd(void *arg) {
-   ctrlm_main_iarm_call_rcu_reverse_cmd_t *params = (ctrlm_main_iarm_call_rcu_reverse_cmd_t *) arg;
-   return ctrlm_rcu_iarm_call_dispatch(params, &ctrlm_rcu_reverse_cmd);
 }
 
 IARM_Result_t ctrlm_rcu_iarm_call_rf4ce_polling_action(void *arg) {

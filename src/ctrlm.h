@@ -70,7 +70,6 @@ typedef enum {
    CTRLM_MAIN_QUEUE_MSG_TYPE_BIND_VALIDATION_FAILED_TIMEOUT,
    CTRLM_MAIN_QUEUE_MSG_TYPE_TERMINATE_VOICE_SESSION,
    CTRLM_MAIN_QUEUE_MSG_TYPE_CONTROLLER_TYPE_GET,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_CONTROLLER_REVERSE_CMD,
    CTRLM_MAIN_QUEUE_MSG_TYPE_RCU_POLLING_ACTION,
    // End network based messages
 
@@ -82,11 +81,6 @@ typedef enum {
    // Global messages
    CTRLM_MAIN_QUEUE_MSG_TYPE_TERMINATE                             = CTRLM_MAIN_QUEUE_MSG_TYPE_GLOBAL + 1,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STATUS,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_SET,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_GET,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_DISCOVERY_CONFIG_SET,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_AUTOBIND_CONFIG_SET,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PRECOMMISSION_CONFIG_SET,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_FACTORY_RESET,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROLLER_UNBIND,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_IR_LINE_OF_SIGHT,
@@ -105,9 +99,6 @@ typedef enum {
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STOP_BINDING_SCREEN,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_SET_VALUES,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_CAN_FIND_MY_REMOTE,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_START_PAIRING_MODE,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_END_PAIRING_MODE,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STOP_ONE_TOUCH_AUTOBIND,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CLOSE_PAIRING_WINDOW,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_BIND_STATUS_SET,
@@ -183,39 +174,6 @@ typedef struct {
    sem_t *                                semaphore;
    ctrlm_main_status_cmd_result_t *       cmd_result;
 } ctrlm_main_queue_msg_main_network_status_t;
-
-typedef struct {
-   ctrlm_main_iarm_call_chip_status_t     *status;
-   sem_t *                                semaphore;
-} ctrlm_main_queue_msg_main_chip_status_t;
-
-typedef struct {
-   ctrlm_main_queue_msg_header_t    header;
-   ctrlm_main_iarm_call_property_t *property;
-   sem_t *                          semaphore;
-   ctrlm_main_status_cmd_result_t * cmd_result;
-} ctrlm_main_queue_msg_main_property_t;
-
-typedef struct {
-   ctrlm_main_queue_msg_header_t            header;
-   ctrlm_main_iarm_call_discovery_config_t *config;
-   sem_t *                                  semaphore;
-   ctrlm_main_status_cmd_result_t *         cmd_result;
-} ctrlm_main_queue_msg_main_discovery_config_t;
-
-typedef struct {
-   ctrlm_main_queue_msg_header_t           header;
-   ctrlm_main_iarm_call_autobind_config_t *config;
-   sem_t *                                 semaphore;
-   ctrlm_main_status_cmd_result_t *        cmd_result;
-} ctrlm_main_queue_msg_main_autobind_config_t;
-
-typedef struct {
-   ctrlm_main_queue_msg_header_t               header;
-   ctrlm_main_iarm_call_precommision_config_t *config;
-   sem_t *                                     semaphore;
-   ctrlm_main_status_cmd_result_t *            cmd_result;
-} ctrlm_main_queue_msg_main_precommision_config_t;
 
 typedef struct {
    ctrlm_iarm_call_result_t result;
@@ -299,13 +257,6 @@ typedef struct {
    sem_t *                                          semaphore;
    ctrlm_main_status_cmd_result_t *                 cmd_result;
 } ctrlm_main_queue_msg_main_control_service_settings_t;
-
-typedef struct {
-   ctrlm_main_queue_msg_header_t                              header;
-   ctrlm_main_iarm_call_control_service_can_find_my_remote_t *can_find_my_remote;
-   sem_t *                                                    semaphore;
-   ctrlm_main_status_cmd_result_t *                           cmd_result;
-} ctrlm_main_queue_msg_main_control_service_can_find_my_remote_t;
 
 typedef struct {
    ctrlm_main_queue_msg_header_t                        header;
@@ -472,14 +423,10 @@ ctrlm_pairing_restrict_by_remote_t restrict_pairing_by_remote_get();
 void                               ctrlm_quit_main_loop();
 gboolean                           ctrlm_power_state_change(ctrlm_power_state_t power_state);
 
+bool     ctrlm_main_active_period_screenbind_timeout_set_(uint32_t timeout);
+
 gboolean ctrlm_main_iarm_call_status_get(ctrlm_main_iarm_call_status_t *status);
 gboolean ctrlm_main_iarm_call_network_status_get(ctrlm_main_iarm_call_network_status_t *status);
-gboolean ctrlm_main_iarm_call_property_set(ctrlm_main_iarm_call_property_t *property);
-void     ctrlm_main_iarm_call_property_set_(ctrlm_main_iarm_call_property_t *property);
-gboolean ctrlm_main_iarm_call_property_get(ctrlm_main_iarm_call_property_t *property);
-gboolean ctrlm_main_iarm_call_discovery_config_set(ctrlm_main_iarm_call_discovery_config_t *config);
-gboolean ctrlm_main_iarm_call_autobind_config_set(ctrlm_main_iarm_call_autobind_config_t *config);
-gboolean ctrlm_main_iarm_call_precommission_config_set(ctrlm_main_iarm_call_precommision_config_t *config);
 gboolean ctrlm_main_iarm_call_factory_reset(ctrlm_main_iarm_call_factory_reset_t *reset);
 gboolean ctrlm_main_iarm_call_controller_unbind(ctrlm_main_iarm_call_controller_unbind_t *unbind);
 gboolean ctrlm_main_iarm_call_ir_remote_usage_get(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage);
@@ -487,12 +434,8 @@ gboolean ctrlm_main_iarm_call_pairing_metrics_get(ctrlm_main_iarm_call_pairing_m
 gboolean ctrlm_main_iarm_call_last_key_info_get(ctrlm_main_iarm_call_last_key_info_t *last_key_info);
 gboolean ctrlm_main_iarm_call_control_service_set_values(ctrlm_main_iarm_call_control_service_settings_t *settings);
 gboolean ctrlm_main_iarm_call_control_service_get_values(ctrlm_main_iarm_call_control_service_settings_t *settings);
-gboolean ctrlm_main_iarm_call_control_service_can_find_my_remote(ctrlm_main_iarm_call_control_service_can_find_my_remote_t *can_find_my_remote);
-gboolean ctrlm_main_iarm_call_control_service_start_pairing_mode(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 void     ctrlm_main_iarm_call_control_service_start_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
-gboolean ctrlm_main_iarm_call_control_service_end_pairing_mode(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 void     ctrlm_main_iarm_call_control_service_end_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
-gboolean ctrlm_main_iarm_call_chip_status_get(ctrlm_main_iarm_call_chip_status_t *status);
 
 ctrlm_power_state_t ctrlm_main_get_system_power_state(void);
 ctrlm_power_state_t ctrlm_main_get_internal_power_state(void);

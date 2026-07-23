@@ -1540,7 +1540,8 @@ void ctrlm_db_print() {
          ctrlm_db_rf4ce_read_validation_type(*it_network, *it_controller, &validation_type);
          ctrlm_db_rf4ce_read_time_binding(*it_network, *it_controller, &time_binding);
 
-         const tm* loc_time = localtime(&time_binding);
+         struct tm time_info;
+         const tm* loc_time = localtime_r(&time_binding, &time_info);
          if (loc_time != 0) {
             strftime(time_str, 40, "%x - %I:%M:%S %p", loc_time);
          }

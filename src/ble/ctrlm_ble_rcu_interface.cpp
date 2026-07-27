@@ -120,6 +120,17 @@ void ctrlm_ble_rcu_interface_t::shutdown()
         m_controller->shutdown();
     }
 
+    // Tell ctrlm_ble_key_m to drop every managed device before destructing the controller/adapter.
+    // Without this, the key monitor thread is left polling an fd that bluez destroys.
+    if (m_controller) {
+        for (const BleAddress &address : m_controller->managedDevices()) {
+            ctrlm_ble_key_queue_device_changed_msg_t msg;
+            msg.header.type = CTRLM_BLE_KEY_QUEUE_MSG_TYPE_DEVICE_REMOVED;
+            msg.address = address;
+            ctrlm_utils_queue_msg_push(m_keyThreadMsgQ, (const char *)&msg, sizeof(msg));
+        }
+    }
+
     // delete the adapter and controller when going into deepsleep so that we don't
     // get notified of the remote disconnection that occurs when going to sleep.
     // Upon waking, these will be re-initialized.
@@ -1681,15 +1692,29 @@ void *KeyMonitorThread(void *data)
         }
 
         // loop the rcu fds to see if any has data to read
-        for (auto const &rcu : rcuKeypressFds) {
+        for (auto &rcu : rcuKeypressFds) {
             if (rcu.second >= 0) {
                 if (FD_ISSET(rcu.second, &rfds)) {
                     safec_rc = memset_s ((void*) &event, sizeof(event), 0, sizeof(event));
                     ERR_CHK(safec_rc);
                     ret = read(rcu.second, (void*)&event, sizeof(event));
-                    if (ret < 0) {
-                        // int errsv = errno;
-                        // XLOGD_ERROR("Error reading event: error = <%d>, <%s>", errsv, strerror(errsv));
+                    if (ret == 0) {
+                        // EOF - the underlying input device node is gone.
+                        XLOGD_WARN("Input device for RCU <%s> hit EOF, closing fd <%d>",
+                                rcu.first.toString().c_str(), rcu.second);
+                        close(rcu.second);
+                        rcu.second = -1;
+                    } else if (ret < 0) {
+                        int errsv = errno;
+                        if (errsv == ENODEV || errsv == EBADF || errsv == EINVAL) {
+                            // Device node was destroyed out from under us leaving 100% CPU spin.
+                            // Close fd and FindRcuInputDevices() reopens the device node if it comes back.
+                            XLOGD_WARN("Input device for RCU <%s> gone: error = <%d>, <%s>, closing fd <%d>",
+                                    rcu.first.toString().c_str(), errsv, strerror(errsv), rcu.second);
+                            close(rcu.second);
+                            rcu.second = -1;
+                        }
+                        // else: transient error (e.g. EAGAIN) - retry on the next wakeup.
                     } else {
                         HandleKeypress(metadata, &event, rcu.first);
                     }

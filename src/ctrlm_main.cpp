@@ -1005,14 +1005,13 @@ gboolean ctrlm_thread_monitor(gpointer user_data) {
    }
    #endif
 
-   if(ctrlm_was_cpu_halted()) {
+   if(ctrlm_was_cpu_halted() && !g_ctrlm.thread_monitor_active) {
       XLOGD_INFO("skipping response check due to power state <%s>",ctrlm_power_state_str(g_ctrlm.power_state));
-      g_ctrlm.thread_monitor_active = false; // Deactivate thread monitoring
    } else if(!g_ctrlm.thread_monitor_active) {
       XLOGD_INFO("activate due to power state <%s>",ctrlm_power_state_str(g_ctrlm.power_state));
       g_ctrlm.thread_monitor_active = true;  // Activate thread monitoring again
    } else {
-      // Check the response from each thread on the previous attempt
+      // Check the response from each thread on the previous attempt, including final iteration before DEEP_SLEEP.
       for(vector<ctrlm_thread_monitor_t>::iterator it = g_ctrlm.monitor_threads.begin(); it != g_ctrlm.monitor_threads.end(); it++) {
          XLOGD_DEBUG("Checking %s", it->name);
 
@@ -1042,6 +1041,12 @@ gboolean ctrlm_thread_monitor(gpointer user_data) {
             ctrlm_quit_main_loop();
             return (FALSE);
          }
+      }
+
+      if(ctrlm_was_cpu_halted()) {
+         // The DEEP_SLEEP transition has now been checked, go quiet until we wake.
+         XLOGD_INFO("power state <%s>: transition checked, deactivating thread monitor",ctrlm_power_state_str(g_ctrlm.power_state));
+         g_ctrlm.thread_monitor_active = false; // Deactivate thread monitoring
       }
    }
 

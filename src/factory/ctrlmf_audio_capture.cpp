@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <new>
 #include <sstream>
 #include <vector>
 #include <algorithm>
@@ -48,7 +49,7 @@ static ctrlmf_audio_cap_global_t g_audio_cap;
 
 bool ctrlmf_audio_capture_init(uint32_t audio_frame_size, bool *has_local_mic_tap) {
 
-   g_audio_cap.obj_ctrlm = new Iarm::ControlManager::ctrlm_iarm_client_control_manager_t;
+   g_audio_cap.obj_ctrlm = new(std::nothrow) Iarm::ControlManager::ctrlm_iarm_client_control_manager_t;
 
    if(g_audio_cap.obj_ctrlm == NULL) {
       XLOGD_ERROR("out of memory");

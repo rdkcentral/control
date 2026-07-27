@@ -44,11 +44,8 @@ BleRcuPairingStateMachine::BleRcuPairingStateMachine(const shared_ptr<const Conf
     , m_isAutoPairing(false)
     , m_pairingCode(-1)
     , m_pairingMacHash(-1)
+    , m_config(config)
     , m_discoveryTimeout(config->discoveryTimeout())
-    , m_discoveryTimeoutDefault(config->discoveryTimeout())
-    , m_pairingTimeout(config->pairingTimeout())
-    , m_setupTimeout(config->setupTimeout())
-    , m_unpairingTimeout(config->upairingTimeout())
     , m_pairingAttempts(0)
     , m_pairingSuccesses(0)
     , m_pairingSucceeded(false)
@@ -287,6 +284,7 @@ void BleRcuPairingStateMachine::startAutoWithTimeout(int timeoutMs)
     m_pairingAttempts++;
     m_pairingSucceeded = false;
     XLOGD_INFO("Started auto pairing procedure");
+    XLOGD_DEBUG("timeouts - discovery <%d ms> pairing <%d ms> setup <%d ms> unpairing <%d ms>", m_discoveryTimeout, m_config->pairingTimeout(), m_config->setupTimeout(), m_config->upairingTimeout());
 }
 
 
@@ -304,7 +302,7 @@ void BleRcuPairingStateMachine::startWithCode(uint8_t pairingCode)
         return;
     }
 
-    m_discoveryTimeout = m_discoveryTimeoutDefault;
+    m_discoveryTimeout = m_config->discoveryTimeout(); // use the default discovery timeout for this pairing method
     m_isAutoPairing = false;
 
     // clear the target device
@@ -345,6 +343,7 @@ void BleRcuPairingStateMachine::startWithCode(uint8_t pairingCode)
     m_pairingAttempts++;
     m_pairingSucceeded = false;
     XLOGD_INFO("started pairing, searching for device with prefix code %03d or MAC hash 0x%02X", m_pairingCode, m_pairingMacHash);
+    XLOGD_DEBUG("timeouts - discovery <%d ms> pairing <%d ms> setup <%d ms> unpairing <%d ms>", m_discoveryTimeout, m_config->pairingTimeout(), m_config->setupTimeout(), m_config->upairingTimeout());
 }
 
 // -----------------------------------------------------------------------------
@@ -359,6 +358,8 @@ void BleRcuPairingStateMachine::startWithMacList(const std::vector<BleAddress> &
         XLOGD_ERROR("scanner already running");
         return;
     }
+
+    m_discoveryTimeout = m_config->discoveryTimeout(); // use the default discovery timeout for this pairing method
 
     // clear the target device
     m_targetAddress.clear();
@@ -389,7 +390,7 @@ void BleRcuPairingStateMachine::startWithMacList(const std::vector<BleAddress> &
     for (const auto &address : macList) {
         XLOGD_INFO("<%s>", address.toString().c_str());
     }
-
+    XLOGD_DEBUG("timeouts - discovery <%d ms> pairing <%d ms> setup <%d ms> unpairing <%d ms>", m_discoveryTimeout, m_config->pairingTimeout(), m_config->setupTimeout(), m_config->upairingTimeout());
 }
 
 
@@ -511,9 +512,9 @@ void BleRcuPairingStateMachine::onStateTransition(int oldState, int newState)
         }
     } else if (newState == UnpairingState) {
         if (oldState == EnablePairableState || oldState == PairingState) {
-            XLOGD_AUTOMATION_WARN("timed-out in pairing phase (rcu device didn't pair within %dms)", m_pairingTimeout);
+            XLOGD_AUTOMATION_WARN("timed-out in pairing phase (rcu device didn't pair within %dms)", m_config->pairingTimeout());
         } else if (oldState == SetupState) {
-            XLOGD_AUTOMATION_WARN("timed-out in setup phase (rcu didn't response to all requests within %dms)", m_setupTimeout);
+            XLOGD_AUTOMATION_WARN("timed-out in setup phase (rcu didn't response to all requests within %dms)", m_config->setupTimeout());
         }
     }
 
@@ -643,7 +644,7 @@ void BleRcuPairingStateMachine::onExitedDiscoverySuperState()
 void BleRcuPairingStateMachine::onEnteredStoppingDiscoveryState()
 {
     // start the pairing timeout timer
-    m_stateMachine.postDelayedEvent(PairingTimeoutEvent, m_pairingTimeout);
+    m_stateMachine.postDelayedEvent(PairingTimeoutEvent, m_config->pairingTimeout());
 
     // if we've got to this state it means we have a target device
     if (m_targetAddress.isNull()) {
@@ -708,7 +709,7 @@ void BleRcuPairingStateMachine::onEnteredEnablePairableState()
     // in pairable mode because we don't know if the previous timeout is long enough for our purposes.
     // The timeout is set to 5 seconds past the overall time we've given the state machine
     // to pair with the rcu.
-    m_adapter->enablePairable(m_pairingTimeout + 5000);
+    m_adapter->enablePairable(m_config->pairingTimeout() + 5000);
 
     if (m_adapter->isPairable()) {
         // is already pairable so just post the 'enabled' event
@@ -748,8 +749,9 @@ void BleRcuPairingStateMachine::onEnteredPairingState()
 void BleRcuPairingStateMachine::onEnteredSetupState()
 {
     // start the setup timeout timer
-    m_stateMachine.postDelayedEvent(SetupTimeoutEvent, m_setupTimeout);
-    XLOGD_DEBUG("starting setup timeout timer for %dms", m_setupTimeout);
+    int timeout = m_config->setupTimeout();
+    m_stateMachine.postDelayedEvent(SetupTimeoutEvent, timeout);
+    XLOGD_DEBUG("starting setup timeout timer for %dms", timeout);
 }
 
 // -----------------------------------------------------------------------------
@@ -781,7 +783,7 @@ void BleRcuPairingStateMachine::onExitedPairingSuperState()
 void BleRcuPairingStateMachine::onEnteredUnpairingState()
 {
     // start the unpairing timeout timer
-    m_stateMachine.postDelayedEvent(UnpairingTimeoutEvent, m_unpairingTimeout);
+    m_stateMachine.postDelayedEvent(UnpairingTimeoutEvent, m_config->upairingTimeout());
 
     // if we've got to this state it means we have a target device
     if (m_targetAddress.isNull()) {

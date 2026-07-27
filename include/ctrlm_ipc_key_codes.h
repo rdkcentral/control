@@ -19,10 +19,6 @@
 #ifndef _CTRLM_IPC_KEY_CODES_H_
 #define _CTRLM_IPC_KEY_CODES_H_
 
-/// @file ctrlm_ipc_key_codes.h
-
-/// @brief Control Manager Key Codes
-/// @details An enumeration of the key codes that are used in Control Manager.
 typedef enum {
    CTRLM_KEY_CODE_OK               = 0x00,
    CTRLM_KEY_CODE_UP_ARROW         = 0x01,

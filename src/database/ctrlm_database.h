@@ -46,7 +46,6 @@ void ctrlm_db_version_write(int version);
 void ctrlm_db_version_read(int *version);
 void ctrlm_db_device_update_session_id_write(unsigned char session_id);
 void ctrlm_db_device_update_session_id_read(unsigned char *session_id);
-void ctrlm_db_voice_settings_write(guchar *data, guint32 length);
 void ctrlm_db_voice_settings_read(guchar **data, guint32 *length);
 void ctrlm_db_ir_rf_database_write(ctrlm_key_code_t key_code, guchar *data, guint32 length);
 void ctrlm_db_ir_rf_database_read(ctrlm_key_code_t key_code, guchar **data, guint32 *length);

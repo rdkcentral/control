@@ -192,11 +192,9 @@ private:
 
     StateMachine m_stateMachine;
 
+    const std::shared_ptr<const ConfigSettings> m_config;
+
     int m_discoveryTimeout;
-    int m_discoveryTimeoutDefault;
-    int m_pairingTimeout;
-    int m_setupTimeout;
-    int m_unpairingTimeout;
 
     int m_pairingAttempts;
     int m_pairingSuccesses;

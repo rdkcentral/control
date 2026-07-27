@@ -189,18 +189,18 @@ bool ctrlm_ir_rf_db_t::add_irdb_codes(ctrlm_irdb_ir_code_set_t *ir_codes, const 
         switch(type) {
             case CTRLM_IR_RF_DB_DEV_TV: {
                 this->tv_ir_code_id_ = ir_codes->id;
-                this->tv_manufacturer_ = manufacturer;
-                this->tv_model_ = model;
+                this->tv_manufacturer_ = manufacturer.empty() ? "INVALID" : manufacturer;
+                this->tv_model_ = model.empty() ? "INVALID" : model;
                 this->tv_ir_vendor_id_ = ir_vendor_id;
-                this->tv_ir_vendor_name_ = ir_vendor_name;
+                this->tv_ir_vendor_name_ = ir_vendor_name.empty() ? "INVALID" : ir_vendor_name;
                 break;
             }
             case CTRLM_IR_RF_DB_DEV_AVR: {
                 this->avr_ir_code_id_ = ir_codes->id;
-                this->avr_manufacturer_ = manufacturer;
-                this->avr_model_ = model;
+                this->avr_manufacturer_ = manufacturer.empty() ? "INVALID" : manufacturer;
+                this->avr_model_ = model.empty() ? "INVALID" : model;
                 this->avr_ir_vendor_id_ = ir_vendor_id;
-                this->avr_ir_vendor_name_ = ir_vendor_name;
+                this->avr_ir_vendor_name_ = ir_vendor_name.empty() ? "INVALID" : ir_vendor_name;
                 break;
             }
             default: {

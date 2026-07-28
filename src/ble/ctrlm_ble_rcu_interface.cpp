@@ -124,10 +124,7 @@ void ctrlm_ble_rcu_interface_t::shutdown()
     // Without this, the key monitor thread is left polling an fd that bluez destroys.
     if (m_controller) {
         for (const BleAddress &address : m_controller->managedDevices()) {
-            ctrlm_ble_key_queue_device_changed_msg_t msg;
-            msg.header.type = CTRLM_BLE_KEY_QUEUE_MSG_TYPE_DEVICE_REMOVED;
-            msg.address = address;
-            ctrlm_utils_queue_msg_push(m_keyThreadMsgQ, (const char *)&msg, sizeof(msg));
+            removeDeviceKeyMonitorThread(address);
         }
     }
 
@@ -184,10 +181,7 @@ void ctrlm_ble_rcu_interface_t::initialize()
             {
                 XLOGD_DEBUG("deviceRemovedSlot %s", address.toString().c_str());
 
-                ctrlm_ble_key_queue_device_changed_msg_t msg;
-                msg.header.type = CTRLM_BLE_KEY_QUEUE_MSG_TYPE_DEVICE_REMOVED;
-                msg.address = address;
-                ctrlm_utils_queue_msg_push(m_keyThreadMsgQ, (const char *)&msg, sizeof(msg));
+                removeDeviceKeyMonitorThread(address);
 
                 ctrlm_hal_ble_IndUnPaired_params_t params;
                 params.ieee_address = address.toUInt64();
@@ -294,9 +288,11 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
         {
             XLOGD_INFO("BLE RCU %s connected changed to <%s>", address.toString().c_str(), connected ? "TRUE" : "FALSE");
 
-            if (connected) {
-                if (m_keyMonitorThread.running) {
+            if (m_keyMonitorThread.running) {
+                if (connected) {
                     addNewDeviceKeyMonitorThread(address);
+                } else {
+                    removeDeviceKeyMonitorThread(address);
                 }
             }
 
@@ -1456,6 +1452,13 @@ std::shared_ptr<ConfigSettings> ctrlm_ble_rcu_interface_t::getConfigSettings() {
 void ctrlm_ble_rcu_interface_t::addNewDeviceKeyMonitorThread(BleAddress address){
     ctrlm_ble_key_queue_device_changed_msg_t msg;
     msg.header.type = CTRLM_BLE_KEY_QUEUE_MSG_TYPE_DEVICE_ADDED;
+    msg.address = address;
+    ctrlm_utils_queue_msg_push(m_keyThreadMsgQ, (const char *)&msg, sizeof(msg));
+}
+
+void ctrlm_ble_rcu_interface_t::removeDeviceKeyMonitorThread(BleAddress address){
+    ctrlm_ble_key_queue_device_changed_msg_t msg;
+    msg.header.type = CTRLM_BLE_KEY_QUEUE_MSG_TYPE_DEVICE_REMOVED;
     msg.address = address;
     ctrlm_utils_queue_msg_push(m_keyThreadMsgQ, (const char *)&msg, sizeof(msg));
 }

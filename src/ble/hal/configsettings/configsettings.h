@@ -48,6 +48,7 @@ private:
     static std::shared_ptr<ConfigSettings> fromJsonFile(const std::string &filePath);
     static std::shared_ptr<ConfigSettings> fromJsonBuffer(const char *jsonBuffer);
     static std::shared_ptr<ConfigSettings> parseJson(json_t *jsonConfig);
+    bool                                   updateJson(json_t *jsonConfig);
 
     struct TimeOuts {
         int discoveryMSecs;
@@ -65,6 +66,7 @@ public:
                    std::vector<ConfigModelSettings> &&modelDetails);
 
 public:
+    bool updateFromJson(json_t *jsonConfig);
     int discoveryTimeout() const;
     int pairingTimeout() const;
     int setupTimeout() const;
@@ -80,11 +82,9 @@ private:
     static TimeOuts parseTimeouts(json_t *json);
 
 private:
-    const TimeOuts m_timeOuts;
+    TimeOuts m_timeOuts;
     const std::vector<ConfigModelSettings> m_modelDetails;
 };
-
-// QDebug operator<<(QDebug dbg, const ConfigSettings &settings);
 
 
 #endif // !defined(CONFIGSETTINGS_H)

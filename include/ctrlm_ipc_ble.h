@@ -27,19 +27,6 @@
 #define CTRLM_BLE_IARM_BUS_API_REVISION                  (1)    ///< Revision of the BLE IARM API
 #define CTRLM_BLE_MAX_IRDBS_SUPPORTED                    (8)    ///< IR Protocol characteristic is a single octet containing a bitmask of IRDB values
 
-
-union daemon_logging_t {
-  uint8_t log_levels;
-  struct bit {
-   uint8_t fatal : 1;
-   uint8_t error : 1;
-   uint8_t warning : 1;
-   uint8_t milestone : 1;
-   uint8_t info : 1;
-   uint8_t debug : 1;
-   } level;
-};
-
 typedef enum {
    CTRLM_BLE_RCU_UNPAIR_REASON_NONE = 0,
    CTRLM_BLE_RCU_UNPAIR_REASON_SFM,
@@ -69,13 +56,6 @@ typedef enum {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // IARM Calls into ControlMgr
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-typedef struct {
-   unsigned char            api_revision;                      ///< Revision of this API
-   ctrlm_network_id_t       network_id;                        ///< IN - Identifier of network
-   daemon_logging_t         logging;                           ///< IN/OUT - 0x020 Debug, 0x010 Info, 0x008 Milestone, 0x004 Warning, 0x002 Error, 0x001 Fatal
-   ctrlm_iarm_call_result_t result;                            ///< OUT - return code of the operation
-} ctrlm_iarm_call_BleLogLevels_params_t;
 
 typedef struct {
    unsigned char                 api_revision;
@@ -124,9 +104,6 @@ typedef struct {
 // All IARM bus calls made to ControlMgr MUST include a string that specifies which call is being made
 // (and ControlMgr must "register" these calls by name, with IARM)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#define CTRLM_BLE_IARM_CALL_GET_DAEMON_LOG_LEVELS   "Ble_GetLogLevels"   ///< IARM Call to get the logging level of BLE Daemon
-#define CTRLM_BLE_IARM_CALL_SET_DAEMON_LOG_LEVELS   "Ble_SetLogLevels"   ///< IARM Call to set the logging level of BLE Daemon
 
 #define CTRLM_BLE_IARM_CALL_GET_RCU_UNPAIR_REASON   "Ble_GetRcuUnpairReason"
 #define CTRLM_BLE_IARM_CALL_GET_RCU_REBOOT_REASON   "Ble_GetRcuRebootReason"

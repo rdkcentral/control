@@ -177,6 +177,7 @@ private:
     std::shared_ptr<BleRcuController> m_controller;
 
     void addNewDeviceKeyMonitorThread(BleAddress address);
+    void removeDeviceKeyMonitorThread(BleAddress address);
 };
 
 #endif //__CTRLM_BLE_RCU_INTERFACE_H__

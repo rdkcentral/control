@@ -554,7 +554,6 @@ class ctrlm_voice_t {
     void                                  voice_params_qos_get(voice_params_qos_t *params);
     void                                  voice_params_opus_encoder_get(voice_params_opus_encoder_t *params);
     void                                  voice_params_par_get(voice_params_par_t *params);
-    virtual void                          process_xconf(json_t **json_obj_vsdk, bool local_conf);
     virtual void                          query_strings_updated();
     int                                   packet_loss_threshold_get() const;
 

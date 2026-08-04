@@ -116,7 +116,9 @@ int main(int argc, char* argv[]) {
             XLOGD_INFO("ctrlmf_main: test result <%s>", test_result.pass ? "PASS" : "FAIL");
          }
       } else if(g_ctrlmf_opts.audio_file_path != NULL) {
+         #ifdef CTRLMF_THUNDER
          ctrlmf_audio_playback_start(g_ctrlmf_opts.audio_file_path);
+         #endif
       }
       if(g_ctrlmf_opts.mute_main_audio) {
          ctrlmf_audio_control_mute(false);

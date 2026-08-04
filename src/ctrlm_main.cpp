@@ -36,10 +36,6 @@
 #include <rdkversion.h>
 #include "jansson.h"
 #include "libIBus.h"
-#ifdef USE_DEPRECATED_IRMGR
-#include "irMgr.h"
-#include "plat_ir.h"
-#endif
 #include "sysMgr.h"
 #ifdef BREAKPAD_SUPPORT
 #include "client/linux/handler/exception_handler.h"
@@ -48,7 +44,6 @@
 #include "ctrlm_version_build.h"
 #include "ctrlm_hal_rf4ce.h"
 #include "ctrlm_hal_ble.h"
-#include "ctrlm_hal_ip.h"
 #include "ctrlm.h"
 #include "ctrlm_log.h"
 #include "ctrlm_utils.h"
@@ -355,10 +350,6 @@ static void     ctrlm_signal_handler(int signal);
 static gboolean ctrlm_unix_signal_terminate(gpointer user_data);
 
 static void     ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *status);
-static void     ctrlm_main_iarm_call_property_get_(ctrlm_main_iarm_call_property_t *property);
-static void     ctrlm_main_iarm_call_discovery_config_set_(ctrlm_main_iarm_call_discovery_config_t *config);
-static void     ctrlm_main_iarm_call_autobind_config_set_(ctrlm_main_iarm_call_autobind_config_t *config);
-static void     ctrlm_main_iarm_call_precommission_config_set_(ctrlm_main_iarm_call_precommision_config_t *config);
 static void     ctrlm_main_iarm_call_factory_reset_(ctrlm_main_iarm_call_factory_reset_t *reset);
 static void     ctrlm_main_iarm_call_controller_unbind_(ctrlm_main_iarm_call_controller_unbind_t *unbind);
 static void     ctrlm_main_update_export_controller_list(void);
@@ -369,11 +360,10 @@ static void     ctrlm_stop_one_touch_autobind_(ctrlm_network_id_t network_id);
 static void     ctrlm_close_pairing_window_(ctrlm_network_id_t network_id, ctrlm_close_pairing_window_reason reason);
 static void     ctrlm_pairing_window_bind_status_set_(ctrlm_bind_status_t bind_status);
 static void     ctrlm_discovery_remote_type_set_(const char* remote_type_str);
-static void     ctrlm_controller_product_name_get(ctrlm_controller_id_t controller_id, char *source_name) __attribute__((unused));  //USE_DEPRECATED_IRMGR
 static void     ctrlm_global_rfc_values_retrieved(const ctrlm_rfc_attr_t &attr);
 
-static gboolean ctrlm_timeout_line_of_sight(gpointer user_data) __attribute__((unused));  //USE_DEPRECATED_IRMGR
-static gboolean ctrlm_timeout_autobind(gpointer user_data) __attribute__((unused)); //USE_DEPRECATED_IRMGR
+static gboolean ctrlm_timeout_line_of_sight(gpointer user_data);
+static gboolean ctrlm_timeout_autobind(gpointer user_data);
 static gboolean ctrlm_timeout_binding_button(gpointer user_data);
 static gboolean ctrlm_timeout_screen_bind(gpointer user_data);
 static gboolean ctrlm_timeout_one_touch_autobind(gpointer user_data);
@@ -392,9 +382,6 @@ static void     ctrlm_property_write_shutdown_time(void);
 static guchar   ctrlm_property_write_shutdown_time(guchar *data, guchar length);
 static void     ctrlm_property_read_shutdown_time(void);
 static void     control_service_values_read_from_db();
-#ifdef USE_DEPRECATED_IRMGR
-static void     ctrlm_check_for_key_tag(int key_tag) __attribute__((unused)); //USE_DEPRECATED_IRMGR
-#endif
 
 #if CTRLM_HAL_RF4CE_API_VERSION >= 9
 static void ctrlm_crash_recovery_check();
@@ -972,12 +959,6 @@ void ctrlm_thread_monitor_init(void) {
 
    g_ctrlm.monitor_threads.shrink_to_fit();
 
-   if(CTRLM_TR181_RESULT_SUCCESS != ctrlm_tr181_bool_get(CTRLM_RF4CE_TR181_THREAD_MONITOR_MINIDUMP_ENABLE, &g_ctrlm.thread_monitor_minidump)) {
-      XLOGD_INFO("Thread Monitor Minidump is <%s> (TR181 not present)", (g_ctrlm.thread_monitor_minidump ? "ENABLED" : "DISABLED"));
-   } else {
-      XLOGD_INFO("Thread Monitor Minidump is <%s>", (g_ctrlm.thread_monitor_minidump ? "ENABLED" : "DISABLED"));
-   }
-
    // Run once to kick off the first poll
    ctrlm_thread_monitor(NULL);
 }
@@ -1005,14 +986,13 @@ gboolean ctrlm_thread_monitor(gpointer user_data) {
    }
    #endif
 
-   if(ctrlm_was_cpu_halted()) {
+   if(ctrlm_was_cpu_halted() && !g_ctrlm.thread_monitor_active) {
       XLOGD_INFO("skipping response check due to power state <%s>",ctrlm_power_state_str(g_ctrlm.power_state));
-      g_ctrlm.thread_monitor_active = false; // Deactivate thread monitoring
    } else if(!g_ctrlm.thread_monitor_active) {
       XLOGD_INFO("activate due to power state <%s>",ctrlm_power_state_str(g_ctrlm.power_state));
       g_ctrlm.thread_monitor_active = true;  // Activate thread monitoring again
    } else {
-      // Check the response from each thread on the previous attempt
+      // Check the response from each thread on the previous attempt, including final iteration before DEEP_SLEEP.
       for(vector<ctrlm_thread_monitor_t>::iterator it = g_ctrlm.monitor_threads.begin(); it != g_ctrlm.monitor_threads.end(); it++) {
          XLOGD_DEBUG("Checking %s", it->name);
 
@@ -1042,6 +1022,12 @@ gboolean ctrlm_thread_monitor(gpointer user_data) {
             ctrlm_quit_main_loop();
             return (FALSE);
          }
+      }
+
+      if(ctrlm_was_cpu_halted()) {
+         // The DEEP_SLEEP transition has now been checked, go quiet until we wake.
+         XLOGD_INFO("power state <%s>: transition checked, deactivating thread monitor",ctrlm_power_state_str(g_ctrlm.power_state));
+         g_ctrlm.thread_monitor_active = false; // Deactivate thread monitoring
       }
    }
 
@@ -2512,61 +2498,6 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_SET: {
-            ctrlm_main_queue_msg_main_property_t *dqm = (ctrlm_main_queue_msg_main_property_t *) msg;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_SET");
-            ctrlm_main_iarm_call_property_set_(dqm->property);
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_GET: {
-            ctrlm_main_queue_msg_main_property_t *dqm = (ctrlm_main_queue_msg_main_property_t *) msg;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_GET");
-            ctrlm_main_iarm_call_property_get_(dqm->property);
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_DISCOVERY_CONFIG_SET: {
-            ctrlm_main_queue_msg_main_discovery_config_t *dqm = (ctrlm_main_queue_msg_main_discovery_config_t *) msg;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_DISCOVERY_CONFIG_SET");
-            ctrlm_main_iarm_call_discovery_config_set_(dqm->config);
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_AUTOBIND_CONFIG_SET: {
-            ctrlm_main_queue_msg_main_autobind_config_t *dqm = (ctrlm_main_queue_msg_main_autobind_config_t *) msg;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_AUTOBIND_CONFIG_SET");
-            ctrlm_main_iarm_call_autobind_config_set_(dqm->config);
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PRECOMMISSION_CONFIG_SET: {
-            ctrlm_main_queue_msg_main_precommision_config_t *dqm = (ctrlm_main_queue_msg_main_precommision_config_t *) msg;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PRECOMMISSION_CONFIG_SET");
-            ctrlm_main_iarm_call_precommission_config_set_(dqm->config);
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_FACTORY_RESET: {
             ctrlm_main_queue_msg_main_factory_reset_t *dqm = (ctrlm_main_queue_msg_main_factory_reset_t *) msg;
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_FACTORY_RESET");
@@ -2721,7 +2652,7 @@ gpointer ctrlm_main_thread(gpointer param) {
 
                g_ctrlm.wake_with_voice_allowed = false;
 
-               if((wake_with_voice_allowed == true) && (g_ctrlm.power_manager->get_wakeup_reason_voice())) {
+               if((wake_with_voice_allowed == true) && (g_ctrlm.power_manager != NULL) && (g_ctrlm.power_manager->get_wakeup_reason_voice())) {
                   if( g_ctrlm.voice_session->nsm_voice_session == true ) {
                      XLOGD_INFO("Handling NSM voice session, ignore ON");
                   } else {
@@ -2943,43 +2874,6 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_CAN_FIND_MY_REMOTE: {
-            ctrlm_main_queue_msg_main_control_service_can_find_my_remote_t *dqm = (ctrlm_main_queue_msg_main_control_service_can_find_my_remote_t *) msg;
-            ctrlm_main_iarm_call_control_service_can_find_my_remote_t *can_find_my_remote = dqm->can_find_my_remote;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_CAN_FIND_MY_REMOTE");
-            obj_net = g_ctrlm.networks[hdr->network_id];
-            can_find_my_remote->is_supported = obj_net->is_fmr_supported();
-            XLOGD_INFO("Can find My Remote: Supported <%s>", can_find_my_remote->is_supported ? "true" : "false");
-            
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_START_PAIRING_MODE: {
-            ctrlm_main_queue_msg_main_control_service_pairing_mode_t *dqm = (ctrlm_main_queue_msg_main_control_service_pairing_mode_t *) msg;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_START_PAIRING_MODE");
-            ctrlm_main_iarm_call_control_service_start_pairing_mode_(dqm->pairing);
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_END_PAIRING_MODE: {
-            ctrlm_main_queue_msg_main_control_service_pairing_mode_t *dqm = (ctrlm_main_queue_msg_main_control_service_pairing_mode_t *) msg;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_END_PAIRING_MODE");
-            ctrlm_main_iarm_call_control_service_end_pairing_mode_(dqm->pairing);
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_BATTERY_MILESTONE_EVENT: {
             ctrlm_main_queue_msg_rf4ce_battery_milestone_t *dqm = (ctrlm_main_queue_msg_rf4ce_battery_milestone_t *) msg;
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_BATTERY_MILESTONE_EVENT");
@@ -3001,23 +2895,6 @@ gpointer ctrlm_main_thread(gpointer param) {
                for(auto const &itr : g_ctrlm.networks) {
                   itr.second->set_timers();
                }
-            }
-            break;
-         }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_CONTROLLER_REVERSE_CMD: {
-            if(ctrlm_main_successful_init_get()) {
-               ctrlm_main_queue_msg_rcu_reverse_cmd_t *dqm = (ctrlm_main_queue_msg_rcu_reverse_cmd_t *) msg;
-               ctrlm_controller_status_cmd_result_t      cmd_result = CTRLM_CONTROLLER_STATUS_REQUEST_ERROR;
-               XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_CONTROLLER_REVERSE_CMD");
-               cmd_result = obj_net->req_process_reverse_cmd(dqm);
-               if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-                  // Signal the semaphore to indicate that the result is present
-                  *dqm->cmd_result = cmd_result;
-                  sem_post(dqm->semaphore);
-               }
-            } else {
-               // Networks are not ready, push back to the queue, then continue so it's not freed
-               ctrlm_timeout_create(CTRLM_MAIN_QUEUE_REPEAT_DELAY, ctrlm_message_queue_delay, msg);
             }
             break;
          }
@@ -3294,6 +3171,40 @@ void ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *status) {
    status->stb_device_id[CTRLM_MAIN_DEVICE_ID_MAX_LENGTH - 1] = '\0';
 }
 
+gboolean ctrlm_main_iarm_call_network_status_get(ctrlm_main_iarm_call_network_status_t *status) {
+   if(status == NULL) {
+      XLOGD_ERROR("NULL parameter");
+      return(false);
+   }
+   XLOGD_INFO("");
+
+   // Signal completion of the operation
+   sem_t semaphore;
+   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
+
+   // Allocate a message and send it to Control Manager's queue
+   ctrlm_main_queue_msg_main_network_status_t msg = {0};
+
+   sem_init(&semaphore, 0, 0);
+
+   msg.status            = status;
+   msg.status->result    = CTRLM_IARM_CALL_RESULT_ERROR;
+   msg.semaphore         = &semaphore;
+   msg.cmd_result        = &cmd_result;
+
+   ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_network_status, &msg, sizeof(msg), NULL, status->network_id);
+
+   // Wait for the result semaphore to be signaled
+   XLOGD_DEBUG("Waiting for main thread to process NETWORK_STATUS_GET request");
+   sem_wait(&semaphore);
+   sem_destroy(&semaphore);
+
+   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
+      return(true);
+   }
+   return(false);
+}
+
 gboolean ctrlm_main_iarm_call_ir_remote_usage_get(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage) {
    if(ir_remote_usage == NULL) {
       XLOGD_ERROR("NULL parameter");
@@ -3481,608 +3392,17 @@ void ctrlm_main_iarm_call_last_key_info_get_(ctrlm_main_iarm_call_last_key_info_
    }
 }
 
-gboolean ctrlm_main_iarm_call_network_status_get(ctrlm_main_iarm_call_network_status_t *status) {
-   if(status == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
+bool ctrlm_main_active_period_screenbind_timeout_set_(uint32_t timeout) {
 
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_network_status_t msg = {0};
-
-   sem_init(&semaphore, 0, 0);
-
-   msg.status            = status;
-   msg.status->result    = CTRLM_IARM_CALL_RESULT_ERROR;
-   msg.semaphore         = &semaphore;
-   msg.cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_network_status, &msg, sizeof(msg), NULL, status->network_id);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process NETWORK_STATUS_GET request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-gboolean ctrlm_main_iarm_call_property_set(ctrlm_main_iarm_call_property_t *property) {
-   if(property == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_property_t *msg = (ctrlm_main_queue_msg_main_property_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_property_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
+   if(timeout < CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND_VALUE_MIN || timeout > CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND_VALUE_MAX) {
+      XLOGD_ERROR("ACTIVE PERIOD SCREENBIND - Out of range %lu", timeout);
       return(false);
    }
 
-   sem_init(&semaphore, 0, 0);
-
-   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_SET;
-   msg->header.network_id = CTRLM_MAIN_NETWORK_ID_ALL;
-   msg->property          = property;
-   msg->semaphore         = &semaphore;
-   msg->cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process PROPERTY_SET request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-void ctrlm_main_iarm_call_property_set_(ctrlm_main_iarm_call_property_t *property) {
-   if(property->network_id != CTRLM_MAIN_NETWORK_ID_ALL && !ctrlm_network_id_is_valid(property->network_id)) {
-      property->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      XLOGD_ERROR("network id - Out of range %u", property->network_id);
-      return;
-   }
-
-   switch(property->name) {
-      case CTRLM_PROPERTY_BINDING_BUTTON_ACTIVE: {
-         if(property->value == 0) {
-            property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            ctrlm_timeout_destroy(&g_ctrlm.binding_button_timeout_tag);
-            // If this was a change, fire the IARM event
-            if (g_ctrlm.binding_button) {
-               ctrlm_main_iarm_event_binding_button(false);
-            }
-            g_ctrlm.binding_button = false;
-            XLOGD_INFO("BINDING BUTTON <INACTIVE>");
-         } else if(property->value == 1) {
-            property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            ctrlm_timeout_destroy(&g_ctrlm.binding_button_timeout_tag);
-            // If this was a change, fire the IARM event
-            if (!g_ctrlm.binding_button) {
-               ctrlm_main_iarm_event_binding_button(true);
-            }
-            g_ctrlm.binding_button = true;
-            // If screenbind is enabled, disable it
-            if(g_ctrlm.binding_screen_active == true) {
-               g_ctrlm.binding_screen_active = false;
-               XLOGD_INFO("BINDING SCREEN <INACTIVE> -- Due to entering button button mode");
-            }
-            // Set a timer to stop binding button mode
-            g_ctrlm.binding_button_timeout_tag = ctrlm_timeout_create(g_ctrlm.binding_button_timeout_val, ctrlm_timeout_binding_button, NULL);
-            XLOGD_INFO("BINDING BUTTON <ACTIVE>");
-         } else {
-            property->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-            XLOGD_ERROR("BINDING BUTTON ACTIVE - Invalid parameter 0x%08lX", property->value);
-         }
-         break;
-      }
-      case CTRLM_PROPERTY_BINDING_SCREEN_ACTIVE: {
-         if(property->value == 0) {
-            property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            ctrlm_timeout_destroy(&g_ctrlm.screen_bind_timeout_tag);
-            g_ctrlm.binding_screen_active = false;
-            XLOGD_INFO("SCREEN BIND STATE <INACTIVE>");
-         } else if(property->value == 1) {
-            property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            ctrlm_timeout_destroy(&g_ctrlm.screen_bind_timeout_tag);
-            g_ctrlm.binding_screen_active = true;
-            // If binding button is enabled, disable it
-            if(g_ctrlm.binding_button == true) {
-               g_ctrlm.binding_button = false;
-               XLOGD_INFO("BINDING SCREEN <INACTIVE> -- Due to entering button button mode");
-            }
-            // Set a timer to stop screen bind mode
-            g_ctrlm.screen_bind_timeout_tag = ctrlm_timeout_create(g_ctrlm.screen_bind_timeout_val, ctrlm_timeout_screen_bind, NULL);
-            XLOGD_INFO("SCREEN BIND STATE <ACTIVE>");
-         } else {
-            property->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-            XLOGD_ERROR("SCREEN BIND STATE - Invalid parameter 0x%08lX", property->value);
-         }
-         break;
-      }
-      case CTRLM_PROPERTY_BINDING_LINE_OF_SIGHT_ACTIVE: {
-         property->result = CTRLM_IARM_CALL_RESULT_ERROR_READ_ONLY;
-         XLOGD_ERROR("BINDING LINE OF SIGHT ACTIVE - Read only");
-         break;
-      }
-      case CTRLM_PROPERTY_AUTOBIND_LINE_OF_SIGHT_ACTIVE:{
-         property->result = CTRLM_IARM_CALL_RESULT_ERROR_READ_ONLY;
-         XLOGD_ERROR("AUTOBIND LINE OF SIGHT ACTIVE - Read only");
-         break;
-      }
-      case CTRLM_PROPERTY_ACTIVE_PERIOD_BUTTON: {
-         if(property->value < CTRLM_PROPERTY_ACTIVE_PERIOD_BUTTON_VALUE_MIN || property->value > CTRLM_PROPERTY_ACTIVE_PERIOD_BUTTON_VALUE_MAX) {
-            property->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-            XLOGD_ERROR("ACTIVE PERIOD BUTTON - Out of range %lu", property->value);
-         } else {
-            g_ctrlm.binding_button_timeout_val = property->value;
-            property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            XLOGD_INFO("ACTIVE PERIOD BUTTON %lu ms", property->value);
-         }
-         break;
-      }
-      case CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND: {
-         if(property->value < CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND_VALUE_MIN || property->value > CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND_VALUE_MAX) {
-            property->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-            XLOGD_ERROR("ACTIVE PERIOD SCREENBIND - Out of range %lu", property->value);
-         } else {
-            g_ctrlm.screen_bind_timeout_val = property->value;
-            property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            XLOGD_INFO("ACTIVE PERIOD SCREENBIND %lu ms", property->value);
-         }
-         break;
-      }
-      case CTRLM_PROPERTY_ACTIVE_PERIOD_ONE_TOUCH_AUTOBIND: {
-         if(property->value < CTRLM_PROPERTY_ACTIVE_PERIOD_ONE_TOUCH_AUTOBIND_VALUE_MIN || property->value > CTRLM_PROPERTY_ACTIVE_PERIOD_ONE_TOUCH_AUTOBIND_VALUE_MAX) {
-            property->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-            XLOGD_TELEMETRY("ACTIVE PERIOD ONE-TOUCH AUTOBIND - Out of range %lu", property->value);
-         } else {
-            g_ctrlm.one_touch_autobind_timeout_val = property->value;
-            property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            XLOGD_INFO("ACTIVE PERIOD ONE-TOUCH AUTOBIND %lu ms", property->value);
-         }
-         break;
-      }
-      case CTRLM_PROPERTY_ACTIVE_PERIOD_LINE_OF_SIGHT: {
-         if(property->value < CTRLM_PROPERTY_ACTIVE_PERIOD_LINE_OF_SIGHT_VALUE_MIN || property->value > CTRLM_PROPERTY_ACTIVE_PERIOD_LINE_OF_SIGHT_VALUE_MAX) {
-            property->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-            XLOGD_ERROR("ACTIVE PERIOD LINE OF SIGHT - Out of range %lu", property->value);
-         } else {
-            g_ctrlm.line_of_sight_timeout_val = property->value;
-            property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            XLOGD_INFO("ACTIVE PERIOD LINE OF SIGHT %lu ms", property->value);
-         }
-         break;
-      }
-      case CTRLM_PROPERTY_VALIDATION_TIMEOUT_INITIAL: {
-         if(property->value < CTRLM_PROPERTY_VALIDATION_TIMEOUT_MIN || property->value > CTRLM_PROPERTY_VALIDATION_TIMEOUT_MAX) {
-            property->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-            XLOGD_ERROR("VALIDATION TIMEOUT INITIAL - Out of range %lu", property->value);
-         } else {
-            ctrlm_validation_timeout_initial_set(property->value);
-            property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            XLOGD_INFO("VALIDATION TIMEOUT INITIAL %lu ms", property->value);
-         }
-         break;
-      }
-      case CTRLM_PROPERTY_VALIDATION_TIMEOUT_DURING: {
-         if(property->value < CTRLM_PROPERTY_VALIDATION_TIMEOUT_MIN || property->value > CTRLM_PROPERTY_VALIDATION_TIMEOUT_MAX) {
-            property->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-            XLOGD_ERROR("VALIDATION TIMEOUT DURING - Out of range %lu", property->value);
-         } else {
-            ctrlm_validation_timeout_subsequent_set(property->value);
-            property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            XLOGD_INFO("VALIDATION TIMEOUT DURING %lu ms", property->value);
-         }
-         break;
-      }
-      case CTRLM_PROPERTY_VALIDATION_MAX_ATTEMPTS: {
-         if(property->value > CTRLM_PROPERTY_VALIDATION_MAX_ATTEMPTS_MAX) {
-            property->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-            XLOGD_ERROR("VALIDATION MAX ATTEMPTS - Out of range %lu", property->value);
-         } else {
-            ctrlm_validation_max_attempts_set(property->value);
-            property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            XLOGD_INFO("VALIDATION MAX ATTEMPTS %lu times", property->value);
-         }
-         break;
-      }
-      case CTRLM_PROPERTY_CONFIGURATION_TIMEOUT: {
-         if(property->value < CTRLM_PROPERTY_CONFIGURATION_TIMEOUT_MIN || property->value > CTRLM_PROPERTY_CONFIGURATION_TIMEOUT_MAX) {
-            property->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-            XLOGD_ERROR("CONFIGURATION TIMEOUT - Out of range %lu", property->value);
-         } else {
-            ctrlm_validation_timeout_configuration_set(property->value);
-            property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            XLOGD_INFO("CONFIGURATION TIMEOUT %lu ms", property->value);
-         }
-         break;
-      }
-      case CTRLM_PROPERTY_AUTO_ACK: {
-         if(ctrlm_is_production_build()) {
-            XLOGD_ERROR("AUTO ACK - unable to set in prod build");
-         } else {
-            g_ctrlm.auto_ack = property->value ? true : false;
-
-            if(g_ctrlm.rf4ce_enabled) {
-               #if CTRLM_HAL_RF4CE_API_VERSION >= 16
-               for(auto const &itr : g_ctrlm.networks) {
-                  if(itr.second->type_get() == CTRLM_NETWORK_TYPE_RF4CE) {
-                     itr.second->property_set(CTRLM_HAL_NETWORK_PROPERTY_AUTO_ACK, &g_ctrlm.auto_ack);
-                  }
-               }
-               #endif
-            }
-
-            property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-            XLOGD_INFO("AUTO ACK <%s>", property->value ? "enabled" : "disabled");
-         }
-         break;
-      }
-      default: {
-         XLOGD_ERROR("Invalid Property %d", property->name);
-         property->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      }
-   }
-}
-
-gboolean ctrlm_main_iarm_call_property_get(ctrlm_main_iarm_call_property_t *property) {
-   if(property == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_property_t *msg = (ctrlm_main_queue_msg_main_property_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_property_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-   sem_init(&semaphore, 0, 0);
-
-   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_GET;
-   msg->header.network_id = CTRLM_MAIN_NETWORK_ID_ALL;
-   msg->property          = property;
-   msg->semaphore         = &semaphore;
-   msg->cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process PROPERTY_GET request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-void ctrlm_main_iarm_call_property_get_(ctrlm_main_iarm_call_property_t *property) {
-   if(property->network_id != CTRLM_MAIN_NETWORK_ID_ALL && !ctrlm_network_id_is_valid(property->network_id)) {
-      property->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      XLOGD_ERROR("network id - Out of range %u", property->network_id);
-      return;
-   }
-
-   switch(property->name) {
-      case CTRLM_PROPERTY_BINDING_BUTTON_ACTIVE: {
-         property->value  = g_ctrlm.binding_button;
-         property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         XLOGD_INFO("BINDING BUTTON <%s>", g_ctrlm.binding_button ? "ACTIVE" : "INACTIVE");
-         break;
-      }
-      case CTRLM_PROPERTY_BINDING_SCREEN_ACTIVE: {
-         property->value  = g_ctrlm.binding_screen_active;
-         property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         XLOGD_INFO("BINDING SCREEN <%s>", g_ctrlm.binding_screen_active ? "ACTIVE" : "INACTIVE");
-         break;
-      }
-      case CTRLM_PROPERTY_BINDING_LINE_OF_SIGHT_ACTIVE: {
-         property->value  = g_ctrlm.line_of_sight;
-         property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         XLOGD_INFO("BINDING LINE OF SIGHT <%s>", g_ctrlm.line_of_sight ? "ACTIVE" : "INACTIVE");
-         break;
-      }
-      case CTRLM_PROPERTY_AUTOBIND_LINE_OF_SIGHT_ACTIVE: {
-         property->value  = g_ctrlm.autobind;
-         property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         XLOGD_INFO("AUTOBIND LINE OF SIGHT <%s>", g_ctrlm.autobind ? "ACTIVE" : "INACTIVE");
-         break;
-      }
-      case CTRLM_PROPERTY_ACTIVE_PERIOD_BUTTON: {
-         property->value  = g_ctrlm.binding_button_timeout_val;
-         property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         XLOGD_INFO("ACTIVE PERIOD BUTTON %lu ms", property->value);
-         break;
-      }
-      case CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND: {
-         property->value  = g_ctrlm.screen_bind_timeout_val;
-         property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         XLOGD_INFO("ACTIVE PERIOD SCREENBIND %lu ms", property->value);
-         break;
-      }
-      case CTRLM_PROPERTY_ACTIVE_PERIOD_ONE_TOUCH_AUTOBIND: {
-         property->value  = g_ctrlm.one_touch_autobind_timeout_val;
-         property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         XLOGD_INFO("ACTIVE PERIOD ONE-TOUCH AUTOBIND %lu ms", property->value);
-         break;
-      }
-      case CTRLM_PROPERTY_ACTIVE_PERIOD_LINE_OF_SIGHT: {
-         property->value  = g_ctrlm.line_of_sight_timeout_val;
-         property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         XLOGD_INFO("ACTIVE PERIOD LINE OF SIGHT %lu ms", property->value);
-         break;
-      }
-      case CTRLM_PROPERTY_VALIDATION_TIMEOUT_INITIAL: {
-         property->value  = ctrlm_validation_timeout_initial_get();
-         property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         XLOGD_INFO("VALIDATION TIMEOUT INITIAL %lu ms", property->value);
-         break;
-      }
-      case CTRLM_PROPERTY_VALIDATION_TIMEOUT_DURING: {
-         property->value  = ctrlm_validation_timeout_subsequent_get();
-         property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         XLOGD_INFO("VALIDATION TIMEOUT DURING %lu ms", property->value);
-         break;
-      }
-      case CTRLM_PROPERTY_VALIDATION_MAX_ATTEMPTS: {
-         property->value  = ctrlm_validation_max_attempts_get();
-         property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         XLOGD_INFO("VALIDATION MAX ATTEMPTS %lu times", property->value);
-         break;
-      }
-      case CTRLM_PROPERTY_CONFIGURATION_TIMEOUT: {
-         property->value  = ctrlm_validation_timeout_configuration_get();
-         property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         XLOGD_INFO("CONFIGURATION TIMEOUT %lu ms", property->value);
-         break;
-      }
-      case CTRLM_PROPERTY_AUTO_ACK: {
-         property->value  = g_ctrlm.auto_ack;
-         property->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         XLOGD_INFO("AUTO ACK <%s>", property->value ? "enabled" : "disabled");
-         break;
-      }
-      default: {
-         XLOGD_ERROR("Invalid Property %d", property->name);
-         property->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      }
-   }
-}
-
-
-gboolean ctrlm_main_iarm_call_discovery_config_set(ctrlm_main_iarm_call_discovery_config_t *config) {
-   if(config == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_discovery_config_t *msg = (ctrlm_main_queue_msg_main_discovery_config_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_discovery_config_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-   sem_init(&semaphore, 0, 0);
-
-   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_DISCOVERY_CONFIG_SET;
-   msg->header.network_id = CTRLM_MAIN_NETWORK_ID_ALL;
-   msg->config            = config;
-   msg->semaphore         = &semaphore;
-   msg->cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process DISCOVERY_CONFIG_SET request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-void ctrlm_main_iarm_call_discovery_config_set_(ctrlm_main_iarm_call_discovery_config_t *config) {
-   if(config->network_id != CTRLM_MAIN_NETWORK_ID_ALL && !ctrlm_network_id_is_valid(config->network_id)) {
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      XLOGD_ERROR("network id - Out of range %u", config->network_id);
-      return;
-   }
-   config->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-   ctrlm_controller_discovery_config_t discovery_config;
-   discovery_config.enabled               = config->enable ? true : false;
-   discovery_config.require_line_of_sight = config->require_line_of_sight ? true : false;
-
-   for(auto const &itr : g_ctrlm.networks) {
-      if(config->network_id == itr.first || config->network_id == CTRLM_MAIN_NETWORK_ID_ALL) {
-         itr.second->discovery_config_set(discovery_config);
-         config->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-      }
-   }
-}
-
-gboolean ctrlm_main_iarm_call_autobind_config_set(ctrlm_main_iarm_call_autobind_config_t *config) {
-   if(config == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_autobind_config_t *msg = (ctrlm_main_queue_msg_main_autobind_config_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_autobind_config_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-   sem_init(&semaphore, 0, 0);
-
-   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_AUTOBIND_CONFIG_SET;
-   msg->header.network_id = CTRLM_MAIN_NETWORK_ID_ALL;
-   msg->config            = config;
-   msg->semaphore         = &semaphore;
-   msg->cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process AUTOBIND_CONFIG_SET request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-void ctrlm_main_iarm_call_autobind_config_set_(ctrlm_main_iarm_call_autobind_config_t *config) {
-   if(config->network_id != CTRLM_MAIN_NETWORK_ID_ALL && !ctrlm_network_id_is_valid(config->network_id)) {
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      XLOGD_ERROR("network id - Out of range %u", config->network_id);
-      return;
-   }
-
-   ctrlm_timeout_destroy(&g_ctrlm.one_touch_autobind_timeout_tag);
-
-   if(config->threshold_pass < CTRLM_AUTOBIND_THRESHOLD_MIN || config->threshold_pass > CTRLM_AUTOBIND_THRESHOLD_MAX) {
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      XLOGD_ERROR("threshold pass - Out of range %u", config->threshold_pass);
-   } else if(config->threshold_fail < CTRLM_AUTOBIND_THRESHOLD_MIN || config->threshold_fail > CTRLM_AUTOBIND_THRESHOLD_MAX) {
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      XLOGD_ERROR("threshold fail - Out of range %u", config->threshold_fail);
-   } else {
-      // If screenbind is enabled, disable it
-      if(g_ctrlm.binding_screen_active == true) {
-         g_ctrlm.binding_screen_active = false;
-         XLOGD_INFO("BINDING SCREEN <INACTIVE> -- Due to autobind config being set");
-      }
-
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-
-      ctrlm_controller_bind_config_t bind_config;
-      bind_config.mode = CTRLM_PAIRING_MODE_ONE_TOUCH_AUTO_BIND;
-      bind_config.data.autobind.enable         = (config->enable ? true : false);
-      bind_config.data.autobind.pass_threshold = config->threshold_pass;
-      bind_config.data.autobind.fail_threshold = config->threshold_fail;
-
-      for(auto const &itr : g_ctrlm.networks) {
-         if(config->network_id == itr.first || config->network_id == CTRLM_MAIN_NETWORK_ID_ALL) {
-            itr.second->binding_config_set(bind_config);
-            config->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         }
-      }
-      // Set a timer to stop one touch autobind mode
-      g_ctrlm.one_touch_autobind_timeout_tag = ctrlm_timeout_create(g_ctrlm.one_touch_autobind_timeout_val, ctrlm_timeout_one_touch_autobind, NULL);
-   }
-}
-
-gboolean ctrlm_main_iarm_call_precommission_config_set(ctrlm_main_iarm_call_precommision_config_t *config) {
-   if(config == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_precommision_config_t *msg = (ctrlm_main_queue_msg_main_precommision_config_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_precommision_config_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-   sem_init(&semaphore, 0, 0);
-
-   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PRECOMMISSION_CONFIG_SET;
-   msg->header.network_id = CTRLM_MAIN_NETWORK_ID_ALL;
-   msg->config            = config;
-   msg->semaphore         = &semaphore;
-   msg->cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process PRECOMISSION_CONFIG_SET request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-void ctrlm_main_iarm_call_precommission_config_set_(ctrlm_main_iarm_call_precommision_config_t *config) {
-   if(config->network_id != CTRLM_MAIN_NETWORK_ID_ALL && !ctrlm_network_id_is_valid(config->network_id)) {
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      XLOGD_ERROR("network id - Out of range %u", config->network_id);
-      return;
-   }
-   if(config->controller_qty > CTRLM_MAIN_MAX_BOUND_CONTROLLERS) {
-      config->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      XLOGD_ERROR("controller qty - Out of range %lu", config->controller_qty);
-      return;
-   }
-   unsigned long index;
-
-   for(index = 0; index < config->controller_qty; index++) {
-      g_ctrlm.precomission_table[config->controllers[index]] = true;
-      XLOGD_INFO("Adding 0x%016llX", config->controllers[index]);
-   }
-   config->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
+   g_ctrlm.screen_bind_timeout_val = timeout;
+   XLOGD_INFO("ACTIVE PERIOD SCREENBIND %lu ms", timeout);
+   
+   return(true);
 }
 
 gboolean ctrlm_main_iarm_call_factory_reset(ctrlm_main_iarm_call_factory_reset_t *reset) {
@@ -4197,379 +3517,6 @@ void ctrlm_main_iarm_call_controller_unbind_(ctrlm_main_iarm_call_controller_unb
    obj_net->controller_unbind(unbind->controller_id, CTRLM_UNBIND_REASON_TARGET_USER);
    unbind->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
 }
-
-gboolean ctrlm_main_iarm_call_chip_status_get(ctrlm_main_iarm_call_chip_status_t *status) {
-   if(status == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_chip_status_t msg = {0};
-
-   sem_init(&semaphore, 0, 0);
-
-   msg.status            = status;
-   msg.status->result    = CTRLM_IARM_CALL_RESULT_ERROR;
-   msg.semaphore         = &semaphore;
-
-   ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_chip_status, &msg, sizeof(msg), NULL, status->network_id);
-
-   // Wait for the result semaphore to be signaled
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   return(true);
-}
-
-#ifdef USE_DEPRECATED_IRMGR
-void ctrlm_event_handler_ir(const char *owner, IARM_EventId_t event_id, void *data, size_t len)
-{
-   IARM_Bus_IRMgr_EventData_t *ir_event = (IARM_Bus_IRMgr_EventData_t *)data;
-
-   switch(ir_event->data.irkey.keySrc) {
-      case IARM_BUS_IRMGR_KEYSRC_IR: {
-         int key_code = ir_event->data.irkey.keyCode;
-         int key_type = ir_event->data.irkey.keyType;
-         if(key_code == KED_SETUP && key_type == KET_KEYDOWN) { // Received IR Line of sight code
-            XLOGD_INFO("Setup IR code received.");
-            // Cancel active line of sight timer (if active)
-            ctrlm_timeout_destroy(&g_ctrlm.line_of_sight_timeout_tag);
-
-            if(!g_ctrlm.line_of_sight) {
-               ctrlm_main_iarm_event_binding_line_of_sight(TRUE);
-            }
-            // Set line of sight as active
-            g_ctrlm.line_of_sight = TRUE;
-
-            // Set a timer to clear the line of sight after a period of time
-            g_ctrlm.line_of_sight_timeout_tag = ctrlm_timeout_create(g_ctrlm.line_of_sight_timeout_val, ctrlm_timeout_line_of_sight, NULL);
-            return;
-         } else if(key_code == KED_RF_PAIR_GHOST && key_type == KET_KEYDOWN) { // Received IR autobinding ghost code
-            XLOGD_INFO("Autobind ghost code received.");
-            // Cancel active autobind timer (if active)
-            ctrlm_timeout_destroy(&g_ctrlm.autobind_timeout_tag);
-
-            if(!g_ctrlm.autobind) {
-               ctrlm_main_iarm_event_autobind_line_of_sight(TRUE);
-            }
-            // Set autobind as active
-            g_ctrlm.autobind = TRUE;
-
-            // Set a timer to clear the autobind after a period of time
-            g_ctrlm.autobind_timeout_tag = ctrlm_timeout_create(g_ctrlm.autobind_timeout_val, ctrlm_timeout_autobind, NULL);
-            return;
-         }
-      break;
-      }
-      case IARM_BUS_IRMGR_KEYSRC_FP: {
-         if(0) { // TODO Pairing button was pressed
-            // Cancel active line of sight timer (if active)
-            ctrlm_timeout_destroy(&g_ctrlm.binding_button_timeout_tag);
-
-            if(!g_ctrlm.binding_button) {
-               ctrlm_main_iarm_event_binding_button(TRUE);
-            }
-            // Set button binding as active
-            g_ctrlm.binding_button = TRUE;
-
-            // Set a timer to clear the line of sight after a period of time
-            g_ctrlm.binding_button_timeout_tag = ctrlm_timeout_create(g_ctrlm.binding_button_timeout_val, ctrlm_timeout_binding_button, NULL);
-         }
-         return;
-      }
-      case IARM_BUS_IRMGR_KEYSRC_RF: {
-         XLOGD_DEBUG("RF key source received.");
-         break;
-      }
-      default: {
-         XLOGD_WARN("Other key source received. 0x%08x", ir_event->data.irkey.keySrc);
-         break;
-      }
-   }
-
-   //Listen for control events
-   if(event_id == IARM_BUS_IRMGR_EVENT_CONTROL)
-   {
-      IARM_Bus_IRMgr_EventData_t *ir_event_data           = (IARM_Bus_IRMgr_EventData_t*)data;
-      int key_code                                        = ir_event_data->data.irkey.keyCode;
-      int key_src                                         = ir_event_data->data.irkey.keySrc;
-      int key_tag                                         = ir_event_data->data.irkey.keyTag;
-      int controller_id                                   = ir_event_data->data.irkey.keySourceId;
-      bool need_to_update_db                              = false;
-      bool need_to_update_last_key_info                   = false;
-      bool send_on_control_event                          = false;
-      ctrlm_ir_remote_type old_remote_type                = g_ctrlm.last_key_info.last_ir_remote_type;
-      ctrlm_remote_keypad_config old_remote_keypad_config = g_ctrlm.last_key_info.remote_keypad_config;
-      ctrlm_key_source_t last_source_type                 = g_ctrlm.last_key_info.source_type;
-      gboolean  write_last_key_info                       = false;
-      char last_source_name[CTRLM_RCU_RIB_ATTR_LEN_PRODUCT_NAME];
-      char source_name[CTRLM_RCU_RIB_ATTR_LEN_PRODUCT_NAME];
-      ctrlm_remote_keypad_config remote_keypad_config;
-      string type;
-      string str_data;
-      errno_t safec_rc = -1;
-      int ind = -1;
-
-      safec_rc = strcpy_s(last_source_name, sizeof(last_source_name), g_ctrlm.last_key_info.source_name);
-      ERR_CHK(safec_rc);
-
-      if ((key_src != IARM_BUS_IRMGR_KEYSRC_IR) && (key_src != IARM_BUS_IRMGR_KEYSRC_RF)) {
-         // NOTE: For now, we are explicitly ignoring keypresses from IP or FP sources!
-         return;
-      }
-
-      //Check for day change
-      need_to_update_db = ctrlm_main_handle_day_change_ir_remote_usage();
-
-      if (len != sizeof(IARM_Bus_IRMgr_EventData_t)) {
-         XLOGD_ERROR("ERROR - Got IARM_BUS_IRMGR_EVENT_CONTROL event with bad data length <%u>, should be <%u>!!", len, sizeof(IARM_Bus_IRMgr_EventData_t));
-         return;
-      }
-
-      switch(key_code) {
-         case KED_XR2V3:
-         case KED_XR5V2:
-         case KED_XR11V1:
-         case KED_XR11V2: {
-            g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_XR11V2;
-            g_ctrlm.last_key_info.remote_keypad_config = CTRLM_REMOTE_KEYPAD_CONFIG_HAS_SETUP_KEY_WITH_NUMBER_KEYS;
-            g_ctrlm.last_key_info.source_type          = IARM_BUS_IRMGR_KEYSRC_IR;
-            g_ctrlm.last_key_info.is_screen_bind_mode  = false;
-            type                                       = "irRemote";
-            str_data                                   = std::to_string(g_ctrlm.last_key_info.remote_keypad_config);
-            send_on_control_event                      = true;
-            need_to_update_last_key_info               = true;
-            safec_rc = strncpy_s(source_name, sizeof(source_name), ctrlm_rcu_ir_remote_types_str(g_ctrlm.last_key_info.last_ir_remote_type), CTRLM_RCU_RIB_ATTR_LEN_PRODUCT_NAME - 1);
-            ERR_CHK(safec_rc);
-            source_name[CTRLM_RCU_RIB_ATTR_LEN_PRODUCT_NAME - 1] = '\0';
-            switch(key_code) {
-               case KED_XR2V3:
-                  if(!g_ctrlm.ir_remote_usage_today.has_ir_xr2) {
-                     g_ctrlm.ir_remote_usage_today.has_ir_xr2 = true;
-                     need_to_update_db = true;
-                  }
-                  break;
-               case KED_XR5V2:
-                  if(!g_ctrlm.ir_remote_usage_today.has_ir_xr5) {
-                     g_ctrlm.ir_remote_usage_today.has_ir_xr5 = true;
-                     need_to_update_db = true;
-                  }
-                  break;
-               case KED_XR11V1:
-               case KED_XR11V2:
-                  if(!g_ctrlm.ir_remote_usage_today.has_ir_xr11) {
-                     g_ctrlm.ir_remote_usage_today.has_ir_xr11 = true;
-                     need_to_update_db = true;
-                  }
-                  break;
-            }
-            break;
-         }
-
-         case KED_XR11_NOTIFY:
-            g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_XR11V2;
-            g_ctrlm.last_key_info.remote_keypad_config = CTRLM_REMOTE_KEYPAD_CONFIG_HAS_SETUP_KEY_WITH_NUMBER_KEYS;
-            g_ctrlm.last_key_info.source_type          = IARM_BUS_IRMGR_KEYSRC_IR;
-            g_ctrlm.last_key_info.is_screen_bind_mode  = false;
-            XLOGD_INFO("Received KED_XR11_NOTIFY");
-            if((!g_ctrlm.ir_remote_usage_today.has_ir_remote) || (old_remote_type != g_ctrlm.last_key_info.last_ir_remote_type) || (old_remote_keypad_config != g_ctrlm.last_key_info.remote_keypad_config)) {
-               //Don't use has_ir_xr11 because this could be XR2 or XR5.  Use has_ir_remote.
-               g_ctrlm.ir_remote_usage_today.has_ir_remote = true;
-               need_to_update_db = true;
-            }
-            break;
-         case KED_XR15V1_NOTIFY:
-            g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_XR15V1;
-            g_ctrlm.last_key_info.remote_keypad_config = CTRLM_REMOTE_KEYPAD_CONFIG_HAS_NO_SETUP_KEY_WITH_NUMBER_KEYS;
-            g_ctrlm.last_key_info.source_type          = IARM_BUS_IRMGR_KEYSRC_IR;
-            XLOGD_INFO("Received KED_XR15V1_NOTIFY");
-            if((!g_ctrlm.ir_remote_usage_today.has_ir_xr15) || (old_remote_type != g_ctrlm.last_key_info.last_ir_remote_type) || (old_remote_keypad_config != g_ctrlm.last_key_info.remote_keypad_config)) {
-               g_ctrlm.ir_remote_usage_today.has_ir_xr15 = true;
-               need_to_update_db = true;
-            }
-            break;
-         case KED_XR16V1_NOTIFY:
-            g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_NA;
-            g_ctrlm.last_key_info.remote_keypad_config = CTRLM_REMOTE_KEYPAD_CONFIG_HAS_NO_SETUP_KEY_WITH_NO_NUMBER_KEYS;
-            g_ctrlm.last_key_info.source_type          = IARM_BUS_IRMGR_KEYSRC_IR;
-            XLOGD_INFO("Received KED_XR16V1_NOTIFY");
-            if((!g_ctrlm.ir_remote_usage_today.has_ir_remote) || (old_remote_type != g_ctrlm.last_key_info.last_ir_remote_type) || (old_remote_keypad_config != g_ctrlm.last_key_info.remote_keypad_config)) {
-               g_ctrlm.ir_remote_usage_today.has_ir_remote = true;
-               need_to_update_db = true;
-            }
-            break;
-         case KED_SCREEN_BIND_NOTIFY:
-            g_ctrlm.last_key_info.is_screen_bind_mode = true;
-            XLOGD_INFO("Received KED_SCREEN_BIND_NOTIFY");
-            break;
-         case KED_VOLUMEUP:
-         case KED_VOLUMEDOWN:
-         case KED_MUTE:
-         case KED_INPUTKEY:
-         case KED_POWER:
-         case KED_TVPOWER:
-         case KED_RF_POWER:
-         case KED_DISCRETE_POWER_ON:
-         case KED_DISCRETE_POWER_STANDBY: {
-            send_on_control_event        = true;
-            need_to_update_last_key_info = true;
-            type                         = "TV";
-            break;
-         }
-         case KED_PUSH_TO_TALK:
-            send_on_control_event        = true;
-            need_to_update_last_key_info = true;
-            type                         = "mic";
-            break;
-         default:
-            break;
-      }
-
-      if(key_src == IARM_BUS_IRMGR_KEYSRC_RF) {
-         ctrlm_controller_product_name_get(controller_id, source_name);
-         remote_keypad_config = ctrlm_get_remote_keypad_config(source_name);
-      } else {
-         remote_keypad_config = g_ctrlm.last_key_info.remote_keypad_config;
-         controller_id = -1;
-         //Check to see if the tag was included.  If so, use it.
-         ctrlm_check_for_key_tag(key_tag);
-         safec_rc = strcpy_s(source_name, sizeof(source_name), ctrlm_rcu_ir_remote_types_str(g_ctrlm.last_key_info.last_ir_remote_type));
-         ERR_CHK(safec_rc);
-      }
-
-      XLOGD_INFO("Got IARM_BUS_IRMGR_EVENT_CONTROL event, controller_id <%d>, controlCode <0x%02X>, src <%d>.", controller_id, (unsigned int)key_code, key_src);
-
-      //Only save the last key info to the db if the source type (IR or RF) or the source name (XR11, XR15) have changed
-      //It's not worth the writes to the db for every key.  It is important to know if we are IR/RF and XR11/XR15
-      bool isValid = false;
-      (last_source_type != key_src) ? isValid = true : (safec_rc = strcmp_s(last_source_name, sizeof(last_source_name), source_name, &ind));
-      if((isValid) || ((safec_rc == EOK) && (ind != 0))) {
-          write_last_key_info = true;
-      } else if(safec_rc != EOK) {
-        ERR_CHK(safec_rc);
-      }
-
-      if(send_on_control_event) {
-         str_data = std::to_string(remote_keypad_config);
-         ctrlm_rcu_iarm_event_control(controller_id, key_source_names[key_src], type.c_str(), str_data.c_str(), key_code, 0);
-      }
-
-      if(need_to_update_last_key_info) {
-         ctrlm_update_last_key_info(controller_id, key_src, key_code, source_name, g_ctrlm.last_key_info.is_screen_bind_mode, write_last_key_info);
-      }
-
-      if(need_to_update_db) {
-         ctrlm_property_write_ir_remote_usage();
-      }
-   }
-   //Listen for key events to keep track of last key info 
-   else if (event_id == IARM_BUS_IRMGR_EVENT_IRKEY)
-   {
-      IARM_Bus_IRMgr_EventData_t *ir_event_data = (IARM_Bus_IRMgr_EventData_t*)data;
-      int      key_code                              = ir_event_data->data.irkey.keyCode;
-      int      key_src                               = ir_event_data->data.irkey.keySrc;
-      int      key_tag                               = ir_event_data->data.irkey.keyTag;
-      int      controller_id                         = ir_event_data->data.irkey.keySourceId;
-      guchar   last_source_type                      = g_ctrlm.last_key_info.source_type;
-      gboolean  write_last_key_info                  = false;
-      char last_source_name[CTRLM_RCU_RIB_ATTR_LEN_PRODUCT_NAME];
-      char source_name[CTRLM_RCU_RIB_ATTR_LEN_PRODUCT_NAME];
-
-      errno_t safec_rc = -1;
-      int ind = -1;
-
-      safec_rc = strcpy_s(last_source_name, sizeof(last_source_name), g_ctrlm.last_key_info.source_name);
-      ERR_CHK(safec_rc);
-
-      if ((ir_event_data->data.irkey.keyType == KET_KEYUP) || (ir_event_data->data.irkey.keyType == KET_KEYREPEAT)) {
-         // Don't remember keyup or repeat events - only use keydown.
-         return;
-      }
-
-      if ((key_src != IARM_BUS_IRMGR_KEYSRC_IR) && (key_src != IARM_BUS_IRMGR_KEYSRC_RF)) {
-         // NOTE: For now, we are explicitly ignoring keypresses from IP or FP sources!
-         return;
-      }
-
-      if (key_src != IARM_BUS_IRMGR_KEYSRC_RF) {
-         controller_id = -1;
-      }
-
-      if(key_src == IARM_BUS_IRMGR_KEYSRC_RF) {
-         ctrlm_controller_product_name_get(controller_id, source_name);
-      } else {
-         controller_id = -1;
-         //Check to see if the tag was included.  If so, use it.
-         ctrlm_check_for_key_tag(key_tag);
-         safec_rc = strcpy_s(source_name, sizeof(source_name), ctrlm_rcu_ir_remote_types_str(g_ctrlm.last_key_info.last_ir_remote_type));
-         ERR_CHK(safec_rc);
-      }
-
-      if (len != sizeof(IARM_Bus_IRMgr_EventData_t)) {
-         XLOGD_ERROR("ERROR - Got IARM_BUS_IRMGR_EVENT_IRKEY event with bad data length <%u>, should be <%u>!!", len, sizeof(IARM_Bus_IRMgr_EventData_t));
-         return;
-      }
-
-      //Only save the last key info to the db if the source type (IR or RF) or the source name (XR11, XR15) have changed
-      //It's not worth the writes to the db for every key.  It is important to know if we are IR/RF and XR11/XR15
-      bool isValid = false;
-      (last_source_type != key_src) ? isValid = true : (safec_rc = strcmp_s(last_source_name, sizeof(last_source_name), source_name, &ind));
-      if((isValid) || ((safec_rc == EOK) && (ind != 0))) {
-          write_last_key_info = true;
-      } else if(safec_rc != EOK) {
-        ERR_CHK(safec_rc);
-      }
-
-      ctrlm_update_last_key_info(controller_id, key_src, key_code, source_name, g_ctrlm.last_key_info.is_screen_bind_mode, write_last_key_info);
-   }
-}
-
-void ctrlm_check_for_key_tag(int key_tag) {
-   switch(key_tag) {
-      case XMP_TAG_PLATCO: {
-         g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_PLATCO;
-         break;
-      }
-      case XMP_TAG_XR11V2: {
-         g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_XR11V2;
-         break;
-      }
-      case XMP_TAG_XR15V1: {
-         g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_XR15V1;
-         break;
-      }
-      case XMP_TAG_XR15V2: {
-         g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_XR15V2;
-         break;
-      }
-      case XMP_TAG_XR16V1: {
-         g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_XR16V1;
-         break;
-      }
-      case XMP_TAG_XRAV1: {
-         g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_XRAV1;
-         break;
-      }
-      case XMP_TAG_XR20V1: {
-         g_ctrlm.last_key_info.last_ir_remote_type  = CTRLM_IR_REMOTE_TYPE_XR20V1;
-         break;
-      }
-      case XMP_TAG_COMCAST:
-      case XMP_TAG_UNDEFINED:
-      default: {
-         break;
-      }
-   }
-   if(key_tag != XMP_TAG_COMCAST) {
-      XLOGD_DEBUG("key_tag <%s>", ctrlm_rcu_ir_remote_types_str(g_ctrlm.last_key_info.last_ir_remote_type));
-   }
-}
-#endif // USE_DEPRECATED_IRMGR
 
 gboolean ctrlm_timeout_line_of_sight(gpointer user_data) {
    XLOGD_INFO("Timeout - Line of sight.");
@@ -5222,129 +4169,6 @@ gboolean ctrlm_main_iarm_call_control_service_get_values(ctrlm_main_iarm_call_co
    return(false);
 }
 
-gboolean ctrlm_main_iarm_call_control_service_can_find_my_remote(ctrlm_main_iarm_call_control_service_can_find_my_remote_t *can_find_my_remote) {
-   if(can_find_my_remote == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_control_service_can_find_my_remote_t *msg = (ctrlm_main_queue_msg_main_control_service_can_find_my_remote_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_control_service_can_find_my_remote_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-   sem_init(&semaphore, 0, 0);
-
-   msg->header.type        = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_CAN_FIND_MY_REMOTE;
-   msg->header.network_id  = ctrlm_network_id_get(can_find_my_remote->network_type);
-   msg->can_find_my_remote = can_find_my_remote;
-   msg->semaphore          = &semaphore;
-   msg->cmd_result         = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_CAN_FIND_MY_REMOTE request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-gboolean ctrlm_main_iarm_call_control_service_start_pairing_mode(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing) {
-   if(pairing == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_control_service_pairing_mode_t *msg = (ctrlm_main_queue_msg_main_control_service_pairing_mode_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_control_service_pairing_mode_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-   sem_init(&semaphore, 0, 0);
-
-   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_START_PAIRING_MODE;
-   msg->header.network_id = CTRLM_MAIN_NETWORK_ID_ALL;
-   msg->pairing           = pairing;
-   msg->semaphore         = &semaphore;
-   msg->cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_START_PAIRING_MODE request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-gboolean ctrlm_main_iarm_call_control_service_end_pairing_mode(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing) {
-   if(pairing == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_control_service_pairing_mode_t *msg = (ctrlm_main_queue_msg_main_control_service_pairing_mode_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_control_service_pairing_mode_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-   sem_init(&semaphore, 0, 0);
-
-   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_END_PAIRING_MODE;
-   msg->header.network_id = CTRLM_MAIN_NETWORK_ID_ALL;
-   msg->pairing           = pairing;
-   msg->semaphore         = &semaphore;
-   msg->cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_END_PAIRING_MODE request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
 void ctrlm_main_iarm_call_control_service_start_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing) {
    if(pairing->network_id != CTRLM_MAIN_NETWORK_ID_ALL && !ctrlm_network_id_is_valid(pairing->network_id)) {
       pairing->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
@@ -5876,7 +4700,11 @@ gboolean ctrlm_main_get_networked_standby_mode(void) {
    bool networked_standby_mode = false;
 
    if(g_ctrlm.networked_standby_supported && (g_ctrlm.power_state == CTRLM_POWER_STATE_DEEP_SLEEP)) {
-      networked_standby_mode = g_ctrlm.power_manager->get_networked_standby_mode();
+      if(g_ctrlm.power_manager == NULL) {
+         XLOGD_ERROR("power_manager is invalid, defaulting to OFF");
+      } else {
+         networked_standby_mode = g_ctrlm.power_manager->get_networked_standby_mode();
+      }
    }
 
    return networked_standby_mode ? true : false;
@@ -5889,35 +4717,6 @@ ctrlm_controller_id_t ctrlm_last_used_controller_get(ctrlm_network_type_t networ
    }
    XLOGD_ERROR("Not supported for %s", ctrlm_network_type_str(network_type).c_str());
    return CTRLM_MAIN_CONTROLLER_ID_INVALID;
-}
-
-void ctrlm_controller_product_name_get(ctrlm_controller_id_t controller_id, char *source_name) {
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_product_name_t msg;
-   errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
-   ERR_CHK(safec_rc);
-
-   sem_init(&semaphore, 0, 0);
-   msg.controller_id   = controller_id;
-   msg.product_name    = source_name;
-   msg.semaphore       = &semaphore;
-   msg.cmd_result      = &cmd_result;
-
-   ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_controller_product_name, &msg, sizeof(msg), NULL, 1); // TODO: Hack, using default RF4CE network ID.
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process CONTROLLER_TYPE request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result != CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      XLOGD_ERROR("ERROR getting product name!!");
-      return;
-   }
 }
 
 void control_service_values_read_from_db() {
@@ -6063,12 +4862,6 @@ ctrlm_telemetry_t *ctrlm_get_telemetry_obj() {
 gboolean ctrlm_start_iarm(gpointer user_data) {
    // Register iarm calls and events
    XLOGD_INFO(": Register iarm calls and events");
-
-#ifdef USE_DEPRECATED_IRMGR
-   // IARM Events that we are listening to from other processes
-   IARM_Bus_RegisterEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_IRKEY, ctrlm_event_handler_ir);
-   IARM_Bus_RegisterEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_CONTROL, ctrlm_event_handler_ir);
-#endif
 
    ctrlm_main_iarm_init();
 

@@ -1035,6 +1035,11 @@ void ctrlm_obj_controller_rf4ce_t::validation_result_set(ctrlm_rcu_binding_type_
       validation_type_  = validation_type;
       db_create();
       db_store();
+
+      unsigned long long network_ieee = 0;
+      obj_network_rf4ce_->ieee_address_get(&network_ieee);
+      rf4ce_info_file_write(network_ieee, ieee_address_get().get_value());
+
       // possible duplicate pairing
       needs_reset_ = false;
       did_reset_   = false;

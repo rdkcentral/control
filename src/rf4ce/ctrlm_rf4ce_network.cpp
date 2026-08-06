@@ -38,6 +38,8 @@
 #include <limits.h>
 #include <errno.h>
 #include <sys/sysinfo.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "ctrlm.h"
 #include "ctrlm_log.h"
 #include "ctrlm_utils.h"
@@ -54,6 +56,47 @@
 #include <zlib.h>
 #include "ctrlm_voice_obj.h"
 #include "comcastIrKeyCodes.h"
+
+#define CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR "/opt/lib/rf4ce"
+
+void rf4ce_info_file_write(unsigned long long network_ieee, unsigned long long controller_ieee) {
+   char dir_path[128];
+   char file_path[160];
+   snprintf(dir_path,  sizeof(dir_path),  "%s/%016llX:%016llX", CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, network_ieee, controller_ieee);
+   snprintf(file_path, sizeof(file_path), "%s/info", dir_path);
+
+   if(mkdir(CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, 0755) != 0 && errno != EEXIST) {
+      XLOGD_ERROR("Failed to create base dir <%s> errno %d", CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, errno);
+      return;
+   }
+   if(mkdir(dir_path, 0755) != 0 && errno != EEXIST) {
+      XLOGD_ERROR("Failed to create dir <%s> errno %d", dir_path, errno);
+      return;
+   }
+   FILE *f = fopen(file_path, "w");
+   if(f == NULL) {
+      XLOGD_ERROR("Failed to create info file <%s> errno %d", file_path, errno);
+      return;
+   }
+   fclose(f);
+   XLOGD_INFO("Created info file <%s>", file_path);
+}
+
+static void rf4ce_info_file_delete(unsigned long long network_ieee, unsigned long long controller_ieee) {
+   char dir_path[128];
+   char file_path[160];
+   snprintf(dir_path,  sizeof(dir_path),  "%s/%016llX:%016llX", CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, network_ieee, controller_ieee);
+   snprintf(file_path, sizeof(file_path), "%s/info", dir_path);
+
+   if(unlink(file_path) != 0 && errno != ENOENT) {
+      XLOGD_ERROR("Failed to delete info file <%s> errno %d", file_path, errno);
+   } else {
+      XLOGD_INFO("Deleted info file <%s>", file_path);
+   }
+   if(rmdir(dir_path) != 0 && errno != ENOENT) {
+      XLOGD_WARN("Failed to remove dir <%s> errno %d", dir_path, errno);
+   }
+}
 
 #if (JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_PASS > 7) || (JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_PASS < 1)
 #error RF4CE AUTOBIND PASS THRESHOLD IS OUT OF RANGE
@@ -501,6 +544,7 @@ void ctrlm_obj_network_rf4ce_t::controller_unbind(ctrlm_controller_id_t controll
    }
    // Telemetry needs to keep track of unbinding.  
    controllers_[controller_id]->log_unbinding_for_telemetry();
+   rf4ce_info_file_delete(ieee_address_, controllers_[controller_id]->ieee_address_get().get_value());
    // Remove the controller from the controller list and delete the DB entry
    controller_remove(controller_id, true);
 
@@ -1798,39 +1842,6 @@ void ctrlm_obj_network_rf4ce_t::req_process_controller_product_name(void *data, 
    ctrlm_obj_network_t::req_process_controller_product_name(data, size);
 }
 
-void ctrlm_obj_network_rf4ce_t::req_process_controller_link_key(void *data, int size) {
-   THREAD_ID_VALIDATE();
-   ctrlm_main_queue_msg_controller_link_key_t *dqm = (ctrlm_main_queue_msg_controller_link_key_t *)data;
-
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_controller_link_key_t));
-   g_assert(dqm->cmd_result);
-
-   ctrlm_hal_network_property_encryption_key_t property = {0};
-
-   if(!controller_exists(dqm->controller_id)) {
-      XLOGD_WARN("Controller %u NOT present.", dqm->controller_id);
-      *dqm->cmd_result = CTRLM_CONTROLLER_STATUS_REQUEST_ERROR;
-      ctrlm_obj_network_t::req_process_controller_link_key(data, size);
-      return;
-   }
-
-   XLOGD_INFO("Getting Link Key for Controller %u", dqm->controller_id);
-
-   // Get Link key
-   property.controller_id = dqm->controller_id;
-   if(CTRLM_HAL_RESULT_SUCCESS != property_get(CTRLM_HAL_NETWORK_PROPERTY_ENCRYPTION_KEY, (void **)&property)) {
-      XLOGD_ERROR("Failed to get Link Key from HAL");
-      *dqm->cmd_result = CTRLM_CONTROLLER_STATUS_REQUEST_ERROR;
-      ctrlm_obj_network_t::req_process_controller_link_key(data, size);
-      return;
-   }
-
-   errno_t safec_rc = memcpy_s(dqm->link_key, CTRLM_HAL_NETWORK_AES128_KEY_SIZE, property.aes128_key, CTRLM_HAL_NETWORK_AES128_KEY_SIZE);
-   ERR_CHK(safec_rc);
-   *dqm->cmd_result = CTRLM_CONTROLLER_STATUS_REQUEST_SUCCESS;
-   ctrlm_obj_network_t::req_process_controller_link_key(data, size);
-}
 
 ctrlm_rib_request_cmd_result_t ctrlm_obj_network_rf4ce_t::req_process_rib_export(ctrlm_controller_id_t controller_id, uint8_t identifier, unsigned char index, unsigned char length, unsigned char *data) {
    THREAD_ID_VALIDATE();
@@ -4086,6 +4097,14 @@ void ctrlm_obj_network_rf4ce_t::hal_init_cfm(void *data, int size) {
    }
 
    hal_init_confirm(dqm->params.rf4ce);
+
+   if(dqm->params.rf4ce.result == CTRLM_HAL_RESULT_SUCCESS) {
+      for(auto &kv : controllers_) {
+         if(kv.second->is_bound()) {
+            rf4ce_info_file_write(ieee_address_, kv.second->ieee_address_get().get_value());
+         }
+      }
+   }
 
    ctrlm_obj_network_t::hal_init_cfm(data, size);
 }

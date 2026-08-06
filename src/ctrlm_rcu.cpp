@@ -166,38 +166,6 @@ gboolean ctrlm_rcu_rib_request_set(ctrlm_rcu_iarm_call_rib_request_t *params) {
    return(false);
 }
 
-gboolean ctrlm_rcu_controller_link_key(ctrlm_rcu_iarm_call_controller_link_key_t *params) {
-   XLOGD_INFO("(%u, %u)", params->network_id, params->controller_id);
-
-   if(params->network_id == CTRLM_MAIN_NETWORK_ID_ALL || params->controller_id == CTRLM_MAIN_CONTROLLER_ID_ALL) {
-      XLOGD_ERROR("Cannot get status for multiple controllers");
-      return(false);
-   }
-   sem_t semaphore;
-   ctrlm_controller_status_cmd_result_t cmd_result = CTRLM_CONTROLLER_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_controller_link_key_t msg = {0};
-
-   sem_init(&semaphore, 0, 0);
-
-   msg.controller_id     = params->controller_id;
-   msg.link_key          = params->link_key;
-   msg.semaphore         = &semaphore;
-   msg.cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_controller_link_key, &msg, sizeof(msg), NULL, params->network_id);
-
-   // Wait for the result semaphore to be signaled
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_CONTROLLER_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
 gboolean ctrlm_rcu_controller_type_get(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_controller_type_t *type) {
    XLOGD_INFO("(%u, %u)", network_id, controller_id);
 

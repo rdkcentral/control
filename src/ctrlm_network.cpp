@@ -510,21 +510,6 @@ void ctrlm_obj_network_t::network_destroy() {
    XLOGD_INFO("Destroying %s network", name_get());
 }
 
-void ctrlm_obj_network_t::req_process_controller_link_key(void *data, int size) {
-   ctrlm_main_queue_msg_controller_link_key_t *dqm = (ctrlm_main_queue_msg_controller_link_key_t *)data;
-
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_controller_link_key_t));
-
-   if(dqm->cmd_result && *dqm->cmd_result == CTRLM_CONTROLLER_STATUS_REQUEST_PENDING) {
-      XLOGD_WARN("not implemented for %s network", name_get());
-      *dqm->cmd_result = CTRLM_CONTROLLER_STATUS_REQUEST_ERROR;
-   }
-   if(dqm->semaphore) {
-      sem_post(dqm->semaphore);
-   }
-}
-
 void ctrlm_obj_network_t::req_process_controller_status(void *data, int size) {
    ctrlm_main_queue_msg_controller_status_t *dqm = (ctrlm_main_queue_msg_controller_status_t *)data;
 

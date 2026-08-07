@@ -21,6 +21,7 @@
 #define _CTRLM_RF4CE_NETWORK_H_
 
 #include <string>
+#include <array>
 #include <map>
 #include <vector>
 #include <semaphore.h>
@@ -660,8 +661,10 @@ private:
    static ctrlm_hal_result_t hal_rf4ce_decrypt_callback(ctrlm_hal_rf4ce_decrypt_params_t* param);
 #endif
    void                  controller_init_uinput(ctrlm_controller_id_t controller_id);
-};
 
-void rf4ce_info_file_write(unsigned long long network_ieee, unsigned long long controller_ieee);
+   void                  info_file_write(unsigned long long controller_ieee, const unsigned char *key);
+   void                  info_file_delete(unsigned long long controller_ieee);
+   void                  info_file_consolidation();
+};
 
 #endif

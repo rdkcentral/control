@@ -4890,7 +4890,7 @@ void ctrlm_obj_network_rf4ce_t::info_file_delete(unsigned long long controller_i
    snprintf(controller_dir, sizeof(controller_dir), "%s/%s",    network_dir, controller_mac);
    snprintf(file_path,      sizeof(file_path),      "%s/info", controller_dir);
 
-   XLOGD_INFO("Deleting info file <%s>", file_path);
+   XLOGD_INFO("Deleting info file <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path);
 
    errno = 0;
    if(unlink(file_path) != 0 && errno != ENOENT) {
@@ -4928,7 +4928,7 @@ void ctrlm_obj_network_rf4ce_t::info_file_consolidation(void) {
          unsigned int b[8] = {0};
          if(sscanf(entry->d_name, "%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X",
                    &b[0], &b[1], &b[2], &b[3], &b[4], &b[5], &b[6], &b[7]) != 8) {
-            XLOGD_WARN("Unexpected entry in network dir: <%s>, skipping", entry->d_name);
+            XLOGD_WARN("Unexpected entry in network dir: <%s>, skipping", ctrlm_is_pii_mask_enabled() ? "***" : entry->d_name);
             continue;
          }
          unsigned long long controller_ieee = ((unsigned long long)b[0] << 56) | ((unsigned long long)b[1] << 48) |

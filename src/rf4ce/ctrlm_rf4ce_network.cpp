@@ -4830,7 +4830,7 @@ void ctrlm_obj_network_rf4ce_t::info_file_write(unsigned long long controller_ie
    snprintf(controller_dir, sizeof(controller_dir), "%s/%s",    network_dir, controller_mac);
    snprintf(file_path,      sizeof(file_path),      "%s/info", controller_dir);
 
-   XLOGD_INFO("Creating info file <%s>", file_path);
+   XLOGD_INFO("Creating info file <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path);
 
    errno = 0;
    if(mkdir(CTRLM_RF4CE_CONTROLLER_INFO_LIB_DIR, 0755) != 0 && errno != EEXIST) {
@@ -4875,7 +4875,6 @@ void ctrlm_obj_network_rf4ce_t::info_file_write(unsigned long long controller_ie
    }
    fprintf(f, "\n");
    fclose(f);
-   close(fd);
 }
 
 void ctrlm_obj_network_rf4ce_t::info_file_delete(unsigned long long controller_ieee) {

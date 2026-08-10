@@ -4838,17 +4838,17 @@ void ctrlm_obj_network_rf4ce_t::info_file_write(unsigned long long controller_ie
       XLOGD_ERROR("Failed to create lib dir <%s> error <%s>", CTRLM_RF4CE_CONTROLLER_INFO_LIB_DIR, strerror(errsv));
       return;
    }
-   if(mkdir(CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, 0755) != 0 && errno != EEXIST) {
+   if(mkdir(CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, 0700) != 0 && errno != EEXIST) {
       int errsv = errno;
       XLOGD_ERROR("Failed to create base dir <%s> error <%s>", CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, strerror(errsv));
       return;
    }
-   if(mkdir(network_dir, 0755) != 0 && errno != EEXIST) {
+   if(mkdir(network_dir, 0700) != 0 && errno != EEXIST) {
       int errsv = errno;
       XLOGD_ERROR("Failed to create network dir <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : network_dir, strerror(errsv));
       return;
    }
-   if(mkdir(controller_dir, 0755) != 0 && errno != EEXIST) {
+   if(mkdir(controller_dir, 0700) != 0 && errno != EEXIST) {
       int errsv = errno;
       XLOGD_ERROR("Failed to create controller dir <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : controller_dir, strerror(errsv));
       return;

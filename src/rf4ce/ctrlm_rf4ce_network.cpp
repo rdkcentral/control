@@ -40,6 +40,7 @@
 #include <sys/sysinfo.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <dirent.h>
 #include "ctrlm.h"
 #include "ctrlm_log.h"
@@ -4829,34 +4830,52 @@ void ctrlm_obj_network_rf4ce_t::info_file_write(unsigned long long controller_ie
    snprintf(controller_dir, sizeof(controller_dir), "%s/%s",    network_dir, controller_mac);
    snprintf(file_path,      sizeof(file_path),      "%s/info", controller_dir);
 
+   XLOGD_INFO("Creating info file <%s>", file_path);
+
+   errno = 0;
    if(mkdir(CTRLM_RF4CE_CONTROLLER_INFO_LIB_DIR, 0755) != 0 && errno != EEXIST) {
-      XLOGD_ERROR("Failed to create lib dir <%s> errno %d", CTRLM_RF4CE_CONTROLLER_INFO_LIB_DIR, errno);
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create lib dir <%s> error <%s>", CTRLM_RF4CE_CONTROLLER_INFO_LIB_DIR, strerror(errsv));
       return;
    }
    if(mkdir(CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, 0755) != 0 && errno != EEXIST) {
-      XLOGD_ERROR("Failed to create base dir <%s> errno %d", CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, errno);
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create base dir <%s> error <%s>", CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, strerror(errsv));
       return;
    }
    if(mkdir(network_dir, 0755) != 0 && errno != EEXIST) {
-      XLOGD_ERROR("Failed to create network dir <%s> errno %d", network_dir, errno);
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create network dir <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : network_dir, strerror(errsv));
       return;
    }
    if(mkdir(controller_dir, 0755) != 0 && errno != EEXIST) {
-      XLOGD_ERROR("Failed to create controller dir <%s> errno %d", controller_dir, errno);
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create controller dir <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : controller_dir, strerror(errsv));
       return;
    }
-   FILE *f = fopen(file_path, "w");
+   
+   errno = 0;
+   int fd = open(file_path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+   if(fd < 0) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create info file <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path, strerror(errsv));
+      return;
+   }
+   FILE *f = fdopen(fd, "w");
    if(f == NULL) {
-      XLOGD_ERROR("Failed to create info file <%s> errno %d", file_path, errno);
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create info file stream <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path, strerror(errsv));
+      close(fd);
       return;
    }
+
    fprintf(f, "[ControllerKey]\nKey=");
    for(int i = 0; i < CTRLM_HAL_NETWORK_AES128_KEY_SIZE; i++) {
       fprintf(f, "%02X", key[i]);
    }
    fprintf(f, "\n");
    fclose(f);
-   XLOGD_INFO("Created info file <%s>", file_path);
+   close(fd);
 }
 
 void ctrlm_obj_network_rf4ce_t::info_file_delete(unsigned long long controller_ieee) {
@@ -4872,13 +4891,16 @@ void ctrlm_obj_network_rf4ce_t::info_file_delete(unsigned long long controller_i
    snprintf(controller_dir, sizeof(controller_dir), "%s/%s",    network_dir, controller_mac);
    snprintf(file_path,      sizeof(file_path),      "%s/info", controller_dir);
 
+   XLOGD_INFO("Deleting info file <%s>", file_path);
+
+   errno = 0;
    if(unlink(file_path) != 0 && errno != ENOENT) {
-      XLOGD_ERROR("Failed to delete info file <%s> errno %d", file_path, errno);
-   } else {
-      XLOGD_INFO("Deleted info file <%s>", file_path);
+      int errsv = errno;
+      XLOGD_ERROR("Failed to delete info file <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path, strerror(errsv));
    }
    if(rmdir(controller_dir) != 0 && errno != ENOENT) {
-      XLOGD_WARN("Failed to remove controller dir <%s> errno %d", controller_dir, errno);
+      int errsv = errno;
+      XLOGD_WARN("Failed to remove controller dir <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : controller_dir, strerror(errsv));
    }
    rmdir(network_dir);
 }
@@ -4888,6 +4910,8 @@ void ctrlm_obj_network_rf4ce_t::info_file_consolidation(void) {
    char network_dir[128];
    rf4ce_ieee_to_str(ieee_address_, network_mac, sizeof(network_mac));
    snprintf(network_dir, sizeof(network_dir), "%s/%s", CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, network_mac);
+
+   XLOGD_INFO("Consolidating info files");
 
    // Track which bound controllers already have a valid info file
    std::set<unsigned long long> found_on_disk;
@@ -4923,7 +4947,7 @@ void ctrlm_obj_network_rf4ce_t::info_file_consolidation(void) {
 
          // Remove info file if no matching bound controller exists
          if(found_on_disk.find(controller_ieee) == found_on_disk.end()) {
-            XLOGD_INFO("Removing stale info file for controller <%s>", entry->d_name);
+            XLOGD_INFO("Removing stale info file for controller <%s>", ctrlm_is_pii_mask_enabled() ? "***" : entry->d_name);
             info_file_delete(controller_ieee);
          }
       }
@@ -4934,7 +4958,7 @@ void ctrlm_obj_network_rf4ce_t::info_file_consolidation(void) {
    for(map<ctrlm_controller_id_t, ctrlm_obj_controller_rf4ce_t *>::iterator it = controllers_.begin(); it != controllers_.end(); it++) {
       unsigned long long controller_ieee = it->second->ieee_address_get().get_value();
       if(found_on_disk.find(controller_ieee) == found_on_disk.end()) {
-         XLOGD_INFO("Adding missing info file for controller 0x%016llX", controller_ieee);
+         XLOGD_INFO("Adding missing info file for controller 0x%016llX", ctrlm_is_pii_mask_enabled() ? 0 : controller_ieee);
 
          ctrlm_hal_network_property_encryption_key_t key_prop = {0};
          key_prop.controller_id = it->first;

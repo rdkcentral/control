@@ -4833,7 +4833,7 @@ void ctrlm_obj_network_rf4ce_t::info_file_write(unsigned long long controller_ie
    XLOGD_INFO("Creating info file <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path);
 
    errno = 0;
-   if(mkdir(CTRLM_RF4CE_CONTROLLER_INFO_LIB_DIR, 0755) != 0 && errno != EEXIST) {
+   if(mkdir(CTRLM_RF4CE_CONTROLLER_INFO_LIB_DIR, 0700) != 0 && errno != EEXIST) {
       int errsv = errno;
       XLOGD_ERROR("Failed to create lib dir <%s> error <%s>", CTRLM_RF4CE_CONTROLLER_INFO_LIB_DIR, strerror(errsv));
       return;
@@ -4917,7 +4917,9 @@ void ctrlm_obj_network_rf4ce_t::info_file_consolidation(void) {
 
    // Iterate over the directories in the network dir
    DIR *dir = opendir(network_dir);
-   if(dir != NULL) {
+   if(dir == NULL) {
+      XLOGD_WARN("unable to open network dir <%s>", ctrlm_is_pii_mask_enabled() ? "***" : network_dir);
+   } else {
       struct dirent *entry;
       while((entry = readdir(dir)) != NULL) {
          if(entry->d_name[0] == '.') {

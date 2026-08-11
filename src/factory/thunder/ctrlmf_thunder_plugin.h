@@ -98,7 +98,7 @@ protected:
     std::string callsign_with_api();
 
     /**
-     * This functions is used to call a Thunder Plugin method.
+     * This function is used to call a Thunder Plugin method.
      * @param method The method in which the user wants to call.
      * @param params The WPEFramework JsonObject containing the parameters for the call. (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
      * @param response The WPEFramework JsonObject containing the response from the call.  (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
@@ -108,7 +108,7 @@ protected:
     bool call_plugin(std::string method, void *params, void *response, unsigned int retries = 0);
 
     /**
-     * This functions is used to call a Thunder Controller method.
+     * This function is used to call a Thunder Controller method.
      * @param method The method in which the user wants to call.
      * @param params The WPEFramework JsonObject containing the parameters for the call. (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)
      * @param params The WPEFramework JsonObject containing the response from the call.  (We can't include WPEFramework headers in controlMgr .h files as their logging macros clash)

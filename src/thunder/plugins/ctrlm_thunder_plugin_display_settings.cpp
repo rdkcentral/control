@@ -187,9 +187,11 @@ void ctrlm_thunder_plugin_display_settings_t::on_initial_activation() {
     Thunder::Plugin::ctrlm_thunder_plugin_t::on_initial_activation();
 }
 
-bool ctrlm_thunder_plugin_display_settings_t::set_audio_ducking(
-        bool action, bool type, unsigned char level) {
-    XLOGD_INFO("[THUNDER_DS_DUCKING] Function called: action=%d (%s), type=%d (%s), level=%u", action, action ? "start" : "stop", type, type ? "relative" : "absolute", level);
+bool ctrlm_thunder_plugin_display_settings_t::set_audio_ducking(bool action, bool type, unsigned char level) {
+    if((unsigned int)level > 100) {
+        XLOGD_WARNING("Invalid ducking level <%u> - defaulting to 100", (unsigned int)level);
+        level = 100;
+    }
     JsonObject params, response;
     params["audioPort"]   = "SPEAKER0";
     params["mode"]        = "raw";
@@ -197,26 +199,16 @@ bool ctrlm_thunder_plugin_display_settings_t::set_audio_ducking(
     params["duckingType"] = type ? "relative" : "absolute";
     params["level"]       = (int)level;
 
-    std::string params_str;
-    params.ToString(params_str);
-    XLOGD_INFO("[THUNDER_DS_DUCKING] JSON params: %s", params_str.c_str());
-    
-    XLOGD_INFO("[THUNDER_DS_DUCKING] Calling DisplaySettings plugin 'setAudioDucking'...");
     if(!this->call_plugin("setAudioDucking", (void *)&params, (void *)&response)) {
         XLOGD_ERROR("DisplaySettings setAudioDucking call failed");
         return false;
     }
-    XLOGD_INFO("[THUNDER_DS_DUCKING] call_plugin returned true, checking response...");
 
-    std::string response_str;
-    response.ToString(response_str);
-    XLOGD_INFO("[THUNDER_DS_DUCKING] Response JSON: %s", response_str.c_str());
-
-    if(!response["success"].Boolean()) {
-        XLOGD_ERROR("[THUNDER_DS_DUCKING] success=false in response");
+    if(!response.HasLabel("success") || !response["success"].Boolean()) {
+        std::string response_str;
+        response.ToString(response_str);
         XLOGD_ERROR("DisplaySettings setAudioDucking returned failure: %s", response_str.c_str());
         return false;
     }
-    XLOGD_INFO("[THUNDER_DS_DUCKING] SUCCESS: Returning true");
     return true;
 }

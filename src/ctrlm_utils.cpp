@@ -35,7 +35,9 @@
 #include <linux/input.h>
 #include <uuid/uuid.h>
 
+#ifdef CTRLM_THUNDER
 #include "thunder/plugins/ctrlm_thunder_plugin_display_settings.h"
+#endif
 #include <regex>
 
 using std::get;
@@ -1540,47 +1542,38 @@ bool ctrlm_dsmgr_deinit() {
 }
 
 bool ctrlm_dsmgr_mute_audio(bool mute) {
+#ifdef CTRLM_THUNDER
    auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
    if(!ds) {
       XLOGD_ERROR("DisplaySettings plugin not available");
       return false;
    }
-   bool action = mute;        // true = start ducking (mute), false = stop ducking (unmute)
-   bool type   = false;       // false = absolute ducking
-   bool ret = ds->set_audio_ducking(action, type, mute ? 0 : 100);
+   bool ret = ds->set_audio_ducking(mute, false, mute ? 0 : 100);
    if(ret) {
       XLOGD_INFO("Audio is %smuted", mute?"":"un-");
    } else {
       XLOGD_WARN("Muting sound error");
    }
    return ret;
+#else
+   XLOGD_WARN("DisplaySettings not available (THUNDER disabled)");
+   return true;
+#endif
 }
 
 bool ctrlm_dsmgr_duck_audio(bool enable, bool relative, double vol) {
-   XLOGD_INFO("[CTRLM_DUCK_AUDIO] Function called: enable=%d, relative=%d, vol=%f", enable, relative, vol);
    if(vol < 0 || vol > 1) {
-      XLOGD_ERROR("[CTRLM_DUCK_AUDIO] Invalid volume %f (must be 0.0-1.0)", vol);
       XLOGD_ERROR("Invalid volume");
       return false;
    }
-
-   XLOGD_INFO("[CTRLM_DUCK_AUDIO] Using thunder displaysetting path");
+#ifdef CTRLM_THUNDER
    unsigned char level = (unsigned char)((vol * 100) + 0.5);
-   bool action = enable;      // true = start ducking, false = stop ducking
-   bool type   = relative;    // true = relative, false = absolute
-   XLOGD_INFO("[CTRLM_DUCK_AUDIO] Calculated: action=%d, type=%d, level=%u", action, type, level);
-
-   XLOGD_INFO("[CTRLM_DUCK_AUDIO] Getting DisplaySettings instance...");
    auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
    if(!ds) {
-      XLOGD_ERROR("[CTRLM_DUCK_AUDIO] DisplaySettings plugin not available");
       XLOGD_ERROR("DisplaySettings plugin not available");
       return false;
    }
-   XLOGD_INFO("[CTRLM_DUCK_AUDIO] DisplaySettings instance obtained successfully");
-   XLOGD_INFO("[CTRLM_DUCK_AUDIO] Calling set_audio_ducking...");
-   bool ret = ds->set_audio_ducking(action, type, level);
-   XLOGD_INFO("[CTRLM_DUCK_AUDIO] set_audio_ducking returned: %d", ret);
+   bool ret = ds->set_audio_ducking(enable, relative, level);
    if(ret) {
       if(enable) {
          XLOGD_INFO("Audio ducking enabled - type <%s> level <%u%%>", relative ? "RELATIVE" : "ABSOLUTE", level);
@@ -1588,12 +1581,15 @@ bool ctrlm_dsmgr_duck_audio(bool enable, bool relative, double vol) {
          XLOGD_INFO("Audio ducking disabled");
       }
    } else {
-      XLOGD_WARN("Muting sound error");
+      XLOGD_WARN("Ducking sound error");
    }
-   XLOGD_INFO("[CTRLM_DUCK_AUDIO] Returning: %d", ret);
    return ret;
+#else
+   XLOGD_WARN("DisplaySettings not available (THUNDER disabled)");
+   return true;
+#endif
 }
-   
+
 bool ctrlm_is_voice_assistant(ctrlm_rcu_controller_type_t controller_type) {
    switch(controller_type) {
    case CTRLM_RCU_CONTROLLER_TYPE_XR19:

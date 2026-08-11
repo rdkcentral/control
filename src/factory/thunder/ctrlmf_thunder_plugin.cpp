@@ -200,8 +200,8 @@ bool ctrlm_thunder_plugin_t::call_plugin(std::string method, void *params, void 
                 if(thunderRet == Core::ERROR_NONE) {
                     ret = true;
                 } else {
-                    XLOGD_ERROR("%s: Thunder call failed <%s> <%u>\n", __FUNCTION__, method.c_str(), thunderRet);
                     attempts++;
+                    XLOGD_ERROR("%s: Thunder call failed <%s> attempt <%u/%u> ret <%u>\n", __FUNCTION__, method.c_str(), attempts, retries + 1, thunderRet);
                 }
             }
         } else {

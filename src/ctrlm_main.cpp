@@ -106,10 +106,11 @@ using namespace std;
 #define CTRLM_RESTART_DELAY_SHORT    "0"
 #define CTRLM_RESTART_UPDATE_TIMEOUT (5000)
 
-#define CTRLM_RF4CE_LEN_IR_REMOTE_USAGE 14
-#define CTRLM_RF4CE_LEN_LAST_KEY_INFO   sizeof(ctrlm_last_key_info)
-#define CTRLM_RF4CE_LEN_SHUTDOWN_TIME   4
-#define CTRLM_RF4CE_LEN_PAIRING_METRICS sizeof(ctrlm_pairing_metrics_t)
+#define CTRLM_RF4CE_LEN_IR_REMOTE_USAGE       14
+#define CTRLM_RF4CE_LEN_LAST_KEY_INFO         sizeof(ctrlm_last_key_info)
+#define CTRLM_RF4CE_LEN_SHUTDOWN_TIME_LEGACY  4
+#define CTRLM_RF4CE_LEN_SHUTDOWN_TIME         sizeof(time_t)
+#define CTRLM_RF4CE_LEN_PAIRING_METRICS       sizeof(ctrlm_pairing_metrics_t)
 
 #define CTRLM_MAIN_QUEUE_REPEAT_DELAY   (5000)
 
@@ -4446,20 +4447,24 @@ void ctrlm_discovery_remote_type_set_(const char *remote_type_str) {
 
 void ctrlm_property_write_shutdown_time(void) {
    guchar data[CTRLM_RF4CE_LEN_SHUTDOWN_TIME];
-   data[0]  = (guchar)(g_ctrlm.shutdown_time);
-   data[1]  = (guchar)(g_ctrlm.shutdown_time >> 8);
-   data[2]  = (guchar)(g_ctrlm.shutdown_time >> 16);
-   data[3]  = (guchar)(g_ctrlm.shutdown_time >> 24);
+   guint64 shutdown_time = (guint64)g_ctrlm.shutdown_time;
+   for(guchar index = 0; index < CTRLM_RF4CE_LEN_SHUTDOWN_TIME; index++) {
+      data[index] = (guchar)(shutdown_time >> (index * 8));
+   }
 
    ctrlm_db_shutdown_time_write(data, CTRLM_RF4CE_LEN_SHUTDOWN_TIME);
 }
 
 guchar ctrlm_property_write_shutdown_time(guchar *data, guchar length) {
-   if(data == NULL || length != CTRLM_RF4CE_LEN_SHUTDOWN_TIME) {
+   if(data == NULL || (length != CTRLM_RF4CE_LEN_SHUTDOWN_TIME_LEGACY && length != CTRLM_RF4CE_LEN_SHUTDOWN_TIME)) {
       XLOGD_ERROR("INVALID PARAMETERS");
       return(0);
    }
-   time_t shutdown_time = ((data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]);
+   guint64 shutdown_time_value = 0;
+   for(guchar index = 0; index < length; index++) {
+      shutdown_time_value |= ((guint64)data[index] << (index * 8));
+   }
+   time_t shutdown_time = (time_t)shutdown_time_value;
    
    if(g_ctrlm.shutdown_time != shutdown_time) {
       // Store the data

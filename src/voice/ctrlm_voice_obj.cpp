@@ -3718,18 +3718,25 @@ void ctrlm_voice_t::voice_privacy_disable(bool update_vsdk) {
 }
 
 void ctrlm_voice_t::voice_update_privacy() {
-    if(this->local_mic) {
-        // Read privacy mode state from the DB in case power cycle lost HW GPIO state
-        if(this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_DISABLED) {
-            XLOGD_INFO("voice is disabled, skip privacy");
-        } else {
-            bool privacy_enabled = this->voice_is_privacy_enabled();
-            if(privacy_enabled != this->vsdk_is_privacy_enabled()) {
-                privacy_enabled ? this->voice_privacy_enable(false) : this->voice_privacy_disable(false);
-            }
-        }
-    }
-}
+     if(!this->local_mic) {
+         return;
+     }
+     sem_wait(&this->device_status_semaphore);
+     bool mic_disabled = (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_DISABLED) != 0;
+     sem_post(&this->device_status_semaphore);
+     // If the mic is disabled, preserve the existing ctrlm/DB privacy state.
+     if(mic_disabled) {
+         XLOGD_INFO("voice is disabled, skip privacy");
+         return;
+     }
+
+     // Refresh ctrlm/DB privacy state from the VSDK after route/input updates.
+     const bool privacy_vsdk  = this->vsdk_is_privacy_enabled();
+     const bool privacy_ctrlm = this->voice_is_privacy_enabled();
+     if(privacy_vsdk != privacy_ctrlm) {
+         privacy_vsdk ? this->voice_privacy_enable(false) : this->voice_privacy_disable(false);
+     }
+ }
 
 void ctrlm_voice_t::voice_device_enable(ctrlm_voice_device_t device, bool db_write, bool *update_routes) {
     sem_wait(&this->device_status_semaphore);

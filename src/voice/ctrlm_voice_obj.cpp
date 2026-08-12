@@ -3723,7 +3723,6 @@ void ctrlm_voice_t::voice_update_privacy() {
         if(this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_DISABLED) {
             XLOGD_INFO("voice is disabled, skip privacy");
         } else {
-            XLOGD_INFO("LLAMA-18353 Reading privacy mode from VSDK");
             bool privacy_enabled = this->voice_is_privacy_enabled();
             if(privacy_enabled != this->vsdk_is_privacy_enabled()) {
                 privacy_enabled ? this->voice_privacy_enable(false) : this->voice_privacy_disable(false);

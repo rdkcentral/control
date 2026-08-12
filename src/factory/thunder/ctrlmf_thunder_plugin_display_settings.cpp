@@ -40,7 +40,7 @@ ctrlmf_thunder_plugin_display_settings_t *ctrlmf_thunder_plugin_display_settings
 
 bool ctrlmf_thunder_plugin_display_settings_t::set_audio_ducking(bool action, bool type, unsigned char level) {
     if((unsigned int)level > 100) {
-        XLOGD_WARNING("Invalid ducking level <%u> - defaulting to 100", (unsigned int)level);
+        XLOGD_WARN("Invalid ducking level <%u> - defaulting to 100", (unsigned int)level);
         level = 100;
     }
     JsonObject params, response;

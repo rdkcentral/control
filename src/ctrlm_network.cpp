@@ -30,6 +30,13 @@
 
 using namespace std;
 
+static void ctrlm_network_term_hal_unref(ctrlm_network_term_hal_t *term_data) {
+   if(g_atomic_int_dec_and_test(&term_data->ref_count)) {
+      sem_destroy(&term_data->semaphore);
+      g_free(term_data);
+   }
+}
+
 void ctrlm_network_property_set(ctrlm_network_id_t network_id, ctrlm_hal_network_property_t property, void *value, guint32 length) {
    // Allocate a message and send it to Control Manager's queue
    ctrlm_main_queue_msg_network_property_set_t *msg = (ctrlm_main_queue_msg_network_property_set_t *)g_malloc(sizeof(ctrlm_main_queue_msg_network_property_set_t) + length);
@@ -74,10 +81,13 @@ ctrlm_obj_network_t::~ctrlm_obj_network_t() {
          XLOGD_ERROR("Failed to allocate ctrlm_network_term_hal_t");
          return;
       }
-      sem_t semaphore;
-      sem_init(&semaphore, 0, 0);
+      if(sem_init(&term_data->semaphore, 0, 0) != 0) {
+         XLOGD_ERROR("Failed to initialize termination semaphore");
+         g_free(term_data);
+         return;
+      }
 
-      term_data->semaphore  = &semaphore;
+      g_atomic_int_set(&term_data->ref_count, 2);
       term_data->term       = hal_api_term_;
       term_data->hal_thread = hal_thread_;
 
@@ -91,7 +101,7 @@ ctrlm_obj_network_t::~ctrlm_obj_network_t() {
          end_time.tv_sec += 5;
          do {
             errno = 0;
-            rc = sem_timedwait(&semaphore, &end_time);
+            rc = sem_timedwait(&term_data->semaphore, &end_time);
             if(rc == -1 && errno == EINTR) {
                XLOGD_INFO("interrupted");
             } else {
@@ -102,15 +112,14 @@ ctrlm_obj_network_t::~ctrlm_obj_network_t() {
 
       if(rc != 0) { // no response received
          XLOGD_INFO("Do NOT wait for thread to exit");
+         g_thread_unref(thread_id);
       } else {
-         sem_destroy(&semaphore);
          // Wait for thread to exit
          XLOGD_INFO("Waiting for thread to exit");
          g_thread_join(thread_id);
-         g_thread_unref(thread_id);
          XLOGD_INFO("thread exited.");
-         g_free(term_data);
       }
+      ctrlm_network_term_hal_unref(term_data);
    }
 
    #ifdef CTRLM_THUNDER
@@ -315,23 +324,21 @@ gpointer ctrlm_obj_network_t::terminate_hal(gpointer data) {
 
    if(NULL == term_data->term) {
       XLOGD_INFO("hal_api_term_ is NULL");
-      return NULL;
-   }
-
-   ctrlm_hal_result_t res = term_data->term();
-   if(CTRLM_HAL_RESULT_SUCCESS != res) {
-      XLOGD_ERROR("HAL req term failed with code <%d>", (int)res);
    } else {
-      XLOGD_INFO("HAL terminated successfully");
+      ctrlm_hal_result_t res = term_data->term();
+      if(CTRLM_HAL_RESULT_SUCCESS != res) {
+         XLOGD_ERROR("HAL req term failed with code <%d>", (int)res);
+      } else {
+         XLOGD_INFO("HAL terminated successfully");
+      }
+
+      if(CTRLM_HAL_RESULT_SUCCESS == res && term_data->hal_thread) {
+         g_thread_join(term_data->hal_thread);
+      }
    }
 
-   if(CTRLM_HAL_RESULT_SUCCESS == res && term_data->hal_thread) {
-      g_thread_join(term_data->hal_thread);
-   }
-
-   if(term_data->semaphore) {
-      sem_post(term_data->semaphore);
-   }
+   sem_post(&term_data->semaphore);
+   ctrlm_network_term_hal_unref(term_data);
    return NULL;
 }
 

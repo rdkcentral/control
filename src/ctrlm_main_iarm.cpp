@@ -35,7 +35,6 @@
 
 static IARM_Result_t ctrlm_main_iarm_call_status_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_network_status_get(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_property_set(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_controller_unbind(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_ir_remote_usage_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_last_key_info_get(void *arg);
@@ -59,7 +58,6 @@ static volatile int running = 0;
 ctrlm_iarm_call_t ctrlm_iarm_calls[] = {
    {CTRLM_MAIN_IARM_CALL_STATUS_GET,                         ctrlm_main_iarm_call_status_get                         },
    {CTRLM_MAIN_IARM_CALL_NETWORK_STATUS_GET,                 ctrlm_main_iarm_call_network_status_get                 },
-   {CTRLM_MAIN_IARM_CALL_PROPERTY_SET,                       ctrlm_main_iarm_call_property_set                       },
    {CTRLM_MAIN_IARM_CALL_CONTROLLER_UNBIND,                  ctrlm_main_iarm_call_controller_unbind                  },
    {CTRLM_MAIN_IARM_CALL_IR_REMOTE_USAGE_GET,                ctrlm_main_iarm_call_ir_remote_usage_get                },
    {CTRLM_MAIN_IARM_CALL_LAST_KEY_INFO_GET,                  ctrlm_main_iarm_call_last_key_info_get                  },
@@ -201,25 +199,6 @@ IARM_Result_t ctrlm_main_iarm_call_network_status_get(void *arg) {
    if(!ctrlm_main_iarm_call_network_status_get(status)) {
       status->result = CTRLM_IARM_CALL_RESULT_ERROR;
    }
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_property_set(void *arg) {
-   ctrlm_main_iarm_call_property_t *property = (ctrlm_main_iarm_call_property_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(NULL == property) {
-      XLOGD_ERROR("NULL Property Argument");
-      g_assert(0);
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   XLOGD_INFO("not supported");
-   
-   property->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   
    return(IARM_RESULT_SUCCESS);
 }
 

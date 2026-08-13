@@ -28,7 +28,6 @@
 
 #define CTRLM_MAIN_IARM_CALL_STATUS_GET                          "Main_StatusGet"                       ///< Retrieves Control Manager's Status information
 #define CTRLM_MAIN_IARM_CALL_NETWORK_STATUS_GET                  "Main_NetworkStatusGet"                ///< Retrieves the network's Status information
-#define CTRLM_MAIN_IARM_CALL_PROPERTY_SET                        "Main_PropertySet"                     ///< Sets a property of the Control Manager
 #define CTRLM_MAIN_IARM_CALL_FACTORY_RESET                       "Main_FactoryReset"                    ///< Sets the configuration back to factory default
 #define CTRLM_MAIN_IARM_CALL_CONTROLLER_UNBIND                   "Main_ControllerUnbind"                ///< Removes a binding between the target and the specified controller
 #define CTRLM_MAIN_IARM_CALL_IR_REMOTE_USAGE_GET                 "Main_IrRemoteUsageGet"                ///< Retrieves the ir remote usage info
@@ -79,13 +78,6 @@
 
 #define CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND_VALUE_MIN           (5000) ///< Minimum active period (in ms) for screen bind.
 #define CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND_VALUE_MAX         (600000) ///< Maximum active period (in ms) for screen bind.
-
-#define CTRLM_PROPERTY_VALIDATION_TIMEOUT_MIN                  (1000) ///< Validation timeout value minimum (in ms)
-#define CTRLM_PROPERTY_VALIDATION_TIMEOUT_MAX                 (45000) ///< Validation timeout value maximum (in ms)
-#define CTRLM_PROPERTY_VALIDATION_MAX_ATTEMPTS_MAX               (20) ///< Maximum number of validation attempts
-
-#define CTRLM_PROPERTY_CONFIGURATION_TIMEOUT_MIN               (1000) ///< Configuration timeout value minimum (in ms)
-#define CTRLM_PROPERTY_CONFIGURATION_TIMEOUT_MAX              (60000) ///< Configuration timeout value maximum (in ms)
 
 #define CTRLM_AUTOBIND_THRESHOLD_MIN                              (1) ///< Autobind threshold minimum value
 #define CTRLM_AUTOBIND_THRESHOLD_MAX                              (7) ///< Autobind threshold maximum value
@@ -140,26 +132,6 @@ typedef enum {
    CTRLM_IARM_CALL_RESULT_ERROR_NOT_SUPPORTED     = 5, ///< The requested operation is not supported
    CTRLM_IARM_CALL_RESULT_INVALID                 = 6, ///< Invalid call result value
 } ctrlm_iarm_call_result_t;
-
-typedef enum {
-   CTRLM_PROPERTY_BINDING_BUTTON_ACTIVE            =  0, ///< (RO) Boolean value indicating whether a front panel button was recently pressed (1) or not (0).
-   CTRLM_PROPERTY_BINDING_SCREEN_ACTIVE            =  1, ///< (RW) Boolean value indicating whether the 'Pairing Description Screen' is being displayed (1) or not (0).
-   CTRLM_PROPERTY_BINDING_LINE_OF_SIGHT_ACTIVE     =  2, ///< (RO) Boolean value indicating whether the STB has received the Line of Sight remote command and is within the active period.
-   CTRLM_PROPERTY_AUTOBIND_LINE_OF_SIGHT_ACTIVE    =  3, ///< (RO) Boolean value indicating that the STB has received the Autobind Line of Sight remote code and is within the active period.
-   CTRLM_PROPERTY_ACTIVE_PERIOD_BUTTON             =  4, ///< (RW) Active period (in ms) for button binding.
-   CTRLM_PROPERTY_ACTIVE_PERIOD_LINE_OF_SIGHT      =  5, ///< (RW) Active period (in ms) for line of sight.
-   CTRLM_PROPERTY_VALIDATION_TIMEOUT_INITIAL       =  6, ///< (RW) Timeout value (in ms) used for the start of the validation period.
-   CTRLM_PROPERTY_VALIDATION_TIMEOUT_DURING        =  7, ///< (RW) Timeout value (in ms) used during the validation period.
-   CTRLM_PROPERTY_CONFIGURATION_TIMEOUT            =  8, ///< (RW) Timeout value (in ms) used during the configuration period.
-   CTRLM_PROPERTY_VALIDATION_MAX_ATTEMPTS          =  9, ///< (RW) Maximum number of validation attempts.
-   CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND         = 10, ///< (RW) Active period (in ms) for screenbind.
-   CTRLM_PROPERTY_ACTIVE_PERIOD_ONE_TOUCH_AUTOBIND = 11, ///< (RW) Active period (in ms) for one-touch autobind.
-   CTRLM_PROPERTY_REMOTE_REVERSE_CMD_ACTIVE        = 12, ///< (RW) Boolean value indicating whether the 'Remote Reverse Command' feature is enabled (1) or not (0).
-   CTRLM_PROPERTY_MAC_POLLING_INTERVAL             = 13, ///< (RW) MAC polling polling interval, in milliseconds.
-   CTRLM_PROPERTY_RCU_REVERSE_CMD_TIMEOUT          = 14, ///< (RW) Find My Remote RC response timeout, Factor of CTRLM_PROPERTY_MAC_POLLING_INTERVAL, min 2
-   CTRLM_PROPERTY_AUTO_ACK                         = 15, ///< (RW) Boolean value indicating whether the 'Automatic Packet Acknowledgment' feature is enabled (1) or not (0).
-   CTRLM_PROPERTY_MAX                              = 16, ///< (NA) Maximum property enumeration value.
-} ctrlm_property_t;
 
 typedef enum {
    CTRLM_MAIN_IARM_EVENT_BINDING_BUTTON             =  0, ///< Generated when a state change of the binding button status occurs
@@ -406,14 +378,6 @@ typedef struct {
       ctrlm_network_status_ip_t    ip;    ///< OUT - IP network status
    } status;                              ///< OUT - Union of network status types
 } ctrlm_main_iarm_call_network_status_t;
-
-typedef struct {
-   unsigned char            api_revision; ///< Revision of this API
-   ctrlm_iarm_call_result_t result;       ///< Result of the operation
-   ctrlm_network_id_t       network_id;   ///< IN - identifier of network or CTRLM_MAIN_NETWORK_ID_ALL for all networks
-   ctrlm_property_t         name;         ///< Property name on which this call will operate
-   unsigned long            value;        ///< Value for this property
-} ctrlm_main_iarm_call_property_t;
 
 typedef struct {
    unsigned char            api_revision;                           ///< Revision of this API

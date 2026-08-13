@@ -351,7 +351,6 @@ static gboolean ctrlm_unix_signal_terminate(gpointer user_data);
 
 static void     ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *status);
 static void     ctrlm_main_iarm_call_factory_reset_(ctrlm_main_iarm_call_factory_reset_t *reset);
-static void     ctrlm_main_iarm_call_controller_unbind_(ctrlm_main_iarm_call_controller_unbind_t *unbind);
 static void     ctrlm_main_update_export_controller_list(void);
 static void     ctrlm_main_iarm_call_ir_remote_usage_get_(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage);
 static void     ctrlm_main_iarm_call_pairing_metrics_get_(ctrlm_main_iarm_call_pairing_metrics_t *pairing_metrics);
@@ -2509,17 +2508,6 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROLLER_UNBIND: {
-            ctrlm_main_queue_msg_main_controller_unbind_t *dqm = (ctrlm_main_queue_msg_main_controller_unbind_t *) msg;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROLLER_UNBIND");
-            ctrlm_main_iarm_call_controller_unbind_(dqm->unbind);
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_IR_LINE_OF_SIGHT: {
             // Cancel active line of sight timer (if active)
             ctrlm_timeout_destroy(&g_ctrlm.line_of_sight_timeout_tag);
@@ -3462,60 +3450,6 @@ void ctrlm_main_iarm_call_factory_reset_(ctrlm_main_iarm_call_factory_reset_t *r
    ctrlm_recovery_factory_reset();
 
    reset->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-}
-
-gboolean ctrlm_main_iarm_call_controller_unbind(ctrlm_main_iarm_call_controller_unbind_t *unbind) {
-   if(unbind == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_controller_unbind_t *msg = (ctrlm_main_queue_msg_main_controller_unbind_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_controller_unbind_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-  sem_init(&semaphore, 0, 0);
-
-   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROLLER_UNBIND;
-   msg->header.network_id = CTRLM_MAIN_NETWORK_ID_ALL;
-   msg->unbind            = unbind;
-   msg->semaphore         = &semaphore;
-   msg->cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process CONTROLLER_UNBIND request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-void ctrlm_main_iarm_call_controller_unbind_(ctrlm_main_iarm_call_controller_unbind_t *unbind) {
-   if(!ctrlm_network_id_is_valid(unbind->network_id)) {
-      unbind->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      XLOGD_ERROR("network id - Out of range %u", unbind->network_id);
-      return;
-   }
-
-   ctrlm_obj_network_t *obj_net = g_ctrlm.networks[unbind->network_id];
-
-   obj_net->controller_unbind(unbind->controller_id, CTRLM_UNBIND_REASON_TARGET_USER);
-   unbind->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
 }
 
 gboolean ctrlm_timeout_line_of_sight(gpointer user_data) {

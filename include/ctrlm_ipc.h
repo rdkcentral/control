@@ -29,7 +29,6 @@
 #define CTRLM_MAIN_IARM_CALL_STATUS_GET                          "Main_StatusGet"                       ///< Retrieves Control Manager's Status information
 #define CTRLM_MAIN_IARM_CALL_NETWORK_STATUS_GET                  "Main_NetworkStatusGet"                ///< Retrieves the network's Status information
 #define CTRLM_MAIN_IARM_CALL_FACTORY_RESET                       "Main_FactoryReset"                    ///< Sets the configuration back to factory default
-#define CTRLM_MAIN_IARM_CALL_CONTROLLER_UNBIND                   "Main_ControllerUnbind"                ///< Removes a binding between the target and the specified controller
 #define CTRLM_MAIN_IARM_CALL_IR_REMOTE_USAGE_GET                 "Main_IrRemoteUsageGet"                ///< Retrieves the ir remote usage info
 #define CTRLM_MAIN_IARM_CALL_LAST_KEY_INFO_GET                   "Main_LastKeyInfoGet"                  ///< Retrieves the last key info
 #define CTRLM_MAIN_IARM_CALL_LAST_KEYPRESS_GET                   "Main_LastKeyPressGet"                 ///< Retrieves the last key press (TODO: replace CTRLM_MAIN_IARM_CALL_LAST_KEY_INFO_GET with this)
@@ -378,13 +377,6 @@ typedef struct {
       ctrlm_network_status_ip_t    ip;    ///< OUT - IP network status
    } status;                              ///< OUT - Union of network status types
 } ctrlm_main_iarm_call_network_status_t;
-
-typedef struct {
-   unsigned char            api_revision;                           ///< Revision of this API
-   ctrlm_iarm_call_result_t result;                                 ///< Result of the IARM call
-   ctrlm_network_id_t       network_id;                             ///< IN - identifier of network on which the controller is bound
-   ctrlm_controller_id_t    controller_id;                          ///< IN - identifier of the controller
-} ctrlm_main_iarm_call_controller_unbind_t;
 
 typedef struct {
    unsigned char api_revision; ///< Revision of this API

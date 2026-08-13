@@ -271,8 +271,6 @@ public:
    virtual void         req_process_ir_clear_codes(void *data, int size);
    virtual void         req_process_find_my_remote(void *data, int size);
 
-   virtual void         req_process_rib_set(void *data, int size);
-   virtual void         req_process_rib_get(void *data, int size);
    virtual void         req_process_polling_action_push(void *data, int size);
    
    virtual void         req_process_network_managed_upgrade(void *data, int size);

@@ -897,7 +897,7 @@ bool ctrlm_obj_network_t::discovery_config_set(ctrlm_controller_discovery_config
    return false;
 }
 
-void ctrlm_obj_network_t::cs_values_set(const ctrlm_cs_values_t *values, bool db_load) {
+void ctrlm_obj_network_t::cs_values_set(const ctrlm_cs_values_t *values) {
    XLOGD_WARN("not implemented for %s network", name_get());
 }
 

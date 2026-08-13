@@ -32,8 +32,6 @@
 #define CTRLM_MAIN_IARM_CALL_IR_REMOTE_USAGE_GET                 "Main_IrRemoteUsageGet"                ///< Retrieves the ir remote usage info
 #define CTRLM_MAIN_IARM_CALL_LAST_KEY_INFO_GET                   "Main_LastKeyInfoGet"                  ///< Retrieves the last key info
 #define CTRLM_MAIN_IARM_CALL_LAST_KEYPRESS_GET                   "Main_LastKeyPressGet"                 ///< Retrieves the last key press (TODO: replace CTRLM_MAIN_IARM_CALL_LAST_KEY_INFO_GET with this)
-#define CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_SET_VALUES          "Main_ControlService_SetValues"        ///< IARM Call to set control service values
-#define CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_GET_VALUES          "Main_ControlService_GetValues"        ///< IARM Call to get control service values
 #define CTRLM_MAIN_IARM_CALL_PAIRING_METRICS_GET                 "Main_PairingMetricsGet"               ///< Retrieves the stb's pairing metrics
 #define CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_START                 "Main_AudioCaptureStart"               ///< Sends message to xraudio to capture mic data, in specified container
 #define CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_STOP                  "Main_AudioCaptureStop"                ///< Sends message to xraudio to stop capturing mic data
@@ -83,16 +81,6 @@
 
 #define CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH                        (20) ///< Maximum length of source name string (including null termination)
 
-// Bitmask defines for setting the available value in ctrlm_main_iarm_call_control_service_settings_t
-#define CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_ASB_ENABLED                 (0x01) ///< Setting to enable/disable asb
-#define CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_OPEN_CHIME_ENABLED          (0x02) ///< Setting to enable/disable open chime
-#define CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_CLOSE_CHIME_ENABLED         (0x04) ///< Setting to enable/disable close chime
-#define CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_PRIVACY_CHIME_ENABLED       (0x08) ///< Setting to enable/disable privacy chime
-#define CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_CONVERSATIONAL_MODE         (0x10) ///< Setting for conversational mode (0-6)
-#define CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_SET_CHIME_VOLUME            (0x20) ///< Setting to set the chime volume
-#define CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_SET_IR_COMMAND_REPEATS      (0x40) ///< Setting to set the ir command repeats
-
-#define CTRLM_MIN_CONVERSATIONAL_MODE (0)
 #define CTRLM_MAX_CONVERSATIONAL_MODE (6)
 #define CTRLM_MIN_IR_COMMAND_REPEATS  (1)
 #define CTRLM_MAX_IR_COMMAND_REPEATS  (10)
@@ -429,20 +417,6 @@ typedef struct {
    unsigned char            remote_keypad_config;                               ///< OUT - The remote keypad configuration (Has Setup/NumberKeys).
    char                     source_name[CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH];     ///< OUT - The source name of the last key press.
 } ctrlm_main_iarm_call_last_key_info_t;
-
-typedef struct {
-   unsigned char                api_revision;                                   ///< The revision of this API.
-   ctrlm_iarm_call_result_t     result;                                         ///< Result of the IARM call
-   unsigned long                available;                                      ///< Bitmask indicating the settings that are available in this event
-   unsigned char                asb_supported;                                  ///< Read only Boolean value to indicate asb supported enable (non-zero) or not supported (zero) asb
-   unsigned char                asb_enabled;                                    ///< Boolean value to enable (non-zero) or disable (zero) asb
-   unsigned char                open_chime_enabled;                             ///< Boolean value to enable (non-zero) or disable (zero) open chime
-   unsigned char                close_chime_enabled;                            ///< Boolean value to enable (non-zero) or disable (zero) close chime
-   unsigned char                privacy_chime_enabled;                          ///< Boolean value to enable (non-zero) or disable (zero) privacy chime
-   unsigned char                conversational_mode;                            ///< Boolean value to set conversational mode (0-6)
-   ctrlm_chime_volume_t         chime_volume;                                   ///< The chime volume
-   unsigned char                ir_command_repeats;                             ///< The ir command repeats (1 - 10)
-} ctrlm_main_iarm_call_control_service_settings_t;
 
 typedef struct {
    unsigned char                api_revision;                                   ///< The revision of this API.

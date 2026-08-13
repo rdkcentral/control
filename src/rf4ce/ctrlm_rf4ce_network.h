@@ -304,7 +304,7 @@ public:
    void                                 short_address_get(ctrlm_hal_rf4ce_short_address_t  *short_address);
    void                                 rf_channel_info_get(ctrlm_rf4ce_rf_channel_info_t *rf_channel_info);
    bool                                 binding_config_set(ctrlm_controller_bind_config_t conf);
-   void                                 cs_values_set(const ctrlm_cs_values_t *values, bool db_load);
+   void                                 cs_values_set(const ctrlm_cs_values_t *values);
    void                                 factory_reset();
    void                                 controller_unbind(ctrlm_controller_id_t controller_id, ctrlm_unbind_reason_t reason);
    ctrlm_rf4ce_controller_type_t        controller_type_get(ctrlm_controller_id_t controller_id);

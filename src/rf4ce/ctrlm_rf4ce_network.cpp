@@ -3903,7 +3903,7 @@ void ctrlm_obj_network_rf4ce_t::req_process_network_status(void *data, int size)
    ctrlm_obj_network_t::req_process_network_status(data, size);
 }
 
-void ctrlm_obj_network_rf4ce_t::cs_values_set(const ctrlm_cs_values_t *values, bool db_load) {
+void ctrlm_obj_network_rf4ce_t::cs_values_set(const ctrlm_cs_values_t *values) {
    if(values == NULL) {
       XLOGD_ERROR("values are NULL");
       return;
@@ -3919,8 +3919,6 @@ void ctrlm_obj_network_rf4ce_t::cs_values_set(const ctrlm_cs_values_t *values, b
    }
 
    // Far Field Configuration
-   far_field_configuration_t temp = ff_configuration_;
-   
    if(values->chime_open_enable) {
       ff_configuration_.flags |= FAR_FIELD_CONFIGURATION_FLAGS_OPENING_CHIME; 
    } else {
@@ -3953,12 +3951,6 @@ void ctrlm_obj_network_rf4ce_t::cs_values_set(const ctrlm_cs_values_t *values, b
    }
 
    ff_configuration_.volume_ir_repeats = values->ir_repeats;
-
-   if(!db_load && memcmp(&temp, &ff_configuration_, sizeof(temp))) {
-      // Configuration changed
-      update_far_field_configuration();
-   }
-
 }
  
 ctrlm_rf4ce_polling_configuration_t ctrlm_obj_network_rf4ce_t::controller_polling_configuration_heartbeat_get(ctrlm_rf4ce_controller_type_t controller_type) {

@@ -240,7 +240,7 @@ public:
    virtual void         factory_reset();
    virtual bool         binding_config_set(ctrlm_controller_bind_config_t conf);
    virtual bool         discovery_config_set(ctrlm_controller_discovery_config_t conf);
-   virtual void         cs_values_set(const ctrlm_cs_values_t *values, bool db_load);
+   virtual void         cs_values_set(const ctrlm_cs_values_t *values);
    virtual void         recovery_set(ctrlm_recovery_type_t recovery);
    virtual bool         backup_hal_nvm();
    virtual void         bind_validation_begin(ctrlm_main_queue_msg_bind_validation_begin_t *dqm);

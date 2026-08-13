@@ -95,8 +95,6 @@ typedef enum {
    CTRLM_MAIN_QUEUE_MSG_TYPE_IR_REMOTE_USAGE,
    CTRLM_MAIN_QUEUE_MSG_TYPE_LAST_KEY_INFO,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STOP_BINDING_SCREEN,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_SET_VALUES,
-   CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STOP_ONE_TOUCH_AUTOBIND,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CLOSE_PAIRING_WINDOW,
    CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_BIND_STATUS_SET,
@@ -240,13 +238,6 @@ typedef struct {
    sem_t                                 *semaphore;
    ctrlm_main_status_cmd_result_t        *cmd_result;
 } ctrlm_main_queue_msg_last_key_info_t;
-
-typedef struct {
-   ctrlm_main_queue_msg_header_t                    header;
-   ctrlm_main_iarm_call_control_service_settings_t *settings;
-   sem_t *                                          semaphore;
-   ctrlm_main_status_cmd_result_t *                 cmd_result;
-} ctrlm_main_queue_msg_main_control_service_settings_t;
 
 typedef struct {
    ctrlm_main_queue_msg_header_t                        header;
@@ -421,8 +412,6 @@ gboolean ctrlm_main_iarm_call_factory_reset(ctrlm_main_iarm_call_factory_reset_t
 gboolean ctrlm_main_iarm_call_ir_remote_usage_get(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage);
 gboolean ctrlm_main_iarm_call_pairing_metrics_get(ctrlm_main_iarm_call_pairing_metrics_t *pairing_metrics);
 gboolean ctrlm_main_iarm_call_last_key_info_get(ctrlm_main_iarm_call_last_key_info_t *last_key_info);
-gboolean ctrlm_main_iarm_call_control_service_set_values(ctrlm_main_iarm_call_control_service_settings_t *settings);
-gboolean ctrlm_main_iarm_call_control_service_get_values(ctrlm_main_iarm_call_control_service_settings_t *settings);
 void     ctrlm_main_iarm_call_control_service_start_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 void     ctrlm_main_iarm_call_control_service_end_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing);
 

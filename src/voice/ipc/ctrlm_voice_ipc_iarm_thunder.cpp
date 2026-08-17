@@ -24,9 +24,12 @@
 #include "ctrlm_log.h"
 #include "ctrlm_voice_obj.h"
 #include "ctrlm_voice_ipc_request_type.h"
+#include "ctrlm_network.h"
+#include "ctrlm_utils.h"
 #include <fcntl.h>
 #include <string>
 #include <algorithm>
+#include <cctype>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -85,6 +88,23 @@
 
 static const char *voice_device_str(ctrlm_voice_device_t device);
 static const char *voice_device_status_str(uint8_t status);
+
+static bool voice_mac_addr_parse(const char *mac_addr, unsigned long long &ieee_address) {
+    if(mac_addr == NULL || strlen(mac_addr) != 17) {
+        return(false);
+    }
+    for(size_t index = 0; index < 17; index++) {
+        if((index + 1) % 3 == 0) {
+            if(mac_addr[index] != ':') {
+                return(false);
+            }
+        } else if(!isxdigit(static_cast<unsigned char>(mac_addr[index]))) {
+            return(false);
+        }
+    }
+    ieee_address = ctrlm_convert_mac_string_to_long(mac_addr);
+    return(ieee_address != 0 && ieee_address != 0xFFFFFFFFFFFFULL);
+}
 
 ctrlm_voice_ipc_iarm_thunder_t::ctrlm_voice_ipc_iarm_thunder_t(ctrlm_voice_t *obj_voice): ctrlm_voice_ipc_t(obj_voice) {
     set_api_revision(CTRLM_VOICE_IARM_BUS_API_REVISION);
@@ -557,6 +577,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_types(void *data) {
 
         int rc = json_array_append_new(obj_types, json_string("ptt_transcription"));
         rc |= json_array_append_new(obj_types, json_string("ptt_audio_file"));
+        rc |= json_array_append_new(obj_types, json_string("ptt_listen"));
 
         if(voice_obj->voice_stb_data_local_mic_get()) {
             rc |= json_array_append_new(obj_types, json_string("mic_audio_file"));
@@ -620,6 +641,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                 request_config.requires_transcription = false;
                 request_config.requires_audio_file    = false;
                 request_config.supports_named_pipe    = false;
+                request_config.controller_session     = false;
                 request_config.format                 = { .type = CTRLM_VOICE_FORMAT_PCM };
                 request_config.device                 = CTRLM_VOICE_DEVICE_PTT;
                 
@@ -630,6 +652,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                 std::string str_transcription  = "";
                 std::string str_audio_file     = "";
                 std::string str_name_of_source = "APPLICATION";
+                unsigned long long ieee_address = 0;
                 int fd = -1;
                 if(obj_type == NULL || !json_is_string(obj_type)) {
                     XLOGD_ERROR("request type parameter not present");
@@ -751,6 +774,15 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                                    }
                                 }
                             }
+                            if(request_config.controller_session) {
+                                json_t *obj_mac_addr = json_object_get(obj, "macAddr");
+                                if(obj_mac_addr != NULL) {
+                                    if(!json_is_string(obj_mac_addr) || !voice_mac_addr_parse(json_string_value(obj_mac_addr), ieee_address)) {
+                                        XLOGD_ERROR("invalid macAddr parameter.");
+                                        result = false;
+                                    }
+                                }
+                            }
                             json_t *obj_name_of_source = json_object_get(obj, "name");
                             if(obj_name_of_source != NULL) {
                                 if(!json_is_string(obj_name_of_source)) {
@@ -764,18 +796,40 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                 }
 
                 if (true == result) {
-                    ctrlm_voice_session_response_status_t voice_status = voice_obj->voice_session_req(
-                            CTRLM_MAIN_NETWORK_ID_INVALID, CTRLM_MAIN_CONTROLLER_ID_INVALID, 
-                            request_config.device, request_config.format, NULL, str_name_of_source.c_str(), "0.0.0.0", "0.0.0.0", 0.0,
-                            false, NULL, NULL, NULL, (fd >= 0) ? true : false, true, NULL, NULL,
-                            str_transcription.empty() ? NULL : str_transcription.c_str(), str_audio_file.empty() ? NULL : str_audio_file.c_str(), &request_uuid, request_config.low_latency, request_config.low_cpu_util, fd);
-                    if (voice_status != VOICE_SESSION_RESPONSE_AVAILABLE && 
-                        voice_status != VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
-                        XLOGD_ERROR("Failed opening voice session <%s>", ctrlm_voice_session_response_status_str(voice_status));
-                        if(fd >= 0) {
-                            close(fd);
+                    if(request_config.controller_session) {
+                        ctrlm_network_id_t network_id = ctrlm_network_id_get(CTRLM_NETWORK_TYPE_BLUETOOTH_LE);
+                        if(!ctrlm_network_id_is_valid(network_id)) {
+                            XLOGD_ERROR("BLE network is not available.");
+                            result = false;
+                        } else {
+                            ctrlm_voice_iarm_call_voice_session_t params = {0};
+                            params.api_revision  = CTRLM_VOICE_IARM_BUS_API_REVISION;
+                            params.network_id    = network_id;
+                            params.controller_id = CTRLM_MAIN_CONTROLLER_ID_INVALID;
+                            params.ieee_address  = ieee_address;
+                            params.result        = CTRLM_IARM_CALL_RESULT_ERROR;
+
+                            ctrlm_main_queue_msg_voice_session_t msg = {};
+                            msg.params = &params;
+                            msg.uuid   = &request_uuid;
+
+                            ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_voice_session_begin, &msg, sizeof(msg), NULL, network_id, true);
+                            result = (params.result == CTRLM_IARM_CALL_RESULT_SUCCESS);
                         }
-                        result = false;
+                    } else {
+                        ctrlm_voice_session_response_status_t voice_status = voice_obj->voice_session_req(
+                                CTRLM_MAIN_NETWORK_ID_INVALID, CTRLM_MAIN_CONTROLLER_ID_INVALID,
+                                request_config.device, request_config.format, NULL, str_name_of_source.c_str(), "0.0.0.0", "0.0.0.0", 0.0,
+                                false, NULL, NULL, NULL, (fd >= 0) ? true : false, true, NULL, NULL,
+                                str_transcription.empty() ? NULL : str_transcription.c_str(), str_audio_file.empty() ? NULL : str_audio_file.c_str(), &request_uuid, request_config.low_latency, request_config.low_cpu_util, fd);
+                        if (voice_status != VOICE_SESSION_RESPONSE_AVAILABLE &&
+                            voice_status != VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
+                            XLOGD_ERROR("Failed opening voice session <%s>", ctrlm_voice_session_response_status_str(voice_status));
+                            if(fd >= 0) {
+                                close(fd);
+                            }
+                            result = false;
+                        }
                     }
                 }
                 json_decref(obj);
@@ -972,6 +1026,18 @@ bool ctrlm_voice_ipc_request_supported_ptt_audio_file(ctrlm_voice_ipc_request_co
    config->supports_named_pipe    = true;
    config->device                 = CTRLM_VOICE_DEVICE_PTT;
    config->format                 = { .type = CTRLM_VOICE_FORMAT_PCM };
+   config->low_latency            = false;
+   config->low_cpu_util           = false;
+   return(true);
+}
+
+bool ctrlm_voice_ipc_request_supported_ptt_listen(ctrlm_voice_ipc_request_config_t *config) {
+   config->requires_transcription = false;
+   config->requires_audio_file    = false;
+   config->supports_named_pipe    = false;
+   config->controller_session     = true;
+   config->device                 = CTRLM_VOICE_DEVICE_PTT;
+   config->format                 = { .type = CTRLM_VOICE_FORMAT_INVALID };
    config->low_latency            = false;
    config->low_cpu_util           = false;
    return(true);

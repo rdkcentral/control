@@ -1366,6 +1366,12 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
         }
     }
 
+    if(uuid != NULL) {
+        uuid_copy(session->uuid, *uuid);
+        char uuid_str[37] = {'\0'};
+        uuid_unparse_lower(*uuid, uuid_str);
+        session->uuid_str = uuid_str;
+    }
     session->is_press_and_release      = this->prefs.par_voice_enabled || !press_and_hold; // 'Press and Release' is enabled or controller does not support 'Press and Hold'
     session->is_session_by_text        = is_session_by_text;
     session->transcription_in          = is_session_by_text ? l_transcription_in : "";
@@ -1460,10 +1466,24 @@ bool ctrlm_voice_t::voice_session_term(std::string &session_id) {
           return(false);
       }
 
-      if(session->ipc_common_data.session_id_server == session_id) {
+      if(session->ipc_common_data.session_id_server == session_id || session->uuid_str == session_id) {
           if(session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING || session->state_dst != CTRLM_VOICE_STATE_DST_READY) {
              // Cancel current speech router session
              XLOGD_INFO("session id <%s> src <%s> dst <%s>", session_id.c_str(), ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
+             if(session->network_type == CTRLM_NETWORK_TYPE_BLUETOOTH_LE &&
+                session->network_id != CTRLM_MAIN_NETWORK_ID_INVALID && session->controller_id != CTRLM_MAIN_CONTROLLER_ID_INVALID) {
+                ctrlm_voice_iarm_call_voice_session_t params = {0};
+                params.api_revision  = CTRLM_VOICE_IARM_BUS_API_REVISION;
+                params.network_id    = session->network_id;
+                params.controller_id = session->controller_id;
+                params.result        = CTRLM_IARM_CALL_RESULT_ERROR;
+
+                ctrlm_main_queue_msg_voice_session_t msg = {};
+                msg.params = &params;
+
+                ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_voice_session_end, &msg, sizeof(msg), NULL, session->network_id, true);
+                return(params.result == CTRLM_IARM_CALL_RESULT_SUCCESS);
+             }
              xrsr_session_terminate(voice_device_to_xrsr(session->voice_device));
              return(true);
           } else {
@@ -1489,7 +1509,7 @@ bool ctrlm_voice_t::voice_session_audio_stream_start(std::string &session_id) {
           return(false);
       }
 
-      if(session->ipc_common_data.session_id_server == session_id) {
+      if(session->ipc_common_data.session_id_server == session_id || session->uuid_str == session_id) {
          if(session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING) {
             XLOGD_WARN("session id <%s> src <%s> dst <%s> already streaming audio", session_id.c_str(), ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
             return(false);

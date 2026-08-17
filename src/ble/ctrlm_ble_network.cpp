@@ -530,14 +530,34 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
       XLOGD_FATAL("Network is not ready!");
    } else if(voice_disabled_) {
       XLOGD_WARN("BLE Voice is disabled in ControlMgr, so not starting a voice session.");
-      dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
+      dqm->params->result = (dqm->uuid == NULL) ? CTRLM_IARM_CALL_RESULT_SUCCESS : CTRLM_IARM_CALL_RESULT_ERROR_NOT_SUPPORTED;
    } else {
-      ctrlm_controller_id_t controller_id;
+      ctrlm_controller_id_t controller_id = CTRLM_HAL_CONTROLLER_ID_INVALID;
       unsigned long long ieee_address = dqm->params->ieee_address;
-      if (!getControllerId(ieee_address, &controller_id)) {
-         XLOGD_ERROR("Controller doesn't exist!");
+      if(ieee_address == 0) {
+         for(const auto &controller : controllers_) {
+            if(controller_is_bound(controller.first) && controller.second->get_connected()) {
+               if(controller_id != CTRLM_HAL_CONTROLLER_ID_INVALID) {
+                  controller_id = CTRLM_HAL_CONTROLLER_ID_INVALID;
+                  break;
+               }
+               controller_id = controller.first;
+            }
+         }
+         if(controller_id != CTRLM_HAL_CONTROLLER_ID_INVALID) {
+            ieee_address = controllers_[controller_id]->ieee_address_get().get_value();
+         }
+      } else if(!getControllerId(ieee_address, &controller_id) || !controller_is_bound(controller_id) || !controllers_[controller_id]->get_connected()) {
+         controller_id = CTRLM_HAL_CONTROLLER_ID_INVALID;
+      }
+
+      if(controller_id == CTRLM_HAL_CONTROLLER_ID_INVALID) {
+         XLOGD_ERROR("Exactly one connected paired controller must match the request.");
          dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
       } else {
+         dqm->params->network_id    = network_id_get();
+         dqm->params->controller_id = controller_id;
+         dqm->params->ieee_address  = ieee_address;
          // Currently BLE RCUs only support push-to-talk, so hardcoding here for now
          ctrlm_voice_device_t device = CTRLM_VOICE_DEVICE_PTT;
          ctrlm_voice_session_response_status_t voice_status;
@@ -575,12 +595,13 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                                                                 controllers_[controller_id]->get_model().c_str(),
                                                                 controllers_[controller_id]->get_sw_revision().to_string().c_str(),
                                                                 controllers_[controller_id]->get_hw_revision().to_string().c_str(), 0.0,
-                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport, audio_start_cb, &audio_start_params);
+                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport, audio_start_cb, &audio_start_params,
+                                                                NULL, NULL, dqm->uuid);
          if (!controllers_[controller_id]->get_capabilities().has_capability(ctrlm_controller_capabilities_t::capability::PAR) && (VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE == voice_status)) {
             XLOGD_WARN("PAR voice is enabled but not supported by BLE controller treating as normal voice session");
             voice_status = VOICE_SESSION_RESPONSE_AVAILABLE;
          }
-         if (VOICE_SESSION_RESPONSE_AVAILABLE != voice_status) {
+         if (VOICE_SESSION_RESPONSE_AVAILABLE != voice_status && VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE != voice_status) {
             XLOGD_TELEMETRY("Failed opening voice session in ctrlm_voice_t, error = <%d>", voice_status);
          } else {
             int  fd = -1;
@@ -655,16 +676,23 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_end(void *data, int size
    } else if(voice_disabled_) {
       dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
    } else {
-      ctrlm_controller_id_t controller_id;
+      ctrlm_controller_id_t controller_id = dqm->params->controller_id;
       unsigned long long ieee_address = dqm->params->ieee_address;
 
-      if (!getControllerId(ieee_address, &controller_id)) {
+      if(controller_id != CTRLM_MAIN_CONTROLLER_ID_INVALID && controller_exists(controller_id)) {
+         ieee_address = controllers_[controller_id]->ieee_address_get().get_value();
+      } else if(!getControllerId(ieee_address, &controller_id)) {
+         controller_id = CTRLM_MAIN_CONTROLLER_ID_INVALID;
+      }
+
+      if(controller_id == CTRLM_MAIN_CONTROLLER_ID_INVALID) {
          XLOGD_ERROR("Controller doesn't exist!");
          dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      } else {
-         if (end_voice_session_for_controller(dqm->params->ieee_address, CTRLM_VOICE_SESSION_END_REASON_DONE)) {
-            dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         }
+      } else if(end_voice_session_for_controller(ieee_address, CTRLM_VOICE_SESSION_END_REASON_DONE)) {
+         dqm->params->network_id    = network_id_get();
+         dqm->params->controller_id = controller_id;
+         dqm->params->ieee_address  = ieee_address;
+         dqm->params->result        = CTRLM_IARM_CALL_RESULT_SUCCESS;
       }
    }
    if(dqm->semaphore) {

@@ -86,6 +86,7 @@ typedef struct {
    ctrlm_main_queue_msg_header_t             header;
    ctrlm_voice_iarm_call_voice_session_t    *params;
    sem_t *                                   semaphore;
+   const uuid_t *                            uuid;
 } ctrlm_main_queue_msg_voice_session_t;
 
 typedef struct {

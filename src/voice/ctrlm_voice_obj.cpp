@@ -1204,6 +1204,25 @@ void ctrlm_voice_t::voice_session_controller_command_status_read_timeout(void) {
    }
 }
 
+bool ctrlm_voice_t::voice_session_controller_request(unsigned long long ieee_address, const uuid_t *uuid) {
+    ctrlm_network_id_t network_id = ctrlm_network_id_get(CTRLM_NETWORK_TYPE_BLUETOOTH_LE);
+    if(!ctrlm_network_id_is_valid(network_id)) {
+        XLOGD_ERROR("BLE network is not available.");
+        return(false);
+    }
+
+    ctrlm_iarm_call_result_t result = CTRLM_IARM_CALL_RESULT_ERROR;
+    ctrlm_main_queue_msg_voice_session_t msg = {};
+    msg.network_id    = network_id;
+    msg.controller_id = CTRLM_MAIN_CONTROLLER_ID_INVALID;
+    msg.ieee_address  = ieee_address;
+    msg.result        = &result;
+    msg.uuid          = uuid;
+
+    ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_voice_session_begin, &msg, sizeof(msg), NULL, network_id, true);
+    return(result == CTRLM_IARM_CALL_RESULT_SUCCESS);
+}
+
 ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, 
                                                                        ctrlm_voice_device_t device_type, ctrlm_voice_format_t format,
                                                                        voice_session_req_stream_params *stream_params,
@@ -1472,17 +1491,14 @@ bool ctrlm_voice_t::voice_session_term(std::string &session_id) {
              XLOGD_INFO("session id <%s> src <%s> dst <%s>", session_id.c_str(), ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
              if(session->network_type == CTRLM_NETWORK_TYPE_BLUETOOTH_LE &&
                 session->network_id != CTRLM_MAIN_NETWORK_ID_INVALID && session->controller_id != CTRLM_MAIN_CONTROLLER_ID_INVALID) {
-                ctrlm_voice_iarm_call_voice_session_t params = {0};
-                params.api_revision  = CTRLM_VOICE_IARM_BUS_API_REVISION;
-                params.network_id    = session->network_id;
-                params.controller_id = session->controller_id;
-                params.result        = CTRLM_IARM_CALL_RESULT_ERROR;
-
+                ctrlm_iarm_call_result_t result = CTRLM_IARM_CALL_RESULT_ERROR;
                 ctrlm_main_queue_msg_voice_session_t msg = {};
-                msg.params = &params;
+                msg.network_id    = session->network_id;
+                msg.controller_id = session->controller_id;
+                msg.result        = &result;
 
                 ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_voice_session_end, &msg, sizeof(msg), NULL, session->network_id, true);
-                return(params.result == CTRLM_IARM_CALL_RESULT_SUCCESS);
+                return(result == CTRLM_IARM_CALL_RESULT_SUCCESS);
              }
              xrsr_session_terminate(voice_device_to_xrsr(session->voice_device));
              return(true);

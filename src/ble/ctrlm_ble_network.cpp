@@ -524,16 +524,16 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_voice_session_t));
 
-   dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR;
+   *dqm->result = CTRLM_IARM_CALL_RESULT_ERROR;
 
    if(!ready_) {
       XLOGD_FATAL("Network is not ready!");
    } else if(voice_disabled_) {
       XLOGD_WARN("BLE Voice is disabled in ControlMgr, so not starting a voice session.");
-      dqm->params->result = (dqm->uuid == NULL) ? CTRLM_IARM_CALL_RESULT_SUCCESS : CTRLM_IARM_CALL_RESULT_ERROR_NOT_SUPPORTED;
+      *dqm->result = (dqm->uuid == NULL) ? CTRLM_IARM_CALL_RESULT_SUCCESS : CTRLM_IARM_CALL_RESULT_ERROR_NOT_SUPPORTED;
    } else {
       ctrlm_controller_id_t controller_id = CTRLM_HAL_CONTROLLER_ID_INVALID;
-      unsigned long long ieee_address = dqm->params->ieee_address;
+      unsigned long long ieee_address = dqm->ieee_address;
       if(ieee_address == 0) {
          for(const auto &controller : controllers_) {
             if(controller_is_bound(controller.first) && controller.second->get_connected()) {
@@ -553,11 +553,11 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
 
       if(controller_id == CTRLM_HAL_CONTROLLER_ID_INVALID) {
          XLOGD_ERROR("Exactly one connected paired controller must match the request.");
-         dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
+         *dqm->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
       } else {
-         dqm->params->network_id    = network_id_get();
-         dqm->params->controller_id = controller_id;
-         dqm->params->ieee_address  = ieee_address;
+         dqm->network_id    = network_id_get();
+         dqm->controller_id = controller_id;
+         dqm->ieee_address  = ieee_address;
          // Currently BLE RCUs only support push-to-talk, so hardcoding here for now
          ctrlm_voice_device_t device = CTRLM_VOICE_DEVICE_PTT;
          ctrlm_voice_session_response_status_t voice_status;
@@ -625,13 +625,10 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                XLOGD_TELEMETRY("Failed to start voice streaming, ending voice session...");
                end_voice_session_for_controller(ieee_address, CTRLM_VOICE_SESSION_END_REASON_OTHER_ERROR);
             } else {
-               dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
+               *dqm->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
             }
          }
       }
-   }
-   if(dqm->semaphore) {
-      sem_post(dqm->semaphore);
    }
 }
 
@@ -669,15 +666,15 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_end(void *data, int size
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_voice_session_t));
 
-   dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR;
+   *dqm->result = CTRLM_IARM_CALL_RESULT_ERROR;
 
    if (!ready_) {
       XLOGD_FATAL("Network is not ready!");
    } else if(voice_disabled_) {
-      dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
+      *dqm->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
    } else {
-      ctrlm_controller_id_t controller_id = dqm->params->controller_id;
-      unsigned long long ieee_address = dqm->params->ieee_address;
+      ctrlm_controller_id_t controller_id = dqm->controller_id;
+      unsigned long long ieee_address = dqm->ieee_address;
 
       if(controller_id != CTRLM_MAIN_CONTROLLER_ID_INVALID && controller_exists(controller_id)) {
          ieee_address = controllers_[controller_id]->ieee_address_get().get_value();
@@ -687,16 +684,13 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_end(void *data, int size
 
       if(controller_id == CTRLM_MAIN_CONTROLLER_ID_INVALID) {
          XLOGD_ERROR("Controller doesn't exist!");
-         dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
+         *dqm->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
       } else if(end_voice_session_for_controller(ieee_address, CTRLM_VOICE_SESSION_END_REASON_DONE)) {
-         dqm->params->network_id    = network_id_get();
-         dqm->params->controller_id = controller_id;
-         dqm->params->ieee_address  = ieee_address;
-         dqm->params->result        = CTRLM_IARM_CALL_RESULT_SUCCESS;
+         dqm->network_id    = network_id_get();
+         dqm->controller_id = controller_id;
+         dqm->ieee_address  = ieee_address;
+         *dqm->result        = CTRLM_IARM_CALL_RESULT_SUCCESS;
       }
-   }
-   if(dqm->semaphore) {
-      sem_post(dqm->semaphore);
    }
 }
 
@@ -2441,13 +2435,14 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
             XLOGD_AUTOMATION_INFO("CODE_VOICE_KEY button PRESSED event for device: %s", controller->ieee_address_get().to_string().c_str());
             XLOGD_INFO("------------------------------------------------------------------------");
 
-            ctrlm_voice_iarm_call_voice_session_t v_params;
-            v_params.ieee_address = dqm->ieee_address;
-
+            ctrlm_iarm_call_result_t result;
             ctrlm_main_queue_msg_voice_session_t msg;
             errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
             ERR_CHK(safec_rc);
-            msg.params = &v_params;
+            msg.network_id    = network_id_get();
+            msg.controller_id = controller_id;
+            msg.ieee_address  = dqm->ieee_address;
+            msg.result        = &result;
 
             req_process_voice_session_begin(&msg, sizeof(msg));
          }

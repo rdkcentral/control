@@ -42,8 +42,6 @@ static IARM_Result_t ctrlm_main_iarm_call_last_key_info_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_control_service_set_values(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_control_service_get_values(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_pairing_metrics_get(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_voice_session_begin(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_voice_session_end(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_audio_capture_start(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_audio_capture_stop(void *arg);
 
@@ -66,8 +64,6 @@ ctrlm_iarm_call_t ctrlm_iarm_calls[] = {
    {CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_SET_VALUES,         ctrlm_main_iarm_call_control_service_set_values         },
    {CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_GET_VALUES,         ctrlm_main_iarm_call_control_service_get_values         },
    {CTRLM_MAIN_IARM_CALL_PAIRING_METRICS_GET,                ctrlm_main_iarm_call_pairing_metrics_get                },
-   {CTRLM_VOICE_IARM_CALL_SESSION_BEGIN,                     ctrlm_main_iarm_call_voice_session_begin                },
-   {CTRLM_VOICE_IARM_CALL_SESSION_END,                       ctrlm_main_iarm_call_voice_session_end                  },
    {CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_START,                ctrlm_main_iarm_call_audio_capture_start                },
    {CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_STOP,                 ctrlm_main_iarm_call_audio_capture_stop                 },
 };
@@ -421,87 +417,5 @@ IARM_Result_t ctrlm_main_iarm_call_pairing_metrics_get(void *arg) {
    if(!ctrlm_main_iarm_call_pairing_metrics_get(pairing_metrics)) {
       pairing_metrics->result = CTRLM_IARM_CALL_RESULT_ERROR;
    }
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_voice_session_begin(void *arg) {
-   ctrlm_voice_iarm_call_voice_session_t *params = (ctrlm_voice_iarm_call_voice_session_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(params == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(params->network_id == CTRLM_MAIN_NETWORK_ID_ALL) {
-      XLOGD_ERROR("Cannot begin voice session for multiple networks");
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-
-   XLOGD_INFO("params->network_id = <%d>", params->network_id);
-
-   // Signal completion of the operation
-   sem_t semaphore;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_voice_session_t msg;
-   errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
-   ERR_CHK(safec_rc);
-
-   sem_init(&semaphore, 0, 0);
-
-   msg.params            = params;
-   msg.params->result    = CTRLM_IARM_CALL_RESULT_ERROR;
-   msg.semaphore         = &semaphore;
-
-   ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_voice_session_begin, &msg, sizeof(msg), NULL, params->network_id);
-
-   // Wait for the result semaphore to be signaled
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_voice_session_end(void *arg) {
-   ctrlm_voice_iarm_call_voice_session_t *params = (ctrlm_voice_iarm_call_voice_session_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(params == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(params->network_id == CTRLM_MAIN_NETWORK_ID_ALL) {
-      XLOGD_ERROR("Cannot end voice session for multiple networks");
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-
-   XLOGD_INFO("params->network_id = <%d>", params->network_id);
-
-   // Signal completion of the operation
-   sem_t semaphore;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_voice_session_t msg;
-   errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
-   ERR_CHK(safec_rc);
-
-   sem_init(&semaphore, 0, 0);
-
-   msg.params            = params;
-   msg.params->result    = CTRLM_IARM_CALL_RESULT_ERROR;
-   msg.semaphore         = &semaphore;
-
-   ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_voice_session_end, &msg, sizeof(msg), NULL, params->network_id);
-
-   // Wait for the result semaphore to be signaled
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
    return(IARM_RESULT_SUCCESS);
 }

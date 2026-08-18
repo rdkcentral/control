@@ -24,7 +24,6 @@
 #include "ctrlm_log.h"
 #include "ctrlm_voice_obj.h"
 #include "ctrlm_voice_ipc_request_type.h"
-#include "ctrlm_network.h"
 #include "ctrlm_utils.h"
 #include <fcntl.h>
 #include <string>
@@ -779,25 +778,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
 
                 if (true == result) {
                     if(request_config.controller_session) {
-                        ctrlm_network_id_t network_id = ctrlm_network_id_get(CTRLM_NETWORK_TYPE_BLUETOOTH_LE);
-                        if(!ctrlm_network_id_is_valid(network_id)) {
-                            XLOGD_ERROR("BLE network is not available.");
-                            result = false;
-                        } else {
-                            ctrlm_voice_iarm_call_voice_session_t params = {0};
-                            params.api_revision  = CTRLM_VOICE_IARM_BUS_API_REVISION;
-                            params.network_id    = network_id;
-                            params.controller_id = CTRLM_MAIN_CONTROLLER_ID_INVALID;
-                            params.ieee_address  = ieee_address;
-                            params.result        = CTRLM_IARM_CALL_RESULT_ERROR;
-
-                            ctrlm_main_queue_msg_voice_session_t msg = {};
-                            msg.params = &params;
-                            msg.uuid   = &request_uuid;
-
-                            ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_voice_session_begin, &msg, sizeof(msg), NULL, network_id, true);
-                            result = (params.result == CTRLM_IARM_CALL_RESULT_SUCCESS);
-                        }
+                        result = voice_obj->voice_session_controller_request(ieee_address, &request_uuid);
                     } else {
                         ctrlm_voice_session_response_status_t voice_status = voice_obj->voice_session_req(
                                 CTRLM_MAIN_NETWORK_ID_INVALID, CTRLM_MAIN_CONTROLLER_ID_INVALID,

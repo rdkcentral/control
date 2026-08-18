@@ -21,6 +21,7 @@
 #include "ctrlm_ble_rcu_interface.h"
 #include "ctrlm_ble_utils.h"
 #include "ctrlm_voice_obj.h"
+#include <time.h>
 
 
 #define CTRLM_BLE_KEY_MSG_QUEUE_MSG_MAX         (10)
@@ -29,6 +30,8 @@
 #define KEY_INPUT_DEVICE_BASE_DIR    "/dev/input/"
 #define KEY_INPUT_DEVICE_BASE_FILE   "event"
 
+// Overall bound for a caller waiting on a sendRcuAction() reply (e.g. factory reset).
+#define CTRLM_BLE_RCU_ACTION_REPLY_TIMEOUT_SEC   (5)
 
 using namespace std;
 
@@ -40,6 +43,38 @@ static void FindRcuInputDevices(ctrlm_ble_rcu_interface_t *metadata,
                                 std::map <BleAddress, int> &rcuKeypressFds, 
                                 fd_set &rfds, 
                                 int &nfds);
+
+namespace {
+
+// Heap-owned (not caller-stack) so a reply that arrives after the bounded wait below
+// gives up can still complete safely without touching an already-returned stack frame.
+struct BleRcuBoundedReply {
+    sem_t semaphore;
+    bool  semaphore_valid = false;
+    bool  success = false;
+    ~BleRcuBoundedReply() { if (semaphore_valid) { sem_destroy(&semaphore); } }
+};
+
+std::shared_ptr<BleRcuBoundedReply> ble_rcu_bounded_reply_create(bool initSemaphore = true)
+{
+    auto result = std::make_shared<BleRcuBoundedReply>();
+    if (initSemaphore) {
+        sem_init(&result->semaphore, 0, 0);
+        result->semaphore_valid = true;
+    }
+    return result;
+}
+
+// Waits up to timeoutSec for the semaphore to be posted. Returns false on timeout.
+bool ble_rcu_bounded_reply_wait(const std::shared_ptr<BleRcuBoundedReply> &result, int timeoutSec)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_sec += timeoutSec;
+    return (sem_timedwait(&result->semaphore, &ts) == 0);
+}
+
+} // namespace
 
 
 
@@ -779,32 +814,30 @@ bool ctrlm_ble_rcu_interface_t::unpairDevice(uint64_t ieee_address)
 
 bool ctrlm_ble_rcu_interface_t::findMe(uint64_t ieee_address, ctrlm_fmr_alarm_level_t level)
 {
-    // This method will wait for the operation to complete, so init a semaphore
-    sem_t semaphore;
-    
-    bool success = false;
+    BleAddress address(ieee_address);
+
+    // Bounded so a stalled GATT teardown can't hang the caller forever.
+    auto result = ble_rcu_bounded_reply_create();
 
     // lambda invoked when the request returns
-    auto replyHandler = [this, &semaphore, &success](PendingReply<> *reply) mutable
+    auto replyHandler = [result](PendingReply<> *reply) mutable
         {
             // check for errors (only for logging)
             if (reply->isError()) {
                 XLOGD_ERROR("findMe failed due to <%s>", reply->errorMessage().c_str());
-                success = false;
+                result->success = false;
             } else {
                 XLOGD_DEBUG("findMe succeeded");
-                success = true;
+                result->success = true;
             }
-            sem_post(&semaphore);
+            sem_post(&result->semaphore);
         };
 
 
-    BleAddress address(ieee_address);
     XLOGD_INFO("triggering \"find me\" operation on remote %s", address.toString().c_str());
     if (m_controller) {
         const auto device = m_controller->managedDevice(address);
         if (device) {
-            sem_init(&semaphore, 0, 0);
             device->findMe((uint8_t)level, PendingReply<>(m_isAlive, replyHandler));
         } else {
             return false;
@@ -814,34 +847,34 @@ bool ctrlm_ble_rcu_interface_t::findMe(uint64_t ieee_address, ctrlm_fmr_alarm_le
     }
 
     // Wait for the result semaphore to be signaled
-    sem_wait(&semaphore);
-    sem_destroy(&semaphore);
+    if (!ble_rcu_bounded_reply_wait(result, CTRLM_BLE_RCU_ACTION_REPLY_TIMEOUT_SEC)) {
+        XLOGD_ERROR("timed out waiting for findMe reply on remote %s", address.toString().c_str());
+        return false;
+    }
 
-    return success;
+    return result->success;
 }
 
 bool ctrlm_ble_rcu_interface_t::sendRcuAction(uint64_t ieee_address, ctrlm_ble_RcuAction_t action, bool waitForReply)
 {
-    // This method will wait for the operation to complete, so init a semaphore
-    sem_t semaphore;
-
-    bool success = false;
-
     BleAddress address(ieee_address);
 
+    // Bounded so a stalled GATT teardown can't hang the caller forever.
+    auto result = ble_rcu_bounded_reply_create(waitForReply);
+
     // lambda invoked when the request returns
-    auto replyHandler = [this, &semaphore, &success, waitForReply, action, address](PendingReply<> *reply) mutable
+    auto replyHandler = [result, waitForReply, action, address](PendingReply<> *reply) mutable
         {
             // check for errors (only for logging)
             if (reply->isError()) {
                 XLOGD_ERROR("sendRcuAction failed due to <%s>", reply->errorMessage().c_str());
-                success = false;
+                result->success = false;
             } else {
-                XLOGD_INFO("RCU action %s successfully sent to remote %s", 
+                XLOGD_INFO("RCU action %s successfully sent to remote %s",
                         ctrlm_ble_rcu_action_str(action), address.toString().c_str());
-                success = true;
+                result->success = true;
             }
-            if (waitForReply) { sem_post(&semaphore); }
+            if (waitForReply) { sem_post(&result->semaphore); }
         };
 
 
@@ -852,8 +885,6 @@ bool ctrlm_ble_rcu_interface_t::sendRcuAction(uint64_t ieee_address, ctrlm_ble_R
     if (m_controller) {
         const auto device = m_controller->managedDevice(address);
         if (device) {
-            if (waitForReply) { sem_init(&semaphore, 0, 0); }
-            success = true;
             device->sendRcuAction((uint8_t)action, PendingReply<>(m_isAlive, replyHandler));
         } else {
             return false;
@@ -862,13 +893,19 @@ bool ctrlm_ble_rcu_interface_t::sendRcuAction(uint64_t ieee_address, ctrlm_ble_R
         return false;
     }
 
-    // Wait for the result semaphore to be signaled
-    if (waitForReply) { 
-        sem_wait(&semaphore);
-        sem_destroy(&semaphore);
+    if (!waitForReply) {
+        return true;
     }
 
-    return success;
+    // Wait for the result semaphore to be signaled, bounded so a stuck GATT teardown
+    // can't hang the caller forever.
+    if (!ble_rcu_bounded_reply_wait(result, CTRLM_BLE_RCU_ACTION_REPLY_TIMEOUT_SEC)) {
+        XLOGD_ERROR("timed out waiting for RCU action %s reply on remote %s",
+                ctrlm_ble_rcu_action_str(action), address.toString().c_str());
+        return false;
+    }
+
+    return result->success;
 }
 
 bool ctrlm_ble_rcu_interface_t::writeAdvertisingConfig(uint64_t ieee_address, 
@@ -876,26 +913,24 @@ bool ctrlm_ble_rcu_interface_t::writeAdvertisingConfig(uint64_t ieee_address,
                                                        int *customList,
                                                        int customListSize)
 {
-    // This method will wait for the operation to complete, so init a semaphore
-    sem_t semaphore;
-    
-    bool success = false;
-    
     BleAddress address(ieee_address);
 
+    // Bounded so a stalled GATT teardown can't hang the caller forever.
+    auto result = ble_rcu_bounded_reply_create();
+
     // lambda invoked when the request returns
-    auto replyHandler = [this, &semaphore, &success, address](PendingReply<> *reply) mutable
+    auto replyHandler = [result, address](PendingReply<> *reply) mutable
         {
             // check for errors (only for logging)
             if (reply->isError()) {
                 XLOGD_ERROR("%s: writeAdvertisingConfig failed due to <%s>", 
                         address.toString().c_str(), reply->errorMessage().c_str());
-                success = false;
+                result->success = false;
             } else {
                 XLOGD_INFO("successfully wrote RCU advertising config on remote %s", address.toString().c_str());
-                success = true;
+                result->success = true;
             }
-            sem_post(&semaphore);
+            sem_post(&result->semaphore);
         };
 
 
@@ -904,8 +939,6 @@ bool ctrlm_ble_rcu_interface_t::writeAdvertisingConfig(uint64_t ieee_address,
     if (m_controller) {
         const auto device = m_controller->managedDevice(address);
         if (device) {
-
-            sem_init(&semaphore, 0, 0);
 
             vector<uint8_t> listConverted;
             if (config == CTRLM_RCU_WAKEUP_CONFIG_CUSTOM && customList != NULL) {
@@ -916,13 +949,19 @@ bool ctrlm_ble_rcu_interface_t::writeAdvertisingConfig(uint64_t ieee_address,
             }
             device->writeAdvertisingConfig((uint8_t)config, listConverted, PendingReply<>(m_isAlive, replyHandler));
 
-
-            // Wait for the result semaphore to be signaled
-            sem_wait(&semaphore);
-            sem_destroy(&semaphore);
+            // Wait for the result semaphore to be signaled, bounded so a stuck GATT teardown
+            // can't hang the caller forever.
+            if (!ble_rcu_bounded_reply_wait(result, CTRLM_BLE_RCU_ACTION_REPLY_TIMEOUT_SEC)) {
+                XLOGD_ERROR("timed out waiting for writeAdvertisingConfig reply on remote %s", address.toString().c_str());
+                return false;
+            }
+        } else {
+            return false;
         }
+    } else {
+        return false;
     }
-    return success;
+    return result->success;
 }
 
 

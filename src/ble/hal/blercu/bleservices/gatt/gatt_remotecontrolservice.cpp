@@ -219,6 +219,14 @@ void GattRemoteControlService::onEnteredState(int state)
     if (state == IdleState) {
         m_stateMachine.cancelDelayedEvents(RetryStartNotifyEvent);
 
+        // The characteristic proxies below are about to be torn down; release any caller
+        // still waiting on a pending write (e.g. factory reset) or it will hang forever.
+        if (m_promiseResults) {
+            m_promiseResults->setError("Service entered Idle state");
+            m_promiseResults->finish();
+            m_promiseResults.reset();
+        }
+
         if (m_unpairReasonCharacteristic) {
             XLOGD_INFO("Disabling notifications for m_unpairReasonCharacteristic");
             m_unpairReasonCharacteristic->disableNotifications();
@@ -366,6 +374,7 @@ void GattRemoteControlService::sendRcuAction(uint8_t action, PendingReply<> &&re
     if (m_promiseResults) {
         reply.setError("Request already in progress");
         reply.finish();
+        return;
     }
 
 

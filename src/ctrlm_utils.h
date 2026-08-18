@@ -229,6 +229,7 @@ bool        ctrlm_is_voice_assistant(ctrlm_rcu_controller_type_t controller_type
 ctrlm_remote_keypad_config ctrlm_get_remote_keypad_config(const char *remote_type);
 
 unsigned long long ctrlm_convert_mac_string_to_long (const char* ascii_mac);
+bool               ctrlm_validate_mac_addr_string   (const char *mac_addr, unsigned long long &ieee_address);
 std::string        ctrlm_convert_mac_long_to_string (const unsigned long long ieee_address);
 
 bool        ctrlm_archive_extract(const std::string &file_path_archive, const std::string &tmp_dir_path, const std::string &archive_file_name);

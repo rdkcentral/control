@@ -29,7 +29,6 @@
 #include <fcntl.h>
 #include <string>
 #include <algorithm>
-#include <cctype>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -88,23 +87,6 @@
 
 static const char *voice_device_str(ctrlm_voice_device_t device);
 static const char *voice_device_status_str(uint8_t status);
-
-static bool voice_mac_addr_parse(const char *mac_addr, unsigned long long &ieee_address) {
-    if(mac_addr == NULL || strlen(mac_addr) != 17) {
-        return(false);
-    }
-    for(size_t index = 0; index < 17; index++) {
-        if((index + 1) % 3 == 0) {
-            if(mac_addr[index] != ':') {
-                return(false);
-            }
-        } else if(!isxdigit(static_cast<unsigned char>(mac_addr[index]))) {
-            return(false);
-        }
-    }
-    ieee_address = ctrlm_convert_mac_string_to_long(mac_addr);
-    return(ieee_address != 0 && ieee_address != 0xFFFFFFFFFFFFULL);
-}
 
 ctrlm_voice_ipc_iarm_thunder_t::ctrlm_voice_ipc_iarm_thunder_t(ctrlm_voice_t *obj_voice): ctrlm_voice_ipc_t(obj_voice) {
     set_api_revision(CTRLM_VOICE_IARM_BUS_API_REVISION);
@@ -777,7 +759,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                             if(request_config.controller_session) {
                                 json_t *obj_mac_addr = json_object_get(obj, "macAddr");
                                 if(obj_mac_addr != NULL) {
-                                    if(!json_is_string(obj_mac_addr) || !voice_mac_addr_parse(json_string_value(obj_mac_addr), ieee_address)) {
+                                    if(!json_is_string(obj_mac_addr) || !ctrlm_validate_mac_addr_string(json_string_value(obj_mac_addr), ieee_address)) {
                                         XLOGD_ERROR("invalid macAddr parameter.");
                                         result = false;
                                     }

@@ -169,7 +169,7 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
     // TEMPORARY: hardcode all voice server URLs used by ctrlm, overriding any configured/RFC/settings values.
     // ctrlm selects the protocol handler by scheme prefix: "vrngs" -> secure ws_nextgen (vrex), translated
     // internally to "wss". A raw "wss" prefix is not recognized and is rejected as "unsupported url".
-    static const char *CTRLM_VOICE_HARDCODED_URL = "vrngs://voice-np-eks-ue2i.vrexcore.net/qa20/vrex/speech";
+    static const char *CTRLM_VOICE_HARDCODED_URL = "vrngs://voice-na-wuw.vrex.comcast.net/vrex/speech/websocket";
     this->prefs.server_url_src_ptt     = CTRLM_VOICE_HARDCODED_URL;
     this->prefs.server_url_src_ff      = CTRLM_VOICE_HARDCODED_URL;
     this->prefs.server_url_src_mic_tap = CTRLM_VOICE_HARDCODED_URL;

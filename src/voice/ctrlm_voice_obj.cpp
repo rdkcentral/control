@@ -1490,6 +1490,7 @@ bool ctrlm_voice_t::voice_session_term(std::string &session_id) {
              // Cancel current speech router session
              XLOGD_INFO("session id <%s> src <%s> dst <%s>", session_id.c_str(), ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
              if(session->network_type == CTRLM_NETWORK_TYPE_BLUETOOTH_LE &&
+                session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING &&
                 session->network_id != CTRLM_MAIN_NETWORK_ID_INVALID && session->controller_id != CTRLM_MAIN_CONTROLLER_ID_INVALID) {
                 ctrlm_iarm_call_result_t result = CTRLM_IARM_CALL_RESULT_ERROR;
                 ctrlm_main_queue_msg_voice_session_t msg = {};

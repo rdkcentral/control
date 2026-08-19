@@ -574,8 +574,8 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             XLOGD_WARN("voice iarm settings is not the correct length, throwing away!");
         } else if(voice_settings != NULL) {
             this->voice_configure(voice_settings, true); // We want to write this to the database now, as this now writes to the new style DB
-            free(voice_settings);
         }
+        ctrlm_db_free((guchar *)voice_settings);
     }
 
     this->set_audio_mode(&audio_settings);

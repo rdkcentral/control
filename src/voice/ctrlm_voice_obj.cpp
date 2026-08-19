@@ -1204,7 +1204,7 @@ void ctrlm_voice_t::voice_session_controller_command_status_read_timeout(void) {
    }
 }
 
-bool ctrlm_voice_t::voice_session_controller_request(unsigned long long ieee_address, const uuid_t *uuid) {
+bool ctrlm_voice_t::voice_session_controller_request(unsigned long long ieee_address, uint32_t audio_duration, const uuid_t *uuid) {
     ctrlm_network_id_t network_id = ctrlm_network_id_get(CTRLM_NETWORK_TYPE_BLUETOOTH_LE);
     if(!ctrlm_network_id_is_valid(network_id)) {
         XLOGD_ERROR("BLE network is not available.");
@@ -1213,11 +1213,12 @@ bool ctrlm_voice_t::voice_session_controller_request(unsigned long long ieee_add
 
     ctrlm_iarm_call_result_t result = CTRLM_IARM_CALL_RESULT_ERROR;
     ctrlm_main_queue_msg_voice_session_t msg = {};
-    msg.network_id    = network_id;
-    msg.controller_id = CTRLM_MAIN_CONTROLLER_ID_INVALID;
-    msg.ieee_address  = ieee_address;
-    msg.result        = &result;
-    msg.uuid          = uuid;
+    msg.network_id     = network_id;
+    msg.controller_id  = CTRLM_MAIN_CONTROLLER_ID_INVALID;
+    msg.ieee_address   = ieee_address;
+    msg.audio_duration = audio_duration;
+    msg.result         = &result;
+    msg.uuid           = uuid;
 
     ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_voice_session_begin, &msg, sizeof(msg), NULL, network_id, true);
     return(result == CTRLM_IARM_CALL_RESULT_SUCCESS);

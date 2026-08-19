@@ -87,6 +87,7 @@ typedef struct {
    ctrlm_network_id_t            network_id;
    ctrlm_controller_id_t         controller_id;
    unsigned long long            ieee_address;
+   uint32_t                      audio_duration;
    ctrlm_iarm_call_result_t *    result;
    const uuid_t *                uuid;
 } ctrlm_main_queue_msg_voice_session_t;

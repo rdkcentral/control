@@ -586,9 +586,10 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
          }
 
          ctrlm_voice_start_audio_params_t audio_start_params;
-         audio_start_params.m_controller_id = controller_id;
-         audio_start_params.m_fd            = -1;
-         audio_start_params.m_started       = false;
+         audio_start_params.m_controller_id  = controller_id;
+         audio_start_params.m_fd             = -1;
+         audio_start_params.m_audio_duration = dqm->audio_duration;
+         audio_start_params.m_started        = false;
          auto audio_start_cb = std::bind(&ctrlm_obj_network_ble_t::start_controller_audio_streaming, this, std::placeholders::_1);
 
          voice_status = ctrlm_get_voice_obj()->voice_session_req(network_id_get(), controller_id, device, voice_format, NULL,
@@ -2911,12 +2912,12 @@ void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start
     ctrlm_hal_ble_VoiceStreamEnd_t streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_KEY_UP;
     auto rcu = controllers_.at(id);
 
-    if (!rcu->getPressAndHoldSupport()) { // if the voice session is "Press and Release" then end stream on audio duration instead of key up event
+    if (!rcu->getPressAndHoldSupport() || params->m_audio_duration > 0) { // End the stream on audio duration for "Press and Release" sessions or when a maximum duration was requested
        streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION;
     }
 
     uint64_t ieee_address = rcu->ieee_address_get().get_value();
-    if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd)) {
+    if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd, params->m_audio_duration)) {
        XLOGD_ERROR("failed to start audio streaming on remote");
        return;
     }

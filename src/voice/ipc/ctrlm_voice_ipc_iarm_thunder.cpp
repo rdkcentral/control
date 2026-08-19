@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <string>
 #include <algorithm>
+#include <limits>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -634,6 +635,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                 std::string str_audio_file     = "";
                 std::string str_name_of_source = "APPLICATION";
                 unsigned long long ieee_address = 0;
+                uint32_t audio_duration = 0;
                 int fd = -1;
                 if(obj_type == NULL || !json_is_string(obj_type)) {
                     XLOGD_ERROR("request type parameter not present");
@@ -763,6 +765,21 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                                         result = false;
                                     }
                                 }
+                                json_t *obj_audio_duration = json_object_get(obj, "audioDuration");
+                                if(obj_audio_duration != NULL) {
+                                    if(!json_is_integer(obj_audio_duration)) {
+                                        XLOGD_ERROR("invalid audioDuration parameter.");
+                                        result = false;
+                                    } else {
+                                        json_int_t value = json_integer_value(obj_audio_duration);
+                                        if(value <= 0 || value > static_cast<json_int_t>(std::numeric_limits<uint32_t>::max())) {
+                                            XLOGD_ERROR("invalid audioDuration parameter.");
+                                            result = false;
+                                        } else {
+                                            audio_duration = static_cast<uint32_t>(value);
+                                        }
+                                    }
+                                }
                             }
                             json_t *obj_name_of_source = json_object_get(obj, "name");
                             if(obj_name_of_source != NULL) {
@@ -778,7 +795,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
 
                 if (true == result) {
                     if(request_config.controller_session) {
-                        result = voice_obj->voice_session_controller_request(ieee_address, &request_uuid);
+                        result = voice_obj->voice_session_controller_request(ieee_address, audio_duration, &request_uuid);
                     } else {
                         ctrlm_voice_session_response_status_t voice_status = voice_obj->voice_session_req(
                                 CTRLM_MAIN_NETWORK_ID_INVALID, CTRLM_MAIN_CONTROLLER_ID_INVALID,

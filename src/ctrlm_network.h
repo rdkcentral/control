@@ -163,7 +163,8 @@ typedef struct {
 } ctrlm_main_queue_msg_network_fw_upgrade_t;
 
 typedef struct {
-   sem_t                *semaphore;
+   gint                  ref_count;
+   sem_t                 semaphore;
    ctrlm_hal_req_term_t  term;
    GThread              *hal_thread;
 } ctrlm_network_term_hal_t;

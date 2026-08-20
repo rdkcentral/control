@@ -46,6 +46,15 @@ public:
      */
     void get_edid(std::vector<uint8_t> &edid);
 
+    /**
+     * Calls DisplaySettings.setAudioDucking on the SPEAKER0 audio port.
+     * @param action  true to start ducking, false to stop
+     * @param type    true for relative ducking, false for absolute
+     * @param level   Volume level 0-100
+     * @return true on success
+     */
+    bool set_audio_ducking(bool action, bool type, unsigned char level);
+
 public:
     /**
      * This function is technically used internally but from static function. This is used to handle hotplug events.

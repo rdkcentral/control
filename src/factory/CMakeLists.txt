@@ -46,7 +46,7 @@ target_sources(ctrlm-fta PRIVATE
    iarm/ctrlmf_iarm_control_manager.cpp
 )
 
-target_link_libraries(ctrlm-fta c rdkversion dbus-1 glib-2.0 IARMBus xr-voice-sdk pthread nopoll secure_wrapper ds)
+target_link_libraries(ctrlm-fta c rdkversion dbus-1 glib-2.0 IARMBus xr-voice-sdk pthread nopoll secure_wrapper)
 target_link_libraries(controlFactory c ctrlm-fta secure_wrapper)
 
 if(AUTH_ENABLED)
@@ -61,19 +61,20 @@ if(THUNDER)
       thunder/ctrlmf_thunder_controller.cpp
       thunder/ctrlmf_thunder_plugin.cpp
       thunder/ctrlmf_thunder_plugin_system_audio_player.cpp
+      thunder/ctrlmf_thunder_plugin_display_settings.cpp
    )
 
-   target_link_libraries(controlFactory WPEFrameworkCore WPEFrameworkPlugins)
+   target_link_libraries(ctrlm-fta WPEFrameworkCore WPEFrameworkPlugins)
    if(WPE_FRAMEWORK_COM_SOCKET)
-      target_link_libraries(controlFactory WPEFrameworkCOM WPEFrameworkWebSocket)
+      target_link_libraries(ctrlm-fta WPEFrameworkCOM WPEFrameworkWebSocket)
    endif()
    if(WPE_FRAMEWORK_PROTO_TRACING)
-      target_link_libraries(controlFactory WPEFrameworkProtocols WPEFrameworkTracing)
+      target_link_libraries(ctrlm-fta WPEFrameworkProtocols WPEFrameworkTracing)
    endif()
 
    if(THUNDER_SECURITY)
       add_compile_definitions(PRIVATE THUNDER_SECURITY)
-      target_link_libraries(controlFactory WPEFrameworkSecurityUtil secure_wrapper)
+      target_link_libraries(ctrlm-fta WPEFrameworkSecurityUtil secure_wrapper)
    endif()
 endif()
 

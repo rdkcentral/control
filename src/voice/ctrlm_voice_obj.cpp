@@ -3731,8 +3731,11 @@ void ctrlm_voice_t::voice_update_privacy() {
          return;
      }
 
-     // Refresh ctrlm/DB privacy state from the VSDK after route/input updates.
-     const bool privacy_vsdk  = this->vsdk_is_privacy_enabled();
+     bool privacy_vsdk = true;
+     if(!xrsr_privacy_mode_get(&privacy_vsdk)) {
+         XLOGD_ERROR("error getting privacy mode, leaving ctrlm privacy unchanged");
+         return;
+     }
      const bool privacy_ctrlm = this->voice_is_privacy_enabled();
      if(privacy_vsdk != privacy_ctrlm) {
          privacy_vsdk ? this->voice_privacy_enable(false) : this->voice_privacy_disable(false);

@@ -21,6 +21,7 @@
 #define _CTRLM_RF4CE_NETWORK_H_
 
 #include <string>
+#include <array>
 #include <map>
 #include <vector>
 #include <semaphore.h>
@@ -348,7 +349,7 @@ public:
    void req_process_controller_status(void *dqm, int size);
    void req_process_controller_product_name(void *data, int size);
    void req_process_network_status(void *data, int size);
-   void req_process_controller_link_key(void *data, int size);
+
    void req_process_dpi_control(void *data, int size);
    void req_process_polling_action_push(void *data, int size);
    virtual ctrlm_controller_status_cmd_result_t  req_process_reverse_cmd(ctrlm_main_queue_msg_rcu_reverse_cmd_t *dqm);
@@ -660,5 +661,10 @@ private:
    static ctrlm_hal_result_t hal_rf4ce_decrypt_callback(ctrlm_hal_rf4ce_decrypt_params_t* param);
 #endif
    void                  controller_init_uinput(ctrlm_controller_id_t controller_id);
+
+   void                  info_file_write(unsigned long long controller_ieee, const unsigned char *key);
+   void                  info_file_delete(unsigned long long controller_ieee);
+   void                  info_file_consolidation();
 };
+
 #endif

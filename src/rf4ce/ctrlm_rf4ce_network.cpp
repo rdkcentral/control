@@ -38,6 +38,10 @@
 #include <limits.h>
 #include <errno.h>
 #include <sys/sysinfo.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <dirent.h>
 #include "ctrlm.h"
 #include "ctrlm_log.h"
 #include "ctrlm_utils.h"
@@ -54,6 +58,15 @@
 #include <zlib.h>
 #include "ctrlm_voice_obj.h"
 #include "comcastIrKeyCodes.h"
+
+#define CTRLM_RF4CE_CONTROLLER_INFO_LIB_DIR  "/opt/secure/lib"
+#define CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR "/opt/secure/lib/rf4ce"
+
+static void rf4ce_ieee_to_str(unsigned long long ieee, char *buf, size_t buf_size) {
+   snprintf(buf, buf_size, "%02llX:%02llX:%02llX:%02llX:%02llX:%02llX:%02llX:%02llX",
+            (ieee >> 56) & 0xFF, (ieee >> 48) & 0xFF, (ieee >> 40) & 0xFF, (ieee >> 32) & 0xFF,
+            (ieee >> 24) & 0xFF, (ieee >> 16) & 0xFF, (ieee >>  8) & 0xFF,  ieee        & 0xFF);
+}
 
 #if (JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_PASS > 7) || (JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_PASS < 1)
 #error RF4CE AUTOBIND PASS THRESHOLD IS OUT OF RANGE
@@ -501,6 +514,7 @@ void ctrlm_obj_network_rf4ce_t::controller_unbind(ctrlm_controller_id_t controll
    }
    // Telemetry needs to keep track of unbinding.  
    controllers_[controller_id]->log_unbinding_for_telemetry();
+   info_file_delete(controllers_[controller_id]->ieee_address_get().get_value());
    // Remove the controller from the controller list and delete the DB entry
    controller_remove(controller_id, true);
 
@@ -933,6 +947,9 @@ void ctrlm_obj_network_rf4ce_t::hal_init_complete() {
          controller_stats_update(it->first);
          controller_init_uinput(it->first);
       }
+
+      // Consolidate the info files
+      info_file_consolidation();
 
       // Free the memory associated with the request
       ctrlm_hal_free(list);
@@ -1798,39 +1815,6 @@ void ctrlm_obj_network_rf4ce_t::req_process_controller_product_name(void *data, 
    ctrlm_obj_network_t::req_process_controller_product_name(data, size);
 }
 
-void ctrlm_obj_network_rf4ce_t::req_process_controller_link_key(void *data, int size) {
-   THREAD_ID_VALIDATE();
-   ctrlm_main_queue_msg_controller_link_key_t *dqm = (ctrlm_main_queue_msg_controller_link_key_t *)data;
-
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_controller_link_key_t));
-   g_assert(dqm->cmd_result);
-
-   ctrlm_hal_network_property_encryption_key_t property = {0};
-
-   if(!controller_exists(dqm->controller_id)) {
-      XLOGD_WARN("Controller %u NOT present.", dqm->controller_id);
-      *dqm->cmd_result = CTRLM_CONTROLLER_STATUS_REQUEST_ERROR;
-      ctrlm_obj_network_t::req_process_controller_link_key(data, size);
-      return;
-   }
-
-   XLOGD_INFO("Getting Link Key for Controller %u", dqm->controller_id);
-
-   // Get Link key
-   property.controller_id = dqm->controller_id;
-   if(CTRLM_HAL_RESULT_SUCCESS != property_get(CTRLM_HAL_NETWORK_PROPERTY_ENCRYPTION_KEY, (void **)&property)) {
-      XLOGD_ERROR("Failed to get Link Key from HAL");
-      *dqm->cmd_result = CTRLM_CONTROLLER_STATUS_REQUEST_ERROR;
-      ctrlm_obj_network_t::req_process_controller_link_key(data, size);
-      return;
-   }
-
-   errno_t safec_rc = memcpy_s(dqm->link_key, CTRLM_HAL_NETWORK_AES128_KEY_SIZE, property.aes128_key, CTRLM_HAL_NETWORK_AES128_KEY_SIZE);
-   ERR_CHK(safec_rc);
-   *dqm->cmd_result = CTRLM_CONTROLLER_STATUS_REQUEST_SUCCESS;
-   ctrlm_obj_network_t::req_process_controller_link_key(data, size);
-}
 
 ctrlm_rib_request_cmd_result_t ctrlm_obj_network_rf4ce_t::req_process_rib_export(ctrlm_controller_id_t controller_id, uint8_t identifier, unsigned char index, unsigned char length, unsigned char *data) {
    THREAD_ID_VALIDATE();
@@ -4830,6 +4814,161 @@ void ctrlm_obj_network_rf4ce_t::controller_init_uinput(ctrlm_controller_id_t con
    if(!controllers_[controller_id]->init_uinput_writer()) {
       XLOGD_ERROR("Failed to initialize a uinput device for controller %d", controller_id);
       return;
+   }
+}
+
+void ctrlm_obj_network_rf4ce_t::info_file_write(unsigned long long controller_ieee, const unsigned char *key) {
+   char network_mac[32];
+   char controller_mac[32];
+   char network_dir[128];
+   char controller_dir[160];
+   char file_path[192];
+
+   rf4ce_ieee_to_str(ieee_address_,    network_mac,    sizeof(network_mac));
+   rf4ce_ieee_to_str(controller_ieee, controller_mac, sizeof(controller_mac));
+   snprintf(network_dir,    sizeof(network_dir),    "%s/%s",    CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, network_mac);
+   snprintf(controller_dir, sizeof(controller_dir), "%s/%s",    network_dir, controller_mac);
+   snprintf(file_path,      sizeof(file_path),      "%s/info", controller_dir);
+
+   XLOGD_INFO("Creating info file <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path);
+
+   errno = 0;
+   if(mkdir(CTRLM_RF4CE_CONTROLLER_INFO_LIB_DIR, 0700) != 0 && errno != EEXIST) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create lib dir <%s> error <%s>", CTRLM_RF4CE_CONTROLLER_INFO_LIB_DIR, strerror(errsv));
+      return;
+   }
+   if(mkdir(CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, 0700) != 0 && errno != EEXIST) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create base dir <%s> error <%s>", CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, strerror(errsv));
+      return;
+   }
+   if(mkdir(network_dir, 0700) != 0 && errno != EEXIST) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create network dir <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : network_dir, strerror(errsv));
+      return;
+   }
+   if(mkdir(controller_dir, 0700) != 0 && errno != EEXIST) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create controller dir <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : controller_dir, strerror(errsv));
+      return;
+   }
+   
+   errno = 0;
+   int fd = open(file_path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+   if(fd < 0) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create info file <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path, strerror(errsv));
+      return;
+   }
+   FILE *f = fdopen(fd, "w");
+   if(f == NULL) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create info file stream <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path, strerror(errsv));
+      close(fd);
+      return;
+   }
+
+   fprintf(f, "[ControllerKey]\nKey=");
+   for(int i = 0; i < CTRLM_HAL_NETWORK_AES128_KEY_SIZE; i++) {
+      fprintf(f, "%02X", key[i]);
+   }
+   fprintf(f, "\n");
+   fclose(f);
+}
+
+void ctrlm_obj_network_rf4ce_t::info_file_delete(unsigned long long controller_ieee) {
+   char network_mac[32];
+   char controller_mac[32];
+   char network_dir[128];
+   char controller_dir[160];
+   char file_path[192];
+
+   rf4ce_ieee_to_str(ieee_address_,   network_mac,    sizeof(network_mac));
+   rf4ce_ieee_to_str(controller_ieee, controller_mac, sizeof(controller_mac));
+   snprintf(network_dir,    sizeof(network_dir),    "%s/%s",    CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, network_mac);
+   snprintf(controller_dir, sizeof(controller_dir), "%s/%s",    network_dir, controller_mac);
+   snprintf(file_path,      sizeof(file_path),      "%s/info", controller_dir);
+
+   XLOGD_INFO("Deleting info file <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path);
+
+   errno = 0;
+   if(unlink(file_path) != 0 && errno != ENOENT) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to delete info file <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path, strerror(errsv));
+   }
+   if(rmdir(controller_dir) != 0 && errno != ENOENT) {
+      int errsv = errno;
+      XLOGD_WARN("Failed to remove controller dir <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : controller_dir, strerror(errsv));
+   }
+   rmdir(network_dir);
+}
+
+void ctrlm_obj_network_rf4ce_t::info_file_consolidation(void) {
+   char network_mac[32];
+   char network_dir[128];
+   rf4ce_ieee_to_str(ieee_address_, network_mac, sizeof(network_mac));
+   snprintf(network_dir, sizeof(network_dir), "%s/%s", CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, network_mac);
+
+   XLOGD_INFO("Consolidating info files");
+
+   // Track which bound controllers already have a valid info file
+   std::set<unsigned long long> found_on_disk;
+
+   // Iterate over the directories in the network dir
+   DIR *dir = opendir(network_dir);
+   if(dir == NULL) {
+      XLOGD_WARN("unable to open network dir <%s>", ctrlm_is_pii_mask_enabled() ? "***" : network_dir);
+   } else {
+      struct dirent *entry;
+      while((entry = readdir(dir)) != NULL) {
+         if(entry->d_name[0] == '.') {
+            continue;
+         }
+
+         // Parse the controller MAC string back to a 64-bit value
+         unsigned int b[8] = {0};
+         if(sscanf(entry->d_name, "%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X",
+                   &b[0], &b[1], &b[2], &b[3], &b[4], &b[5], &b[6], &b[7]) != 8) {
+            XLOGD_WARN("Unexpected entry in network dir: <%s>, skipping", ctrlm_is_pii_mask_enabled() ? "***" : entry->d_name);
+            continue;
+         }
+         unsigned long long controller_ieee = ((unsigned long long)b[0] << 56) | ((unsigned long long)b[1] << 48) |
+                                              ((unsigned long long)b[2] << 40) | ((unsigned long long)b[3] << 32) |
+                                              ((unsigned long long)b[4] << 24) | ((unsigned long long)b[5] << 16) |
+                                              ((unsigned long long)b[6] <<  8) |  (unsigned long long)b[7];
+         
+         for(map<ctrlm_controller_id_t, ctrlm_obj_controller_rf4ce_t *>::iterator it = controllers_.begin(); it != controllers_.end(); it++) {
+            if(it->second->ieee_address_get().get_value() == controller_ieee) {
+               // Matching controller exists
+               found_on_disk.insert(controller_ieee);
+               break;
+            }
+         }
+
+         // Remove info file if no matching bound controller exists
+         if(found_on_disk.find(controller_ieee) == found_on_disk.end()) {
+            XLOGD_INFO("Removing stale info file for controller <%s>", ctrlm_is_pii_mask_enabled() ? "***" : entry->d_name);
+            info_file_delete(controller_ieee);
+         }
+      }
+      closedir(dir);
+   }
+
+   // Add info files for any bound controllers not found on disk
+   for(map<ctrlm_controller_id_t, ctrlm_obj_controller_rf4ce_t *>::iterator it = controllers_.begin(); it != controllers_.end(); it++) {
+      unsigned long long controller_ieee = it->second->ieee_address_get().get_value();
+      if(found_on_disk.find(controller_ieee) == found_on_disk.end()) {
+         XLOGD_INFO("Adding missing info file for controller 0x%016llX", ctrlm_is_pii_mask_enabled() ? 0 : controller_ieee);
+
+         ctrlm_hal_network_property_encryption_key_t key_prop = {0};
+         key_prop.controller_id = it->first;
+         if(CTRLM_HAL_RESULT_SUCCESS != property_get(CTRLM_HAL_NETWORK_PROPERTY_ENCRYPTION_KEY, (void **)&key_prop)) {
+            XLOGD_ERROR("Failed to get link key from HAL");
+         }
+
+         info_file_write(controller_ieee, key_prop.aes128_key);
+      }
    }
 }
 

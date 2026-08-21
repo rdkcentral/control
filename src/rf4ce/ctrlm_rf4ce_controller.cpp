@@ -1035,6 +1035,7 @@ void ctrlm_obj_controller_rf4ce_t::validation_result_set(ctrlm_rcu_binding_type_
       validation_type_  = validation_type;
       db_create();
       db_store();
+
       // possible duplicate pairing
       needs_reset_ = false;
       did_reset_   = false;

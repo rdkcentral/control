@@ -641,15 +641,15 @@ public:
     void                  voice_session_set_active(ctrlm_voice_device_t device);
     void                  voice_session_set_inactive(ctrlm_voice_device_t device);
 
-    bool                  voice_is_privacy_enabled(void);
-    void                  voice_privacy_enable(bool update_vsdk);
-    void                  voice_privacy_disable(bool update_vsdk);
-
     void                  voice_device_update_set_active(void);
     void                  voice_device_update_set_inactive(void);
 
     void                  voice_device_enable(ctrlm_voice_device_t device, bool db_update, bool *update_routes);
     void                  voice_device_disable(ctrlm_voice_device_t device, bool db_update, bool *update_routes);
+    bool                  voice_is_privacy_enabled(void);
+    void                  voice_privacy_enable(bool update_vsdk);
+    void                  voice_privacy_disable(bool update_vsdk);
+    void                  voice_update_privacy();
 
     protected:
     // STB Data

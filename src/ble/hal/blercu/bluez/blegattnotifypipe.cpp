@@ -220,7 +220,7 @@ void BleGattNotifyPipe::shutdown()
         }
     }
     ThreadJoin(&m_notifyThread, 2);
-    
+
     if (FD_SIGNAL(m_exitEventFds) > -1) {
         close(FD_SIGNAL(m_exitEventFds));
     }
@@ -343,17 +343,14 @@ void *NotifyThread(void *data)
 
     } while (running && *isAlive);
 
-    if (*isAlive == false) {
-        XLOGD_ERROR("BleGattNotifyPipe object has been destroyed before thread exited.  Suspect something went wrong, exiting...");
-    
-    } else {
+    if (*isAlive) {
         notifyPipe->m_notifyThread.running.store(false);
+    }
 
-        if (!running) {
-            XLOGD_INFO("BLE notification pipe thread exited gracefully.");
-        } else {
-            XLOGD_ERROR("BLE notification pipe thread exited unexpectedly, suspect an error occurred...");
-        }
+    if (!running) {
+        XLOGD_INFO("BLE notification pipe thread exited gracefully.");
+    } else {
+        XLOGD_ERROR("BLE notification pipe thread exited unexpectedly, suspect an error occurred...");
     }
 
     return NULL;

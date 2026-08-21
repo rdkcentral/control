@@ -28,14 +28,10 @@
 
 #define CTRLM_MAIN_IARM_CALL_STATUS_GET                          "Main_StatusGet"                       ///< Retrieves Control Manager's Status information
 #define CTRLM_MAIN_IARM_CALL_NETWORK_STATUS_GET                  "Main_NetworkStatusGet"                ///< Retrieves the network's Status information
-#define CTRLM_MAIN_IARM_CALL_PROPERTY_SET                        "Main_PropertySet"                     ///< Sets a property of the Control Manager
 #define CTRLM_MAIN_IARM_CALL_FACTORY_RESET                       "Main_FactoryReset"                    ///< Sets the configuration back to factory default
-#define CTRLM_MAIN_IARM_CALL_CONTROLLER_UNBIND                   "Main_ControllerUnbind"                ///< Removes a binding between the target and the specified controller
 #define CTRLM_MAIN_IARM_CALL_IR_REMOTE_USAGE_GET                 "Main_IrRemoteUsageGet"                ///< Retrieves the ir remote usage info
 #define CTRLM_MAIN_IARM_CALL_LAST_KEY_INFO_GET                   "Main_LastKeyInfoGet"                  ///< Retrieves the last key info
 #define CTRLM_MAIN_IARM_CALL_LAST_KEYPRESS_GET                   "Main_LastKeyPressGet"                 ///< Retrieves the last key press (TODO: replace CTRLM_MAIN_IARM_CALL_LAST_KEY_INFO_GET with this)
-#define CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_SET_VALUES          "Main_ControlService_SetValues"        ///< IARM Call to set control service values
-#define CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_GET_VALUES          "Main_ControlService_GetValues"        ///< IARM Call to get control service values
 #define CTRLM_MAIN_IARM_CALL_PAIRING_METRICS_GET                 "Main_PairingMetricsGet"               ///< Retrieves the stb's pairing metrics
 #define CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_START                 "Main_AudioCaptureStart"               ///< Sends message to xraudio to capture mic data, in specified container
 #define CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_STOP                  "Main_AudioCaptureStop"                ///< Sends message to xraudio to stop capturing mic data
@@ -80,28 +76,11 @@
 #define CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND_VALUE_MIN           (5000) ///< Minimum active period (in ms) for screen bind.
 #define CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND_VALUE_MAX         (600000) ///< Maximum active period (in ms) for screen bind.
 
-#define CTRLM_PROPERTY_VALIDATION_TIMEOUT_MIN                  (1000) ///< Validation timeout value minimum (in ms)
-#define CTRLM_PROPERTY_VALIDATION_TIMEOUT_MAX                 (45000) ///< Validation timeout value maximum (in ms)
-#define CTRLM_PROPERTY_VALIDATION_MAX_ATTEMPTS_MAX               (20) ///< Maximum number of validation attempts
-
-#define CTRLM_PROPERTY_CONFIGURATION_TIMEOUT_MIN               (1000) ///< Configuration timeout value minimum (in ms)
-#define CTRLM_PROPERTY_CONFIGURATION_TIMEOUT_MAX              (60000) ///< Configuration timeout value maximum (in ms)
-
 #define CTRLM_AUTOBIND_THRESHOLD_MIN                              (1) ///< Autobind threshold minimum value
 #define CTRLM_AUTOBIND_THRESHOLD_MAX                              (7) ///< Autobind threshold maximum value
 
 #define CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH                        (20) ///< Maximum length of source name string (including null termination)
 
-// Bitmask defines for setting the available value in ctrlm_main_iarm_call_control_service_settings_t
-#define CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_ASB_ENABLED                 (0x01) ///< Setting to enable/disable asb
-#define CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_OPEN_CHIME_ENABLED          (0x02) ///< Setting to enable/disable open chime
-#define CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_CLOSE_CHIME_ENABLED         (0x04) ///< Setting to enable/disable close chime
-#define CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_PRIVACY_CHIME_ENABLED       (0x08) ///< Setting to enable/disable privacy chime
-#define CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_CONVERSATIONAL_MODE         (0x10) ///< Setting for conversational mode (0-6)
-#define CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_SET_CHIME_VOLUME            (0x20) ///< Setting to set the chime volume
-#define CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_SET_IR_COMMAND_REPEATS      (0x40) ///< Setting to set the ir command repeats
-
-#define CTRLM_MIN_CONVERSATIONAL_MODE (0)
 #define CTRLM_MAX_CONVERSATIONAL_MODE (6)
 #define CTRLM_MIN_IR_COMMAND_REPEATS  (1)
 #define CTRLM_MAX_IR_COMMAND_REPEATS  (10)
@@ -140,26 +119,6 @@ typedef enum {
    CTRLM_IARM_CALL_RESULT_ERROR_NOT_SUPPORTED     = 5, ///< The requested operation is not supported
    CTRLM_IARM_CALL_RESULT_INVALID                 = 6, ///< Invalid call result value
 } ctrlm_iarm_call_result_t;
-
-typedef enum {
-   CTRLM_PROPERTY_BINDING_BUTTON_ACTIVE            =  0, ///< (RO) Boolean value indicating whether a front panel button was recently pressed (1) or not (0).
-   CTRLM_PROPERTY_BINDING_SCREEN_ACTIVE            =  1, ///< (RW) Boolean value indicating whether the 'Pairing Description Screen' is being displayed (1) or not (0).
-   CTRLM_PROPERTY_BINDING_LINE_OF_SIGHT_ACTIVE     =  2, ///< (RO) Boolean value indicating whether the STB has received the Line of Sight remote command and is within the active period.
-   CTRLM_PROPERTY_AUTOBIND_LINE_OF_SIGHT_ACTIVE    =  3, ///< (RO) Boolean value indicating that the STB has received the Autobind Line of Sight remote code and is within the active period.
-   CTRLM_PROPERTY_ACTIVE_PERIOD_BUTTON             =  4, ///< (RW) Active period (in ms) for button binding.
-   CTRLM_PROPERTY_ACTIVE_PERIOD_LINE_OF_SIGHT      =  5, ///< (RW) Active period (in ms) for line of sight.
-   CTRLM_PROPERTY_VALIDATION_TIMEOUT_INITIAL       =  6, ///< (RW) Timeout value (in ms) used for the start of the validation period.
-   CTRLM_PROPERTY_VALIDATION_TIMEOUT_DURING        =  7, ///< (RW) Timeout value (in ms) used during the validation period.
-   CTRLM_PROPERTY_CONFIGURATION_TIMEOUT            =  8, ///< (RW) Timeout value (in ms) used during the configuration period.
-   CTRLM_PROPERTY_VALIDATION_MAX_ATTEMPTS          =  9, ///< (RW) Maximum number of validation attempts.
-   CTRLM_PROPERTY_ACTIVE_PERIOD_SCREENBIND         = 10, ///< (RW) Active period (in ms) for screenbind.
-   CTRLM_PROPERTY_ACTIVE_PERIOD_ONE_TOUCH_AUTOBIND = 11, ///< (RW) Active period (in ms) for one-touch autobind.
-   CTRLM_PROPERTY_REMOTE_REVERSE_CMD_ACTIVE        = 12, ///< (RW) Boolean value indicating whether the 'Remote Reverse Command' feature is enabled (1) or not (0).
-   CTRLM_PROPERTY_MAC_POLLING_INTERVAL             = 13, ///< (RW) MAC polling polling interval, in milliseconds.
-   CTRLM_PROPERTY_RCU_REVERSE_CMD_TIMEOUT          = 14, ///< (RW) Find My Remote RC response timeout, Factor of CTRLM_PROPERTY_MAC_POLLING_INTERVAL, min 2
-   CTRLM_PROPERTY_AUTO_ACK                         = 15, ///< (RW) Boolean value indicating whether the 'Automatic Packet Acknowledgment' feature is enabled (1) or not (0).
-   CTRLM_PROPERTY_MAX                              = 16, ///< (NA) Maximum property enumeration value.
-} ctrlm_property_t;
 
 typedef enum {
    CTRLM_MAIN_IARM_EVENT_BINDING_BUTTON             =  0, ///< Generated when a state change of the binding button status occurs
@@ -408,21 +367,6 @@ typedef struct {
 } ctrlm_main_iarm_call_network_status_t;
 
 typedef struct {
-   unsigned char            api_revision; ///< Revision of this API
-   ctrlm_iarm_call_result_t result;       ///< Result of the operation
-   ctrlm_network_id_t       network_id;   ///< IN - identifier of network or CTRLM_MAIN_NETWORK_ID_ALL for all networks
-   ctrlm_property_t         name;         ///< Property name on which this call will operate
-   unsigned long            value;        ///< Value for this property
-} ctrlm_main_iarm_call_property_t;
-
-typedef struct {
-   unsigned char            api_revision;                           ///< Revision of this API
-   ctrlm_iarm_call_result_t result;                                 ///< Result of the IARM call
-   ctrlm_network_id_t       network_id;                             ///< IN - identifier of network on which the controller is bound
-   ctrlm_controller_id_t    controller_id;                          ///< IN - identifier of the controller
-} ctrlm_main_iarm_call_controller_unbind_t;
-
-typedef struct {
    unsigned char api_revision; ///< Revision of this API
    unsigned char active;       ///< Indicates that the binding button status is active (1) or not active (0)
 } ctrlm_main_iarm_event_binding_button_t;
@@ -473,20 +417,6 @@ typedef struct {
    unsigned char            remote_keypad_config;                               ///< OUT - The remote keypad configuration (Has Setup/NumberKeys).
    char                     source_name[CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH];     ///< OUT - The source name of the last key press.
 } ctrlm_main_iarm_call_last_key_info_t;
-
-typedef struct {
-   unsigned char                api_revision;                                   ///< The revision of this API.
-   ctrlm_iarm_call_result_t     result;                                         ///< Result of the IARM call
-   unsigned long                available;                                      ///< Bitmask indicating the settings that are available in this event
-   unsigned char                asb_supported;                                  ///< Read only Boolean value to indicate asb supported enable (non-zero) or not supported (zero) asb
-   unsigned char                asb_enabled;                                    ///< Boolean value to enable (non-zero) or disable (zero) asb
-   unsigned char                open_chime_enabled;                             ///< Boolean value to enable (non-zero) or disable (zero) open chime
-   unsigned char                close_chime_enabled;                            ///< Boolean value to enable (non-zero) or disable (zero) close chime
-   unsigned char                privacy_chime_enabled;                          ///< Boolean value to enable (non-zero) or disable (zero) privacy chime
-   unsigned char                conversational_mode;                            ///< Boolean value to set conversational mode (0-6)
-   ctrlm_chime_volume_t         chime_volume;                                   ///< The chime volume
-   unsigned char                ir_command_repeats;                             ///< The ir command repeats (1 - 10)
-} ctrlm_main_iarm_call_control_service_settings_t;
 
 typedef struct {
    unsigned char                api_revision;                                   ///< The revision of this API.

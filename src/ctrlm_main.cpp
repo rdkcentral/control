@@ -352,7 +352,6 @@ static gboolean ctrlm_unix_signal_terminate(gpointer user_data);
 
 static void     ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *status);
 static void     ctrlm_main_iarm_call_factory_reset_(ctrlm_main_iarm_call_factory_reset_t *reset);
-static void     ctrlm_main_iarm_call_controller_unbind_(ctrlm_main_iarm_call_controller_unbind_t *unbind);
 static void     ctrlm_main_update_export_controller_list(void);
 static void     ctrlm_main_iarm_call_ir_remote_usage_get_(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage);
 static void     ctrlm_main_iarm_call_pairing_metrics_get_(ctrlm_main_iarm_call_pairing_metrics_t *pairing_metrics);
@@ -2510,17 +2509,6 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
             break;
          }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROLLER_UNBIND: {
-            ctrlm_main_queue_msg_main_controller_unbind_t *dqm = (ctrlm_main_queue_msg_main_controller_unbind_t *) msg;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROLLER_UNBIND");
-            ctrlm_main_iarm_call_controller_unbind_(dqm->unbind);
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_IR_LINE_OF_SIGHT: {
             // Cancel active line of sight timer (if active)
             ctrlm_timeout_destroy(&g_ctrlm.line_of_sight_timeout_tag);
@@ -2767,110 +2755,6 @@ gpointer ctrlm_main_thread(gpointer param) {
             if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
                // Signal the semaphore to indicate that the result is present
                *dqm->cmd_result = (result ? CTRLM_CONTROLLER_STATUS_REQUEST_SUCCESS : CTRLM_CONTROLLER_STATUS_REQUEST_ERROR);
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_SET_VALUES: {
-            ctrlm_main_queue_msg_main_control_service_settings_t *dqm = (ctrlm_main_queue_msg_main_control_service_settings_t *) msg;
-            ctrlm_main_iarm_call_control_service_settings_t *settings = dqm->settings;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_SET_VALUES");
-
-            if(settings->available & CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_ASB_ENABLED) {
-               if(ctrlm_is_rf4ce_asb_supported()) {
-                  // Write new asb_enabled flag to NVM
-                  ctrlm_db_asb_enabled_write(&settings->asb_enabled, CTRLM_ASB_ENABLED_LEN); 
-                  g_ctrlm.cs_values.asb_enable = settings->asb_enabled;
-                  XLOGD_INFO("ASB Enabled Set Values <%s>", g_ctrlm.cs_values.asb_enable ? "true" : "false");
-               } else {
-                  XLOGD_INFO("ASB Enabled Set Values <false>, ASB Not Supported");
-               }
-            }
-            if(settings->available & CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_OPEN_CHIME_ENABLED) {
-               // Write new open_chime_enabled flag to NVM
-               ctrlm_db_open_chime_enabled_write(&settings->open_chime_enabled, CTRLM_OPEN_CHIME_ENABLED_LEN);
-               g_ctrlm.cs_values.chime_open_enable = settings->open_chime_enabled;
-               XLOGD_INFO("Open Chime Enabled <%s>", settings->open_chime_enabled ? "true" : "false");
-            }
-            if(settings->available & CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_CLOSE_CHIME_ENABLED) {
-               // Write new close_chime_enabled flag to NVM
-               ctrlm_db_close_chime_enabled_write(&settings->close_chime_enabled, CTRLM_CLOSE_CHIME_ENABLED_LEN); 
-               g_ctrlm.cs_values.chime_close_enable = settings->close_chime_enabled;
-               XLOGD_INFO("Close Chime Enabled <%s>", settings->close_chime_enabled ? "true" : "false");
-            }
-            if(settings->available & CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_PRIVACY_CHIME_ENABLED) {
-               // Write new privacy_chime_enabled flag to NVM
-               ctrlm_db_privacy_chime_enabled_write(&settings->privacy_chime_enabled, CTRLM_PRIVACY_CHIME_ENABLED_LEN); 
-               g_ctrlm.cs_values.chime_privacy_enable = settings->privacy_chime_enabled;
-               XLOGD_INFO("Privacy Chime Enabled <%s>", settings->privacy_chime_enabled ? "true" : "false");
-            }
-            if(settings->available & CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_CONVERSATIONAL_MODE) {
-               if(settings->conversational_mode > CTRLM_MAX_CONVERSATIONAL_MODE) {
-                  XLOGD_WARN("Conversational Mode Invalid <%d>.  Ignoring.", settings->conversational_mode);
-               } else {
-                  // Write new conversational mode to NVM
-                  ctrlm_db_conversational_mode_write((guchar *)&settings->conversational_mode, CTRLM_CONVERSATIONAL_MODE_LEN); 
-                  g_ctrlm.cs_values.conversational_mode = settings->conversational_mode;
-                  XLOGD_INFO("Conversational Mode Set <%d>", settings->conversational_mode);
-               }
-            }
-            if(settings->available & CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_SET_CHIME_VOLUME) {
-               if(settings->chime_volume >= CTRLM_CHIME_VOLUME_INVALID) {
-                  XLOGD_WARN("Chime Volume Invalid <%d>.  Ignoring.", settings->chime_volume);
-               } else {
-                  // Write new chime_volume to NVM
-                  ctrlm_db_chime_volume_write((guchar *)&settings->chime_volume, CTRLM_CHIME_VOLUME_LEN); 
-                  g_ctrlm.cs_values.chime_volume = settings->chime_volume;
-                  XLOGD_INFO("Chime Volume Set <%d>", settings->chime_volume);
-               }
-            }
-            if(settings->available & CTRLM_MAIN_CONTROL_SERVICE_SETTINGS_SET_IR_COMMAND_REPEATS) {
-               if((settings->ir_command_repeats < CTRLM_MIN_IR_COMMAND_REPEATS) || (settings->ir_command_repeats > CTRLM_MAX_IR_COMMAND_REPEATS)) {
-                  XLOGD_WARN("IR command repeats Invalid <%d>.  Ignoring.", settings->ir_command_repeats);
-               } else {
-                  // Write new ir_command_repeats to NVM
-                  ctrlm_db_ir_command_repeats_write(&settings->ir_command_repeats, CTRLM_IR_COMMAND_REPEATS_LEN); 
-                  g_ctrlm.cs_values.ir_repeats = settings->ir_command_repeats;
-                  XLOGD_INFO("IR Command Repeats Set <%d>", settings->ir_command_repeats);
-               }
-            }
-
-            // Set these values in the networks
-            for(auto const &itr : g_ctrlm.networks) {
-               itr.second->cs_values_set(&g_ctrlm.cs_values, false);
-            }
-
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-               sem_post(dqm->semaphore);
-            }
-            break;
-         }
-         case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES: {
-            ctrlm_main_queue_msg_main_control_service_settings_t *dqm = (ctrlm_main_queue_msg_main_control_service_settings_t *) msg;
-            ctrlm_main_iarm_call_control_service_settings_t *settings = dqm->settings;
-            XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES");
-            if(ctrlm_is_rf4ce_asb_supported()) {
-               settings->asb_supported = true;
-            } else {
-               settings->asb_supported = false;
-            }
-
-            settings->asb_enabled                 = g_ctrlm.cs_values.asb_enable;
-            settings->open_chime_enabled          = g_ctrlm.cs_values.chime_open_enable;
-            settings->close_chime_enabled         = g_ctrlm.cs_values.chime_close_enable;
-            settings->privacy_chime_enabled       = g_ctrlm.cs_values.chime_privacy_enable;
-            settings->conversational_mode         = g_ctrlm.cs_values.conversational_mode;
-            settings->chime_volume                = g_ctrlm.cs_values.chime_volume;
-            settings->ir_command_repeats          = g_ctrlm.cs_values.ir_repeats;
-            XLOGD_INFO("ASB Get Values: Supported <%s>  ASB Enabled <%s>  Open Chime Enabled <%s>  Close Chime Enabled <%s>  Privacy Chime Enabled <%s>  Conversational Mode <%u>  Chime Volume <%d>  IR Command Repeats <%d>",
-               settings->asb_supported ? "true" : "false", settings->asb_enabled ? "true" : "false", settings->open_chime_enabled ? "true" : "false",
-               settings->close_chime_enabled ? "true" : "false", settings->privacy_chime_enabled ? "true" : "false", settings->conversational_mode, settings->chime_volume, settings->ir_command_repeats);
-            
-            if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
-               // Signal the semaphore to indicate that the result is present
-               *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
                sem_post(dqm->semaphore);
             }
             break;
@@ -3465,60 +3349,6 @@ void ctrlm_main_iarm_call_factory_reset_(ctrlm_main_iarm_call_factory_reset_t *r
    reset->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
 }
 
-gboolean ctrlm_main_iarm_call_controller_unbind(ctrlm_main_iarm_call_controller_unbind_t *unbind) {
-   if(unbind == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_controller_unbind_t *msg = (ctrlm_main_queue_msg_main_controller_unbind_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_controller_unbind_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-  sem_init(&semaphore, 0, 0);
-
-   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROLLER_UNBIND;
-   msg->header.network_id = CTRLM_MAIN_NETWORK_ID_ALL;
-   msg->unbind            = unbind;
-   msg->semaphore         = &semaphore;
-   msg->cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process CONTROLLER_UNBIND request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-void ctrlm_main_iarm_call_controller_unbind_(ctrlm_main_iarm_call_controller_unbind_t *unbind) {
-   if(!ctrlm_network_id_is_valid(unbind->network_id)) {
-      unbind->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      XLOGD_ERROR("network id - Out of range %u", unbind->network_id);
-      return;
-   }
-
-   ctrlm_obj_network_t *obj_net = g_ctrlm.networks[unbind->network_id];
-
-   obj_net->controller_unbind(unbind->controller_id, CTRLM_UNBIND_REASON_TARGET_USER);
-   unbind->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-}
-
 gboolean ctrlm_timeout_line_of_sight(gpointer user_data) {
    XLOGD_INFO("Timeout - Line of sight.");
    // Allocate a message and send it to Control Manager's queue
@@ -4086,88 +3916,6 @@ void ctrlm_update_last_key_info(int controller_id, ctrlm_key_source_t source_typ
 
       ctrlm_property_write_last_key_info();
    }
-}
-
-gboolean ctrlm_main_iarm_call_control_service_set_values(ctrlm_main_iarm_call_control_service_settings_t *settings) {
-   if(settings == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_control_service_settings_t *msg = (ctrlm_main_queue_msg_main_control_service_settings_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_control_service_settings_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-   sem_init(&semaphore, 0, 0);
-
-   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_SET_VALUES;
-   msg->header.network_id = CTRLM_MAIN_NETWORK_ID_ALL;
-   msg->settings          = settings;
-   msg->semaphore         = &semaphore;
-   msg->cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_SET_VALUES request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-gboolean ctrlm_main_iarm_call_control_service_get_values(ctrlm_main_iarm_call_control_service_settings_t *settings) {
-   if(settings == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_control_service_settings_t *msg = (ctrlm_main_queue_msg_main_control_service_settings_t *)g_malloc(sizeof(ctrlm_main_queue_msg_main_control_service_settings_t));
-
-   if(NULL == msg) {
-      XLOGD_FATAL("Out of memory");
-      g_assert(0);
-      return(false);
-   }
-
-   sem_init(&semaphore, 0, 0);
-
-   msg->header.type       = CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES;
-   msg->header.network_id = CTRLM_MAIN_NETWORK_ID_ALL;
-   msg->settings          = settings;
-   msg->semaphore         = &semaphore;
-   msg->cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_msg_push(msg);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
 }
 
 void ctrlm_main_iarm_call_control_service_start_pairing_mode_(ctrlm_main_iarm_call_control_service_pairing_mode_t *pairing) {
@@ -4852,7 +4600,7 @@ void control_service_values_read_from_db() {
 
    // Call the network cs_values funcitons
    for(auto const &itr : g_ctrlm.networks) {
-      itr.second->cs_values_set(&g_ctrlm.cs_values, true);
+      itr.second->cs_values_set(&g_ctrlm.cs_values);
    }
 }
 

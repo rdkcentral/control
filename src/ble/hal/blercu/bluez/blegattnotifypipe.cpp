@@ -241,7 +241,7 @@ void BleGattNotifyPipe::shutdown()
  */
 bool BleGattNotifyPipe::isValid() const
 {
-    return (m_pipeFd >= 0);
+    return (m_notifyThread.running && m_pipeFd >= 0);
 }
 
 // -----------------------------------------------------------------------------

@@ -413,9 +413,11 @@ void GattAudioService::onAudioDataNotification(const vector<uint8_t> &value)
 
     std::unique_lock<std::mutex> guard(mAudioPipeMutex);
     // add the notification to the audio pipe
-    if (m_audioPipe) {
-        bool endOfStream = m_audioPipe->addNotification(reinterpret_cast<const uint8_t*>(value.data()), value.size());
+    std::shared_ptr<GattAudioPipe> audioPipe = m_audioPipe; // keep the pipe alive past the unlock
+    if (audioPipe) {
+        bool endOfStream = audioPipe->addNotification(reinterpret_cast<const uint8_t*>(value.data()), value.size());
         guard.unlock();
+        audioPipe->notifyOutputPipeClosed();
         if(endOfStream) {
             m_stateMachine.postEvent(StopStreamingRequestEvent);
         }

@@ -391,6 +391,9 @@ void ctrlm_voice_endpoint_ws_nextgen_t::voice_session_begin_callback_ws_nextgen(
        }
        config_in.ws.app_config = stream_params;
 
+       // MFV sessions are always wake-word triggered; real keyword timing arrives later via voice_session_stream_params_update().
+       keyword_verification = (source == CTRLM_VOICE_DEVICE_MFV);
+
        XLOGD_AUTOMATION_TELEMETRY("session begin - src <%s> ptt <FALSE> w_SAT <%s> w_MTLS <%s> w_OCSPst <%s> w_OCSPca <%s>", ctrlm_voice_device_str(source), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO");
     } else {
        XLOGD_ERROR("session begin - invalid params - src <%s>", ctrlm_voice_device_str(source));

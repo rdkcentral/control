@@ -47,7 +47,7 @@ using namespace std;
 
 void *NotifyThread(void *data);
 
-static bool ThreadCreate(ctrlm_thread_t *thread, void *(*start_routine)(void *), void *arg, pthread_attr_t *attr = NULL)
+static bool ThreadCreate(BleThread *thread, void *(*start_routine)(void *), void *arg, pthread_attr_t *attr = NULL)
 {
     thread->running.store(false);
     if (0 != pthread_create(&thread->id, attr, start_routine, arg)) {
@@ -63,11 +63,10 @@ static bool ThreadCreate(ctrlm_thread_t *thread, void *(*start_routine)(void *),
         }
     }
 
-    thread->running.store(true);
     return (true);
 }
 
-static bool ThreadJoin(ctrlm_thread_t *thread, uint32_t timeout_secs)
+static bool ThreadJoin(BleThread *thread, uint32_t timeout_secs)
 {
     if (!thread->running.load()) {
         XLOGD_WARN("Thread <%s> not running.", thread->name);
@@ -304,6 +303,8 @@ void *NotifyThread(void *data)
     fd_set rfds;
     int nfds = -1;
     bool running = true;
+
+    notifyPipe->m_notifyThread.running.store(true);
 
     // Unblock the caller that launched this thread
     sem_post(&notifyPipe->m_notifyThreadSem);

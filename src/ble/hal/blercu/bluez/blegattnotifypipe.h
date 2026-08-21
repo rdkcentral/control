@@ -33,6 +33,7 @@
 #include <utils/slot.h>
 
 #include <semaphore.h>
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <pthread.h>
@@ -40,9 +41,9 @@
 #include "bleuuid.h"
 
 typedef struct {
-   const char *   name;
-   pthread_t      id;
-   bool           running;
+   const char *      name;
+   pthread_t         id;
+   std::atomic<bool> running;
 } ctrlm_thread_t;
 
 

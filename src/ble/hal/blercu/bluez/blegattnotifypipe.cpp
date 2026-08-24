@@ -52,6 +52,7 @@ static bool ThreadCreate(BleThread *thread, void *(*start_routine)(void *), void
     thread->running.store(false);
     if (0 != pthread_create(&thread->id, attr, start_routine, arg)) {
         XLOGD_ERROR("unable to launch thread <%s>", thread->name == NULL ? "" : thread->name);
+        thread->id = 0;
         return (false);
     }
 

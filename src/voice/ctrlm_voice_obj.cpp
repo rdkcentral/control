@@ -3729,9 +3729,11 @@ void ctrlm_voice_t::voice_update_privacy() {
     if(!this->local_mic) {
         return;
     }
+
     sem_wait(&this->device_status_semaphore);
     bool mic_disabled = (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_DISABLED) != 0;
     sem_post(&this->device_status_semaphore);
+
     // If the mic is disabled, preserve the existing ctrlm/DB privacy state.
     if(mic_disabled) {
         XLOGD_INFO("voice is disabled, skip privacy");
@@ -3743,6 +3745,17 @@ void ctrlm_voice_t::voice_update_privacy() {
         XLOGD_ERROR("error getting privacy mode, leaving ctrlm privacy unchanged");
         return;
     }
+
+    // Mic state can change concurrently; don't update ctrlm/DB privacy while the mic is disabled.
+    sem_wait(&this->device_status_semaphore);
+    mic_disabled = (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_DISABLED) != 0;
+    sem_post(&this->device_status_semaphore);
+
+    if(mic_disabled) {
+        XLOGD_INFO("voice is disabled, skip privacy");
+        return;
+    }
+
     const bool privacy_ctrlm = this->voice_is_privacy_enabled();
     if(privacy_vsdk != privacy_ctrlm) {
         privacy_vsdk ? this->voice_privacy_enable(false) : this->voice_privacy_disable(false);

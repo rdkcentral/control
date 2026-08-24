@@ -59,8 +59,11 @@ std::shared_ptr<BleRcuBoundedReply> ble_rcu_bounded_reply_create(bool initSemaph
 {
     auto result = std::make_shared<BleRcuBoundedReply>();
     if (initSemaphore) {
-        sem_init(&result->semaphore, 0, 0);
-        result->semaphore_valid = true;
+        if (sem_init(&result->semaphore, 0, 0) == 0) {
+            result->semaphore_valid = true;
+        } else {
+            XLOGD_ERROR("Failed to initialize reply semaphore");
+        }
     }
     return result;
 }

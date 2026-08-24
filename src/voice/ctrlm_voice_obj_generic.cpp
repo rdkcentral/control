@@ -166,22 +166,6 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
     errno_t safec_rc = memset_s(&routes, sizeof(routes), 0, sizeof(routes));
     ERR_CHK(safec_rc);
 
-    // TEMPORARY: hardcode all voice server URLs used by ctrlm, overriding any configured/RFC/settings values.
-    // ctrlm selects the protocol handler by scheme prefix: "vrngs" -> secure ws_nextgen (vrex), translated
-    // internally to "wss". A raw "wss" prefix is not recognized and is rejected as "unsupported url".
-    static const char *CTRLM_VOICE_HARDCODED_URL = "vrngs://voice-na-wuw.vrex.comcast.net/vrex/speech/websocket";
-    this->prefs.server_url_src_ptt     = CTRLM_VOICE_HARDCODED_URL;
-    this->prefs.server_url_src_ff      = CTRLM_VOICE_HARDCODED_URL;
-    this->prefs.server_url_src_mic_tap = CTRLM_VOICE_HARDCODED_URL;
-
-    // TEMPORARY: allow the hardcoded URL's hostname by adding its pattern to the accepted hostname list.
-    // Re-add each call (checking for presence) so it survives any config/RFC reload that clears the list.
-    const std::string hardcoded_host_regex = "^.*\\.xcal\\.tv$";
-    if(std::find(this->prefs.server_hosts.begin(), this->prefs.server_hosts.end(), hardcoded_host_regex) == this->prefs.server_hosts.end()) {
-        this->url_hostname_pattern_add("*.xcal.tv");
-        this->url_hostname_pattern_add("*.vrexcore.net");
-    }
-
     bool networked_standby_supported = ctrlm_is_networked_standby_supported();
 
     // iterate over source to url mapping

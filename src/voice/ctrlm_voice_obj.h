@@ -644,6 +644,7 @@ public:
     bool                  voice_is_privacy_enabled(void);
     void                  voice_privacy_enable(bool update_vsdk);
     void                  voice_privacy_disable(bool update_vsdk);
+    void                  voice_update_privacy(void);
 
     void                  voice_device_update_set_active(void);
     void                  voice_device_update_set_inactive(void);
@@ -667,6 +668,7 @@ public:
     bool                     local_mic;
     bool                     local_mic_tap;
     bool                     local_mic_disable_via_privacy;
+    bool                     local_mic_routes_configured;
     const char *             beep_on_kwd_file;
     bool                     beep_on_kwd_supported;
     bool                     ocsp_verify_stapling;

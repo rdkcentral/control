@@ -166,6 +166,7 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
     ERR_CHK(safec_rc);
 
     bool networked_standby_supported = ctrlm_is_networked_standby_supported();
+    this->local_mic_routes_configured = (this->local_mic && this->local_mic_disable_via_privacy);
 
     // iterate over source to url mapping
     for(int j = 0; j < XRSR_SRC_INVALID; j++) {
@@ -394,6 +395,10 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
     if(!xrsr_route(routes)) {
         XLOGD_ERROR("failed to set routes");
     }
+
+    //Updating routes means updating inputs and outputs, so refresh the privacy setting in case inputs changed
+    this->voice_update_privacy();
+
 }
 
 void ctrlm_voice_generic_t::query_strings_updated() {

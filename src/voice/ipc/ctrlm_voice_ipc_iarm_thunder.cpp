@@ -559,7 +559,9 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_types(void *data) {
 
         int rc = json_array_append_new(obj_types, json_string("ptt_transcription"));
         rc |= json_array_append_new(obj_types, json_string("ptt_audio_file"));
-        rc |= json_array_append_new(obj_types, json_string("ptt_listen"));
+        if(!ctrlm_is_production_build()) {
+            rc |= json_array_append_new(obj_types, json_string("ptt_listen"));
+        }
 
         if(voice_obj->voice_stb_data_local_mic_get()) {
             rc |= json_array_append_new(obj_types, json_string("mic_audio_file"));
@@ -1012,6 +1014,9 @@ bool ctrlm_voice_ipc_request_supported_ptt_audio_file(ctrlm_voice_ipc_request_co
 }
 
 bool ctrlm_voice_ipc_request_supported_ptt_listen(ctrlm_voice_ipc_request_config_t *config) {
+   if(ctrlm_is_production_build()) {
+      return(false);
+   }
    config->requires_transcription = false;
    config->requires_audio_file    = false;
    config->supports_named_pipe    = false;

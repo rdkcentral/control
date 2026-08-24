@@ -69,7 +69,7 @@ static bool ThreadCreate(BleThread *thread, void *(*start_routine)(void *), void
 static bool ThreadJoin(BleThread *thread, uint32_t timeout_secs)
 {
     if (thread->id == 0) {
-        XLOGD_WARN("Thread <%s> not running.", thread->name);
+        XLOGD_DEBUG("Thread <%s> not running.", thread->name);
         return (true);
     }
 

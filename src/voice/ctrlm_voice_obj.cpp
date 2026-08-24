@@ -156,7 +156,6 @@ ctrlm_voice_t::ctrlm_voice_t() {
         this->local_mic_tap                   = false;
         this->local_mic_disable_via_privacy   = false;
     }
-    this->local_mic_routes_configured       = false;
 
     if(ctrlm_file_exists(BEEP_ON_KWD_FILE_VD)) {
         this->beep_on_kwd_file            = BEEP_ON_KWD_SAP_VD;
@@ -344,8 +343,8 @@ bool ctrlm_voice_t::vsdk_is_privacy_enabled(void) {
    bool privacy = true;
 
    if(!xrsr_privacy_mode_get(&privacy)) {
-      XLOGD_ERROR("error getting privacy mode, defaulting to ON");
-      privacy = true;
+      XLOGD_ERROR("error getting privacy mode, defaulting to saved state");
+      privacy = this->voice_is_privacy_enabled();
    }
 
    return privacy;
@@ -759,23 +758,32 @@ bool ctrlm_voice_t::voice_configure(json_t *settings, bool db_write) {
                 }
             }
         }
+        // the urls are present on every configure call, so only re-route when one actually changes
         if(conf.config_value_get("urlAll", url)) {
+            if(this->prefs.server_url_src_mic_tap != url || this->prefs.server_url_src_ptt != url || this->prefs.server_url_src_ff != url) {
+                update_routes = true;
+            }
             this->prefs.server_url_src_mic_tap = url;
             this->prefs.server_url_src_ptt     = url;
             this->prefs.server_url_src_ff      = std::move(url);
-            update_routes = true;
         }
         if(conf.config_value_get("urlPtt", url)) {
+            if(this->prefs.server_url_src_ptt != url) {
+                update_routes = true;
+            }
             this->prefs.server_url_src_ptt = std::move(url);
-            update_routes = true;
         }
         if(conf.config_value_get("urlHf", url)) {
+            if(this->prefs.server_url_src_ff != url) {
+                update_routes = true;
+            }
             this->prefs.server_url_src_ff  = std::move(url);
-            update_routes = true;
         }
         if(conf.config_value_get("urlMicTap", url)) {
+            if(this->prefs.server_url_src_mic_tap != url) {
+                update_routes = true;
+            }
             this->prefs.server_url_src_mic_tap  = std::move(url);
-            update_routes = true;
         }
         if(conf.config_value_get("prv", prv_enabled)) {
             this->prefs.par_voice_enabled = prv_enabled;
@@ -816,9 +824,6 @@ bool ctrlm_voice_t::voice_configure(json_t *settings, bool db_write) {
                             }
                         } else if(!privacy_enabled) {
                             this->voice_privacy_enable(true);
-                        }
-                        if(this->local_mic_routes_configured) {
-                            update_routes = false;
                         }
                     } else {
                         if(enable) {

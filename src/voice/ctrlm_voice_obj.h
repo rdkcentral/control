@@ -668,7 +668,6 @@ public:
     bool                     local_mic;
     bool                     local_mic_tap;
     bool                     local_mic_disable_via_privacy;
-    bool                     local_mic_routes_configured;
     const char *             beep_on_kwd_file;
     bool                     beep_on_kwd_supported;
     bool                     ocsp_verify_stapling;

@@ -22,7 +22,7 @@
 #include "ctrlm_ble_utils.h"
 #include "ctrlm_voice_obj.h"
 #include <time.h>
-
+#include <errno.h>
 
 #define CTRLM_BLE_KEY_MSG_QUEUE_MSG_MAX         (10)
 #define CTRLM_BLE_KEY_MSG_QUEUE_MSG_SIZE_MAX    (sizeof(ctrlm_ble_key_queue_device_changed_msg_t))

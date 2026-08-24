@@ -71,10 +71,24 @@ std::shared_ptr<BleRcuBoundedReply> ble_rcu_bounded_reply_create(bool initSemaph
 // Waits up to timeoutSec for the semaphore to be posted. Returns false on timeout.
 bool ble_rcu_bounded_reply_wait(const std::shared_ptr<BleRcuBoundedReply> &result, int timeoutSec)
 {
+    if (!result || !result->semaphore_valid) {
+        return false;
+    }
+
     struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
+    if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+        XLOGD_ERROR("unable to get time");
+        return false;
+    }
     ts.tv_sec += timeoutSec;
-    return (sem_timedwait(&result->semaphore, &ts) == 0);
+
+    int rc;
+    do {
+        errno = 0;
+        rc = sem_timedwait(&result->semaphore, &ts);
+    } while (rc == -1 && errno == EINTR);
+
+    return (rc == 0);
 }
 
 } // namespace

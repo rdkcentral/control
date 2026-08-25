@@ -3673,25 +3673,13 @@ void ctrlm_voice_t::voice_session_set_inactive(ctrlm_voice_device_t device) {
 }
 
 bool ctrlm_voice_t::voice_is_privacy_enabled(void) {
-    if(!this->local_mic) {
-        return(false);
-    }
-
-    bool return_value = false;
-    if(this->local_mic) {
-        sem_wait(&this->device_status_semaphore);
-        bool mic_disabled = (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_DISABLED) != 0;
-
-        if(mic_disabled) {
-            XLOGD_WARN("microphone is disabled, skip");
-            return_value = false;
-        }
-        else {
-            return_value = (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_PRIVACY) ? true : false;
-        }
-        sem_post(&this->device_status_semaphore);
+   if(this->local_mic) {
+      sem_wait(&this->device_status_semaphore);
+      bool value = (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_PRIVACY) ? true : false;
+      sem_post(&this->device_status_semaphore);
+      return(value);
    }
-   return(return_value);
+   return(false);
 }
 
 void ctrlm_voice_t::voice_privacy_enable(bool update_vsdk) {

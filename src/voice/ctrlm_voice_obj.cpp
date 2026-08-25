@@ -3673,6 +3673,10 @@ void ctrlm_voice_t::voice_session_set_inactive(ctrlm_voice_device_t device) {
 }
 
 bool ctrlm_voice_t::voice_is_privacy_enabled(void) {
+    if(!this->local_mic) {
+        return(false);
+    }
+
     bool return_value = false;
     if(this->local_mic) {
         sem_wait(&this->device_status_semaphore);
@@ -3691,54 +3695,57 @@ bool ctrlm_voice_t::voice_is_privacy_enabled(void) {
 }
 
 void ctrlm_voice_t::voice_privacy_enable(bool update_vsdk) {
+    if(!this->local_mic) {
+        return;
+    }
+
     do {
-        if(this->local_mic) {
-            sem_wait(&this->device_status_semaphore);
-            bool mic_disabled = (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_DISABLED) != 0;
-            if(mic_disabled) {
-                XLOGD_WARN("microphone is disabled, cannot enable privacy");
-                break;
-            }
-            if(this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_PRIVACY) {
-                XLOGD_WARN("already enabled");
-                break;
-            }
+        sem_wait(&this->device_status_semaphore);
+        bool mic_disabled = (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_DISABLED) != 0;
+        if(mic_disabled) {
+            XLOGD_WARN("microphone is disabled, cannot enable privacy");
+            break;
+        }
+        if(this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_PRIVACY) {
+            XLOGD_WARN("already enabled");
+            break;
+        }
 
-            this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] |= CTRLM_VOICE_DEVICE_STATUS_PRIVACY;
-            ctrlm_db_voice_write_device_status(CTRLM_VOICE_DEVICE_MICROPHONE, (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_MASK_DB));
+        this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] |= CTRLM_VOICE_DEVICE_STATUS_PRIVACY;
+        ctrlm_db_voice_write_device_status(CTRLM_VOICE_DEVICE_MICROPHONE, (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_MASK_DB));
 
-            if(this->local_mic_disable_via_privacy) {
-                if(update_vsdk && this->xrsr_opened && !xrsr_privacy_mode_set(true)) {
-                    XLOGD_ERROR("xrsr_privacy_mode_set failed");
-                }
+        if(this->local_mic_disable_via_privacy) {
+            if(update_vsdk && this->xrsr_opened && !xrsr_privacy_mode_set(true)) {
+                XLOGD_ERROR("xrsr_privacy_mode_set failed");
             }
         }
-    }
-    while(0);
+    } while(0);
     sem_post(&this->device_status_semaphore);
 }
 
 void ctrlm_voice_t::voice_privacy_disable(bool update_vsdk) {
-    do {
-        if(this->local_mic) {
-            sem_wait(&this->device_status_semaphore);
-            bool mic_disabled = (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_DISABLED) != 0;
-            if(mic_disabled) {
-                XLOGD_WARN("microphone is disabled, cannot disable privacy");
-                break;
-            }
-            if(!(this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_PRIVACY)) {
-                XLOGD_WARN("already disabled");
-                break;
-            }
+    if(!this->local_mic) {
+        return;
+    }
 
-            this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] &= ~CTRLM_VOICE_DEVICE_STATUS_PRIVACY;
-            ctrlm_db_voice_write_device_status(CTRLM_VOICE_DEVICE_MICROPHONE, (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_MASK_DB));
+    do {            
+        sem_wait(&this->device_status_semaphore);
+        bool mic_disabled = (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_DISABLED) != 0;
+        if(mic_disabled) {
+            XLOGD_WARN("microphone is disabled, cannot disable privacy");
+            break;
+        }
+        if(!(this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_PRIVACY)) {
+            XLOGD_WARN("already disabled");
+            break;
+        }
 
-            if(this->local_mic_disable_via_privacy) {
-                if(update_vsdk && this->xrsr_opened && !xrsr_privacy_mode_set(false)) {
-                    XLOGD_ERROR("xrsr_privacy_mode_set failed");
-                }
+        this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] &= ~CTRLM_VOICE_DEVICE_STATUS_PRIVACY;
+        ctrlm_db_voice_write_device_status(CTRLM_VOICE_DEVICE_MICROPHONE, (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_MASK_DB));
+
+        if(this->local_mic_disable_via_privacy) {
+            if(update_vsdk && this->xrsr_opened && !xrsr_privacy_mode_set(false)) {
+                XLOGD_ERROR("xrsr_privacy_mode_set failed");
             }
         }
     }

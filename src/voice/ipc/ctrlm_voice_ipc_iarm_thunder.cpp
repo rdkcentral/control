@@ -28,7 +28,6 @@
 #include <fcntl.h>
 #include <string>
 #include <algorithm>
-#include <limits>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -774,7 +773,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                                         result = false;
                                     } else {
                                         json_int_t value = json_integer_value(obj_audio_duration);
-                                        if(value <= 0 || value > static_cast<json_int_t>(std::numeric_limits<uint32_t>::max())) {
+                                        if(value <= 0 || value > 5 * 60 * 1000) { // Limit to 5 minutes to avoid type conversion overflow issues
                                             XLOGD_ERROR("invalid audioDuration parameter.");
                                             result = false;
                                         } else {

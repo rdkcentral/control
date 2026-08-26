@@ -539,6 +539,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
             if(controller_is_bound(controller.first) && controller.second->get_connected()) {
                if(controller_id != CTRLM_HAL_CONTROLLER_ID_INVALID) {
                   controller_id = CTRLM_HAL_CONTROLLER_ID_INVALID;
+                  XLOGD_ERROR("Multiple connected paired controller match the request.");
                   break;
                }
                controller_id = controller.first;

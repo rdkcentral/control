@@ -222,7 +222,6 @@ char       *ctrlm_do_regex(char *re, char *str);
 bool        ctrlm_dsmgr_init();
 bool        ctrlm_dsmgr_mute_audio(bool mute);
 bool        ctrlm_dsmgr_duck_audio(bool enable, bool relative, double vol);
-bool        ctrlm_dsmgr_LED(bool on);
 bool        ctrlm_dsmgr_deinit();
 
 bool        ctrlm_is_voice_assistant(ctrlm_rcu_controller_type_t controller_type);

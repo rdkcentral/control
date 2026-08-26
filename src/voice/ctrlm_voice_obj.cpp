@@ -1228,7 +1228,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                                                                        ctrlm_voice_device_t device_type, ctrlm_voice_format_t format,
                                                                        voice_session_req_stream_params *stream_params,
                                                                        const char *controller_name, const char *sw_version, const char *hw_version, double voltage, bool command_status,
-                                                                       ctrlm_timestamp_t *timestamp, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param, bool use_external_data_pipe, bool press_and_hold, std::function<void(ctrlm_voice_start_audio_params_t *)> cb_start_audio, ctrlm_voice_start_audio_params_t *cb_audio_start_params, const char *l_transcription_in, const char *audio_file_in, const uuid_t *uuid, bool low_latency, bool low_cpu_util, int audio_fd) {
+                                                                       ctrlm_timestamp_t *timestamp, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param, bool use_external_data_pipe, bool press_and_hold, std::function<void(ctrlm_voice_start_audio_params_t *)> cb_start_audio, ctrlm_voice_start_audio_params_t *cb_audio_start_params, const char *l_transcription_in, const char *audio_file_in, const uuid_t *uuid, bool low_latency, bool low_cpu_util, int audio_fd, uint32_t timeout_packet_initial) {
 
     ctrlm_voice_session_t *session = &this->voice_session[voice_device_to_session_group(device_type)];
 
@@ -1451,10 +1451,11 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
 
         // Start packet timeout, but not if this is a voice session by text or file
         if(!session->is_session_by_text && !session->is_session_by_file) {
-            if(session->network_type == CTRLM_NETWORK_TYPE_IP || session->is_session_by_fifo) {
+            if(session->is_session_by_fifo) {
                 session->timeout_packet_tag = g_timeout_add(3000, ctrlm_voice_packet_timeout, NULL);
             } else {
-                session->timeout_packet_tag = g_timeout_add(this->prefs.timeout_packet_initial, ctrlm_voice_packet_timeout, NULL);
+                uint32_t timeout = timeout_packet_initial > 0 ? timeout_packet_initial : this->prefs.timeout_packet_initial;
+                session->timeout_packet_tag = g_timeout_add(timeout, ctrlm_voice_packet_timeout, NULL);
             }
         }
     }

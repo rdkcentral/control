@@ -595,6 +595,11 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
             }
          }
 
+         uint32_t timeout_packet_initial = 0;
+         if(dqm->uuid != NULL) {
+            timeout_packet_initial = 6000; // it can take one full BLE connection slave latency period to receive the first packet
+         }
+
          ctrlm_voice_start_audio_params_t audio_start_params;
          audio_start_params.m_controller_id  = controller_id;
          audio_start_params.m_fd             = -1;
@@ -607,7 +612,7 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                                                                 controllers_[controller_id]->get_sw_revision().to_string().c_str(),
                                                                 controllers_[controller_id]->get_hw_revision().to_string().c_str(), 0.0,
                                                                 false, NULL, NULL, NULL, true, pressAndHoldSupport, audio_start_cb, &audio_start_params,
-                                                                NULL, NULL, dqm->uuid);
+                                                                NULL, NULL, dqm->uuid, false, false, -1, timeout_packet_initial);
          if (!controllers_[controller_id]->get_capabilities().has_capability(ctrlm_controller_capabilities_t::capability::PAR) && (VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE == voice_status)) {
             XLOGD_WARN("PAR voice is enabled but not supported by BLE controller treating as normal voice session");
             voice_status = VOICE_SESSION_RESPONSE_AVAILABLE;

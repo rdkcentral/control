@@ -1391,6 +1391,9 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
         char uuid_str[37] = {'\0'};
         uuid_unparse_lower(*uuid, uuid_str);
         session->uuid_str = uuid_str;
+    } else if(request_new_session) {
+        uuid_clear(session->uuid);
+        session->uuid_str.clear();
     }
     session->is_press_and_release      = this->prefs.par_voice_enabled || !press_and_hold; // 'Press and Release' is enabled or controller does not support 'Press and Hold'
     session->is_session_by_text        = is_session_by_text;

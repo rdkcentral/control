@@ -986,7 +986,7 @@ bool ctrlm_ble_rcu_interface_t::getAudioFormat(uint64_t ieee_address, ctrlm_hal_
     return(false);
 }
 
-bool ctrlm_ble_rcu_interface_t::startAudioStreaming(uint64_t ieee_address, ctrlm_hal_ble_VoiceEncoding_t encoding, ctrlm_hal_ble_VoiceStreamEnd_t streamEnd, int &fd)
+bool ctrlm_ble_rcu_interface_t::startAudioStreaming(uint64_t ieee_address, ctrlm_hal_ble_VoiceEncoding_t encoding, ctrlm_hal_ble_VoiceStreamEnd_t streamEnd, int &fd, uint32_t durationMax)
 {
     // This method will wait for the operation to complete, so init a semaphore
     sem_t semaphore;
@@ -1025,8 +1025,7 @@ bool ctrlm_ble_rcu_interface_t::startAudioStreaming(uint64_t ieee_address, ctrlm
             //     InvalidEncoding
             // };
 
-            uint32_t durationMax = 0;
-            if(streamEnd == CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION) {
+            if(durationMax == 0 && streamEnd == CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION) {
                 durationMax = m_parVoiceEosTimeout;
             }
 

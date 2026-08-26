@@ -631,11 +631,6 @@ void ctrlm_obj_network_t::req_process_voice_session_begin(void *data, int size){
    ctrlm_main_queue_msg_voice_session_t *dqm = (ctrlm_main_queue_msg_voice_session_t *)data;
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_voice_session_t));
-
-   // post the semaphore just to ensure nothing blocks
-   if(dqm->semaphore) {
-      sem_post(dqm->semaphore);
-   }
 }
 
 void ctrlm_obj_network_t::req_process_voice_session_end(void *data, int size){
@@ -643,11 +638,6 @@ void ctrlm_obj_network_t::req_process_voice_session_end(void *data, int size){
    ctrlm_main_queue_msg_voice_session_t *dqm = (ctrlm_main_queue_msg_voice_session_t *)data;
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_voice_session_t));
-
-   // post the semaphore just to ensure nothing blocks
-   if(dqm->semaphore) {
-      sem_post(dqm->semaphore);
-   }
 }
 
 void ctrlm_obj_network_t::req_process_start_pairing(void *data, int size){

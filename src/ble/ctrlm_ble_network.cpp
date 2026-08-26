@@ -524,20 +524,50 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_voice_session_t));
 
-   dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR;
+   *dqm->result = CTRLM_IARM_CALL_RESULT_ERROR;
 
    if(!ready_) {
       XLOGD_FATAL("Network is not ready!");
    } else if(voice_disabled_) {
       XLOGD_WARN("BLE Voice is disabled in ControlMgr, so not starting a voice session.");
-      dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
+      *dqm->result = (dqm->uuid == NULL) ? CTRLM_IARM_CALL_RESULT_SUCCESS : CTRLM_IARM_CALL_RESULT_ERROR_NOT_SUPPORTED;
    } else {
-      ctrlm_controller_id_t controller_id;
-      unsigned long long ieee_address = dqm->params->ieee_address;
-      if (!getControllerId(ieee_address, &controller_id)) {
-         XLOGD_ERROR("Controller doesn't exist!");
-         dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
+      ctrlm_controller_id_t controller_id = CTRLM_HAL_CONTROLLER_ID_INVALID;
+      unsigned long long ieee_address = dqm->ieee_address;
+      if(ieee_address == 0) {
+         for(const auto &controller : controllers_) {
+            if(controller_is_bound(controller.first) && controller.second->get_connected()) {
+               if(controller_id != CTRLM_HAL_CONTROLLER_ID_INVALID) {
+                  controller_id = CTRLM_HAL_CONTROLLER_ID_INVALID;
+                  XLOGD_ERROR("Multiple connected paired controller match the request.");
+                  break;
+               }
+               controller_id = controller.first;
+            }
+         }
+         if(controller_id != CTRLM_HAL_CONTROLLER_ID_INVALID) {
+            ieee_address = controllers_[controller_id]->ieee_address_get().get_value();
+         }
       } else {
+         if(!getControllerId(ieee_address, &controller_id)) {
+            XLOGD_ERROR("No controller found with IEEE address %016llX", ieee_address);
+            controller_id = CTRLM_HAL_CONTROLLER_ID_INVALID;
+         } else if(!controller_is_bound(controller_id)) {
+            XLOGD_ERROR("Controller with IEEE address %016llX is not bound", ieee_address);
+            controller_id = CTRLM_HAL_CONTROLLER_ID_INVALID;
+         } else if(!controllers_[controller_id]->get_connected()) {
+            XLOGD_ERROR("Controller with IEEE address %016llX is not connected", ieee_address);
+            controller_id = CTRLM_HAL_CONTROLLER_ID_INVALID;
+         }
+      }
+
+      if(controller_id == CTRLM_HAL_CONTROLLER_ID_INVALID) {
+         XLOGD_ERROR("Exactly one connected paired controller must match the request.");
+         *dqm->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
+      } else {
+         dqm->network_id    = network_id_get();
+         dqm->controller_id = controller_id;
+         dqm->ieee_address  = ieee_address;
          // Currently BLE RCUs only support push-to-talk, so hardcoding here for now
          ctrlm_voice_device_t device = CTRLM_VOICE_DEVICE_PTT;
          ctrlm_voice_session_response_status_t voice_status;
@@ -565,22 +595,29 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
             }
          }
 
+         uint32_t timeout_packet_initial = 0;
+         if(dqm->uuid != NULL) {
+            timeout_packet_initial = 6000; // it can take one full BLE connection slave latency period to receive the first packet
+         }
+
          ctrlm_voice_start_audio_params_t audio_start_params;
-         audio_start_params.m_controller_id = controller_id;
-         audio_start_params.m_fd            = -1;
-         audio_start_params.m_started       = false;
+         audio_start_params.m_controller_id  = controller_id;
+         audio_start_params.m_fd             = -1;
+         audio_start_params.m_audio_duration = dqm->audio_duration;
+         audio_start_params.m_started        = false;
          auto audio_start_cb = std::bind(&ctrlm_obj_network_ble_t::start_controller_audio_streaming, this, std::placeholders::_1);
 
          voice_status = ctrlm_get_voice_obj()->voice_session_req(network_id_get(), controller_id, device, voice_format, NULL,
                                                                 controllers_[controller_id]->get_model().c_str(),
                                                                 controllers_[controller_id]->get_sw_revision().to_string().c_str(),
                                                                 controllers_[controller_id]->get_hw_revision().to_string().c_str(), 0.0,
-                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport, audio_start_cb, &audio_start_params);
+                                                                false, NULL, NULL, NULL, true, pressAndHoldSupport, audio_start_cb, &audio_start_params,
+                                                                NULL, NULL, dqm->uuid, false, false, -1, timeout_packet_initial);
          if (!controllers_[controller_id]->get_capabilities().has_capability(ctrlm_controller_capabilities_t::capability::PAR) && (VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE == voice_status)) {
             XLOGD_WARN("PAR voice is enabled but not supported by BLE controller treating as normal voice session");
             voice_status = VOICE_SESSION_RESPONSE_AVAILABLE;
          }
-         if (VOICE_SESSION_RESPONSE_AVAILABLE != voice_status) {
+         if (VOICE_SESSION_RESPONSE_AVAILABLE != voice_status && VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE != voice_status) {
             XLOGD_TELEMETRY("Failed opening voice session in ctrlm_voice_t, error = <%d>", voice_status);
          } else {
             int  fd = -1;
@@ -604,13 +641,10 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                XLOGD_TELEMETRY("Failed to start voice streaming, ending voice session...");
                end_voice_session_for_controller(ieee_address, CTRLM_VOICE_SESSION_END_REASON_OTHER_ERROR);
             } else {
-               dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
+               *dqm->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
             }
          }
       }
-   }
-   if(dqm->semaphore) {
-      sem_post(dqm->semaphore);
    }
 }
 
@@ -648,27 +682,31 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_end(void *data, int size
    g_assert(dqm);
    g_assert(size == sizeof(ctrlm_main_queue_msg_voice_session_t));
 
-   dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR;
+   *dqm->result = CTRLM_IARM_CALL_RESULT_ERROR;
 
    if (!ready_) {
       XLOGD_FATAL("Network is not ready!");
    } else if(voice_disabled_) {
-      dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
+      *dqm->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
    } else {
-      ctrlm_controller_id_t controller_id;
-      unsigned long long ieee_address = dqm->params->ieee_address;
+      ctrlm_controller_id_t controller_id = dqm->controller_id;
+      unsigned long long ieee_address = dqm->ieee_address;
 
-      if (!getControllerId(ieee_address, &controller_id)) {
-         XLOGD_ERROR("Controller doesn't exist!");
-         dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
-      } else {
-         if (end_voice_session_for_controller(dqm->params->ieee_address, CTRLM_VOICE_SESSION_END_REASON_DONE)) {
-            dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-         }
+      if(controller_id != CTRLM_MAIN_CONTROLLER_ID_INVALID && controller_exists(controller_id)) {
+         ieee_address = controllers_[controller_id]->ieee_address_get().get_value();
+      } else if(!getControllerId(ieee_address, &controller_id)) {
+         controller_id = CTRLM_MAIN_CONTROLLER_ID_INVALID;
       }
-   }
-   if(dqm->semaphore) {
-      sem_post(dqm->semaphore);
+
+      if(controller_id == CTRLM_MAIN_CONTROLLER_ID_INVALID) {
+         XLOGD_ERROR("Controller doesn't exist!");
+         *dqm->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
+      } else if(end_voice_session_for_controller(ieee_address, CTRLM_VOICE_SESSION_END_REASON_DONE)) {
+         dqm->network_id    = network_id_get();
+         dqm->controller_id = controller_id;
+         dqm->ieee_address  = ieee_address;
+         *dqm->result        = CTRLM_IARM_CALL_RESULT_SUCCESS;
+      }
    }
 }
 
@@ -2413,13 +2451,14 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
             XLOGD_AUTOMATION_INFO("CODE_VOICE_KEY button PRESSED event for device: %s", controller->ieee_address_get().to_string().c_str());
             XLOGD_INFO("------------------------------------------------------------------------");
 
-            ctrlm_voice_iarm_call_voice_session_t v_params;
-            v_params.ieee_address = dqm->ieee_address;
-
+            ctrlm_iarm_call_result_t result;
             ctrlm_main_queue_msg_voice_session_t msg;
             errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
             ERR_CHK(safec_rc);
-            msg.params = &v_params;
+            msg.network_id    = network_id_get();
+            msg.controller_id = controller_id;
+            msg.ieee_address  = dqm->ieee_address;
+            msg.result        = &result;
 
             req_process_voice_session_begin(&msg, sizeof(msg));
          }
@@ -2888,12 +2927,12 @@ void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start
     ctrlm_hal_ble_VoiceStreamEnd_t streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_KEY_UP;
     auto rcu = controllers_.at(id);
 
-    if (!rcu->getPressAndHoldSupport()) { // if the voice session is "Press and Release" then end stream on audio duration instead of key up event
+    if (!rcu->getPressAndHoldSupport() || params->m_audio_duration > 0) { // End the stream on audio duration for "Press and Release" sessions or when a maximum duration was requested
        streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION;
     }
 
     uint64_t ieee_address = rcu->ieee_address_get().get_value();
-    if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd)) {
+    if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd, params->m_audio_duration)) {
        XLOGD_ERROR("failed to start audio streaming on remote");
        return;
     }

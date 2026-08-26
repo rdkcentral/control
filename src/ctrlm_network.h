@@ -83,9 +83,13 @@ typedef struct {
 } ctrlm_main_queue_msg_network_property_set_t;
 
 typedef struct {
-   ctrlm_main_queue_msg_header_t             header;
-   ctrlm_voice_iarm_call_voice_session_t    *params;
-   sem_t *                                   semaphore;
+   ctrlm_main_queue_msg_header_t header;
+   ctrlm_network_id_t            network_id;
+   ctrlm_controller_id_t         controller_id;
+   unsigned long long            ieee_address;
+   uint32_t                      audio_duration;
+   ctrlm_iarm_call_result_t *    result;
+   const uuid_t *                uuid;
 } ctrlm_main_queue_msg_voice_session_t;
 
 typedef struct {

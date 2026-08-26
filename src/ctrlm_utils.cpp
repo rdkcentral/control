@@ -1633,24 +1633,41 @@ unsigned long long ctrlm_convert_mac_string_to_long ( const char* apcDeviceMac) 
 
    // MAC Address Format Supported: "AA:BB:CC:DD:EE:FF\0"
    if (apcDeviceMac && (strlen(apcDeviceMac) >= 17)) {
-   lcDevHdlArr[0]  = apcDeviceMac[0];
-   lcDevHdlArr[1]  = apcDeviceMac[1];
-   lcDevHdlArr[2]  = apcDeviceMac[3];
-   lcDevHdlArr[3]  = apcDeviceMac[4];
-   lcDevHdlArr[4]  = apcDeviceMac[6];
-   lcDevHdlArr[5]  = apcDeviceMac[7];
-   lcDevHdlArr[6]  = apcDeviceMac[9];
-   lcDevHdlArr[7]  = apcDeviceMac[10];
-   lcDevHdlArr[8]  = apcDeviceMac[12];
-   lcDevHdlArr[9]  = apcDeviceMac[13];
-   lcDevHdlArr[10] = apcDeviceMac[15];
-   lcDevHdlArr[11] = apcDeviceMac[16];
+      lcDevHdlArr[0]  = apcDeviceMac[0];
+      lcDevHdlArr[1]  = apcDeviceMac[1];
+      lcDevHdlArr[2]  = apcDeviceMac[3];
+      lcDevHdlArr[3]  = apcDeviceMac[4];
+      lcDevHdlArr[4]  = apcDeviceMac[6];
+      lcDevHdlArr[5]  = apcDeviceMac[7];
+      lcDevHdlArr[6]  = apcDeviceMac[9];
+      lcDevHdlArr[7]  = apcDeviceMac[10];
+      lcDevHdlArr[8]  = apcDeviceMac[12];
+      lcDevHdlArr[9]  = apcDeviceMac[13];
+      lcDevHdlArr[10] = apcDeviceMac[15];
+      lcDevHdlArr[11] = apcDeviceMac[16];
 
-   lBTRCoreDevId = (unsigned long long) strtoll(lcDevHdlArr, NULL, 16);
+      lBTRCoreDevId = (unsigned long long) strtoll(lcDevHdlArr, NULL, 16);
    }
 
 //  XLOGD_DEBUG ("converted to long long: <0x%012llX>", lBTRCoreDevId);
    return lBTRCoreDevId;
+}
+
+bool ctrlm_validate_mac_addr_string(const char *mac_addr, unsigned long long &ieee_address) {
+   if(mac_addr == NULL || strlen(mac_addr) != 17) {
+      return(false);
+   }
+   for(size_t index = 0; index < 17; index++) {
+      if((index + 1) % 3 == 0) {
+         if(mac_addr[index] != ':') {
+            return(false);
+         }
+      } else if(!isxdigit(static_cast<unsigned char>(mac_addr[index]))) {
+         return(false);
+      }
+   }
+   ieee_address = ctrlm_convert_mac_string_to_long(mac_addr);
+   return(ieee_address != 0 && ieee_address != 0xFFFFFFFFFFFFULL);
 }
 
 std::string ctrlm_convert_mac_long_to_string ( const unsigned long long ieee_address) {

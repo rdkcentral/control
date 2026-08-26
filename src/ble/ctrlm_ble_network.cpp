@@ -548,8 +548,17 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
          if(controller_id != CTRLM_HAL_CONTROLLER_ID_INVALID) {
             ieee_address = controllers_[controller_id]->ieee_address_get().get_value();
          }
-      } else if(!getControllerId(ieee_address, &controller_id) || !controller_is_bound(controller_id) || !controllers_[controller_id]->get_connected()) {
-         controller_id = CTRLM_HAL_CONTROLLER_ID_INVALID;
+      } else {
+         if(!getControllerId(ieee_address, &controller_id)) {
+            XLOGD_ERROR("No controller found with IEEE address %016llX", ieee_address);
+            controller_id = CTRLM_HAL_CONTROLLER_ID_INVALID;
+         } else if(!controller_is_bound(controller_id)) {
+            XLOGD_ERROR("Controller with IEEE address %016llX is not bound", ieee_address);
+            controller_id = CTRLM_HAL_CONTROLLER_ID_INVALID;
+         } else if(!controllers_[controller_id]->get_connected()) {
+            XLOGD_ERROR("Controller with IEEE address %016llX is not connected", ieee_address);
+            controller_id = CTRLM_HAL_CONTROLLER_ID_INVALID;
+         }
       }
 
       if(controller_id == CTRLM_HAL_CONTROLLER_ID_INVALID) {

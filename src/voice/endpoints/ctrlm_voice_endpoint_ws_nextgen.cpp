@@ -22,6 +22,8 @@
 #define NEXTGEN_AUDIO_MODEL_PTT  "ptt"
 #define NEXTGEN_AUDIO_MODEL_HF   "hf"
 #define NEXTGEN_AUDIO_PROFILE_HF "FFV"
+#define NEXTGEN_AUDIO_MODEL_MFV   "mfv"
+#define NEXTGEN_AUDIO_PROFILE_MFV "MFV"
 
 // Structures
 typedef struct {
@@ -289,7 +291,13 @@ void ctrlm_voice_endpoint_ws_nextgen_t::voice_session_begin_callback_ws_nextgen(
     config_in.ws.cert_revoked_allow   = false;
     config_in.ws.ocsp_expired_allow   = false;
 
-    if(is_mic) {
+    if(source == CTRLM_VOICE_DEVICE_MFV) {
+        // TEMPORARY: hard-code MFV wuw sessions to send the same audio profile/model as the on-device
+        // HF microphone instead of the MFV-specific values.  Revert to NEXTGEN_AUDIO_PROFILE_MFV /
+        // NEXTGEN_AUDIO_MODEL_MFV to signal to Vrex that this transaction is from mid-field voice.
+        xrsv_ws_nextgen_update_audio_profile(this->xrsv_obj_ws_nextgen, NEXTGEN_AUDIO_PROFILE_HF);
+        xrsv_ws_nextgen_update_audio_model(this->xrsv_obj_ws_nextgen, NEXTGEN_AUDIO_MODEL_HF);
+    } else if(is_mic) {
         xrsv_ws_nextgen_update_audio_profile(this->xrsv_obj_ws_nextgen, NEXTGEN_AUDIO_PROFILE_HF);
         xrsv_ws_nextgen_update_audio_model(this->xrsv_obj_ws_nextgen, NEXTGEN_AUDIO_MODEL_HF);
     } else {
@@ -337,7 +345,7 @@ void ctrlm_voice_endpoint_ws_nextgen_t::voice_session_begin_callback_ws_nextgen(
              stream_params->keyword_sample_end   -= delta;
           }
 
-          if(is_mic) {
+          if(is_mic || source == CTRLM_VOICE_DEVICE_FF || source == CTRLM_VOICE_DEVICE_MFV) {
               stream_params->push_to_talk = false;
           } else {
               stream_params->push_to_talk = true;
@@ -358,7 +366,7 @@ void ctrlm_voice_endpoint_ws_nextgen_t::voice_session_begin_callback_ws_nextgen(
        config_in.ws.app_config = stream_params_out;
 
        XLOGD_AUTOMATION_TELEMETRY("session begin - src <%s> ptt <%s> w_SAT <%s> w_MTLS <%s> w_OCSPst <%s> w_OCSPca <%s> keyword begin <%u> end <%u> doa <%u> gain <%4.1f> db", ctrlm_voice_device_str(source), (stream_params->push_to_talk ? "TRUE" : "FALSE"), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO", stream_params->keyword_sample_begin, stream_params->keyword_sample_end, stream_params->keyword_doa, stream_params->dynamic_gain);
-    } else if(!is_mic || dqm->configuration.user_initiated) {
+    } else if((!is_mic && source != CTRLM_VOICE_DEVICE_FF && source != CTRLM_VOICE_DEVICE_MFV) || dqm->configuration.user_initiated) {
        xrsv_ws_nextgen_stream_params_t *stream_params = (xrsv_ws_nextgen_stream_params_t *)malloc(sizeof(xrsv_ws_nextgen_stream_params_t));
 
        if(stream_params != NULL) {
@@ -371,6 +379,22 @@ void ctrlm_voice_endpoint_ws_nextgen_t::voice_session_begin_callback_ws_nextgen(
        config_in.ws.app_config = stream_params;
 
        XLOGD_AUTOMATION_TELEMETRY("session begin - src <%s> ptt <TRUE> w_SAT <%s> w_MTLS <%s> w_OCSPst <%s> w_OCSPca <%s>", ctrlm_voice_device_str(source), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO");
+    } else if(source == CTRLM_VOICE_DEVICE_FF || source == CTRLM_VOICE_DEVICE_MFV) {
+       xrsv_ws_nextgen_stream_params_t *stream_params = (xrsv_ws_nextgen_stream_params_t *)malloc(sizeof(xrsv_ws_nextgen_stream_params_t));
+
+       if(stream_params != NULL) {
+          errno_t safec_rc = memset_s(stream_params, sizeof(*stream_params), 0, sizeof(*stream_params));
+          ERR_CHK(safec_rc);
+
+          stream_params->push_to_talk = false;
+          stream_params->par_eos_timeout = params.par_voice_enabled ? params.par_voice_eos_timeout : 0;
+       }
+       config_in.ws.app_config = stream_params;
+
+       // MFV sessions are always wake-word triggered; real keyword timing arrives later via voice_session_stream_params_update().
+       keyword_verification = (source == CTRLM_VOICE_DEVICE_MFV);
+
+       XLOGD_AUTOMATION_TELEMETRY("session begin - src <%s> ptt <FALSE> w_SAT <%s> w_MTLS <%s> w_OCSPst <%s> w_OCSPca <%s>", ctrlm_voice_device_str(source), has_sat ? "YES" : "NO", use_mtls ? "YES" : "NO", ocsp_verify_stapling ? "YES" : "NO", ocsp_verify_ca ? "YES" : "NO");
     } else {
        XLOGD_ERROR("session begin - invalid params - src <%s>", ctrlm_voice_device_str(source));
     }

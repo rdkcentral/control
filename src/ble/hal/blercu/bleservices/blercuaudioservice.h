@@ -36,6 +36,9 @@
 #include "utils/audioformat.h"
 #include "ctrlm_hal.h"
 
+#include <cstdint>
+#include <vector>
+
 class BleRcuAudioService
 {
 protected:
@@ -81,6 +84,64 @@ public:
 
     virtual void status(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs) = 0;
 
+// MFV types
+public:
+    enum DetectionType {
+        Unknown = 0x00,
+        FullPower = 0x01,
+        Aad = 0x02,
+        BelowThreshold = 0x03,
+    };
+
+    struct DetectionData {
+        uint16_t start = 0;
+        uint16_t end = 0;
+        uint16_t confidence = 0; // encoded as percentage * 10 (e.g. 953 = 95.3%)
+    };
+
+    struct ModelVersion {
+        uint8_t major = 0;
+        uint8_t minor = 0;
+    };
+
+    // TODO: All bytes are currently Reserved/TBD in the firmware spec, check to make sure this is still the case and delete if so
+    // struct StreamStatsRaw {
+    //     std::vector<uint8_t> bytes;
+    // };
+
+    enum Capabilities {
+        MidfieldVoiceCapable = (1 << 0),
+        SoftwarePrivacyControl = (1 << 1),
+        SowwEowwTimingAvailable = (1 << 2),
+        AadSensitivityControlAvailable = (1 << 3),
+    };
+
+// MFV accessors (default no-ops for audio services without MFV support)
+public:
+    virtual DetectionType mfvDetectionType() const { return Unknown; }
+    virtual DetectionData mfvDetectionData() const { return {}; }
+    virtual ModelVersion mfvModelVersion() const { return {}; }
+    virtual bool mfvPrivacyEnabled() const { return false; }
+    virtual std::vector<uint8_t> mfvModelConfiguration() const { return {}; }
+    virtual uint8_t mfvCapabilities() const { return 0; }
+    // Not yet implemented: stream stats characteristic is Reserved/TBD in the firmware spec.
+    // virtual StreamStatsRaw mfvStreamStats() const { return {}; }
+
+    virtual void writeMfvPrivacy(bool enabled, PendingReply<> &&reply)
+    {
+        (void)enabled;
+        reply.setError("MFV not supported");
+        reply.finish();
+    }
+    virtual void writeMfvModelConfiguration(uint8_t sensitivity, uint8_t secondary, uint8_t aad, PendingReply<> &&reply)
+    {
+        (void)sensitivity;
+        (void)secondary;
+        (void)aad;
+        reply.setError("MFV not supported");
+        reply.finish();
+    }
+
 // signals:
     inline void addStreamingChangedSlot(const Slot<bool> &func)
     {
@@ -95,10 +156,39 @@ public:
         m_audioCodecsChangedSlots.addSlot(func);
     }
 
+// MFV signals:
+    inline void addMfvDetectionTypeChangedSlot(const Slot<DetectionType> &func)
+    {
+        m_mfvDetectionTypeChangedSlots.addSlot(func);
+    }
+    inline void addMfvDetectionDataChangedSlot(const Slot<const DetectionData &> &func)
+    {
+        m_mfvDetectionDataChangedSlots.addSlot(func);
+    }
+    inline void addMfvPrivacyChangedSlot(const Slot<bool> &func)
+    {
+        m_mfvPrivacyChangedSlots.addSlot(func);
+    }
+    inline void addMfvCapabilitiesChangedSlot(const Slot<uint8_t> &func)
+    {
+        m_mfvCapabilitiesChangedSlots.addSlot(func);
+    }
+    // Not yet implemented: stream stats characteristic is Reserved/TBD in the firmware spec.
+    // inline void addMfvStreamStatsChangedSlot(const Slot<const StreamStatsRaw &> &func)
+    // {
+    //     m_mfvStreamStatsChangedSlots.addSlot(func);
+    // }
+
 protected:
     Slots<bool> m_streamingChangedSlots;
     Slots<uint8_t> m_gainLevelChangedSlots;
     Slots<uint32_t> m_audioCodecsChangedSlots;
+
+    Slots<DetectionType> m_mfvDetectionTypeChangedSlots;
+    Slots<const DetectionData &> m_mfvDetectionDataChangedSlots;
+    Slots<bool> m_mfvPrivacyChangedSlots;
+    Slots<uint8_t> m_mfvCapabilitiesChangedSlots;
+    // Slots<const StreamStatsRaw &> m_mfvStreamStatsChangedSlots;
 };
 
 

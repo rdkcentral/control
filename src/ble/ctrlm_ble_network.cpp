@@ -2710,6 +2710,13 @@ void ctrlm_obj_network_ble_t::ind_process_voice_session_end(void *data, int size
 
    unsigned long long ieee_address = controllers_[controller_id]->ieee_address_get().get_value();;
 
+   if (dqm->suppress_stream_stop) {
+      // A new session on the same controller has already re-adopted the remote's stream. Stopping it here
+      // would tear down the new session's audio and prevent the remote from delivering its detection data.
+      XLOGD_INFO("skipping stopAudioStreaming for controller id <%u> - stream reused by new session", controller_id);
+      return;
+   }
+
    if (ble_rcu_interface_) {
       int32_t audioDuration = -1;
       if (!ble_rcu_interface_->stopAudioStreaming(ieee_address, audioDuration)) {

@@ -215,6 +215,7 @@ typedef struct {
    ctrlm_controller_id_t            controller_id;
    ctrlm_voice_session_end_reason_t reason;
    unsigned char                    utterance_too_short;
+   bool                             suppress_stream_stop; // set when the remote stream is being handed to a new same-controller session
 } ctrlm_main_queue_msg_voice_session_end_t;
 
 typedef struct {
@@ -437,6 +438,7 @@ typedef struct {
    unsigned long                    audio_sent_bytes;
    unsigned long                    audio_sent_samples;
    bool                             requested_more_audio;
+   bool                             abort_for_same_controller; // aborting this session to start a new one on the same controller (do not stop the remote stream)
 
    // RF4CE specific fields (move to a separate struct?)
    uint32_t                         packets_processed;

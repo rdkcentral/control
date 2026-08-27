@@ -116,6 +116,8 @@ ctrlm_voice_t::ctrlm_voice_t() {
 
         session->keyword_verified          = false;
 
+        session->abort_for_same_controller = false;
+
         session->endpoint_current          = NULL;
         session->confidence                = .0;
 
@@ -1254,8 +1256,13 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                 request_new_session = false;
             } else { // Cancel current speech router session
                 XLOGD_WARN("Session in progress with same controller - src <%s> dst <%s>, aborting this and continuing..", ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
+                // MFV only: the remote autonomously (re)started its wake-word stream for this request, so the old
+                // session's teardown must not stop the remote stream that now belongs to the new session. PTT and
+                // other BLE sessions are key-driven and still stop the remote on the old session end.
+                session->abort_for_same_controller = (device_type == CTRLM_VOICE_DEVICE_MFV);
                 pre_session_terminate(cb_start_audio, cb_audio_start_params, cb_confirm, cb_confirm_param);
                 xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.
+                session->abort_for_same_controller = false;
             }
         } else { // session in progress with different controller
             XLOGD_ERROR("Session in progress with different controller - src <%s> dst <%s>, rejecting.", ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
@@ -1271,7 +1278,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
     bool is_session_by_fifo = (use_external_data_pipe && audio_fd != -1);
     fds[PIPE_READ] = audio_fd;
 
-    xrsr_session_request_t request_params;
+    xrsr_session_request_t request_params = {};
     request_params.type = XRSR_SESSION_REQUEST_TYPE_INVALID;
 
     uint8_t dst_index = 0;
@@ -1818,6 +1825,7 @@ void ctrlm_voice_t::voice_session_end(ctrlm_voice_session_t *session, ctrlm_voic
     end.controller_id       = session->controller_id;
     end.reason              = reason;
     end.utterance_too_short = (session->audio_sent_bytes == 0 ? 1 : 0);
+    end.suppress_stream_stop = session->abort_for_same_controller;
     // Don't need to fill out other info
     if(stats != NULL) {
        session->stats_session.rf_channel       = stats->rf_channel;

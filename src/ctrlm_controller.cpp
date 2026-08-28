@@ -337,7 +337,7 @@ void ctrlm_obj_controller_t::set_upgrade_progress(uint8_t progress) {
     ctrlm_rcu_upgrade_state_t previous_state = get_upgrade_state();
     ctrlm_rcu_upgrade_state_t new_state = CTRLM_RCU_UPGRADE_STATE_INVALID;
 
-    if (upgrade_progress_ >= 0 && upgrade_progress_ < 100) { // pending
+    if (upgrade_progress_ < 100) { // pending
        new_state = CTRLM_RCU_UPGRADE_STATE_PENDING;
        set_upgrade_error(""); // clear error messaging if pending
 

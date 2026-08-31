@@ -30,6 +30,7 @@
 #include "ctrlm_network.h"
 
 #include <fcntl.h>
+#include <utility>
 
 #include <libevdev-1.0/libevdev/libevdev.h>
 
@@ -144,7 +145,7 @@ bool ctrlm_ir_controller_t::read_config() {
       getline( ss, substr, ',' );
       if (!substr.empty()) {
          XLOGD_DEBUG("Adding IR input device name: <%s>", substr.c_str());
-         input_device_names_.push_back(substr);
+         input_device_names_.push_back(std::move(substr));
       }
    }
 

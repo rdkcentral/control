@@ -2318,18 +2318,19 @@ void ctrlm_main_update_export_controller_list() {
       }
    }
    // CUSTOM FORMATTING CODE
-   if(json_array_size(controller_list) == 0) {
+   size_t controller_count = json_array_size(controller_list);
+   if(controller_count == 0) {
       XLOGD_INFO("No controller information for XCONF, writing empty file");
    }
    std::string output = "";
 
    // Work with string now
    output += "[\n";
-   for(unsigned int i = 0; i < json_array_size(controller_list); i++) {
+   for(size_t i = 0; i < controller_count; i++) {
       char *buf = json_dumps(json_array_get(controller_list, i), JSON_PRESERVE_ORDER | JSON_INDENT(0) | JSON_COMPACT);
       if(buf) {
          output += buf;
-         if(i != json_array_size(controller_list)-1) {
+         if(i + 1 < controller_count) {
             output += ",";
          }
          output += "\n";

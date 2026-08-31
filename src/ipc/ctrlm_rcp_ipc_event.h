@@ -97,7 +97,7 @@ private:
     uint8_t                   battery_level_      = 0;
     std::string               tv_irdb_code_;
     std::string               avr_irdb_code_;
-    uint8_t                   wakeup_key_code_    = 0;
+    int                       wakeup_key_code_    = 0;
     ctrlm_rcu_wakeup_config_t wakeup_config_      = CTRLM_RCU_WAKEUP_CONFIG_INVALID;
     std::vector<uint16_t>     wakeup_custom_list_;
     std::string               upgrade_session_id_ = "";

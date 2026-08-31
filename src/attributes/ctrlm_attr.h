@@ -37,6 +37,10 @@ public:
      * ControlMgr Attribute Default Constructor
      */
     ctrlm_attr_t(const std::string &name = "Unknown Attribute");
+    ctrlm_attr_t(const ctrlm_attr_t &) = default;
+    ctrlm_attr_t(ctrlm_attr_t &&) noexcept = default;
+    ctrlm_attr_t &operator=(const ctrlm_attr_t &) = default;
+    ctrlm_attr_t &operator=(ctrlm_attr_t &&) noexcept = default;
     /**
      * ControlMgr Attribute Destructor
      */

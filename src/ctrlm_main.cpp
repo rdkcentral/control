@@ -2318,18 +2318,19 @@ void ctrlm_main_update_export_controller_list() {
       }
    }
    // CUSTOM FORMATTING CODE
-   if(json_array_size(controller_list) == 0) {
+   size_t controller_count = json_array_size(controller_list);
+   if(controller_count == 0) {
       XLOGD_INFO("No controller information for XCONF, writing empty file");
    }
    std::string output = "";
 
    // Work with string now
    output += "[\n";
-   for(unsigned int i = 0; i < json_array_size(controller_list); i++) {
+   for(size_t i = 0; i < controller_count; i++) {
       char *buf = json_dumps(json_array_get(controller_list, i), JSON_PRESERVE_ORDER | JSON_INDENT(0) | JSON_COMPACT);
       if(buf) {
          output += buf;
-         if(i != json_array_size(controller_list)-1) {
+         if(i + 1 < controller_count) {
             output += ",";
          }
          output += "\n";
@@ -2760,9 +2761,12 @@ gpointer ctrlm_main_thread(gpointer param) {
             bool result = false;
             ctrlm_main_queue_msg_controller_type_get_t *dqm = (ctrlm_main_queue_msg_controller_type_get_t *) msg;
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_CONTROLLER_TYPE_GET");
-            if(dqm->controller_type) {
-               *dqm->controller_type = obj_net->ctrlm_controller_type_get(dqm->controller_id);
-               result = (*dqm->controller_type != CTRLM_RCU_CONTROLLER_TYPE_INVALID ? true : false);
+            if(dqm->controller_type != NULL) {
+               *dqm->controller_type = CTRLM_RCU_CONTROLLER_TYPE_INVALID;
+               if(obj_net != NULL) {
+                  *dqm->controller_type = obj_net->ctrlm_controller_type_get(dqm->controller_id);
+                  result = (*dqm->controller_type != CTRLM_RCU_CONTROLLER_TYPE_INVALID);
+               }
             }
             if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
                // Signal the semaphore to indicate that the result is present
@@ -4527,6 +4531,7 @@ void ctrlm_crash_recovery_check() {
       if(!ctrlm_file_delete(g_ctrlm.db_path.c_str(), true)) {
          XLOGD_WARN("Failed to remove ctrlm DB.. It is possible it no longer exists");
       }
+#ifdef CTRLM_NETWORK_HAS_HAL_NVM
       // Set recovery mode in rf4ce object
       if(invalid_hal_nvm) {
          for(auto const &itr : g_ctrlm.networks) {
@@ -4534,12 +4539,11 @@ void ctrlm_crash_recovery_check() {
                itr.second->recovery_set(CTRLM_RECOVERY_TYPE_RESET);
             }
          }
-#ifdef CTRLM_NETWORK_HAS_HAL_NVM
          //Clear invalid NVM flag 
          invalid_hal_nvm = 0;
          ctrlm_recovery_property_set(CTRLM_RECOVERY_INVALID_HAL_NVM, &invalid_hal_nvm);
-#endif
       }
+#endif
       // Set crash back to 0
       crash_count = 0;
       ctrlm_recovery_property_set(CTRLM_RECOVERY_CRASH_COUNT, &crash_count);

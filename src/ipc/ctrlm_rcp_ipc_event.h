@@ -97,7 +97,7 @@ private:
     uint8_t                   battery_level_      = 0;
     std::string               tv_irdb_code_;
     std::string               avr_irdb_code_;
-    uint8_t                   wakeup_key_code_    = 0;
+    int                       wakeup_key_code_    = 0;
     ctrlm_rcu_wakeup_config_t wakeup_config_      = CTRLM_RCU_WAKEUP_CONFIG_INVALID;
     std::vector<uint16_t>     wakeup_custom_list_;
     std::string               upgrade_session_id_ = "";
@@ -185,7 +185,7 @@ private:
 
 class ctrlm_network_all_ipc_result_wrapper_t {
 private:
-    ctrlm_network_id_t network_id_;
+    ctrlm_network_id_t network_id_ = CTRLM_MAIN_NETWORK_ID_ALL;
     std::map<ctrlm_network_id_t, ctrlm_iarm_call_result_t> result_map_;
 
 public:

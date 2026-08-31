@@ -116,7 +116,10 @@ ctrlm_obj_network_t::~ctrlm_obj_network_t() {
       } else {
          // Wait for thread to exit
          XLOGD_INFO("Waiting for thread to exit");
-         g_thread_join(thread_id);
+         // Coverity is likely not modeling the ownership transfer of thread_id. Use an explicitly balanced extra reference so both GLib and Coverity see correct ownership.
+         GThread *join_thread_id = g_thread_ref(thread_id);
+         g_thread_join(join_thread_id);
+         g_thread_unref(thread_id);
          XLOGD_INFO("thread exited.");
       }
       ctrlm_network_term_hal_unref(term_data);

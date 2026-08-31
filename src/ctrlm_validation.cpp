@@ -627,5 +627,8 @@ gboolean ctrlm_validation_ignore_abort(void) {
 std::vector<ctrlm_key_code_t> ctrlm_validation_golden_code_get(void) {
     std::vector<ctrlm_key_code_t> golden_code;
     golden_code.insert(golden_code.end(), &g_ctrlm_validation.golden_code[0], &g_ctrlm_validation.golden_code[CTRLM_RCU_VALIDATION_KEY_QTY]);
-    return (std::all_of(golden_code.begin(), golden_code.end(), [](int i) { return i == 0; })) ? std::vector<ctrlm_key_code_t>() : golden_code;
+    if(std::all_of(golden_code.begin(), golden_code.end(), [](int i) { return i == 0; })) {
+        return {};
+    }
+    return golden_code;
 }

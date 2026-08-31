@@ -49,7 +49,7 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -DXRSR_SDT=OFF \
 -DBUILD_CTRLM_FACTORY=OFF \
 -DBUILD_FACTORY_TEST=OFF \
--DUSE_SAFEC=OFF \
+-DUSE_SAFEC=ON \
 -DBREAKPAD=OFF \
 -DFDC_ENABLED=OFF \
 -DENABLE_ASYNC_SRVR_MSG=OFF \
@@ -76,7 +76,7 @@ ${GLIB_CFLAGS} \
 -include ${MOCK_DIR}/Iarm.h \
 -include ${MOCK_DIR}/devicesettings.h \
 -include ${MOCK_DIR}/Rfc.h \
--Wall -Wno-error \
+-Wall \
 -DDISABLE_SECURITY_TOKEN" \
 -DCMAKE_C_FLAGS=" \
 -I ${XRSDK_REAL_HEADERS} \
@@ -88,15 +88,9 @@ ${GLIB_CFLAGS} \
 -I ${GITHUB_WORKSPACE}/install/usr/include \
 -I /usr/include/libdrm \
 ${GLIB_CFLAGS} \
--Wall -Wno-error \
+-Wall \
 -DDISABLE_SECURITY_TOKEN" \
 -DCMAKE_EXE_LINKER_FLAGS="-L${GITHUB_WORKSPACE}/install/usr/lib -Wl,--unresolved-symbols=ignore-all"
-
-# CMakeLists.txt unconditionally appends -Werror via target_compile_options, which
-# comes after CMAKE_CXX_FLAGS and overrides -Wno-error. Strip it from the generated
-# build files after cmake configure. To remove this, add an ENABLE_WERROR option to
-# CMakeLists.txt that appends -Wno-error when OFF, and pass -DENABLE_WERROR=OFF here.
-find "${GITHUB_WORKSPACE}/build/control" \( -name "*.ninja" -o -name "flags.make" \) -exec sed -i 's/\(^\|[[:space:]]\)-Werror\([[:space:]]\|$\)/\1\2/g' {} \;
 
 cmake --build build/control -j$(nproc) 2>&1
 echo "======================================================================================"

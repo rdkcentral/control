@@ -82,6 +82,22 @@ make -j$(nproc)
 make install
 cd "${GITHUB_WORKSPACE}"
 
+# Clone and build real safeclib from source (matches the DISTRO_FEATURES=safec
+# path production builds take — see
+# meta-openembedded/meta-oe/recipes-core/safec/safec_3.7.1.bb,
+# SRCREV f9add9245b97c7bda6e28cceb0ee37fb7e254fd8). xr-voice-sdk (built below
+# as part of this same script) links against it too.
+git clone --depth 1 https://github.com/rurban/safeclib.git
+git -C safeclib fetch --depth 1 origin f9add9245b97c7bda6e28cceb0ee37fb7e254fd8
+git -C safeclib checkout f9add9245b97c7bda6e28cceb0ee37fb7e254fd8
+cd safeclib
+autoreconf -fi
+./configure --disable-wchar --prefix=/usr
+make -j$(nproc)
+make install
+ldconfig
+cd "${GITHUB_WORKSPACE}"
+
 IARMMGRS_DIR="$GITHUB_WORKSPACE/iarmmgrs"
 DEEPSLEEP_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-deepsleep_manager"
 POWER_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-power_manager"
@@ -99,22 +115,13 @@ mkdir -p "${HEADERS_DIR}/rdk/iarmbus"
 mkdir -p "${HEADERS_DIR}/rdk/ds"
 mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
 
-# Use the Yocto safec_lib.h sysroot header for CI builds without libsafec.
-# Add include guards because the upstream header does not provide them.
-cp "$SAFEC_WRAPPER_DIR/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
-sed -i '1s/^/#ifndef CTRLM_CI_SAFEC_LIB_H\n#define CTRLM_CI_SAFEC_LIB_H\n/' "$HEADERS_DIR/safec_lib.h"
-printf '\n#endif /* CTRLM_CI_SAFEC_LIB_H */\n' >> "$HEADERS_DIR/safec_lib.h"
-# patching parseFormat to avoid -Wmaybe-uninitialized warnings in ctrlm_database.cpp from the safec wrapper's dummy implementation
-sed -i 's/static inline int parseFormat(const char \*dst,/static inline int parseFormat(char *dst,/' "$HEADERS_DIR/safec_lib.h"
-# patching strcpy_s to avoid Coverity's array-vs-NULL warning on string literals while
-# preserving the dummy wrapper's null and bounds checks in CI builds.
-perl -0pi -e 's{#define strcpy_s\(dst,max,src\) \(src != NULL\)\?\(\(max > strlen\(src\)\)\?EOK:ESLEMAX\):ESNULLP; \\\n if\(\(src != NULL\) && \(max > strlen\(src\)\)\) strcpy\(dst,src\);}{#define strcpy_s(dst,max,src) ({ const char *ctrlm_ci_src__ = (src); ctrlm_ci_src__ != NULL ? (((max) > strlen(ctrlm_ci_src__)) ? (strcpy((dst), ctrlm_ci_src__), EOK) : ESLEMAX) : ESNULLP; })}s or die "failed to patch strcpy_s in safec_lib.h\n"' "$HEADERS_DIR/safec_lib.h"
-# patching strncpy_s to avoid the wrapper's raw strncpy expansion, which triggers
-# -Wstringop-truncation in CI even though ctrlm manually terminates the destination buffer.
-perl -0pi -e 's{#define strncpy_s\(dst,max,src,len\) \(src != NULL\)\?\(\(len <= max\)\?EOK:ESLEMAX\):ESNULLP; \\\n if\(\(src != NULL\) && \(len <= max\)\) strncpy\(dst,src,len\);}{#define strncpy_s(dst,max,src,len) (src != NULL)?((len <= max)?EOK:ESLEMAX):ESNULLP; \\\n if((src != NULL) && (len <= max)) { size_t copy_len = strnlen(src, len); memcpy(dst, src, copy_len); if(copy_len < (size_t)(max)) memset((char *)(dst) + copy_len, 0, (size_t)(max) - copy_len); }}s or die "failed to patch strncpy_s in safec_lib.h\n"' "$HEADERS_DIR/safec_lib.h"
-
 # Stage rdkversion.h before building xr-voice-sdk.
 cp "$RDKVERSION_DIR/src/rdkversion.h" "$HEADERS_DIR/rdkversion.h"
+
+# safec_lib.h — both xr-voice-sdk and ctrlm source include this unconditionally.
+# With real safeclib built above (no SAFEC_DUMMY_API define), its own #ifndef
+# SAFEC_DUMMY_API branch pulls in safe_str_lib.h/safe_mem_lib.h for us.
+cp "$SAFEC_WRAPPER_DIR/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
 
 # Build xr-voice-sdk and install its headers under ${HEADERS_DIR}/xr-voice-sdk/.
 # Version doesn't matter here, but we try to get the latest tag for good measure since it's included in the generated headers and may be used by downstream code.
@@ -127,7 +134,8 @@ cmake -G Ninja \
     -DCMAKE_INSTALL_PREFIX="${HEADERS_DIR}" \
     -DCMAKE_INSTALL_INCLUDEDIR="xr-voice-sdk" \
     -DCMAKE_INSTALL_SYSCONFDIR="${HEADERS_DIR}/etc" \
-    -DCMAKE_C_FLAGS="-I${HEADERS_DIR} -DSAFEC_DUMMY_API" \
+    -DCMAKE_C_FLAGS="-I${HEADERS_DIR} $(pkg-config --cflags libsafec)" \
+    -DCMAKE_SHARED_LINKER_FLAGS="$(pkg-config --libs libsafec)" \
     -DSTAGING_BINDIR_NATIVE="/usr/bin" \
     -DCMAKE_PROJECT_VERSION="${XRSDK_REF}" \
     -DWS_ENABLED=ON \

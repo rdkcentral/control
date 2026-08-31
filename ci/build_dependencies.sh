@@ -71,7 +71,7 @@ git -C rdk-halif-power_manager sparse-checkout set include
 git clone --depth 1 --filter=blob:none --sparse --branch develop https://github.com/rdkcentral/rdkversion.git
 git -C rdkversion sparse-checkout set src
 
-git clone --depth 1 --filter=blob:none --sparse https://github.com/rdkcentral/meta-rdk-oss-reference.git
+git clone --depth 1 --filter=blob:none --sparse --branch feature/RDKEMW-18167 https://github.com/rdkcentral/meta-rdk-oss-reference.git
 git -C meta-rdk-oss-reference sparse-checkout set recipes-common/safec-common-wrapper/files
 
 # Build and install nopoll for xr-voice-sdk WS-enabled native CI build.
@@ -100,18 +100,14 @@ mkdir -p "${HEADERS_DIR}/rdk/ds"
 mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
 
 # Use the Yocto safec_lib.h sysroot header for CI builds without libsafec.
-# Add include guards because the upstream header does not provide them.
+# Header guards live in the file itself now (RDK_SAFEC_LIB_H) — no need to
+# wrap it here.
 cp "$SAFEC_WRAPPER_DIR/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
-sed -i '1s/^/#ifndef CTRLM_CI_SAFEC_LIB_H\n#define CTRLM_CI_SAFEC_LIB_H\n/' "$HEADERS_DIR/safec_lib.h"
-printf '\n#endif /* CTRLM_CI_SAFEC_LIB_H */\n' >> "$HEADERS_DIR/safec_lib.h"
 # patching parseFormat to avoid -Wmaybe-uninitialized warnings in ctrlm_database.cpp from the safec wrapper's dummy implementation
 sed -i 's/static inline int parseFormat(const char \*dst,/static inline int parseFormat(char *dst,/' "$HEADERS_DIR/safec_lib.h"
 # patching strcpy_s to avoid Coverity's array-vs-NULL warning on string literals while
 # preserving the dummy wrapper's null and bounds checks in CI builds.
 perl -0pi -e 's{#define strcpy_s\(dst,max,src\) \(src != NULL\)\?\(\(max > strlen\(src\)\)\?EOK:ESLEMAX\):ESNULLP; \\\n if\(\(src != NULL\) && \(max > strlen\(src\)\)\) strcpy\(dst,src\);}{#define strcpy_s(dst,max,src) ({ const char *ctrlm_ci_src__ = (src); ctrlm_ci_src__ != NULL ? (((max) > strlen(ctrlm_ci_src__)) ? (strcpy((dst), ctrlm_ci_src__), EOK) : ESLEMAX) : ESNULLP; })}s or die "failed to patch strcpy_s in safec_lib.h\n"' "$HEADERS_DIR/safec_lib.h"
-# patching strncpy_s to avoid the wrapper's raw strncpy expansion, which triggers
-# -Wstringop-truncation in CI even though ctrlm manually terminates the destination buffer.
-perl -0pi -e 's{#define strncpy_s\(dst,max,src,len\) \(src != NULL\)\?\(\(len <= max\)\?EOK:ESLEMAX\):ESNULLP; \\\n if\(\(src != NULL\) && \(len <= max\)\) strncpy\(dst,src,len\);}{#define strncpy_s(dst,max,src,len) (src != NULL)?((len <= max)?EOK:ESLEMAX):ESNULLP; \\\n if((src != NULL) && (len <= max)) { size_t copy_len = strnlen(src, len); memcpy(dst, src, copy_len); if(copy_len < (size_t)(max)) memset((char *)(dst) + copy_len, 0, (size_t)(max) - copy_len); }}s or die "failed to patch strncpy_s in safec_lib.h\n"' "$HEADERS_DIR/safec_lib.h"
 
 # Stage rdkversion.h before building xr-voice-sdk.
 cp "$RDKVERSION_DIR/src/rdkversion.h" "$HEADERS_DIR/rdkversion.h"

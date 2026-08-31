@@ -71,9 +71,6 @@ git -C rdk-halif-power_manager sparse-checkout set include
 git clone --depth 1 --filter=blob:none --sparse --branch develop https://github.com/rdkcentral/rdkversion.git
 git -C rdkversion sparse-checkout set src
 
-git clone --depth 1 --filter=blob:none --sparse --branch feature/RDKEMW-18167 https://github.com/rdkcentral/meta-rdk-oss-reference.git
-git -C meta-rdk-oss-reference sparse-checkout set recipes-common/safec-common-wrapper/files
-
 # Build and install nopoll for xr-voice-sdk WS-enabled native CI build.
 git clone --depth 1 https://github.com/ASPLes/nopoll.git
 cd nopoll
@@ -82,11 +79,26 @@ make -j$(nproc)
 make install
 cd "${GITHUB_WORKSPACE}"
 
+# Clone and build real safeclib from source (matches the DISTRO_FEATURES=safec
+# path production builds take — see
+# meta-openembedded/meta-oe/recipes-core/safec/safec_3.7.1.bb,
+# SRCREV f9add9245b97c7bda6e28cceb0ee37fb7e254fd8). xr-voice-sdk (built below
+# as part of this same script) links against it too.
+git clone --depth 1 https://github.com/rurban/safeclib.git
+git -C safeclib fetch --depth 1 origin f9add9245b97c7bda6e28cceb0ee37fb7e254fd8
+git -C safeclib checkout f9add9245b97c7bda6e28cceb0ee37fb7e254fd8
+cd safeclib
+autoreconf -fi
+./configure --disable-wchar --prefix=/usr
+make -j$(nproc)
+make install
+ldconfig
+cd "${GITHUB_WORKSPACE}"
+
 IARMMGRS_DIR="$GITHUB_WORKSPACE/iarmmgrs"
 DEEPSLEEP_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-deepsleep_manager"
 POWER_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-power_manager"
 RDKVERSION_DIR="$GITHUB_WORKSPACE/rdkversion"
-SAFEC_WRAPPER_DIR="$GITHUB_WORKSPACE/meta-rdk-oss-reference/recipes-common/safec-common-wrapper/files"
 
 ############################
 # 3. Create stub/empty headers for external dependencies
@@ -98,9 +110,6 @@ mkdir -p "${HEADERS_DIR}"
 mkdir -p "${HEADERS_DIR}/rdk/iarmbus"
 mkdir -p "${HEADERS_DIR}/rdk/ds"
 mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
-
-# Use the Yocto safec_lib.h sysroot header for CI builds without libsafec.
-cp "$SAFEC_WRAPPER_DIR/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
 
 # Stage rdkversion.h before building xr-voice-sdk.
 cp "$RDKVERSION_DIR/src/rdkversion.h" "$HEADERS_DIR/rdkversion.h"
@@ -116,7 +125,8 @@ cmake -G Ninja \
     -DCMAKE_INSTALL_PREFIX="${HEADERS_DIR}" \
     -DCMAKE_INSTALL_INCLUDEDIR="xr-voice-sdk" \
     -DCMAKE_INSTALL_SYSCONFDIR="${HEADERS_DIR}/etc" \
-    -DCMAKE_C_FLAGS="-I${HEADERS_DIR} -DSAFEC_DUMMY_API" \
+    -DCMAKE_C_FLAGS="-I${HEADERS_DIR} $(pkg-config --cflags libsafec)" \
+    -DCMAKE_SHARED_LINKER_FLAGS="$(pkg-config --libs libsafec)" \
     -DSTAGING_BINDIR_NATIVE="/usr/bin" \
     -DCMAKE_PROJECT_VERSION="${XRSDK_REF}" \
     -DWS_ENABLED=ON \

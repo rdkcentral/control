@@ -236,8 +236,11 @@ void ctrlm_obj_controller_t::ota_failure_cnt_session_clear() {
 }
 
 bool ctrlm_obj_controller_t::retry_ota() const {
-   bool retry = ota_failure_cnt_session_ < OTA_MAX_RETRIES;
-   XLOGD_WARN("ota_failure_cnt_session_ = <%d>, retry OTA = <%s>",ota_failure_cnt_session_,retry ? "TRUE":"FALSE");
+   bool retry = false;
+#if OTA_MAX_RETRIES > 0
+   retry = ota_failure_cnt_session_ < OTA_MAX_RETRIES;
+#endif
+   XLOGD_WARN("ota_failure_cnt_session_ = <%d>, retry OTA = <%s>", ota_failure_cnt_session_, retry ? "TRUE" : "FALSE");
    return retry;
 }
 

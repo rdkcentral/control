@@ -2761,7 +2761,7 @@ gpointer ctrlm_main_thread(gpointer param) {
             bool result = false;
             ctrlm_main_queue_msg_controller_type_get_t *dqm = (ctrlm_main_queue_msg_controller_type_get_t *) msg;
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_CONTROLLER_TYPE_GET");
-            if(dqm->controller_type) {
+            if(obj_net != NULL && dqm->controller_type != NULL) {
                *dqm->controller_type = obj_net->ctrlm_controller_type_get(dqm->controller_id);
                result = (*dqm->controller_type != CTRLM_RCU_CONTROLLER_TYPE_INVALID ? true : false);
             }

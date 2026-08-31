@@ -100,14 +100,9 @@ mkdir -p "${HEADERS_DIR}/rdk/ds"
 mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
 
 # Use the Yocto safec_lib.h sysroot header for CI builds without libsafec.
-# Header guards live in the file itself now (RDK_SAFEC_LIB_H) — no need to
-# wrap it here.
-cp "$SAFEC_WRAPPER_DIR/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
-# patching parseFormat to avoid -Wmaybe-uninitialized warnings in ctrlm_database.cpp from the safec wrapper's dummy implementation
-sed -i 's/static inline int parseFormat(const char \*dst,/static inline int parseFormat(char *dst,/' "$HEADERS_DIR/safec_lib.h"
-# patching strcpy_s to avoid Coverity's array-vs-NULL warning on string literals while
-# preserving the dummy wrapper's null and bounds checks in CI builds.
-perl -0pi -e 's{#define strcpy_s\(dst,max,src\) \(src != NULL\)\?\(\(max > strlen\(src\)\)\?EOK:ESLEMAX\):ESNULLP; \\\n if\(\(src != NULL\) && \(max > strlen\(src\)\)\) strcpy\(dst,src\);}{#define strcpy_s(dst,max,src) ({ const char *ctrlm_ci_src__ = (src); ctrlm_ci_src__ != NULL ? (((max) > strlen(ctrlm_ci_src__)) ? (strcpy((dst), ctrlm_ci_src__), EOK) : ESLEMAX) : ESNULLP; })}s or die "failed to patch strcpy_s in safec_lib.h\n"' "$HEADERS_DIR/safec_lib.h"
+SAFEC_LIB_H_SRC="$SAFEC_WRAPPER_DIR/safec_lib.h"
+grep -q 'RDK_SAFEC_LIB_H' "$SAFEC_LIB_H_SRC" || { echo "ERROR: RDK_SAFEC_LIB_H guard missing from $SAFEC_LIB_H_SRC" >&2; exit 1; }
+cp "$SAFEC_LIB_H_SRC" "$HEADERS_DIR/safec_lib.h"
 
 # Stage rdkversion.h before building xr-voice-sdk.
 cp "$RDKVERSION_DIR/src/rdkversion.h" "$HEADERS_DIR/rdkversion.h"

@@ -185,7 +185,7 @@ private:
 
 class ctrlm_network_all_ipc_result_wrapper_t {
 private:
-    ctrlm_network_id_t network_id_;
+    ctrlm_network_id_t network_id_ = CTRLM_MAIN_NETWORK_ID_ALL;
     std::map<ctrlm_network_id_t, ctrlm_iarm_call_result_t> result_map_;
 
 public:

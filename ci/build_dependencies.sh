@@ -71,6 +71,9 @@ git -C rdk-halif-power_manager sparse-checkout set include
 git clone --depth 1 --filter=blob:none --sparse --branch develop https://github.com/rdkcentral/rdkversion.git
 git -C rdkversion sparse-checkout set src
 
+git clone --depth 1 --filter=blob:none --sparse https://github.com/rdkcentral/meta-rdk-oss-reference.git
+git -C meta-rdk-oss-reference sparse-checkout set recipes-common/safec-common-wrapper/files
+
 # Build and install nopoll for xr-voice-sdk WS-enabled native CI build.
 git clone --depth 1 https://github.com/ASPLes/nopoll.git
 cd nopoll
@@ -99,6 +102,7 @@ IARMMGRS_DIR="$GITHUB_WORKSPACE/iarmmgrs"
 DEEPSLEEP_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-deepsleep_manager"
 POWER_HAL_DIR="$GITHUB_WORKSPACE/rdk-halif-power_manager"
 RDKVERSION_DIR="$GITHUB_WORKSPACE/rdkversion"
+SAFEC_WRAPPER_DIR="$GITHUB_WORKSPACE/meta-rdk-oss-reference/recipes-common/safec-common-wrapper/files"
 
 ############################
 # 3. Create stub/empty headers for external dependencies
@@ -113,6 +117,11 @@ mkdir -p "${HEADERS_DIR}/rdk/iarmmgrs-hal"
 
 # Stage rdkversion.h before building xr-voice-sdk.
 cp "$RDKVERSION_DIR/src/rdkversion.h" "$HEADERS_DIR/rdkversion.h"
+
+# safec_lib.h — both xr-voice-sdk and ctrlm source include this unconditionally.
+# With real safeclib built above (no SAFEC_DUMMY_API define), its own #ifndef
+# SAFEC_DUMMY_API branch pulls in safe_str_lib.h/safe_mem_lib.h for us.
+cp "$SAFEC_WRAPPER_DIR/safec_lib.h" "$HEADERS_DIR/safec_lib.h"
 
 # Build xr-voice-sdk and install its headers under ${HEADERS_DIR}/xr-voice-sdk/.
 # Version doesn't matter here, but we try to get the latest tag for good measure since it's included in the generated headers and may be used by downstream code.

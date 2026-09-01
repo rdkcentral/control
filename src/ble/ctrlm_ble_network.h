@@ -142,7 +142,6 @@ public:
    void                          ind_process_keypress(void *data, int size);
    void                          ind_process_rcu_pairing_outcome(void *data, int size);
 
-   virtual void                  req_process_network_status(void *data, int size);
    virtual void                  req_process_controller_status(void *data, int size);
    
    virtual void                  req_process_voice_session_begin(void *data, int size);

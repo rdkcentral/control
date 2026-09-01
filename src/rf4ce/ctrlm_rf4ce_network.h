@@ -299,6 +299,7 @@ public:
    virtual ctrlm_rcu_controller_type_t  ctrlm_controller_type_get(ctrlm_controller_id_t controller_id);
    virtual ctrlm_rcu_binding_type_t     ctrlm_binding_type_get(ctrlm_controller_id_t controller_id);
    virtual void                         ctrlm_controller_status_get(ctrlm_controller_id_t controller_id, void *status);
+   virtual bool                         get_legacy_remote_data(ctrlm_legacy_rf4ce_network_status_t *network_status, std::vector<std::pair<ctrlm_controller_id_t, ctrlm_controller_status_t>> *controller_status);
    void                                 pan_id_get(guint16  *pan_id);
    void                                 ieee_address_get(unsigned long long  *ieee_address);
    void                                 short_address_get(ctrlm_hal_rf4ce_short_address_t  *short_address);
@@ -347,7 +348,6 @@ public:
    ctrlm_rib_request_cmd_result_t req_process_rib_export(ctrlm_controller_id_t controller_id, uint8_t identifier, unsigned char index, unsigned char length, unsigned char *data);
    void req_process_controller_status(void *dqm, int size);
    void req_process_controller_product_name(void *data, int size);
-   void req_process_network_status(void *data, int size);
    void req_process_controller_link_key(void *data, int size);
    void req_process_dpi_control(void *data, int size);
    void req_process_polling_action_push(void *data, int size);

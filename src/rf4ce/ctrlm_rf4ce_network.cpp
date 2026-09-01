@@ -4090,47 +4090,40 @@ void ctrlm_obj_network_rf4ce_t::hal_init_cfm(void *data, int size) {
    ctrlm_obj_network_t::hal_init_cfm(data, size);
 }
 
-void ctrlm_obj_network_rf4ce_t::req_process_network_status(void *data, int size) {
-   ctrlm_main_queue_msg_main_network_status_t *dqm = (ctrlm_main_queue_msg_main_network_status_t *)data;
+bool ctrlm_obj_network_rf4ce_t::get_legacy_remote_data(ctrlm_legacy_rf4ce_network_status_t *network_status, std::vector<std::pair<ctrlm_controller_id_t, ctrlm_controller_status_t>> *controller_status) {
+   THREAD_ID_VALIDATE();
+   if(network_status == NULL || controller_status == NULL) {
+      return false;
+   }
 
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_main_network_status_t));
-   g_assert(dqm->cmd_result);
-
-   ctrlm_network_status_rf4ce_t *status_rf4ce  = &dqm->status->status.rf4ce;
-   errno_t safec_rc = strncpy_s(status_rf4ce->version_hal, sizeof(status_rf4ce->version_hal), version_get(), CTRLM_MAIN_VERSION_LENGTH-1);
+   errno_t safec_rc = strncpy_s(network_status->version_hal, sizeof(network_status->version_hal), version_get(), CTRLM_MAIN_VERSION_LENGTH - 1);
    ERR_CHK(safec_rc);
-   status_rf4ce->version_hal[CTRLM_MAIN_VERSION_LENGTH - 1] = '\0';
-   safec_rc = strncpy_s(status_rf4ce->chipset, sizeof(status_rf4ce->chipset), chipset_get(), CTRLM_MAIN_MAX_CHIPSET_LENGTH-1);
+   network_status->version_hal[CTRLM_MAIN_VERSION_LENGTH - 1] = '\0';
+   safec_rc = strncpy_s(network_status->chipset, sizeof(network_status->chipset), chipset_get(), CTRLM_MAIN_MAX_CHIPSET_LENGTH - 1);
    ERR_CHK(safec_rc);
-   status_rf4ce->chipset[CTRLM_MAIN_MAX_CHIPSET_LENGTH - 1] = '\0';
+   network_status->chipset[CTRLM_MAIN_MAX_CHIPSET_LENGTH - 1] = '\0';
 
    int index = 0;
    for(auto const &itr : controllers_) {
-      //If the validation result is not success, then this remote has not finished pairing.  Do not send it's status.
       if(itr.second->validation_result_get() == CTRLM_RF4CE_RESULT_VALIDATION_SUCCESS) {
-         status_rf4ce->controllers[index] = itr.first;
-         index++;
+         ctrlm_controller_status_t status;
+         itr.second->rf4ce_controller_status(&status);
+         network_status->controllers[index++] = itr.first;
+         controller_status->push_back(std::make_pair(itr.first, status));
          if(index >= CTRLM_MAIN_MAX_BOUND_CONTROLLERS) {
             break;
          }
-      } else {
-         XLOGD_WARN("Controller <%u> is pending.  Ignoring.", itr.first);
       }
    }
-   status_rf4ce->controller_qty = index;
-   XLOGD_INFO("HAL Version <%s> Controller Qty %u", status_rf4ce->version_hal, status_rf4ce->controller_qty);
-   pan_id_get(&status_rf4ce->pan_id);
-   ieee_address_get(&status_rf4ce->ieee_address);
-   short_address_get(&status_rf4ce->short_address);
+   network_status->controller_qty = index;
+   pan_id_get(&network_status->pan_id);
+   ieee_address_get(&network_status->ieee_address);
+   short_address_get(&network_status->short_address);
    ctrlm_rf4ce_rf_channel_info_t rf_channel_info;
    rf_channel_info_get(&rf_channel_info);
-   status_rf4ce->rf_channel_active.number  = rf_channel_info.rf_channel_number;
-   status_rf4ce->rf_channel_active.quality = rf_channel_info.rf_channel_quality;
-   dqm->status->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
-   *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
-
-   ctrlm_obj_network_t::req_process_network_status(data, size);
+   network_status->rf_channel_active.number  = rf_channel_info.rf_channel_number;
+   network_status->rf_channel_active.quality = rf_channel_info.rf_channel_quality;
+   return true;
 }
 
 void ctrlm_obj_network_rf4ce_t::cs_values_set(const ctrlm_cs_values_t *values, bool db_load) {

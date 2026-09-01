@@ -92,6 +92,7 @@ typedef struct {
    ctrlm_main_queue_msg_header_t               header;
    std::shared_ptr<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>> params;
    sem_t *                                     semaphore;
+   bool                                        verbose;
 } ctrlm_main_queue_msg_get_rcu_status_t;
 
 typedef struct {
@@ -252,8 +253,8 @@ public:
    virtual ctrlm_ir_state_t                      get_ir_prog_state() const;
    virtual void                                  set_rf_pair_state(ctrlm_rf_pair_state_t rf_pair_state);
    virtual ctrlm_rf_pair_state_t                 get_rf_pair_state() const;
+   virtual bool         get_legacy_remote_data(ctrlm_legacy_rf4ce_network_status_t *network_status, std::vector<std::pair<ctrlm_controller_id_t, ctrlm_controller_status_t>> *controller_status);
 
-   virtual void         req_process_network_status(void *data, int size);
    virtual void         req_process_controller_link_key(void *data, int size);
    virtual void         req_process_controller_status(void *data, int size);
    virtual void         req_process_controller_product_name(void *data, int size);

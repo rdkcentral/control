@@ -34,14 +34,11 @@
 #include "dsRpc.h"
 
 static IARM_Result_t ctrlm_main_iarm_call_status_get(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_network_status_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_property_set(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_controller_unbind(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_ir_remote_usage_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_last_key_info_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_control_service_set_values(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_control_service_get_values(void *arg);
-static IARM_Result_t ctrlm_main_iarm_call_pairing_metrics_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_voice_session_begin(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_voice_session_end(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_audio_capture_start(void *arg);
@@ -58,14 +55,11 @@ static volatile int running = 0;
 // Array to hold the IARM Calls that will be registered by Control Manager
 ctrlm_iarm_call_t ctrlm_iarm_calls[] = {
    {CTRLM_MAIN_IARM_CALL_STATUS_GET,                         ctrlm_main_iarm_call_status_get                         },
-   {CTRLM_MAIN_IARM_CALL_NETWORK_STATUS_GET,                 ctrlm_main_iarm_call_network_status_get                 },
    {CTRLM_MAIN_IARM_CALL_PROPERTY_SET,                       ctrlm_main_iarm_call_property_set                       },
    {CTRLM_MAIN_IARM_CALL_CONTROLLER_UNBIND,                  ctrlm_main_iarm_call_controller_unbind                  },
-   {CTRLM_MAIN_IARM_CALL_IR_REMOTE_USAGE_GET,                ctrlm_main_iarm_call_ir_remote_usage_get                },
    {CTRLM_MAIN_IARM_CALL_LAST_KEY_INFO_GET,                  ctrlm_main_iarm_call_last_key_info_get                  },
    {CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_SET_VALUES,         ctrlm_main_iarm_call_control_service_set_values         },
    {CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_GET_VALUES,         ctrlm_main_iarm_call_control_service_get_values         },
-   {CTRLM_MAIN_IARM_CALL_PAIRING_METRICS_GET,                ctrlm_main_iarm_call_pairing_metrics_get                },
    {CTRLM_VOICE_IARM_CALL_SESSION_BEGIN,                     ctrlm_main_iarm_call_voice_session_begin                },
    {CTRLM_VOICE_IARM_CALL_SESSION_END,                       ctrlm_main_iarm_call_voice_session_end                  },
    {CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_START,                ctrlm_main_iarm_call_audio_capture_start                },
@@ -132,30 +126,6 @@ IARM_Result_t ctrlm_main_iarm_call_status_get(void *arg) {
    return(IARM_RESULT_SUCCESS);
 }
 
-IARM_Result_t ctrlm_main_iarm_call_ir_remote_usage_get(void *arg) {
-   ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage = (ctrlm_main_iarm_call_ir_remote_usage_t *) arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(ir_remote_usage == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(ir_remote_usage->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-      XLOGD_INFO("Unsupported API Revision (%u, %u)", ir_remote_usage->api_revision, CTRLM_MAIN_IARM_BUS_API_REVISION);
-      ir_remote_usage->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-      return(IARM_RESULT_SUCCESS);
-   }
-   XLOGD_INFO("");
-
-   if(!ctrlm_main_iarm_call_ir_remote_usage_get(ir_remote_usage)) {
-      ir_remote_usage->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-   return(IARM_RESULT_SUCCESS);
-}
-
 IARM_Result_t ctrlm_main_iarm_call_last_key_info_get(void *arg) {
    ctrlm_main_iarm_call_last_key_info_t *last_key_info = (ctrlm_main_iarm_call_last_key_info_t *) arg;
 
@@ -176,30 +146,6 @@ IARM_Result_t ctrlm_main_iarm_call_last_key_info_get(void *arg) {
 
    if(!ctrlm_main_iarm_call_last_key_info_get(last_key_info)) {
       last_key_info->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_network_status_get(void *arg) {
-   ctrlm_main_iarm_call_network_status_t *status = (ctrlm_main_iarm_call_network_status_t *)arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(status == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(status->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-      XLOGD_INFO("Unsupported API Revision (%u, %u)", status->api_revision, CTRLM_MAIN_IARM_BUS_API_REVISION);
-      status->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-      return(IARM_RESULT_SUCCESS);
-   }
-   XLOGD_INFO("");
-   
-   if(!ctrlm_main_iarm_call_network_status_get(status)) {
-      status->result = CTRLM_IARM_CALL_RESULT_ERROR;
    }
    return(IARM_RESULT_SUCCESS);
 }
@@ -396,30 +342,6 @@ IARM_Result_t ctrlm_main_iarm_call_control_service_get_values(void *arg) {
    
    if(!ctrlm_main_iarm_call_control_service_get_values(settings)) {
       settings->result = CTRLM_IARM_CALL_RESULT_ERROR;
-   }
-   return(IARM_RESULT_SUCCESS);
-}
-
-IARM_Result_t ctrlm_main_iarm_call_pairing_metrics_get(void *arg) {
-   ctrlm_main_iarm_call_pairing_metrics_t *pairing_metrics = (ctrlm_main_iarm_call_pairing_metrics_t *) arg;
-
-   if(0 == g_atomic_int_get(&running)) {
-      XLOGD_ERROR("IARM Call received when IARM component in stopped/terminated state, reply with ERROR");
-      return(IARM_RESULT_INVALID_STATE);
-   }
-   if(pairing_metrics == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(IARM_RESULT_INVALID_PARAM);
-   }
-   if(pairing_metrics->api_revision != CTRLM_MAIN_IARM_BUS_API_REVISION) {
-      XLOGD_INFO("Unsupported API Revision (%u, %u)", pairing_metrics->api_revision, CTRLM_MAIN_IARM_BUS_API_REVISION);
-      pairing_metrics->result = CTRLM_IARM_CALL_RESULT_ERROR_API_REVISION;
-      return(IARM_RESULT_SUCCESS);
-   }
-   XLOGD_INFO("");
-
-   if(!ctrlm_main_iarm_call_pairing_metrics_get(pairing_metrics)) {
-      pairing_metrics->result = CTRLM_IARM_CALL_RESULT_ERROR;
    }
    return(IARM_RESULT_SUCCESS);
 }

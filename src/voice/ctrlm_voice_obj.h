@@ -644,6 +644,7 @@ public:
     bool                  voice_is_privacy_enabled(void);
     void                  voice_privacy_enable(bool update_vsdk);
     void                  voice_privacy_disable(bool update_vsdk);
+    void                  voice_update_privacy(void);
 
     void                  voice_device_update_set_active(void);
     void                  voice_device_update_set_inactive(void);

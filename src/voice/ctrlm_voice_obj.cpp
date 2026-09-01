@@ -346,6 +346,7 @@ bool ctrlm_voice_t::vsdk_is_privacy_enabled(void) {
       XLOGD_ERROR("error getting privacy mode, defaulting to saved state");
       privacy = this->voice_is_privacy_enabled();
    }
+   XLOGD_INFO("HAL privacy mode is %s", privacy ? "ON" : "OFF");
 
    return privacy;
 }
@@ -3677,6 +3678,7 @@ bool ctrlm_voice_t::voice_is_privacy_enabled(void) {
       sem_wait(&this->device_status_semaphore);
       bool value = (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_PRIVACY) ? true : false;
       sem_post(&this->device_status_semaphore);
+      XLOGD_INFO("read privacy mode is %s", value ? "ON" : "OFF");
       return(value);
    }
    return(false);
@@ -3701,6 +3703,7 @@ void ctrlm_voice_t::voice_privacy_enable(bool update_vsdk) {
 
         this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] |= CTRLM_VOICE_DEVICE_STATUS_PRIVACY;
         ctrlm_db_voice_write_device_status(CTRLM_VOICE_DEVICE_MICROPHONE, (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_MASK_DB));
+        XLOGD_INFO("saved privacy mode ON");
 
         if(this->local_mic_disable_via_privacy) {
             if(update_vsdk && this->xrsr_opened && !xrsr_privacy_mode_set(true)) {
@@ -3730,6 +3733,7 @@ void ctrlm_voice_t::voice_privacy_disable(bool update_vsdk) {
 
         this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] &= ~CTRLM_VOICE_DEVICE_STATUS_PRIVACY;
         ctrlm_db_voice_write_device_status(CTRLM_VOICE_DEVICE_MICROPHONE, (this->device_status[CTRLM_VOICE_DEVICE_MICROPHONE] & CTRLM_VOICE_DEVICE_STATUS_MASK_DB));
+        XLOGD_INFO("saved privacy mode OFF");
 
         if(this->local_mic_disable_via_privacy) {
             if(update_vsdk && this->xrsr_opened && !xrsr_privacy_mode_set(false)) {
@@ -3759,10 +3763,12 @@ void ctrlm_voice_t::voice_update_privacy() {
     bool privacy_vsdk = true;
     bool privacy_ctrlm = this->voice_is_privacy_enabled();
     if(!this->xrsr_opened || !xrsr_privacy_mode_get(&privacy_vsdk)) {
-        XLOGD_WARN("failed to get SDK privacy state, keeping stored state");
+        XLOGD_WARN("failed to get SDK privacy state, keeping stored state as %s", privacy_ctrlm ? "ON" : "OFF");
         return;
     }
+    XLOGD_INFO("SDK privacy mode is %s, CTRL-M privacy mode is %s", privacy_vsdk ? "ON" : "OFF", privacy_ctrlm ? "ON" : "OFF");
     if(privacy_vsdk != privacy_ctrlm) {
+        XLOGD_INFO("privacy modes differ, updating CTRL-M to match SDK");
         privacy_vsdk ? this->voice_privacy_enable(false) : this->voice_privacy_disable(false);
     }
 }

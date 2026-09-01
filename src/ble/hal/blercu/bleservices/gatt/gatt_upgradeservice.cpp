@@ -1009,8 +1009,9 @@ void GattUpgradeService::onACKPacket(const vector<uint8_t> &data)
                    ((blockId * FIRMWARE_PACKET_MTU) >= fwDataSize) ? "TRUE" : "FALSE");
     }
 
-    // check if the ACK is for the last block
-    if ((blockId * FIRMWARE_PACKET_MTU) > fwDataSize) {
+    // check if the ACK is for the last block (>= so an image sized an exact
+    // multiple of FIRMWARE_PACKET_MTU also completes on its final block's ACK)
+    if ((blockId * FIRMWARE_PACKET_MTU) >= fwDataSize) {
 
         // stop the timeout
         if (m_timeoutTimer > 0) {

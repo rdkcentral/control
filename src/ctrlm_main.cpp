@@ -354,8 +354,8 @@ static void     ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *
 static void     ctrlm_main_iarm_call_factory_reset_(ctrlm_main_iarm_call_factory_reset_t *reset);
 static void     ctrlm_main_iarm_call_controller_unbind_(ctrlm_main_iarm_call_controller_unbind_t *unbind);
 static void     ctrlm_main_update_export_controller_list(void);
-static void     ctrlm_main_iarm_call_ir_remote_usage_get_(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage);
-static void     ctrlm_main_iarm_call_pairing_metrics_get_(ctrlm_main_iarm_call_pairing_metrics_t *pairing_metrics);
+static void     ctrlm_main_ir_remote_usage_get_(ctrlm_ir_remote_usage_t *ir_remote_usage);
+static void     ctrlm_main_pairing_metrics_get_(ctrlm_pairing_metrics_status_t *pairing_metrics);
 static void     ctrlm_main_iarm_call_last_key_info_get_(ctrlm_main_iarm_call_last_key_info_t *last_key_info);
 static void     ctrlm_stop_one_touch_autobind_(ctrlm_network_id_t network_id);
 static void     ctrlm_close_pairing_window_(ctrlm_network_id_t network_id, ctrlm_close_pairing_window_reason reason);
@@ -2726,7 +2726,7 @@ gpointer ctrlm_main_thread(gpointer param) {
             if(day_changed) {
                ctrlm_property_write_ir_remote_usage();
             }
-            ctrlm_main_iarm_call_ir_remote_usage_get_(dqm->ir_remote_usage);
+            ctrlm_main_ir_remote_usage_get_(dqm->ir_remote_usage);
             if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
                // Signal the semaphore to indicate that the result is present
                *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
@@ -2737,7 +2737,7 @@ gpointer ctrlm_main_thread(gpointer param) {
          case CTRLM_MAIN_QUEUE_MSG_TYPE_PAIRING_METRICS: {
             ctrlm_main_queue_msg_pairing_metrics_t *dqm = (ctrlm_main_queue_msg_pairing_metrics_t *) msg;
             XLOGD_DEBUG("message type CTRLM_MAIN_QUEUE_MSG_TYPE_PAIRING_METRICS");
-            ctrlm_main_iarm_call_pairing_metrics_get_(dqm->pairing_metrics);
+            ctrlm_main_pairing_metrics_get_(dqm->pairing_metrics);
             if(dqm->semaphore != NULL && dqm->cmd_result != NULL) {
                // Signal the semaphore to indicate that the result is present
                *dqm->cmd_result = CTRLM_MAIN_STATUS_REQUEST_SUCCESS;
@@ -3172,41 +3172,7 @@ void ctrlm_main_iarm_call_status_get_(ctrlm_main_iarm_call_status_t *status) {
    status->stb_device_id[CTRLM_MAIN_DEVICE_ID_MAX_LENGTH - 1] = '\0';
 }
 
-gboolean ctrlm_main_iarm_call_network_status_get(ctrlm_main_iarm_call_network_status_t *status) {
-   if(status == NULL) {
-      XLOGD_ERROR("NULL parameter");
-      return(false);
-   }
-   XLOGD_INFO("");
-
-   // Signal completion of the operation
-   sem_t semaphore;
-   ctrlm_main_status_cmd_result_t cmd_result = CTRLM_MAIN_STATUS_REQUEST_PENDING;
-
-   // Allocate a message and send it to Control Manager's queue
-   ctrlm_main_queue_msg_main_network_status_t msg = {0};
-
-   sem_init(&semaphore, 0, 0);
-
-   msg.status            = status;
-   msg.status->result    = CTRLM_IARM_CALL_RESULT_ERROR;
-   msg.semaphore         = &semaphore;
-   msg.cmd_result        = &cmd_result;
-
-   ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_network_status, &msg, sizeof(msg), NULL, status->network_id);
-
-   // Wait for the result semaphore to be signaled
-   XLOGD_DEBUG("Waiting for main thread to process NETWORK_STATUS_GET request");
-   sem_wait(&semaphore);
-   sem_destroy(&semaphore);
-
-   if(cmd_result == CTRLM_MAIN_STATUS_REQUEST_SUCCESS) {
-      return(true);
-   }
-   return(false);
-}
-
-gboolean ctrlm_main_iarm_call_ir_remote_usage_get(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage) {
+gboolean ctrlm_main_ir_remote_usage_get(ctrlm_ir_remote_usage_t *ir_remote_usage) {
    if(ir_remote_usage == NULL) {
       XLOGD_ERROR("NULL parameter");
       return(false);
@@ -3246,7 +3212,7 @@ gboolean ctrlm_main_iarm_call_ir_remote_usage_get(ctrlm_main_iarm_call_ir_remote
    return(false);
 }
 
-void ctrlm_main_iarm_call_ir_remote_usage_get_(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage) {
+void ctrlm_main_ir_remote_usage_get_(ctrlm_ir_remote_usage_t *ir_remote_usage) {
    ir_remote_usage->result                  = CTRLM_IARM_CALL_RESULT_SUCCESS;
    ir_remote_usage->today                   = g_ctrlm.today;
    ir_remote_usage->has_ir_xr2_yesterday    = g_ctrlm.ir_remote_usage_yesterday.has_ir_xr2;
@@ -3261,7 +3227,7 @@ void ctrlm_main_iarm_call_ir_remote_usage_get_(ctrlm_main_iarm_call_ir_remote_us
    ir_remote_usage->has_ir_remote_today     = g_ctrlm.ir_remote_usage_today.has_ir_remote;
 }
 
-gboolean ctrlm_main_iarm_call_pairing_metrics_get(ctrlm_main_iarm_call_pairing_metrics_t *pairing_metrics) {
+gboolean ctrlm_main_pairing_metrics_get(ctrlm_pairing_metrics_status_t *pairing_metrics) {
    if(pairing_metrics == NULL) {
       XLOGD_ERROR("NULL parameter");
       return(false);
@@ -3301,7 +3267,7 @@ gboolean ctrlm_main_iarm_call_pairing_metrics_get(ctrlm_main_iarm_call_pairing_m
    return(false);
 }
 
-void ctrlm_main_iarm_call_pairing_metrics_get_(ctrlm_main_iarm_call_pairing_metrics_t *pairing_metrics) {
+void ctrlm_main_pairing_metrics_get_(ctrlm_pairing_metrics_status_t *pairing_metrics) {
    errno_t safec_rc                                        = -1;
    pairing_metrics->result                                 = CTRLM_IARM_CALL_RESULT_SUCCESS;
    pairing_metrics->num_screenbind_failures                = g_ctrlm.pairing_metrics.num_screenbind_failures;

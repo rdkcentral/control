@@ -169,12 +169,6 @@ typedef struct {
 } ctrlm_main_queue_msg_main_status_t;
 
 typedef struct {
-   ctrlm_main_iarm_call_network_status_t *status;
-   sem_t *                                semaphore;
-   ctrlm_main_status_cmd_result_t *       cmd_result;
-} ctrlm_main_queue_msg_main_network_status_t;
-
-typedef struct {
    ctrlm_iarm_call_result_t result;
    ctrlm_network_id_t       network_id;
 } ctrlm_main_iarm_call_factory_reset_t;
@@ -228,15 +222,43 @@ typedef struct {
 } ctrlm_main_queue_msg_product_name_t;
 
 typedef struct {
+   ctrlm_iarm_call_result_t result;
+   unsigned long            today;
+   unsigned char            has_ir_xr2_yesterday;
+   unsigned char            has_ir_xr5_yesterday;
+   unsigned char            has_ir_xr11_yesterday;
+   unsigned char            has_ir_xr15_yesterday;
+   unsigned char            has_ir_xr2_today;
+   unsigned char            has_ir_xr5_today;
+   unsigned char            has_ir_xr11_today;
+   unsigned char            has_ir_xr15_today;
+   unsigned char            has_ir_remote_yesterday;
+   unsigned char            has_ir_remote_today;
+} ctrlm_ir_remote_usage_t;
+
+typedef struct {
+   ctrlm_iarm_call_result_t result;
+   unsigned long            num_screenbind_failures;
+   unsigned long            last_screenbind_error_timestamp;
+   ctrlm_bind_status_t      last_screenbind_error_code;
+   char                     last_screenbind_remote_type[CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH];
+   unsigned long            num_non_screenbind_failures;
+   unsigned long            last_non_screenbind_error_timestamp;
+   ctrlm_bind_status_t      last_non_screenbind_error_code;
+   unsigned char            last_non_screenbind_error_binding_type;
+   char                     last_non_screenbind_remote_type[CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH];
+} ctrlm_pairing_metrics_status_t;
+
+typedef struct {
    ctrlm_main_queue_msg_type_t             type;
-   ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage;
+   ctrlm_ir_remote_usage_t *ir_remote_usage;
    sem_t                                  *semaphore;
    ctrlm_main_status_cmd_result_t         *cmd_result;
 } ctrlm_main_queue_msg_ir_remote_usage_t;
 
 typedef struct {
    ctrlm_main_queue_msg_type_t             type;
-   ctrlm_main_iarm_call_pairing_metrics_t *pairing_metrics;
+   ctrlm_pairing_metrics_status_t *pairing_metrics;
    sem_t                                  *semaphore;
    ctrlm_main_status_cmd_result_t         *cmd_result;
 } ctrlm_main_queue_msg_pairing_metrics_t;
@@ -424,11 +446,10 @@ gboolean                           ctrlm_power_state_change(ctrlm_power_state_t 
 bool     ctrlm_main_active_period_screenbind_timeout_set_(uint32_t timeout);
 
 gboolean ctrlm_main_iarm_call_status_get(ctrlm_main_iarm_call_status_t *status);
-gboolean ctrlm_main_iarm_call_network_status_get(ctrlm_main_iarm_call_network_status_t *status);
 gboolean ctrlm_main_iarm_call_factory_reset(ctrlm_main_iarm_call_factory_reset_t *reset);
 gboolean ctrlm_main_iarm_call_controller_unbind(ctrlm_main_iarm_call_controller_unbind_t *unbind);
-gboolean ctrlm_main_iarm_call_ir_remote_usage_get(ctrlm_main_iarm_call_ir_remote_usage_t *ir_remote_usage);
-gboolean ctrlm_main_iarm_call_pairing_metrics_get(ctrlm_main_iarm_call_pairing_metrics_t *pairing_metrics);
+gboolean ctrlm_main_ir_remote_usage_get(ctrlm_ir_remote_usage_t *ir_remote_usage);
+gboolean ctrlm_main_pairing_metrics_get(ctrlm_pairing_metrics_status_t *pairing_metrics);
 gboolean ctrlm_main_iarm_call_last_key_info_get(ctrlm_main_iarm_call_last_key_info_t *last_key_info);
 gboolean ctrlm_main_iarm_call_control_service_set_values(ctrlm_main_iarm_call_control_service_settings_t *settings);
 gboolean ctrlm_main_iarm_call_control_service_get_values(ctrlm_main_iarm_call_control_service_settings_t *settings);

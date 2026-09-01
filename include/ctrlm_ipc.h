@@ -27,16 +27,13 @@
 #define CTRLM_MAIN_IARM_BUS_API_REVISION                         (16)                                   ///< Revision of the Control Manager Main IARM API
 
 #define CTRLM_MAIN_IARM_CALL_STATUS_GET                          "Main_StatusGet"                       ///< Retrieves Control Manager's Status information
-#define CTRLM_MAIN_IARM_CALL_NETWORK_STATUS_GET                  "Main_NetworkStatusGet"                ///< Retrieves the network's Status information
 #define CTRLM_MAIN_IARM_CALL_PROPERTY_SET                        "Main_PropertySet"                     ///< Sets a property of the Control Manager
 #define CTRLM_MAIN_IARM_CALL_FACTORY_RESET                       "Main_FactoryReset"                    ///< Sets the configuration back to factory default
 #define CTRLM_MAIN_IARM_CALL_CONTROLLER_UNBIND                   "Main_ControllerUnbind"                ///< Removes a binding between the target and the specified controller
-#define CTRLM_MAIN_IARM_CALL_IR_REMOTE_USAGE_GET                 "Main_IrRemoteUsageGet"                ///< Retrieves the ir remote usage info
 #define CTRLM_MAIN_IARM_CALL_LAST_KEY_INFO_GET                   "Main_LastKeyInfoGet"                  ///< Retrieves the last key info
 #define CTRLM_MAIN_IARM_CALL_LAST_KEYPRESS_GET                   "Main_LastKeyPressGet"                 ///< Retrieves the last key press (TODO: replace CTRLM_MAIN_IARM_CALL_LAST_KEY_INFO_GET with this)
 #define CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_SET_VALUES          "Main_ControlService_SetValues"        ///< IARM Call to set control service values
 #define CTRLM_MAIN_IARM_CALL_CONTROL_SERVICE_GET_VALUES          "Main_ControlService_GetValues"        ///< IARM Call to get control service values
-#define CTRLM_MAIN_IARM_CALL_PAIRING_METRICS_GET                 "Main_PairingMetricsGet"               ///< Retrieves the stb's pairing metrics
 #define CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_START                 "Main_AudioCaptureStart"               ///< Sends message to xraudio to capture mic data, in specified container
 #define CTRLM_MAIN_IARM_CALL_AUDIO_CAPTURE_STOP                  "Main_AudioCaptureStop"                ///< Sends message to xraudio to stop capturing mic data
 #define CTRLM_MAIN_IARM_CALL_POWER_STATE_CHANGE                  "Main_PowerStateChange"                ///< Sends message to xr-speech-router to set power state, download DSP firmware, etc
@@ -365,48 +362,6 @@ typedef struct {
    unsigned char quality; ///< Quality indicator for this channel
 } ctrlm_rf_channel_t;
 
-/// @brief RF4CE Network Status Structure
-/// @details The RF4CE Network Status structure provided detailed information about the network.
-typedef struct {
-   char                  version_hal[CTRLM_MAIN_VERSION_LENGTH];        ///< Software version of the HAL driver
-   unsigned char         controller_qty;                                ///< Number of controllers bound to the target device
-   ctrlm_controller_id_t controllers[CTRLM_MAIN_MAX_BOUND_CONTROLLERS]; ///< List of controllers bound to the target device
-   unsigned short        pan_id;                                        ///< PAN Identifier
-   ctrlm_rf_channel_t    rf_channel_active;                             ///< Current RF channel on which the target is operating
-   unsigned long long    ieee_address;                                  ///< The 64-bit IEEE Address of the target device
-   unsigned short        short_address;                                 ///< Short address (if applicable)
-   char                  chipset[CTRLM_MAIN_MAX_CHIPSET_LENGTH];        ///< Chipset of the target
-} ctrlm_network_status_rf4ce_t;
-
-/// @brief Bluetooth LE Network Status Structure
-/// @details The Bluetooth LE Network Status structure provided detailed information about the network.
-typedef struct {
-   char                  version_hal[CTRLM_MAIN_VERSION_LENGTH];        ///< Software version of the HAL driver
-   unsigned char         controller_qty;                                ///< Number of controllers bound to the target device.
-   ctrlm_controller_id_t controllers[CTRLM_MAIN_MAX_BOUND_CONTROLLERS]; ///< List of controllers bound to the target device
-} ctrlm_network_status_ble_t;
-
-/// @brief IP Network Status Structure
-/// @details The IP Network Status structure provided detailed information about the network.
-typedef struct {
-   char                  version_hal[CTRLM_MAIN_VERSION_LENGTH];        ///< Software version of the HAL driver
-   unsigned char         controller_qty;                                ///< Number of controllers bound to the target device.
-   ctrlm_controller_id_t controllers[CTRLM_MAIN_MAX_BOUND_CONTROLLERS]; ///< List of controllers bound to the target device
-} ctrlm_network_status_ip_t;
-
-/// @brief Network Status Structure
-/// @details The Network Status structure is used in the CTRLM_MAIN_IARM_CALL_NETWORK_STATUS_GET call. See the @link CTRLM_IPC_MAIN_CALLS Calls@endlink section for more details on invoking this call.
-typedef struct {
-   unsigned char            api_revision; ///< Revision of this API
-   ctrlm_iarm_call_result_t result;       ///< OUT - Result of the operation
-   ctrlm_network_id_t       network_id;   ///< IN - identifier of network
-   union {
-      ctrlm_network_status_rf4ce_t rf4ce; ///< OUT - RF4CE network status
-      ctrlm_network_status_ble_t   ble;   ///< OUT - BLE network status
-      ctrlm_network_status_ip_t    ip;    ///< OUT - IP network status
-   } status;                              ///< OUT - Union of network status types
-} ctrlm_main_iarm_call_network_status_t;
-
 typedef struct {
    unsigned char            api_revision; ///< Revision of this API
    ctrlm_iarm_call_result_t result;       ///< Result of the operation
@@ -446,22 +401,6 @@ typedef struct {
 } ctrlm_main_iarm_event_controller_unbind_t;
 
 typedef struct {
-   unsigned char            api_revision;             ///< Revision of this API
-   ctrlm_iarm_call_result_t result;                   ///< OUT - The result of the operation.
-   unsigned long            today;                    ///< OUT - The current day
-   unsigned char            has_ir_xr2_yesterday;     ///< OUT - Boolean value indicating XR2 in IR mode was used the previous day
-   unsigned char            has_ir_xr5_yesterday;     ///< OUT - Boolean value indicating XR5 in IR mode was used the previous day
-   unsigned char            has_ir_xr11_yesterday;    ///< OUT - Boolean value indicating XR11 in IR mode was used the previous day
-   unsigned char            has_ir_xr15_yesterday;    ///< OUT - Boolean value indicating XR15 in IR mode was used the previous day
-   unsigned char            has_ir_xr2_today;         ///< OUT - Boolean value indicating XR2 in IR mode was used the current day
-   unsigned char            has_ir_xr5_today;         ///< OUT - Boolean value indicating XR5 in IR mode was used the current day
-   unsigned char            has_ir_xr11_today;        ///< OUT - Boolean value indicating XR11 in IR mode was used the current day
-   unsigned char            has_ir_xr15_today;        ///< OUT - Boolean value indicating XR15 in IR mode was used the current day
-   unsigned char            has_ir_remote_yesterday;  ///< OUT - Boolean value indicating remote in IR mode was used the previous day
-   unsigned char            has_ir_remote_today;      ///< OUT - Boolean value indicating remote in IR mode was used the current day
-} ctrlm_main_iarm_call_ir_remote_usage_t;
-
-typedef struct {
    unsigned char            api_revision;                                       ///< Revision of this API
    ctrlm_network_id_t       network_id;                                         ///< IN - identifier of network on which the controller is bound
    ctrlm_iarm_call_result_t result;                                             ///< OUT - The result of the operation.
@@ -497,20 +436,6 @@ typedef struct {
    unsigned char                use_timeout;                                    ///< Indicates whether to use a timeout for the pairing mode (0 - do not use timeout, otherwise use timeout)
    unsigned int                 bind_status;                                    ///< OUT - The bind status of the pairing session
 } ctrlm_main_iarm_call_control_service_pairing_mode_t;
-
-typedef struct {
-   unsigned char            api_revision;                                                       ///< Revision of this API
-   ctrlm_iarm_call_result_t result;                                                             ///< OUT - The result of the operation.
-   unsigned long            num_screenbind_failures;                                            ///< OUT - The total number of screenbind failures on this stb
-   unsigned long            last_screenbind_error_timestamp;                                    ///< OUT - Timestamp of the last screenbind error
-   ctrlm_bind_status_t      last_screenbind_error_code;                                         ///< OUT - The last screenbind error code
-   char                     last_screenbind_remote_type[CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH];     ///< OUT - The last screenbind error remote type
-   unsigned long            num_non_screenbind_failures;                                        ///< OUT - The total number of screenbind failures on this stb
-   unsigned long            last_non_screenbind_error_timestamp;                                ///< OUT - Timestamp of the last screenbind error
-   ctrlm_bind_status_t      last_non_screenbind_error_code;                                     ///< OUT - The last screenbind error code
-   unsigned char            last_non_screenbind_error_binding_type;                             ///< OUT - The last screenbind error binding type
-   char                     last_non_screenbind_remote_type[CTRLM_MAIN_SOURCE_NAME_MAX_LENGTH]; ///< OUT - The last screenbind error remote type
-} ctrlm_main_iarm_call_pairing_metrics_t;
 
 typedef struct {
    ctrlm_controller_id_t      controller_id;                               ///< identifier of the controller, used for calls to a specific RCU

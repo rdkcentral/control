@@ -140,6 +140,162 @@ json_t *ctrlm_rcp_ipc_iarm_thunder_t::build_rcu_status_json(
     return status;
 }
 
+static const char *ctrlm_legacy_pairing_type(ctrlm_rcu_binding_type_t type)
+{
+    switch(type) {
+        case CTRLM_RCU_BINDING_TYPE_INTERACTIVE: return "manual";
+        case CTRLM_RCU_BINDING_TYPE_AUTOMATIC:   return "auto-bind";
+        case CTRLM_RCU_BINDING_TYPE_BUTTON:      return "button-button";
+        case CTRLM_RCU_BINDING_TYPE_SCREEN_BIND: return "screen-bind";
+        default:                                 return "invalid";
+    }
+}
+
+static json_t *ctrlm_legacy_controller_status_json(ctrlm_controller_id_t controller_id, const ctrlm_controller_status_t &status)
+{
+    json_t *remote = json_object();
+    char mac_address[32];
+    std::string type(status.type);
+    size_t separator = type.find('-');
+    std::string model = type.substr(0, separator);
+    std::string model_version = "v";
+    model_version += separator != std::string::npos && separator + 1 < type.length() ? type[separator + 1] : '?';
+
+    snprintf(mac_address, sizeof(mac_address), "0x%016llX", status.ieee_address);
+    json_object_set_new_nocheck(remote, "remoteId", json_integer(controller_id));
+    json_object_set_new_nocheck(remote, "remoteMACAddress", json_string(mac_address));
+    json_object_set_new_nocheck(remote, "remoteModel", json_string(model.c_str()));
+    json_object_set_new_nocheck(remote, "remoteModelVersion", json_string(model_version.c_str()));
+    json_object_set_new_nocheck(remote, "howRemoteIsPaired", json_string(ctrlm_legacy_pairing_type(status.binding_type)));
+    json_object_set_new_nocheck(remote, "pairingTimestamp", json_integer(status.time_binding * 1000LL));
+    json_object_set_new_nocheck(remote, "batteryLevelLoaded", json_string(std::to_string(status.battery_voltage_loaded).c_str()));
+    json_object_set_new_nocheck(remote, "batteryLevelUnloaded", json_string(std::to_string(status.battery_voltage_unloaded).c_str()));
+    json_object_set_new_nocheck(remote, "batteryLevelPercentage", json_integer(status.battery_level_percent));
+    json_object_set_new_nocheck(remote, "batteryLastEvent", json_integer(status.battery_event));
+    json_object_set_new_nocheck(remote, "batteryLastEventTimestamp", json_integer(status.time_battery_update * 1000LL));
+    json_object_set_new_nocheck(remote, "numVoiceCommandsPreviousDay", json_integer(status.voice_cmd_count_yesterday));
+    json_object_set_new_nocheck(remote, "numVoiceCommandsCurrentDay", json_integer(status.voice_cmd_count_today));
+    json_object_set_new_nocheck(remote, "numVoiceShortUtterancesPreviousDay", json_integer(status.voice_cmd_short_yesterday));
+    json_object_set_new_nocheck(remote, "numVoiceShortUtterancesCurrentDay", json_integer(status.voice_cmd_short_today));
+    json_object_set_new_nocheck(remote, "numVoicePacketsSentPreviousDay", json_integer(status.voice_packets_sent_yesterday));
+    json_object_set_new_nocheck(remote, "numVoicePacketsSentCurrentDay", json_integer(status.voice_packets_sent_today));
+    json_object_set_new_nocheck(remote, "numVoicePacketsLostPreviousDay", json_integer(status.voice_packets_lost_yesterday));
+    json_object_set_new_nocheck(remote, "numVoicePacketsLostCurrentDay", json_integer(status.voice_packets_lost_today));
+    json_object_set_new_nocheck(remote, "aveVoicePacketLossPreviousDay", json_string(std::to_string(status.voice_packet_loss_average_yesterday).c_str()));
+    json_object_set_new_nocheck(remote, "aveVoicePacketLossCurrentDay", json_string(std::to_string(status.voice_packet_loss_average_today).c_str()));
+    json_object_set_new_nocheck(remote, "numVoiceCmdsHighLossPreviousDay", json_integer(status.utterances_exceeding_packet_loss_threshold_yesterday));
+    json_object_set_new_nocheck(remote, "numVoiceCmdsHighLossCurrentDay", json_integer(status.utterances_exceeding_packet_loss_threshold_today));
+    json_object_set_new_nocheck(remote, "lastRebootErrorCode", json_integer(status.reboot_reason));
+    json_object_set_new_nocheck(remote, "lastRebootTimestamp", json_integer(status.reboot_timestamp * 1000LL));
+    json_object_set_new_nocheck(remote, "versionInfoSw", json_string(status.version_software));
+    json_object_set_new_nocheck(remote, "versionInfoHw", json_string(status.version_hardware));
+    json_object_set_new_nocheck(remote, "versionInfoIrdb", json_string(status.version_irdb));
+    json_object_set_new_nocheck(remote, "irdbType", json_integer(status.ir_db_type));
+    json_object_set_new_nocheck(remote, "irdbState", json_integer(status.ir_db_state));
+    json_object_set_new_nocheck(remote, "programmedTvIRCode", json_string(status.ir_db_code_tv));
+    json_object_set_new_nocheck(remote, "programmedAvrIRCode", json_string(status.ir_db_code_avr));
+    json_object_set_new_nocheck(remote, "bHasRemoteBeenUpdated", json_boolean(status.firmware_updated));
+    json_object_set_new_nocheck(remote, "lastCommandTimeDate", json_integer(status.time_last_key * 1000LL));
+    json_object_set_new_nocheck(remote, "rf4ceRemoteSocMfr", json_string(status.chipset));
+    json_object_set_new_nocheck(remote, "remoteMfr", json_string(status.manufacturer));
+    json_object_set_new_nocheck(remote, "signalStrengthPercentage", json_integer(status.link_quality_percent));
+    json_object_set_new_nocheck(remote, "linkQuality", json_integer(status.link_quality));
+    json_object_set_new_nocheck(remote, "bHasCheckedIn", json_boolean(status.checkin_for_device_update));
+    json_object_set_new_nocheck(remote, "bIrdbDownloadSupported", json_boolean(status.ir_db_code_download_supported));
+    json_object_set_new_nocheck(remote, "securityType", json_integer(status.security_type));
+    json_object_set_new_nocheck(remote, "bHasBattery", json_boolean(status.has_battery));
+    if(status.has_battery) {
+        json_object_set_new_nocheck(remote, "batteryChangedTimestamp", json_integer(status.time_battery_changed * 1000LL));
+        json_object_set_new_nocheck(remote, "batteryChangedActualPercentage", json_integer(status.battery_changed_actual_percentage));
+        json_object_set_new_nocheck(remote, "batteryChangedUnloadedVoltage", json_string(std::to_string(status.battery_changed_unloaded_voltage).c_str()));
+        json_object_set_new_nocheck(remote, "battery75PercentTimestamp", json_integer(status.time_battery_75_percent * 1000LL));
+        json_object_set_new_nocheck(remote, "battery75PercentActualPercentage", json_integer(status.battery_75_percent_actual_percentage));
+        json_object_set_new_nocheck(remote, "battery75PercentUnloadedVoltage", json_string(std::to_string(status.battery_75_percent_unloaded_voltage).c_str()));
+        json_object_set_new_nocheck(remote, "battery50PercentTimestamp", json_integer(status.time_battery_50_percent * 1000LL));
+        json_object_set_new_nocheck(remote, "battery50PercentActualPercentage", json_integer(status.battery_50_percent_actual_percentage));
+        json_object_set_new_nocheck(remote, "battery50PercentUnloadedVoltage", json_string(std::to_string(status.battery_50_percent_unloaded_voltage).c_str()));
+        json_object_set_new_nocheck(remote, "battery25PercentTimestamp", json_integer(status.time_battery_25_percent * 1000LL));
+        json_object_set_new_nocheck(remote, "battery25PercentActualPercentage", json_integer(status.battery_25_percent_actual_percentage));
+        json_object_set_new_nocheck(remote, "battery25PercentUnloadedVoltage", json_string(std::to_string(status.battery_25_percent_unloaded_voltage).c_str()));
+        json_object_set_new_nocheck(remote, "battery5PercentTimestamp", json_integer(status.time_battery_5_percent * 1000LL));
+        json_object_set_new_nocheck(remote, "battery5PercentActualPercentage", json_integer(status.battery_5_percent_actual_percentage));
+        json_object_set_new_nocheck(remote, "battery5PercentUnloadedVoltage", json_string(std::to_string(status.battery_5_percent_unloaded_voltage).c_str()));
+        json_object_set_new_nocheck(remote, "battery0PercentTimestamp", json_integer(status.time_battery_0_percent * 1000LL));
+        json_object_set_new_nocheck(remote, "battery0PercentActualPercentage", json_integer(status.battery_0_percent_actual_percentage));
+        json_object_set_new_nocheck(remote, "battery0PercentUnloadedVoltage", json_string(std::to_string(status.battery_0_percent_unloaded_voltage).c_str()));
+        json_object_set_new_nocheck(remote, "batteryVoltageLargeJumpCounter", json_integer(status.battery_voltage_large_jump_counter));
+        json_object_set_new_nocheck(remote, "batteryVoltageLargeDeclineDetected", json_boolean(status.battery_voltage_large_decline_detected));
+    }
+    json_object_set_new_nocheck(remote, "bHasDSP", json_boolean(status.has_dsp));
+    if(status.has_dsp) {
+        json_object_set_new_nocheck(remote, "averageTimeInPrivacyMode", json_integer(status.average_time_in_privacy_mode));
+        json_object_set_new_nocheck(remote, "bInPrivacyMode", json_boolean(status.in_privacy_mode));
+        json_object_set_new_nocheck(remote, "averageSNR", json_integer(status.average_snr));
+        json_object_set_new_nocheck(remote, "averageKeywordConfidence", json_integer(status.average_keyword_confidence));
+        json_object_set_new_nocheck(remote, "totalNumberOfMicsWorking", json_integer(status.total_number_of_mics_working));
+        json_object_set_new_nocheck(remote, "totalNumberOfSpeakersWorking", json_integer(status.total_number_of_speakers_working));
+        json_object_set_new_nocheck(remote, "endOfSpeechInitialTimeoutCount", json_integer(status.end_of_speech_initial_timeout_count));
+        json_object_set_new_nocheck(remote, "endOfSpeechTimeoutCount", json_integer(status.end_of_speech_timeout_count));
+        json_object_set_new_nocheck(remote, "uptimeStartTime", json_integer(status.time_uptime_start * 1000LL));
+        json_object_set_new_nocheck(remote, "uptimeInSeconds", json_integer(status.uptime_seconds));
+        json_object_set_new_nocheck(remote, "privacyTimeInSeconds", json_integer(status.privacy_time_seconds));
+        json_object_set_new_nocheck(remote, "versionDSPBuildId", json_string(status.version_dsp_build_id));
+    }
+    return remote;
+}
+
+static json_t *ctrlm_legacy_remote_data_json(const std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> &status_map,
+                                              const ctrlm_pairing_metrics_status_t &pairing_metrics,
+                                              const ctrlm_ir_remote_usage_t &ir_remote_usage)
+{
+    ctrlm_legacy_rf4ce_network_status_t network_status = {};
+    std::vector<std::pair<ctrlm_controller_id_t, ctrlm_controller_status_t>> controller_status;
+    bool found = false;
+    for(const auto &it : status_map) {
+        if(it.second.get_type() == CTRLM_NETWORK_TYPE_RF4CE && it.second.get_legacy_remote_data(network_status, controller_status)) {
+            found = true;
+            break;
+        }
+    }
+    if(!found) {
+        return NULL;
+    }
+
+    json_t *data = json_object();
+    json_t *remotes = json_array();
+    char mac_address[32];
+    snprintf(mac_address, sizeof(mac_address), "0x%016llX", network_status.ieee_address);
+    json_object_set_new_nocheck(data, "stbRf4ceMACAddress", json_string(mac_address));
+    json_object_set_new_nocheck(data, "stbRf4ceSocMfr", json_string(network_status.chipset));
+    json_object_set_new_nocheck(data, "stbHALVersion", json_string(network_status.version_hal));
+    json_object_set_new_nocheck(data, "stbRf4ceShortAddress", json_integer(network_status.short_address));
+    json_object_set_new_nocheck(data, "stbPanId", json_integer(network_status.pan_id));
+    json_object_set_new_nocheck(data, "stbActiveChannel", json_integer(network_status.rf_channel_active.number));
+    json_object_set_new_nocheck(data, "stbNumPairedRemotes", json_integer(network_status.controller_qty));
+    json_object_set_new_nocheck(data, "stbNumScreenBindFailures", json_integer(pairing_metrics.num_screenbind_failures));
+    json_object_set_new_nocheck(data, "stbLastScreenBindErrorCode", json_integer(pairing_metrics.last_screenbind_error_code));
+    json_object_set_new_nocheck(data, "stbLastScreenBindErrorRemoteType", json_string(pairing_metrics.last_screenbind_remote_type));
+    json_object_set_new_nocheck(data, "stbLastScreenBindErrorTimestamp", json_integer(pairing_metrics.last_screenbind_error_timestamp * 1000LL));
+    json_object_set_new_nocheck(data, "stbNumOtherBindFailures", json_integer(pairing_metrics.num_non_screenbind_failures));
+    json_object_set_new_nocheck(data, "stbLastOtherBindErrorCode", json_integer(pairing_metrics.last_non_screenbind_error_code));
+    json_object_set_new_nocheck(data, "stbLastOtherBindErrorRemoteType", json_string(pairing_metrics.last_non_screenbind_remote_type));
+    json_object_set_new_nocheck(data, "stbLastOtherBindErrorBindType", json_integer(pairing_metrics.last_non_screenbind_error_binding_type));
+    json_object_set_new_nocheck(data, "stbLastOtherBindErrorTimestamp", json_integer(pairing_metrics.last_non_screenbind_error_timestamp * 1000LL));
+    bool ir_previous = ir_remote_usage.has_ir_xr2_yesterday || ir_remote_usage.has_ir_xr5_yesterday || ir_remote_usage.has_ir_xr11_yesterday || ir_remote_usage.has_ir_xr15_yesterday || ir_remote_usage.has_ir_remote_yesterday;
+    bool ir_current = ir_remote_usage.has_ir_xr2_today || ir_remote_usage.has_ir_xr5_today || ir_remote_usage.has_ir_xr11_today || ir_remote_usage.has_ir_xr15_today || ir_remote_usage.has_ir_remote_today;
+    json_object_set_new_nocheck(data, "bHasIrRemotePreviousDay", json_boolean(ir_previous));
+    json_object_set_new_nocheck(data, "bHasIrRemoteCurrentDay", json_boolean(ir_current));
+    for(const auto &controller : controller_status) {
+        json_array_append_new(remotes, ctrlm_legacy_controller_status_json(controller.first, controller.second));
+    }
+    if(!controller_status.empty()) {
+        json_object_set_new_nocheck(data, REMOTE_DATA, remotes);
+    } else {
+        json_decref(remotes);
+    }
+    return data;
+}
+
 bool ctrlm_rcp_ipc_iarm_thunder_t::on_status(const ctrlm_rcp_ipc_net_status_t &net_status) const
 {
     if (!is_running(atomic_running_)) {
@@ -195,14 +351,39 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_net_status(void *arg)
         return(IARM_RESULT_INVALID_PARAM);
     }
 
+    bool verbose = false;
+    if(call_data->payload[0] != '\0') {
+        json_error_t error;
+        json_t *payload = json_loads(call_data->payload, JSON_REJECT_DUPLICATES, &error);
+        json_t *verbose_value = payload && json_is_object(payload) ? json_object_get(payload, "verbose") : NULL;
+        if(payload == NULL || !json_is_object(payload) || (verbose_value != NULL && !json_is_boolean(verbose_value))) {
+            XLOGD_ERROR("Invalid payload");
+            if(payload != NULL) {
+                json_decref(payload);
+            }
+            return(IARM_RESULT_INVALID_PARAM);
+        }
+        if(verbose_value != NULL) {
+            verbose = json_is_true(verbose_value);
+        }
+        json_decref(payload);
+    }
+
+    ctrlm_pairing_metrics_status_t pairing_metrics = {};
+    ctrlm_ir_remote_usage_t ir_remote_usage = {};
+    if(verbose && (!ctrlm_main_pairing_metrics_get(&pairing_metrics) || !ctrlm_main_ir_remote_usage_get(&ir_remote_usage))) {
+        return(IARM_RESULT_INVALID_STATE);
+    }
+
     std::shared_ptr<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>> params = std::make_shared<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>>();
     params->set_net_id(CTRLM_MAIN_NETWORK_ID_ALL);
-
-    sync_send_netw_handler_to_main_queue_new<ctrlm_network_all_ipc_reply_wrapper_t<ctrlm_rcp_ipc_net_status_t>,
-                                             ctrlm_main_queue_msg_get_rcu_status_t>
-                                             (params,
-                                             (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_get_rcu_status);
-
+    std::shared_ptr<ctrlm_main_queue_msg_get_rcu_status_t> msg = std::make_shared<ctrlm_main_queue_msg_get_rcu_status_t>();
+    msg->params = params;
+    msg->semaphore = NULL;
+    msg->verbose = verbose;
+    ctrlm_main_queue_handler_push_new<ctrlm_msg_handler_network_t, ctrlm_main_queue_msg_get_rcu_status_t>(CTRLM_HANDLER_NETWORK,
+                                                                                                          (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_get_rcu_status,
+                                                                                                          std::move(msg), NULL, params->get_net_id(), true);
 
     std::map<ctrlm_network_id_t, ctrlm_rcp_ipc_net_status_t> status_map = params->get_reply();
     
@@ -225,6 +406,13 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_net_status(void *arg)
     json_t *status = build_rcu_status_json(status_map, ir_prog_state, rf_pair_state, type);
     if (status == nullptr) {
         return(IARM_RESULT_INVALID_STATE);
+    }
+    if(verbose) {
+        json_t *remote_data = ctrlm_legacy_remote_data_json(status_map, pairing_metrics, ir_remote_usage);
+        if(remote_data == NULL || json_object_set_new_nocheck(status, REMOTE_DATA, remote_data) != 0) {
+            json_decref(status);
+            return(IARM_RESULT_INVALID_STATE);
+        }
     }
 
     json_t *ret = json_object();

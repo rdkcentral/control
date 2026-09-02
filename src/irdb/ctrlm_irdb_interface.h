@@ -37,6 +37,14 @@ inline bool operator==(const ctrlm_irdb_autolookup_entry_ranked_t& lhs, const ct
    
 typedef std::map<ctrlm_irdb_dev_type_t,ctrlm_irdb_autolookup_ranked_list_t> ctrlm_autolookup_ranked_list_by_type_t;
 
+typedef enum {
+   CTRLM_IRDB_LOOKUP_SOURCE_EDID = 0,
+   CTRLM_IRDB_LOOKUP_SOURCE_CEC,
+   CTRLM_IRDB_LOOKUP_SOURCE_INFOFRAME,
+   CTRLM_IRDB_LOOKUP_SOURCE_MANUAL,
+   CTRLM_IRDB_LOOKUP_SOURCE_UNKNOWN
+} ctrlm_irdb_lookup_source_t;
+
 typedef struct {
    ctrlm_network_id_t         network_id;
    ctrlm_controller_id_t      controller_id;
@@ -57,6 +65,15 @@ typedef struct {
 
 class ctrlm_irdb_interface_t {
 public:
+   class ctrlm_irdb_cache_entry_t {
+   public:
+      ctrlm_irdb_dev_type_t        type = CTRLM_IRDB_DEV_TYPE_INVALID;
+      std::string                  manufacturer;
+      std::string                  model;
+      ctrlm_irdb_lookup_source_t source = CTRLM_IRDB_LOOKUP_SOURCE_UNKNOWN;
+   };
+
+   typedef std::map<std::string, ctrlm_irdb_cache_entry_t> ctrlm_irdb_cache_t;
 
    /**
     * This function is used to get the IRDB interface instance, as it is a Singleton.
@@ -101,9 +118,7 @@ private:
    ctrlm_irdb_mode_t mode;
    bool              m_platform_tv;
    std::mutex        m_mutex;
-   std::map<ctrlm_irdb_dev_type_t, std::string> m_last_entry_id_manufacturer;
-   std::map<ctrlm_irdb_dev_type_t, std::string> m_last_entry_id_model;
-   std::map<ctrlm_irdb_dev_type_t, ctrlm_irdb_entry_id_list_t> m_last_entry_ids;
+   ctrlm_irdb_cache_t m_irdb_cache;
 };
 
 #endif

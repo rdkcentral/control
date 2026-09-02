@@ -25,27 +25,25 @@
 #include <archive.h>
 #include <algorithm>
 #include <cctype>
+#include <tuple>
 #include "ctrlm.h"
 #include "ctrlm_utils.h"
 #include <xr_mq.h>
 #include <map>
+#include <tuple>
+#include <string>
 #include <linux/input.h>
 #include <uuid/uuid.h>
 
-// dsMgr includes
-#include "host.hpp"
-#include "exception.hpp"
-#include "videoOutputPort.hpp"
-#include "videoOutputPortType.hpp"
-#include "videoOutputPortConfig.hpp"
-#include "audioOutputPort.hpp"
-#include "frontPanelIndicator.hpp"
-#include "manager.hpp"
-#include "dsMgr.h"
-#include "dsRpc.h"
-#include "dsDisplay.h"
+#ifdef CTRLM_THUNDER
+#include "thunder/plugins/ctrlm_thunder_plugin_display_settings.h"
+#endif
 #include <regex>
-// end dsMgr includes
+
+using std::get;
+using std::map;
+using std::string;
+using std::tuple;
 
 #define BLOCK_SIZE     (1024 * 4 * 10) /* bytes */
 #define MAX_RECURSE_DEPTH 20
@@ -126,6 +124,14 @@ void ctrlm_timestamp_get_monotonic(ctrlm_timestamp_t *timestamp) {
    if(timestamp == NULL || clock_gettime(CLOCK_MONOTONIC_RAW, timestamp)) {
       XLOGD_ERROR("Unable to get time.");
    }
+}
+
+uint64_t ctrlm_timestamp_get_ms(void) {
+   struct timespec ts;
+   if(clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+      return 0;
+   }
+   return ((uint64_t)ts.tv_sec * 1000ULL) + ((uint64_t)ts.tv_nsec / 1000000ULL);
 }
 
 //  1 : one is greater than two
@@ -279,21 +285,39 @@ void ctrlm_print_controller_status(const char *prefix, ctrlm_controller_status_t
       ERR_CHK(safec_rc);
    } else {
       time_binding_str[0]        = '\0';
-      strftime(time_binding_str,        20, "%F %T", localtime((time_t *)&status->time_binding));
+      struct tm time_info;
+      time_t time_binding = (time_t)status->time_binding;
+      if(NULL == localtime_r(&time_binding, &time_info)) {
+         XLOGD_ERROR("Failed to convert time_binding to local time");
+      } else {
+         strftime(time_binding_str,        20, "%F %T", &time_info);
+      }
    }
    if(status->time_last_key == 0) {
       safec_rc = strcpy_s(time_last_key_str, sizeof(time_last_key_str), "NEVER");
       ERR_CHK(safec_rc);
    } else {
       time_last_key_str[0]       = '\0';
-      strftime(time_last_key_str,       20, "%F %T", localtime((time_t *)&status->time_last_key));
+      struct tm time_info;
+      time_t time_last_key = (time_t)status->time_last_key;
+      if(NULL == localtime_r(&time_last_key, &time_info)) {
+         XLOGD_ERROR("Failed to convert time_last_key to local time");
+      } else {
+         strftime(time_last_key_str,       20, "%F %T", &time_info);
+      }
    }
    if(status->time_battery_update == 0) {
       safec_rc = strcpy_s(time_battery_update_str, sizeof(time_battery_update_str), "NEVER");
       ERR_CHK(safec_rc);
    } else {
       time_battery_update_str[0] = '\0';
-      strftime(time_battery_update_str, 20, "%F %T", localtime((time_t *)&status->time_battery_update));
+      struct tm time_info;
+      time_t time_battery_update = (time_t)status->time_battery_update;
+      if(NULL == localtime_r(&time_battery_update, &time_info)) {
+         XLOGD_ERROR("Failed to convert time_battery_update to local time");
+      } else {
+         strftime(time_battery_update_str, 20, "%F %T", &time_info);
+      }
    }
 
    const xlog_args_t xlog_args_info = {.options = XLOG_OPTS_DEFAULT, .color = XLOG_COLOR_NONE, .function = prefix, .line = XLOG_LINE_NONE, .level = XLOG_LEVEL_INFO, .id = XLOG_MODULE_ID, .size_max = XLOG_BUF_SIZE_DEFAULT};
@@ -333,11 +357,6 @@ const char *ctrlm_main_queue_msg_type_str(ctrlm_main_queue_msg_type_t type) {
       case CTRLM_MAIN_QUEUE_MSG_TYPE_NETWORK_PROPERTY_SET:                    return("NETWORK_PROPERTY_SET");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_TERMINATE:                               return("TERMINATE");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STATUS:                             return("MAIN_STATUS");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_SET:                       return("MAIN_PROPERTY_SET");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PROPERTY_GET:                       return("MAIN_PROPERTY_GET");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_DISCOVERY_CONFIG_SET:               return("MAIN_DISCOVERY_CONFIG_SET");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_AUTOBIND_CONFIG_SET:                return("MAIN_AUTOBIND_CONFIG_SET");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_PRECOMMISSION_CONFIG_SET:           return("MAIN_PRECOMMISSION_CONFIG_SET");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_FACTORY_RESET:                      return("MAIN_FACTORY_RESET");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROLLER_UNBIND:                  return("MAIN_CONTROLLER_UNBIND");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_TIMEOUT_LINE_OF_SIGHT:              return("MAIN_TIMEOUT_LINE_OF_SIGHT");
@@ -356,9 +375,6 @@ const char *ctrlm_main_queue_msg_type_str(ctrlm_main_queue_msg_type_t type) {
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STOP_BINDING_SCREEN:                return("MAIN_STOP_BINDING_SCREEN");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_SET_VALUES:         return("CONTROL_SERVICE_SET_VALUES");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES:         return("CONTROL_SERVICE_GET_VALUES");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_CAN_FIND_MY_REMOTE: return("CONTROL_SERVICE_CAN_FIND_MY_REMOTE");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_START_PAIRING_MODE: return("CONTROL_SERVICE_START_PAIRING_MODE");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_END_PAIRING_MODE:   return("CONTROL_SERVICE_END_PAIRING_MODE");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_EXPORT_CONTROLLER_LIST:                  return("EXPORT_CONTROLLER_LIST");
       default: if (type >= CTRLM_MAIN_QUEUE_MSG_TYPE_VENDOR_FIRST && type <= CTRLM_MAIN_QUEUE_MSG_TYPE_VENDOR_LAST) {
          return("VENDOR SPECIFIC MESSAGE");
@@ -657,15 +673,6 @@ const char *ctrlm_rcu_reverse_cmd_result_str(ctrlm_rcu_reverse_cmd_result_t resu
    return(ctrlm_invalid_return(result));
 }
 
-const char *ctrlm_voice_session_result_str(ctrlm_voice_session_result_t result) {
-   switch(result) {
-      case CTRLM_VOICE_SESSION_RESULT_SUCCESS: return("SUCCESS");
-      case CTRLM_VOICE_SESSION_RESULT_FAILURE: return("FAILURE");
-      case CTRLM_VOICE_SESSION_RESULT_MAX:     return("MAX");
-   }
-   return(ctrlm_invalid_return(result));
-}
-
 const char *ctrlm_voice_session_end_reason_str(ctrlm_voice_session_end_reason_t reason) {
    switch(reason) {
       case CTRLM_VOICE_SESSION_END_REASON_DONE:                 return("DONE");
@@ -697,16 +704,6 @@ const char *ctrlm_voice_session_abort_reason_str(ctrlm_voice_session_abort_reaso
       case CTRLM_VOICE_SESSION_ABORT_REASON_MAX:                   return("MAX");
    }
    return(ctrlm_invalid_return(reason));
-}
-
-const char *ctrlm_voice_internal_error_str(ctrlm_voice_internal_error_t error) {
-   switch(error) {
-      case CTRLM_VOICE_INTERNAL_ERROR_NONE:          return("NONE");
-      case CTRLM_VOICE_INTERNAL_ERROR_EXCEPTION:     return("EXCEPTION");
-      case CTRLM_VOICE_INTERNAL_ERROR_THREAD_CREATE: return("THREAD_CREATE");
-      case CTRLM_VOICE_INTERNAL_ERROR_MAX:           return("MAX");
-   }
-   return(ctrlm_invalid_return(error));
 }
 
 const char *ctrlm_voice_reset_type_str(ctrlm_voice_reset_type_t reset_type) {
@@ -745,16 +742,6 @@ const char *ctrlm_device_update_iarm_load_result_str(ctrlm_device_update_iarm_lo
       case CTRLM_DEVICE_UPDATE_IARM_LOAD_RESULT_MAX:            return("MAX");
    }
    return(ctrlm_invalid_return(load_result));
-}
-
-const char *ctrlm_device_update_image_type_str(ctrlm_device_update_image_type_t image_type) {
-   switch(image_type) {
-      case CTRLM_DEVICE_UPDATE_IMAGE_TYPE_FIRMWARE:   return("FIRMWARE");
-      case CTRLM_DEVICE_UPDATE_IMAGE_TYPE_AUDIO_DATA: return("AUDIO_DATA");
-      case CTRLM_DEVICE_UPDATE_IMAGE_TYPE_OTHER:      return("OTHER");
-      case CTRLM_DEVICE_UPDATE_IMAGE_TYPE_MAX:        return("MAX");
-   }
-   return(ctrlm_invalid_return(image_type));
 }
 
 const char *ctrlm_hal_result_str(ctrlm_hal_result_t result) {
@@ -1377,33 +1364,6 @@ const char *ctrlm_linux_key_code_str(uint16_t code, bool mask) {
    }
 }
 
-#ifdef USE_IARM_POWER_MANAGER
-const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason) {
-    switch(wakeup_reason) {
-        case DEEPSLEEP_WAKEUPREASON_IR:               return("IR");
-        case DEEPSLEEP_WAKEUPREASON_RCU_BT:           return("RCU_BT");
-        case DEEPSLEEP_WAKEUPREASON_RCU_RF4CE:        return("RCU_RF4CE");
-        case DEEPSLEEP_WAKEUPREASON_GPIO:             return("GPIO");
-        case DEEPSLEEP_WAKEUPREASON_LAN:              return("LAN");
-        case DEEPSLEEP_WAKEUPREASON_WLAN:             return("WLAN");
-        case DEEPSLEEP_WAKEUPREASON_TIMER:            return("TIMER");
-        case DEEPSLEEP_WAKEUPREASON_FRONT_PANEL:      return("FRONT_PANEL");
-        case DEEPSLEEP_WAKEUPREASON_WATCHDOG:         return("WATCHDOG");
-        case DEEPSLEEP_WAKEUPREASON_SOFTWARE_RESET:   return("SOFTWARE_RESET");
-        case DEEPSLEEP_WAKEUPREASON_THERMAL_RESET:    return("THERMAL_RESET");
-        case DEEPSLEEP_WAKEUPREASON_WARM_RESET:       return("WARM_RESET");
-        case DEEPSLEEP_WAKEUPREASON_COLDBOOT:         return("COLDBOOT");
-        case DEEPSLEEP_WAKEUPREASON_STR_AUTH_FAILURE: return("STR_AUTH_FAILURE");
-        case DEEPSLEEP_WAKEUPREASON_CEC:              return("CEC");
-        case DEEPSLEEP_WAKEUPREASON_PRESENCE:         return("PRESENCE");
-        case DEEPSLEEP_WAKEUPREASON_VOICE:            return("VOICE");
-        case DEEPSLEEP_WAKEUPREASON_UNKNOWN:          return("UNKNOWN");
-        case DEEPSLEEP_WAKEUPREASON_MAX:              return("MAX");
-    }
-    return(ctrlm_invalid_return(wakeup_reason));
-}
-#endif
-
 bool ctrlm_file_copy(const char* src, const char* dst, bool overwrite, bool follow_dst_symbolic_link) {
    bool    ret   = FALSE;
    GFile  *g_src = g_file_new_for_path(src);
@@ -1574,87 +1534,60 @@ char *ctrlm_do_regex(char *re, char *str) {
 }
 
 bool ctrlm_dsmgr_init() {
-   if(device::Manager::IsInitialized) {
-      XLOGD_INFO("DSMgr already initialized");
-      return true;
-   }
-   try {
-      device::Manager::Initialize();
-      XLOGD_INFO("DSMgr is initialized");
-   }
-   catch (...) {
-      XLOGD_WARN("Failed to initialize DSMgr");
-      return false;
-   }
    return true;
 }
 
 bool ctrlm_dsmgr_deinit() {
-   try {
-      if(device::Manager::IsInitialized) {
-         device::Manager::DeInitialize();
-      }
-   }
-   catch(...) {
-      XLOGD_WARN("Failed to deinitialize DSMgr");
-      return false;
-   }
    return true;
 }
 
 bool ctrlm_dsmgr_mute_audio(bool mute) {
-  try {
-     dsAudioDuckingAction_t action = mute ? dsAUDIO_DUCKINGACTION_START : dsAUDIO_DUCKINGACTION_STOP;
-     device::Host::getInstance().getAudioOutputPort("SPEAKER0").setAudioDucking(action, dsAUDIO_DUCKINGTYPE_ABSOLUTE, mute ? 0 : 100);
-     XLOGD_INFO("Audio is %smuted", mute?"":"un-");
-  }
-  catch(std::exception& error) {
-    XLOGD_WARN("Muting sound error : %s", error.what());
-    return false;
-  }
-  return true;
+#ifdef CTRLM_THUNDER
+   auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
+   if(!ds) {
+      XLOGD_ERROR("DisplaySettings plugin not available");
+      return false;
+   }
+   bool ret = ds->set_audio_ducking(mute, false, mute ? 0 : 100);
+   if(ret) {
+      XLOGD_INFO("Audio is %smuted", mute?"":"un-");
+   } else {
+      XLOGD_WARN("Muting sound error");
+   }
+   return ret;
+#else
+   XLOGD_WARN("DisplaySettings not available (THUNDER disabled)");
+   return true;
+#endif
 }
 
 bool ctrlm_dsmgr_duck_audio(bool enable, bool relative, double vol) {
-  if(vol < 0 || vol > 1) {
+   if(vol < 0 || vol > 1) {
       XLOGD_ERROR("Invalid volume");
       return false;
-  }
-  try {
-     unsigned char level = (unsigned char)((vol * 100) + 0.5);
-
-     dsAudioDuckingAction_t action = enable   ? dsAUDIO_DUCKINGACTION_START  : dsAUDIO_DUCKINGACTION_STOP;
-     dsAudioDuckingType_t   type   = relative ? dsAUDIO_DUCKINGTYPE_RELATIVE : dsAUDIO_DUCKINGTYPE_ABSOLUTE;
-
-     device::Host::getInstance().getAudioOutputPort("SPEAKER0").setAudioDucking(action, type, level);
-
-     if(enable) {
-        XLOGD_INFO("Audio ducking enabled - type <%s> level <%u%%>", relative ? "RELATIVE" : "ABSOLUTE", level);
-     } else {
-        XLOGD_INFO("Audio ducking disabled");
-     }
-  }
-  catch(std::exception& error) {
-    XLOGD_WARN("Ducking sound error : %s", error.what());
-    return false;
-  }
-  return true;
-}
-
-bool ctrlm_dsmgr_LED(bool on) {
-  try {
-    device::FrontPanelIndicator &led =  device::FrontPanelIndicator::getInstance("Power");
-    if (on) {
-       led.setColor(0xFFFFFF);
-       led.setBrightness(100);
-    }
-    led.setState(on);
-  }
-  catch(std::exception& error) {
-    XLOGD_WARN("LED error : %s", error.what());
-    return false;
-  }
-  return true;
+   }
+#ifdef CTRLM_THUNDER
+   unsigned char level = (unsigned char)((vol * 100) + 0.5);
+   auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
+   if(!ds) {
+      XLOGD_ERROR("DisplaySettings plugin not available");
+      return false;
+   }
+   bool ret = ds->set_audio_ducking(enable, relative, level);
+   if(ret) {
+      if(enable) {
+         XLOGD_INFO("Audio ducking enabled - type <%s> level <%u%%>", relative ? "RELATIVE" : "ABSOLUTE", level);
+      } else {
+         XLOGD_INFO("Audio ducking disabled");
+      }
+   } else {
+      XLOGD_WARN("Ducking sound error");
+   }
+   return ret;
+#else
+   XLOGD_WARN("DisplaySettings not available (THUNDER disabled)");
+   return true;
+#endif
 }
 
 bool ctrlm_is_voice_assistant(ctrlm_rcu_controller_type_t controller_type) {

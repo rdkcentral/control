@@ -6,9 +6,11 @@
 #include <ctrlm_fta_lib.h>
 #include <ctrlmf_utils.h>
 #include <ctrlmf_audio_playback.h>
-#include <ctrlmf_thunder_plugin_system_audio_player.h>
 #include <unistd.h>
+#include <new>
 
+#ifdef CTRLMF_THUNDER
+#include <ctrlmf_thunder_plugin_system_audio_player.h>
 
 typedef struct {
    Thunder::SystemAudioPlayer::ctrlm_thunder_plugin_system_audio_player_t *obj_sap;
@@ -20,7 +22,7 @@ static void ctrlmf_audio_playback_event_handler(system_audio_player_event_t even
 static ctrlmf_audio_play_global_t g_audio_play;
 
 bool ctrlmf_audio_playback_init(void) {
-   g_audio_play.obj_sap = new Thunder::SystemAudioPlayer::ctrlm_thunder_plugin_system_audio_player_t;
+   g_audio_play.obj_sap = new(std::nothrow) Thunder::SystemAudioPlayer::ctrlm_thunder_plugin_system_audio_player_t;
 
    if(g_audio_play.obj_sap == NULL) {
       XLOGD_ERROR("out of memory");
@@ -117,3 +119,21 @@ void ctrlmf_audio_playback_event_handler(system_audio_player_event_t event, void
       }
    }
 }
+
+#else
+
+bool ctrlmf_audio_playback_init(void) {
+   XLOGD_WARN("system audio player not supported - Thunder disabled");
+   return(false);
+}
+
+bool ctrlmf_audio_playback_term(void) {
+   return(true);
+}
+
+bool ctrlmf_audio_playback_start(const char *filename) {
+   XLOGD_WARN("system audio player not supported - Thunder disabled");
+   return(false);
+}
+
+#endif

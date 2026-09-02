@@ -67,7 +67,9 @@ static void ctrlm_voice_data_post_processing_cb(int bytes_sent, void *user_data)
 
 static ctrlm_voice_session_group_t voice_device_to_session_group(ctrlm_voice_device_t device_type);
 
+#ifdef CTRLM_THUNDER
 static void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t event, void *user_data);
+#endif
 
 static xrsr_power_mode_t voice_xrsr_power_map(ctrlm_power_state_t ctrlm_power_state);
 
@@ -268,12 +270,20 @@ ctrlm_voice_t::ctrlm_voice_t() {
     sem_init(&this->vsr_semaphore, 0, 0);
 
     if(this->beep_on_kwd_supported) {
+        #ifdef CTRLM_THUNDER
         this->obj_sap = Thunder::SystemAudioPlayer::ctrlm_thunder_plugin_system_audio_player_t::getInstance();
         this->obj_sap->add_event_handler(ctrlm_voice_system_audio_player_event_handler, this);
         this->sap_opened = this->obj_sap->open(SYSTEM_AUDIO_PLAYER_AUDIO_TYPE_WAV, SYSTEM_AUDIO_PLAYER_SOURCE_TYPE_FILE, SYSTEM_AUDIO_PLAYER_PLAY_MODE_SYSTEM);
         if(!this->sap_opened) {
             XLOGD_WARN("unable to open system audio player");
         }
+        #else
+        this->obj_sap               = NULL;
+        this->sap_opened            = false;
+        this->beep_on_kwd_supported = false;
+        this->beep_on_kwd_file      = NULL;
+        XLOGD_WARN("beep on keyword is not supported without Thunder");
+        #endif
     }
 
     // Set audio mode to default
@@ -313,12 +323,14 @@ ctrlm_voice_t::~ctrlm_voice_t() {
         }
     }
 
+    #ifdef CTRLM_THUNDER
     if(this->beep_on_kwd_supported && this->sap_opened) {
         if(!this->obj_sap->close()) {
             XLOGD_WARN("unable to close system audio player");
         }
         this->sap_opened = false;
     }
+    #endif
 
     /* Close Voice SDK */
 
@@ -402,9 +414,8 @@ void ctrlm_voice_t::voice_sdk_close() {
 
 bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *json_obj_vsdk, bool local_conf) {
     json_config                       conf;
-    ctrlm_voice_iarm_call_settings_t *voice_settings     = NULL;
-    uint32_t                          voice_settings_len = 0;
     std::string                       init;
+    (void)local_conf;
 
     XLOGD_INFO("Configuring voice");
     ctrlm_voice_audio_settings_t audio_settings = {this->audio_mode, this->audio_timing, this->audio_confidence_threshold, this->audio_ducking_type, this->audio_ducking_level, this->audio_ducking_beep_enabled};
@@ -553,6 +564,8 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
 
         ctrlm_db_voice_read_par_voice_status(this->prefs.par_voice_enabled);
     } else {
+        ctrlm_voice_iarm_call_settings_t *voice_settings     = NULL;
+        uint32_t                          voice_settings_len = 0;
         XLOGD_WARN("Reading voice settings from old style DB");
         ctrlm_db_voice_settings_read((guchar **)&voice_settings, &voice_settings_len);
         if(voice_settings_len == 0) {
@@ -561,12 +574,11 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             XLOGD_WARN("voice iarm settings is not the correct length, throwing away!");
         } else if(voice_settings != NULL) {
             this->voice_configure(voice_settings, true); // We want to write this to the database now, as this now writes to the new style DB
-            free(voice_settings);
         }
+        ctrlm_db_free((guchar *)voice_settings);
     }
 
     this->set_audio_mode(&audio_settings);
-    this->process_xconf(&json_obj_vsdk, local_conf);
 
     // Disable muting/ducking to recover in case ctrlm restarts while muted/ducked.
     this->audio_state_set(false);
@@ -937,118 +949,6 @@ bool ctrlm_voice_t::voice_init_set(const char *init, bool db_write) {
     return(ret);
 }
 
-void ctrlm_voice_t::process_xconf(json_t **json_obj_vsdk, bool local_conf) {
-   XLOGD_INFO("Voice XCONF Settings");
-   int result;
-
-   char vsdk_config_str[CTRLM_RFC_MAX_PARAM_LEN] = {0}; //MAX_PARAM_LEN from rfcapi.h is 2048
-
-   if(ctrlm_is_rf4ce_enabled()) {
-      char encoder_params_str[CTRLM_RCU_RIB_ATTR_LEN_OPUS_ENCODING_PARAMS * 2 + 1] = {0};
-
-      result  = ctrlm_tr181_string_get(CTRLM_RF4CE_TR181_RF4CE_OPUS_ENCODER_PARAMS, encoder_params_str, sizeof(encoder_params_str));
-      if(result == CTRLM_TR181_RESULT_SUCCESS) {
-         std::string opus_encoder_params_str = encoder_params_str;
-         this->voice_params_opus_encoder_validate(opus_encoder_params_str);
-
-         XLOGD_INFO("opus encoder params <%s>", this->prefs.opus_encoder_params_str.c_str());
-      }
-   }
-
-   ctrlm_voice_audio_settings_t audio_settings = {this->audio_mode, this->audio_timing, this->audio_confidence_threshold, this->audio_ducking_type, this->audio_ducking_level, this->audio_ducking_beep_enabled};
-   bool changed = false;
-
-   result = ctrlm_tr181_int_get(CTRLM_TR181_VOICE_PARAMS_AUDIO_MODE, (int*)&audio_settings.mode);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-       changed = true;
-   }
-   result = ctrlm_tr181_int_get(CTRLM_TR181_VOICE_PARAMS_AUDIO_TIMING, (int *)&audio_settings.timing);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-       changed = true;
-   }
-   result = ctrlm_tr181_real_get(CTRLM_TR181_VOICE_PARAMS_AUDIO_CONFIDENCE_THRESHOLD, &audio_settings.confidence_threshold);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-       changed = true;
-   }
-   result = ctrlm_tr181_int_get(CTRLM_TR181_VOICE_PARAMS_AUDIO_DUCKING_TYPE, (int *)&audio_settings.ducking_type);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-       changed = true;
-   }
-   result = ctrlm_tr181_real_get(CTRLM_TR181_VOICE_PARAMS_AUDIO_DUCKING_LEVEL, &audio_settings.ducking_level);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-       changed = true;
-   }
-
-   // CTRLM_TR181_VOICE_PARAMS_AUDIO_DUCKING_BEEP doesn't exist because this is a user configurable setting via configureVoice thunder api
-
-   result = ctrlm_tr181_string_get(CTRLM_TR181_VOICE_PARAMS_VSDK_CONFIGURATION, &vsdk_config_str[0], CTRLM_RFC_MAX_PARAM_LEN);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-      json_error_t jerror;
-      json_t *jvsdk;
-      char *decoded_buf = NULL;
-      size_t decoded_buf_len = 0;
-
-      decoded_buf = (char *)g_base64_decode((const gchar*)vsdk_config_str, &decoded_buf_len);
-      if(decoded_buf) {
-         if(decoded_buf_len > 0 && decoded_buf_len < CTRLM_RFC_MAX_PARAM_LEN) {
-            XLOGD_INFO("VSDK configuration taken from XCONF");
-            XLOGD_INFO("%s", decoded_buf);
-
-            jvsdk = json_loads(&decoded_buf[0], 0, &jerror);
-            do {
-               if(NULL == jvsdk) {
-                  XLOGD_ERROR("XCONF has VSDK params but json_loads() failed, line %d: %s ", jerror.line, jerror.text );
-                  break;
-               }
-               if(!json_is_object(jvsdk))
-               {
-                  XLOGD_ERROR("found VSDK in text but invalid object");
-                  break;
-               }
-
-               //If execution reaches here we have XCONF settings to use. If developer has used local conf settings, keep them.
-               if(local_conf) {
-                  if(!json_object_update(jvsdk, *json_obj_vsdk)) {
-                     XLOGD_ERROR("failed to update json_obj_vsdk");
-                     break;
-                  }
-               }
-
-               *json_obj_vsdk = json_deep_copy(jvsdk);
-               if(NULL == *json_obj_vsdk)
-               {
-                  XLOGD_ERROR("found VSDK object but failed to copy. We have lost any /opt file VSDK parameters");
-                  /* Nothing to do about this unlikely error. If I copy to a temp pointer to protect the input,
-                   * then I have to copy from temp to real, and check that copy for failure. Where would it end?
-                   */
-                  break;
-               }
-            }while(0);
-         } else {
-            XLOGD_WARN("incorrect length");
-         }
-         free(decoded_buf);
-      } else {
-         XLOGD_WARN("failed to decode base64");
-      }
-   }
-
-   int value = 0;
-   result = ctrlm_tr181_int_get(CTRLM_RF4CE_TR181_PRESS_AND_RELEASE_EOS_TIMEOUT, &value, 0, UINT16_MAX);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-      this->prefs.par_voice_eos_timeout = value;
-   }
-
-   result = ctrlm_tr181_int_get(CTRLM_RF4CE_TR181_PRESS_AND_RELEASE_EOS_METHOD, &value, 0, UINT8_MAX);
-   if(result == CTRLM_TR181_RESULT_SUCCESS) {
-      this->prefs.par_voice_eos_method = value;
-   }
-
-   if(changed) {
-       this->set_audio_mode(&audio_settings);
-   }
-}
-
 void ctrlm_voice_t::query_strings_updated() {
     // N/A
 }
@@ -1399,11 +1299,9 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
         request_params.type = XRSR_SESSION_REQUEST_TYPE_AUDIO_FILE;
         request_params.value.audio_file.path = audio_file_in;
 
-        xrsr_audio_format_t xrsr_format;
+        xrsr_audio_format_t xrsr_format = { .type = XRSR_AUDIO_FORMAT_PCM};
         if(format.type == CTRLM_VOICE_FORMAT_OPUS) {
             xrsr_format.type = XRSR_AUDIO_FORMAT_OPUS;
-        } else {
-            xrsr_format.type = XRSR_AUDIO_FORMAT_PCM;
         }
 
         if (false == xrsr_session_request(voice_device_to_xrsr(device_type), dst_index, xrsr_format, request_params, uuid, false, false)) {
@@ -2925,11 +2823,15 @@ void ctrlm_voice_t::voice_stream_end_callback(ctrlm_voice_stream_end_cb_t *strea
 
         if(session->packets_processed > 0) {
             uint32_t stream_duration    = session->packets_processed * 20; // assume 20 ms per packet
+            #ifdef TELEMETRY_SUPPORT
             uint32_t samples_per_packet = 320; // 16 kHz samples at 20 ms per packet
+            #endif
             if(session->format.type == CTRLM_VOICE_FORMAT_ADPCM_FRAME) {
                 uint32_t frame_duration_us = (session->format.value.adpcm_frame.size_packet - session->format.value.adpcm_frame.size_header) * 125; // 125 us per byte for ADPCM at 16 kHz
                 stream_duration    = (session->packets_processed * frame_duration_us) / 1000;
+                #ifdef TELEMETRY_SUPPORT
                 samples_per_packet = (session->format.value.adpcm_frame.size_packet - session->format.value.adpcm_frame.size_header) * 2; // 2 samples per byte for ADPCM
+                #endif
             }
             XLOGD_AUTOMATION_TELEMETRY("src <%s> Packets Lost/Total <%u/%u> %.02f%% duration <%u> ms", ctrlm_voice_device_str(session->voice_device), session->packets_lost, session->packets_lost + session->packets_processed, 100.0 * ((double)session->packets_lost / (double)(session->packets_lost + session->packets_processed)), stream_duration);
             #ifdef TELEMETRY_SUPPORT
@@ -3027,6 +2929,7 @@ void ctrlm_voice_t::voice_action_keyword_verification_callback(const uuid_t uuid
 }
 
 void ctrlm_voice_t::voice_keyword_verified_action(void) {
+   #ifdef CTRLM_THUNDER
    if(this->beep_on_kwd_supported && (this->beep_on_kwd_file != NULL) && this->audio_ducking_beep_enabled) { // play beep audio before ducking audio
       if(this->audio_ducking_beep_in_progress) {
          XLOGD_WARN("audio ducking beep already in progress!");
@@ -3068,6 +2971,7 @@ void ctrlm_voice_t::voice_keyword_verified_action(void) {
       } while(retry >= 0);
    }
    this->audio_state_set(true);
+   #endif
 }
 
 void ctrlm_voice_t::voice_keyword_beep_completed_normal(void *data, int size) {
@@ -3861,6 +3765,7 @@ void ctrlm_voice_t::voice_device_disable(ctrlm_voice_device_t device, bool db_wr
     sem_post(&this->device_status_semaphore);
 }
 
+#ifdef CTRLM_THUNDER
 void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t event, void *user_data) {
    if(user_data == NULL) {
       return;
@@ -3900,6 +3805,7 @@ void ctrlm_voice_system_audio_player_event_handler(system_audio_player_event_t e
       }
    }
 }
+#endif
 
 void ctrlm_voice_t::voice_nsm_session_request(void) {
     ctrlm_network_id_t network_id = CTRLM_MAIN_NETWORK_ID_DSP;
@@ -3962,8 +3868,6 @@ xrsr_power_mode_t voice_xrsr_power_map(ctrlm_power_state_t ctrlm_power_state) {
 }
 
 void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
-    bool enabled = true;
-
     XLOGD_INFO("processing RFC values");
 
     attr.get_rfc_value(JSON_INT_NAME_VOICE_VREX_REQUEST_TIMEOUT,         this->prefs.timeout_vrex_connect,0);
@@ -4084,6 +3988,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
     }
 
     if(attr.get_rfc_value(JSON_BOOL_NAME_VOICE_FORCE_VOICE_SETTINGS, this->prefs.force_voice_settings) && this->prefs.force_voice_settings) {
+        bool enabled = true;
         attr.get_rfc_value(JSON_BOOL_NAME_VOICE_ENABLE,                      enabled);
         attr.get_rfc_value(JSON_STR_NAME_VOICE_URL_SRC_PTT,                  this->prefs.server_url_src_ptt);
         attr.get_rfc_value(JSON_STR_NAME_VOICE_URL_SRC_FF,                   this->prefs.server_url_src_ff);
@@ -4105,6 +4010,7 @@ void ctrlm_voice_t::voice_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
 }
 
 void ctrlm_voice_t::vsdk_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
+    XLOGD_INFO("processing RFC values");
     json_t *obj_vsdk = NULL;
     if(attr.get_rfc_json_value(&obj_vsdk) && obj_vsdk) {
         XLOGD_INFO("VSDK values from XCONF, reopening xrsr..");
@@ -4113,7 +4019,12 @@ void ctrlm_voice_t::vsdk_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
         }
         // This is temporary until the VSDK supports receiving a config on the fly
         this->voice_sdk_close();
-        this->voice_sdk_open(obj_vsdk);
+        if(this->vsdk_config) {
+            json_decref(this->vsdk_config);
+            this->vsdk_config = NULL;
+        }
+        this->vsdk_config = obj_vsdk; // Transfer ownership
+        this->voice_sdk_open(this->vsdk_config);
         this->voice_sdk_update_routes();
 
         // Set init message if read from shared memory
@@ -4130,7 +4041,6 @@ void ctrlm_voice_t::vsdk_rfc_retrieved_handler(const ctrlm_rfc_attr_t& attr) {
         } else {
             this->voice_init_set(init.c_str(), false);
         }
-        json_decref(obj_vsdk);
     }
 }
 

@@ -36,9 +36,6 @@
 #include "libIBus.h"
 #include "libIBusDaemon.h"
 #include <jansson.h>
-#ifdef USE_IARM_POWER_MANAGER
-#include "deepSleepMgr.h"
-#endif
 #ifdef TELEMETRY_SUPPORT
 #include <telemetry2_0.h>
 #endif
@@ -185,15 +182,12 @@ const char *ctrlm_rcu_controller_type_str(ctrlm_rcu_controller_type_t controller
 const char *ctrlm_rcu_reverse_cmd_result_str(ctrlm_rcu_reverse_cmd_result_t result);
 const char *ctrlm_rcu_ir_remote_types_str(ctrlm_ir_remote_type controller_type);
 
-const char *ctrlm_voice_session_result_str(ctrlm_voice_session_result_t result);
 const char *ctrlm_voice_session_end_reason_str(ctrlm_voice_session_end_reason_t reason);
 const char *ctrlm_voice_session_abort_reason_str(ctrlm_voice_session_abort_reason_t reason);
-const char *ctrlm_voice_internal_error_str(ctrlm_voice_internal_error_t error);
 const char *ctrlm_voice_reset_type_str(ctrlm_voice_reset_type_t reset_type);
 
 const char *ctrlm_device_update_iarm_load_type_str(ctrlm_device_update_iarm_load_type_t load_type);
 const char *ctrlm_device_update_iarm_load_result_str(ctrlm_device_update_iarm_load_result_t load_result);
-const char *ctrlm_device_update_image_type_str(ctrlm_device_update_image_type_t image_type);
 const char *ctrlm_bind_status_str(ctrlm_bind_status_t bind_status);
 const char *ctrlm_close_pairing_window_reason_str(ctrlm_close_pairing_window_reason reason);
 const char *ctrlm_battery_event_str(ctrlm_rcu_battery_event_t event);
@@ -205,9 +199,6 @@ const char *ctrlm_ir_state_str(ctrlm_ir_state_t state);
 const char *ctrlm_power_state_str(ctrlm_power_state_t state);
 const char *ctrlm_device_type_str(ctrlm_device_type_t device_type);
 
-#ifdef USE_IARM_POWER_MANAGER
-const char *ctrlm_wakeup_reason_str(DeepSleep_WakeupReason_t wakeup_reason);
-#endif
 const char *ctrlm_rcu_wakeup_config_str(ctrlm_rcu_wakeup_config_t config);
 
 #ifdef TELEMETRY_SUPPORT
@@ -231,7 +222,6 @@ char       *ctrlm_do_regex(char *re, char *str);
 bool        ctrlm_dsmgr_init();
 bool        ctrlm_dsmgr_mute_audio(bool mute);
 bool        ctrlm_dsmgr_duck_audio(bool enable, bool relative, double vol);
-bool        ctrlm_dsmgr_LED(bool on);
 bool        ctrlm_dsmgr_deinit();
 
 bool        ctrlm_is_voice_assistant(ctrlm_rcu_controller_type_t controller_type);
@@ -264,6 +254,9 @@ bool ctrlm_utils_message_queue_open(int *msgq, uint8_t max_msg, size_t msgsize);
 void ctrlm_utils_message_queue_close(int *msgq);
 bool ctrlm_utils_queue_msg_push(int msgq, const char *msg, size_t msg_len);
 std::string ctrlm_utils_time_as_string(time_t time);
+
+// Returns the current wall-clock time in epoch milliseconds.
+uint64_t ctrlm_timestamp_get_ms(void);
 
 ctrlm_fmr_alarm_level_t ctrlm_utils_str_to_fmr_level(const std::string &level);
 ctrlm_rcu_wakeup_config_t ctrlm_utils_str_to_wakeup_config(const std::string &wakeup_config);

@@ -1745,10 +1745,10 @@ guint16 ctrlm_device_update_rf4ce_image_data_read(ctrlm_network_id_t network_id,
    session_info->bytes_read_controller += qty_read;
    guchar percent_complete = (session_info->bytes_read_controller * 100) / image_info->size;
    if(percent_complete >= session_info->percent_next) {
-      ctrlm_device_update_iarm_event_download_status(session_info->session_id, percent_complete);
+      // ctrlm_device_update_iarm_event_download_status(session_info->session_id, percent_complete);
       session_info->percent_next +=  session_info->percent_increment;
    } else if(session_info->bytes_read_controller >= image_info->size) {
-      ctrlm_device_update_iarm_event_download_status(session_info->session_id, 100);
+      // ctrlm_device_update_iarm_event_download_status(session_info->session_id, 100);
    }
 
   
@@ -1860,7 +1860,7 @@ gboolean ctrlm_device_update_rf4ce_begin(ctrlm_network_id_t network_id, ctrlm_co
          *session_id_out = g_ctrlm_device_update.rf4ce_sessions[controller_id].session_id;
       }
       // Broadcast "ready to download" event
-      ctrlm_device_update_iarm_event_ready_to_download(g_ctrlm_device_update.rf4ce_sessions[controller_id].session_id);
+      // ctrlm_device_update_iarm_event_ready_to_download(g_ctrlm_device_update.rf4ce_sessions[controller_id].session_id);
    }
    if(g_ctrlm_device_update.prefs.download.interactive && !g_ctrlm_device_update.rf4ce_sessions[controller_id].download_initiated) { // interactive, note that the device is ready and wait for download initiate from update manager service
       begin_info->when = RF4CE_DEVICE_UPDATE_IMAGE_CHECK_POLL_TIME;
@@ -1946,7 +1946,7 @@ void ctrlm_device_update_rf4ce_end(ctrlm_network_id_t network_id, ctrlm_controll
    ctrlm_device_update_rf4ce_image_info_t *image_info   = &(*g_ctrlm_device_update.rf4ce_images)[image_id];
    ctrlm_device_update_rf4ce_session_t    *session_info = &g_ctrlm_device_update.rf4ce_sessions[controller_id];
 
-   ctrlm_device_update_iarm_event_load_end(session_info->session_id, result);
+   // ctrlm_device_update_iarm_event_load_end(session_info->session_id, result);
 
    ctrlm_device_update_rf4ce_download_complete(session_info);
 
@@ -2030,11 +2030,11 @@ void ctrlm_device_update_rf4ce_load_info(ctrlm_network_id_t network_id, ctrlm_co
          load_info->when = RF4CE_DEVICE_UPDATE_IMAGE_LOAD_WHEN_INACTIVE;
          load_info->time = session_info->time_after_inactive;
          XLOGD_INFO("<%s> Load Image Interactive. When inactive %d seconds", session_info->device_name.c_str(), load_info->time);
-         ctrlm_device_update_iarm_event_load_begin(session_info->session_id);
+         // ctrlm_device_update_iarm_event_load_begin(session_info->session_id);
       } else {
          load_info->when = RF4CE_DEVICE_UPDATE_IMAGE_LOAD_NOW;
          XLOGD_INFO("<%s> Load Image Interactive. Now.", session_info->device_name.c_str());
-         ctrlm_device_update_iarm_event_load_begin(session_info->session_id);
+         // ctrlm_device_update_iarm_event_load_begin(session_info->session_id);
       }
    } else if(now_local->tm_hour < g_ctrlm_device_update.prefs.load.before_hour) { // the time is between midnight and load_before_hour
       if(session_info->time_after_inactive > 0) {
@@ -2045,7 +2045,7 @@ void ctrlm_device_update_rf4ce_load_info(ctrlm_network_id_t network_id, ctrlm_co
          load_info->when = RF4CE_DEVICE_UPDATE_IMAGE_LOAD_NOW;
          XLOGD_INFO("<%s> Load Image Now. Time is %02d:%02d Load before %02d:00", session_info->device_name.c_str(), now_local->tm_hour, now_local->tm_min, g_ctrlm_device_update.prefs.load.before_hour);
       }
-      ctrlm_device_update_iarm_event_load_begin(session_info->session_id);
+      // ctrlm_device_update_iarm_event_load_begin(session_info->session_id);
    //} else if(0) { // Wait for inactivity period
    //   load_info->when = RF4CE_DEVICE_UPDATE_IMAGE_LOAD_WHEN_INACTIVE;
    //   load_info->time = CTRLM_DEVICE_UPDATE_RF4CE_DEFAULT_LOAD_INACTIVE_TIME;
@@ -2119,33 +2119,6 @@ void ctrlm_device_update_rf4ce_notify_reboot(ctrlm_network_id_t network_id, ctrl
    DEVICE_UPDATE_MUTEX_UNLOCK();
 }
 
-gboolean ctrlm_device_update_session_get_by_id(ctrlm_device_update_session_id_t session_id, ctrlm_device_update_iarm_call_session_t *session) {
-   if(session == NULL) {
-      return(false);
-   }
-   DEVICE_UPDATE_MUTEX_LOCK();
-   // Locate the session
-   for(map<ctrlm_controller_id_t, ctrlm_device_update_rf4ce_session_t>::iterator it = g_ctrlm_device_update.rf4ce_sessions.begin(); it != g_ctrlm_device_update.rf4ce_sessions.end(); it++) {
-      if(it->second.session_id == session_id) {
-         if(it->second.image_id >= g_ctrlm_device_update.rf4ce_images->size()) {
-            continue;
-         }
-         ctrlm_device_update_device_get_from_session(&it->second, &session->device);
-
-         session->image_id             = it->second.image_id;
-         session->interactive_download = it->second.interactive_download;
-         session->interactive_load     = it->second.interactive_load;
-         session->download_percent     = (it->second.bytes_read_controller * 100) / (*g_ctrlm_device_update.rf4ce_images)[it->second.image_id].size;
-         session->load_complete        = false;
-         session->error_code           = 0;
-         DEVICE_UPDATE_MUTEX_UNLOCK();
-         return(true);
-      }
-   }
-   DEVICE_UPDATE_MUTEX_UNLOCK();
-   return(false);
-}
-
 gboolean ctrlm_device_update_image_device_get_by_id(ctrlm_device_update_session_id_t session_id, ctrlm_device_update_image_id_t *image_id, ctrlm_device_update_device_t *device) {
    if(image_id == NULL || device == NULL) {
       return(false);
@@ -2182,78 +2155,6 @@ void ctrlm_device_update_device_get_from_session(ctrlm_device_update_rf4ce_sessi
       ERR_CHK(safec_rc);
    }
    device->name[CTRLM_DEVICE_UPDATE_DEVICE_NAME_LENGTH - 1]           = '\0';
-}
-
-gboolean ctrlm_device_update_image_get_by_id(ctrlm_device_update_image_id_t image_id, ctrlm_device_update_image_t *image) {
-   errno_t safec_rc = -1;
-   DEVICE_UPDATE_MUTEX_LOCK();
-
-   if(image_id >= g_ctrlm_device_update.rf4ce_images->size() || image == NULL) {
-      DEVICE_UPDATE_MUTEX_UNLOCK();
-      return(false);
-   }
-   ctrlm_device_update_rf4ce_image_info_t *image_info = &(*g_ctrlm_device_update.rf4ce_images)[image_id];
-
-   switch(image_info->image_type) {
-      case RF4CE_DEVICE_UPDATE_IMAGE_TYPE_FIRMWARE:     image->image_type = CTRLM_DEVICE_UPDATE_IMAGE_TYPE_FIRMWARE;   break;
-      case RF4CE_DEVICE_UPDATE_IMAGE_TYPE_AUDIO_DATA_1: image->image_type = CTRLM_DEVICE_UPDATE_IMAGE_TYPE_AUDIO_DATA; break;
-      default:                                          image->image_type = CTRLM_DEVICE_UPDATE_IMAGE_TYPE_OTHER;      break;
-   }
-   image->force_update = image_info->force_update;
-   image->image_size = image_info->size;
-   safec_rc = strncpy_s(image->device_name,  sizeof(image->device_name),  image_info->device_name.c_str(), CTRLM_DEVICE_UPDATE_DEVICE_NAME_LENGTH - 1);
-   ERR_CHK(safec_rc);
-   safec_rc = strcpy_s(image->device_class, sizeof(image->device_class), "remotes");
-   ERR_CHK(safec_rc);
-   safec_rc = sprintf_s(image->image_version, CTRLM_DEVICE_UPDATE_VERSION_LENGTH, "%u.%u.%u.%u",  image_info->version_software.major, image_info->version_software.minor, image_info->version_software.revision, image_info->version_software.patch);
-   if(safec_rc < EOK) {
-      ERR_CHK(safec_rc);
-   }
-   safec_rc = strncpy_s(image->image_file_path, sizeof(image->image_file_path), image_info->file_path_archive.c_str(), CTRLM_DEVICE_UPDATE_DEVICE_NAME_LENGTH - 1);
-   ERR_CHK(safec_rc);
-
-   image->device_name[CTRLM_DEVICE_UPDATE_DEVICE_NAME_LENGTH - 1]  = '\0';
-
-   image->image_file_path[CTRLM_DEVICE_UPDATE_PATH_LENGTH - 1]     = '\0';
-
-   DEVICE_UPDATE_MUTEX_UNLOCK();
-
-   return(true);
-}
-
-gboolean ctrlm_device_update_status_info_get(ctrlm_device_update_iarm_call_status_t *status) {
-   if(status == NULL) {
-      return(false);
-   }
-   guint32 session_qty = 0;
-
-   DEVICE_UPDATE_MUTEX_LOCK();
-
-   map<ctrlm_controller_id_t, ctrlm_device_update_rf4ce_session_t>::iterator it;
-   for(it = g_ctrlm_device_update.rf4ce_sessions.begin(); it != g_ctrlm_device_update.rf4ce_sessions.end(); it++) {
-      status->session_ids[session_qty] = it->second.session_id;
-      session_qty++;
-      if(session_qty >= CTRLM_DEVICE_UPDATE_MAX_SESSIONS) {
-         break;
-      }
-   }
-
-   status->session_qty                = session_qty;
-   status->image_qty                  = g_ctrlm_device_update.rf4ce_images->size();
-   if(status->image_qty >= CTRLM_DEVICE_UPDATE_MAX_IMAGES) {
-      status->image_qty = CTRLM_DEVICE_UPDATE_MAX_IMAGES;
-   }
-   for(unsigned long index = 0; index < status->image_qty; index++) {
-      status->image_ids[index] = index;
-   }
-   status->interactive_download = g_ctrlm_device_update.prefs.download.interactive;
-   status->interactive_load     = g_ctrlm_device_update.prefs.load.interactive;
-   status->percent_increment    = g_ctrlm_device_update.prefs.download.percent_increment;
-   status->load_immediately     = g_ctrlm_device_update.prefs.download.load_immediately;
-   status->running              = g_ctrlm_device_update.running;
-
-   DEVICE_UPDATE_MUTEX_UNLOCK();
-   return(true);
 }
 
 gboolean ctrlm_device_update_interactive_download_start(ctrlm_device_update_session_id_t session_id, gboolean background, guchar percent_increment, gboolean load_immediately) {

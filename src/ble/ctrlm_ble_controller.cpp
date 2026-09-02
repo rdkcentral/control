@@ -29,11 +29,11 @@
 #include "ctrlm_ble_controller.h"
 #include "ctrlm_ble_utils.h"
 #include "ctrlm_controller.h"
-#include "ctrlm_hal_ip.h"
 #include "blercu/bleservices/blercuupgradeservice.h"
 #include "ctrlm_telemetry_event.h"
 
 #include <sstream>
+#include <iomanip>
 #include <iterator>
 #include <iostream>
 #include <algorithm>
@@ -528,6 +528,24 @@ ctrlm_timestamp_t ctrlm_obj_controller_ble_t::getVoiceStartTimeLocal() const {
    return(voice_start_time_local_);
 }
 
+void ctrlm_obj_controller_ble_t::emit_irdb_vendor_set(
+      int set_result, uint8_t rcu_bitmask,
+      const std::string &vendor_name, uint8_t vendor_bitmask, int supported)
+{
+#ifdef TELEMETRY_SUPPORT
+   std::ostringstream ss;
+   ss << "[" << MARKER_IRDB_VENDOR_SET_VERSION
+      << "," << set_result
+      << ",0x" << std::hex << std::setfill('0') << std::setw(2) << (int)rcu_bitmask
+      << ",\"" << vendor_name << "\""
+      << ",0x" << std::setw(2) << (int)vendor_bitmask << std::dec
+      << "," << supported
+      << "," << ctrlm_timestamp_get_ms() << "]";
+   ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_VENDOR_SET, ss.str());
+   ev.event();
+#endif
+}
+
 void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmask) {
    this->irdbs_supported_ = vendor_support_bitmask;
 
@@ -535,12 +553,7 @@ void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmas
 
    if (irdb == NULL) {
       XLOGD_ERROR("IRDB interface is NULL!!!");
-#ifdef TELEMETRY_SUPPORT
-      char t2_buf[256];
-      snprintf(t2_buf, sizeof(t2_buf), "[0,0x%02X,\"unknown\",0x00,0]", vendor_support_bitmask);
-      ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_VENDOR_SET, t2_buf);
-      ev.event();
-#endif
+      emit_irdb_vendor_set(0, vendor_support_bitmask, "unknown", 0x00, 0);
       return;
    }
 
@@ -569,15 +582,8 @@ void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmas
       XLOGD_WARN("Controller <%s> IRDBs supported bitmask = <0x%X>, couldn't retrieve IRDB plugin vendor info.", 
             ieee_address_get().to_string().c_str(), vendor_support_bitmask);
    }
-#ifdef TELEMETRY_SUPPORT
-   char t2_buf[256];
-   snprintf(t2_buf, sizeof(t2_buf), "[%d,0x%02X,\"%s\",0x%02X,%d]",
-            (int)set_result,vendor_support_bitmask,
-            vendor_info.name.c_str(), vendor_info.rcu_support_bitmask,
-            (int)supported);
-   ctrlm_telemetry_event_t<std::string> ev(MARKER_IRDB_VENDOR_SET, t2_buf);
-   ev.event();
-#endif
+   emit_irdb_vendor_set((int)set_result, vendor_support_bitmask,
+                        vendor_info.name, vendor_info.rcu_support_bitmask, (int)supported);
 }
 
 uint8_t ctrlm_obj_controller_ble_t::getSupportedIrdbs() const {

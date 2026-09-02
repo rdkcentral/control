@@ -163,7 +163,8 @@ typedef struct {
 } ctrlm_main_queue_msg_network_fw_upgrade_t;
 
 typedef struct {
-   sem_t                *semaphore;
+   gint                  ref_count;
+   sem_t                 semaphore;
    ctrlm_hal_req_term_t  term;
    GThread              *hal_thread;
 } ctrlm_network_term_hal_t;
@@ -253,7 +254,6 @@ public:
    virtual ctrlm_rf_pair_state_t                 get_rf_pair_state() const;
 
    virtual void         req_process_network_status(void *data, int size);
-   virtual void         req_process_chip_status(void *data, int size);
    virtual void         req_process_controller_link_key(void *data, int size);
    virtual void         req_process_controller_status(void *data, int size);
    virtual void         req_process_controller_product_name(void *data, int size);

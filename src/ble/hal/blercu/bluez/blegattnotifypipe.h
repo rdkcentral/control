@@ -33,6 +33,7 @@
 #include <utils/slot.h>
 
 #include <semaphore.h>
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <pthread.h>
@@ -40,10 +41,10 @@
 #include "bleuuid.h"
 
 typedef struct {
-   const char *   name;
-   pthread_t      id;
-   bool           running;
-} ctrlm_thread_t;
+   const char *      name;
+   pthread_t         id;
+   std::atomic<bool> running;
+} BleThread;
 
 
 class BleGattNotifyPipe
@@ -86,7 +87,7 @@ public:
 
     // xr_mq_t m_notifyThreadMsgQ;
     sem_t m_notifyThreadSem;
-    ctrlm_thread_t m_notifyThread;
+    BleThread m_notifyThread;
 };
 
 

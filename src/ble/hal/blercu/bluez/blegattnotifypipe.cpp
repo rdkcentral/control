@@ -47,11 +47,12 @@ using namespace std;
 
 void *NotifyThread(void *data);
 
-static bool ThreadCreate(ctrlm_thread_t *thread, void *(*start_routine)(void *), void *arg, pthread_attr_t *attr = NULL)
+static bool ThreadCreate(BleThread *thread, void *(*start_routine)(void *), void *arg, pthread_attr_t *attr = NULL)
 {
-    thread->running = false;
+    thread->running.store(false);
     if (0 != pthread_create(&thread->id, attr, start_routine, arg)) {
         XLOGD_ERROR("unable to launch thread <%s>", thread->name == NULL ? "" : thread->name);
+        thread->id = 0;
         return (false);
     }
 
@@ -63,14 +64,13 @@ static bool ThreadCreate(ctrlm_thread_t *thread, void *(*start_routine)(void *),
         }
     }
 
-    thread->running = true;
     return (true);
 }
 
-static bool ThreadJoin(ctrlm_thread_t *thread, uint32_t timeout_secs)
+static bool ThreadJoin(BleThread *thread, uint32_t timeout_secs)
 {
-    if (!thread->running) {
-        XLOGD_WARN("Thread <%s> not running.", thread->name);
+    if (thread->id == 0) {
+        XLOGD_DEBUG("Thread <%s> not running.", thread->name);
         return (true);
     }
 
@@ -86,7 +86,8 @@ static bool ThreadJoin(ctrlm_thread_t *thread, uint32_t timeout_secs)
     }
 
     XLOGD_DEBUG("Thread <%s> join successful.", thread->name);
-    thread->running = false;
+    thread->id = 0;
+    thread->running.store(false);
     return (true);
 }
 
@@ -130,7 +131,7 @@ BleGattNotifyPipe::BleGattNotifyPipe(int notifyPipeFd, uint16_t mtu, BleUuid uui
 {
     m_notifyThread.name = "";
     m_notifyThread.id = 0;
-    m_notifyThread.running = false;
+    m_notifyThread.running.store(false);
 
     // sanity check the input notify pipe
     if (notifyPipeFd < 0) {
@@ -214,12 +215,13 @@ BleGattNotifyPipe::~BleGattNotifyPipe()
  */
 void BleGattNotifyPipe::shutdown()
 {
-    if (m_notifyThread.running) {
+    if (m_notifyThread.running.load()) {
         if(FD_SIGNAL(m_exitEventFds) > -1) {
             SignalEventFd(FD_SIGNAL(m_exitEventFds));
         }
-        ThreadJoin(&m_notifyThread, 2);
     }
+    ThreadJoin(&m_notifyThread, 2);
+
     if (FD_SIGNAL(m_exitEventFds) > -1) {
         close(FD_SIGNAL(m_exitEventFds));
     }
@@ -241,7 +243,7 @@ void BleGattNotifyPipe::shutdown()
  */
 bool BleGattNotifyPipe::isValid() const
 {
-    return (m_pipeFd >= 0);
+    return (m_notifyThread.running.load() && m_pipeFd >= 0);
 }
 
 // -----------------------------------------------------------------------------
@@ -305,6 +307,8 @@ void *NotifyThread(void *data)
     int nfds = -1;
     bool running = true;
 
+    notifyPipe->m_notifyThread.running.store(true);
+
     // Unblock the caller that launched this thread
     sem_post(&notifyPipe->m_notifyThreadSem);
 
@@ -340,17 +344,14 @@ void *NotifyThread(void *data)
 
     } while (running && *isAlive);
 
-    if (*isAlive == false) {
-        XLOGD_ERROR("BleGattNotifyPipe object has been destroyed before thread exited.  Suspect something went wrong, exiting...");
-    
-    } else {
-        notifyPipe->m_notifyThread.running = false;
+    if (*isAlive) {
+        notifyPipe->m_notifyThread.running.store(false);
+    }
 
-        if (!running) {
-            XLOGD_INFO("BLE notification pipe thread exited gracefully.");
-        } else {
-            XLOGD_ERROR("BLE notification pipe thread exited unexpectedly, suspect an error occurred...");
-        }
+    if (!running) {
+        XLOGD_INFO("BLE notification pipe thread exited gracefully.");
+    } else {
+        XLOGD_ERROR("BLE notification pipe thread exited unexpectedly, suspect an error occurred...");
     }
 
     return NULL;

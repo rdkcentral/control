@@ -242,6 +242,8 @@ void ctrlm_device_update_init(json_t *json_obj_device_update) {
    XLOGD_INFO("");
 
    // Initialize state
+   g_rec_mutex_init(&g_ctrlm_device_update.mutex_recursive);
+   DEVICE_UPDATE_MUTEX_LOCK();
    g_ctrlm_device_update.running                          = false;
    g_ctrlm_device_update.rf4ce_images                     = new vector<ctrlm_device_update_rf4ce_image_info_t>();
 
@@ -284,9 +286,9 @@ void ctrlm_device_update_init(json_t *json_obj_device_update) {
    // Create an asynchronous queue to receive incoming messages from the networks
    g_ctrlm_device_update.queue = g_async_queue_new_full(ctrlm_device_update_queue_msg_destroy);
 
-   // Initialize semaphore and mutex
-   g_rec_mutex_init(&g_ctrlm_device_update.mutex_recursive);
+   // Initialize semaphore
    sem_init(&g_ctrlm_device_update.semaphore, 0, 0);
+   DEVICE_UPDATE_MUTEX_UNLOCK();
 
    XLOGD_INFO("Waiting for device update thread initialization...");
    g_ctrlm_device_update.main_thread = g_thread_new("ctrlm_device_update", ctrlm_device_update_thread, NULL);
@@ -1475,12 +1477,6 @@ gpointer ctrlm_device_update_thread(gpointer param) {
             ctrlm_device_update_rf4ce_image_info_t *image_info = &(*g_ctrlm_device_update.rf4ce_images)[stage->image_id];
             ctrlm_device_update_rf4ce_session_t    *session_info;
 
-            if(g_ctrlm_device_update.rf4ce_sessions.count(stage->controller_id) == 0) {
-               XLOGD_ERROR("STAGE session not found %u", stage->controller_id);
-               break;
-            }
-            session_info = &g_ctrlm_device_update.rf4ce_sessions[stage->controller_id];
-
             if(stage->session_count == 1) {
                // Create the temp directory
                ctrlm_device_update_tmp_dir_make();
@@ -1499,9 +1495,18 @@ gpointer ctrlm_device_update_thread(gpointer param) {
 
             XLOGD_INFO("Opening image file <%s>", file_path_image.c_str());
 
+            DEVICE_UPDATE_MUTEX_LOCK();
+            map<ctrlm_controller_id_t, ctrlm_device_update_rf4ce_session_t>::iterator session = g_ctrlm_device_update.rf4ce_sessions.find(stage->controller_id);
+            if(session == g_ctrlm_device_update.rf4ce_sessions.end()) {
+               XLOGD_ERROR("STAGE session not found %u", stage->controller_id);
+               DEVICE_UPDATE_MUTEX_UNLOCK();
+               break;
+            }
+            session_info = &session->second;
             session_info->fd = fopen(file_path_image.c_str(), "r");
             if(session_info->fd == NULL) {
                XLOGD_TELEMETRY("Unable to open image file <%s>", file_path_image.c_str());
+               DEVICE_UPDATE_MUTEX_UNLOCK();
                break;
             }
 
@@ -1516,17 +1521,14 @@ gpointer ctrlm_device_update_thread(gpointer param) {
                   XLOGD_INFO("Unable to read first two chunks %u", size);
                   g_free(chunks);
                } else {
-                  DEVICE_UPDATE_MUTEX_LOCK();
-
                   session_info->chunk_even      = chunks;
                   session_info->chunk_odd       = chunks + DEVICE_UPDATE_IMAGE_CHUNK_SIZE;
                   session_info->offset_even     = 0;
                   session_info->offset_odd      = DEVICE_UPDATE_IMAGE_CHUNK_SIZE;
                   session_info->bytes_read_file = size;
-
-                  DEVICE_UPDATE_MUTEX_UNLOCK();
                }
             }
+            DEVICE_UPDATE_MUTEX_UNLOCK();
             break;
          }
          case DEVICE_UPDATE_QUEUE_MSG_TYPE_IMAGE_READ: {
@@ -2078,7 +2080,6 @@ gboolean ctrlm_device_update_timeout_session(gpointer user_data) {
    if(g_ctrlm_device_update.rf4ce_sessions.count(params->controller_id) == 0) {
       XLOGD_ERROR("session not found %u", params->controller_id);
       DEVICE_UPDATE_MUTEX_UNLOCK();
-      g_ctrlm_device_update.rf4ce_sessions[params->controller_id].timeout_source_id = 0;
       return(false);
    }
 
@@ -2261,15 +2262,19 @@ ctrlm_device_update_session_id_t ctrlm_device_update_new_session_id() {
 }
 
 gboolean ctrlm_device_update_is_controller_updating(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, bool ignore_load_waiting) {
-   if(CTRLM_NETWORK_TYPE_RF4CE == ctrlm_network_type_get(network_id)) {
-      if(g_ctrlm_device_update.rf4ce_sessions.count(controller_id) > 0) {
-         if(ignore_load_waiting || !g_ctrlm_device_update.rf4ce_sessions[controller_id].load_waiting) {
-            XLOGD_INFO("< %u, %u > Download in progress", network_id, controller_id);
-            return true;
-         }
-      }
-   }
+   if(CTRLM_NETWORK_TYPE_RF4CE != ctrlm_network_type_get(network_id)) {
       return false;
+   }
+
+   gboolean updating = false;
+   DEVICE_UPDATE_MUTEX_LOCK();
+   map<ctrlm_controller_id_t, ctrlm_device_update_rf4ce_session_t>::iterator session = g_ctrlm_device_update.rf4ce_sessions.find(controller_id);
+   if(session != g_ctrlm_device_update.rf4ce_sessions.end() && (ignore_load_waiting || !session->second.load_waiting)) {
+      XLOGD_INFO("< %u, %u > Download in progress", network_id, controller_id);
+      updating = true;
+   }
+   DEVICE_UPDATE_MUTEX_UNLOCK();
+   return updating;
 }
 
 
@@ -2315,17 +2320,22 @@ void ctrlm_device_update_check_for_update_file_delete(ctrlm_device_update_image_
 }
 
 void ctrlm_device_update_timeout_update_activity(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, guint timeout_value) {
-   if(ctrlm_device_update_is_controller_updating(network_id, controller_id, false)) {
-      ctrlm_device_update_rf4ce_session_t *session = &g_ctrlm_device_update.rf4ce_sessions[controller_id];
+   if(CTRLM_NETWORK_TYPE_RF4CE != ctrlm_network_type_get(network_id)) {
+      return;
+   }
 
+   DEVICE_UPDATE_MUTEX_LOCK();
+   map<ctrlm_controller_id_t, ctrlm_device_update_rf4ce_session_t>::iterator session = g_ctrlm_device_update.rf4ce_sessions.find(controller_id);
+   if(session != g_ctrlm_device_update.rf4ce_sessions.end() && !session->second.load_waiting) {
       //If no timeout value was given then use session timeout value
-      timeout_value = (timeout_value == CTRLM_DEVICE_UPDATE_USE_DEFAULT_TIMEOUT) ? (session->timeout_value) : (timeout_value);
+      timeout_value = (timeout_value == CTRLM_DEVICE_UPDATE_USE_DEFAULT_TIMEOUT) ? (session->second.timeout_value) : (timeout_value);
 
-      if(session->download_in_progress && !session->load_waiting) { // We want to make sure the remote is actively downloading
+      if(session->second.download_in_progress) { // We want to make sure the remote is actively downloading
          XLOGD_DEBUG("Remote is currently updating, we will update timeout with %d seconds.", timeout_value);
-         ctrlm_device_update_timeout_session_update(&session->timeout_source_id, timeout_value, session->timeout_params);
+         ctrlm_device_update_timeout_session_update(&session->second.timeout_source_id, timeout_value, session->second.timeout_params);
       }
    }
+   DEVICE_UPDATE_MUTEX_UNLOCK();
 }
 
 string ctrlm_device_update_get_software_version(guint16 image_id){

@@ -2125,6 +2125,7 @@ gboolean ctrlm_device_update_image_device_get_by_id(ctrlm_device_update_session_
       return(false);
    }
    // Locate the session
+   DEVICE_UPDATE_MUTEX_LOCK();
    map<ctrlm_controller_id_t, ctrlm_device_update_rf4ce_session_t>::iterator it;
    for(it = g_ctrlm_device_update.rf4ce_sessions.begin(); it != g_ctrlm_device_update.rf4ce_sessions.end(); it++) {
       if(it->second.session_id == session_id) {
@@ -2133,9 +2134,11 @@ gboolean ctrlm_device_update_image_device_get_by_id(ctrlm_device_update_session_
          }
          *image_id = it->second.image_id;
          ctrlm_device_update_device_get_from_session(&it->second, device);
+         DEVICE_UPDATE_MUTEX_UNLOCK();
          return(true);
       }
    }
+   DEVICE_UPDATE_MUTEX_UNLOCK();
    return(false);
 }
 

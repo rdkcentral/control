@@ -43,6 +43,7 @@
 #include "ctrlm_utils.h"
 #include "ctrlm_rcu.h"
 #include "ctrlm_rf4ce_network.h"
+#include "ctrlm_device_update.h"
 #include "ctrlm_database.h"
 #include "ctrlm_recovery.h"
 #include "json_config.h"

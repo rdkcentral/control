@@ -1691,48 +1691,28 @@ static bool ctrlm_rm_rf(const std::string &path, unsigned int recursive_depth = 
    /* handler to run-through the available directoreis and files */
    struct dirent *dir;
 
-   /* store the length of the path */
-   size_t path_len = strlen(path.c_str());
-
    errno = 0;
    status = true;
    while (status && (dir = readdir(handler))) {
      bool recurse_status = false;
-     size_t len;
 
      /* skip recursive calls on "." and ".." */
      if (!strcmp(dir->d_name, ".") || !strcmp(dir->d_name, "..")) {
         continue;
      }
 
-     len = path_len + strlen(dir->d_name) + 2;
-     static char ctrlm_rm_rf_buf[PATH_MAX];
-     struct stat sbuf;
-     snprintf(ctrlm_rm_rf_buf, len, "%s/%s", path.c_str(), dir->d_name);
+     string entry_path = path + "/" + dir->d_name;
      errno = 0;
-     if (0 != stat(ctrlm_rm_rf_buf, &sbuf)) {
-        int errsv = errno;
-        XLOGD_ERROR("Failed to stat %s, stat call error (%s)", ctrlm_rm_rf_buf, strerror(errsv));
-        errno = 0;
-        if( 0 != closedir(handler)) {
-          int errsv = errno;
-          XLOGD_ERROR("Failed closedir to %s, closedir call error (%s)", path.c_str(), strerror(errsv));
-        }
-        return false;
+     if(0 == unlink(entry_path.c_str())) {
+        recurse_status = true;
      } else {
-       if (S_ISDIR(sbuf.st_mode)){
-         --recursive_depth;
-         recurse_status = ctrlm_rm_rf(ctrlm_rm_rf_buf, recursive_depth);
-       } else {
-         errno = 0;
-         if(0 != unlink(ctrlm_rm_rf_buf)){
-            int errsv = errno;
-            XLOGD_ERROR("Failed unlink %s, unlink call error (%s)", ctrlm_rm_rf_buf, strerror(errsv));
-            recurse_status = false;
-         } else {
-            recurse_status = true;
-         }
-       }
+        int errsv = errno;
+        if(errsv == EISDIR || errsv == EPERM) {
+           recurse_status = ctrlm_rm_rf(entry_path, recursive_depth - 1);
+        } else {
+           XLOGD_ERROR("Failed unlink %s, unlink call error (%s)", entry_path.c_str(), strerror(errsv));
+           recurse_status = false;
+        }
      }
      status = recurse_status;
    }
@@ -2031,16 +2011,11 @@ bool ctrlm_utils_move_file_to_secure_nvm(const char *path) {
    string filename = path_str.substr(idx + 1);
    string secure_path = CTRLM_NVM_SECURE_PATH + filename;
 
-   if (ctrlm_file_exists(path)) {
-      struct stat link_stat;
-      errno = 0;
-      rc = lstat(path, &link_stat);
-      if(rc != 0) {
-         int errsv = errno;
-         XLOGD_ERROR("lstat failed on path <%s>, error = <%s>", path, strerror(errsv));
-         return false;
-      }
-
+   struct stat link_stat;
+   errno = 0;
+   rc = lstat(path, &link_stat);
+   int lstat_errno = errno;
+   if(rc == 0) {
       XLOGD_DEBUG("path <%s> is regular file? <%s>, is symbolic link? <%s>", path, S_ISREG(link_stat.st_mode) ? "TRUE":"FALSE", S_ISLNK(link_stat.st_mode) ? "TRUE":"FALSE");
       if (S_ISLNK(link_stat.st_mode)) {
          XLOGD_DEBUG("File <%s> already is a link to secure area, nothing to be done.", path);
@@ -2113,7 +2088,7 @@ bool ctrlm_utils_move_file_to_secure_nvm(const char *path) {
          }
          XLOGD_INFO("Successfully moved file to secure area and created symbolic link <%s> -> <%s>", path, secure_path.c_str());
       }
-   } else {
+   } else if(lstat_errno == ENOENT) {
       XLOGD_INFO("file <%s> does not exist, creating link to secure area.", path);
       for (retry = 0; retry < max_retries; retry++) {
          rc = symlink(secure_path.c_str(), path);
@@ -2124,6 +2099,9 @@ bool ctrlm_utils_move_file_to_secure_nvm(const char *path) {
          }
       }
       if (retry >= max_retries) { XLOGD_ERROR("Failed to create symlink after <%d> retries, returning false.", max_retries); return false; }
+   } else {
+      XLOGD_ERROR("lstat failed on path <%s>, error = <%s>", path, strerror(lstat_errno));
+      return false;
    }
    return true;
 }

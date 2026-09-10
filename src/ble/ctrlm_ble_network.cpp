@@ -2119,14 +2119,14 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                case CTRLM_HAL_BLE_PROPERTY_WAKEUP_CONFIG:
                   controller->setWakeupConfig(dqm->rcu_data.wakeup_config);
                   XLOGD_INFO("Controller <%s> notified wakeup config = <%s>", controller->ieee_address_get().to_string().c_str(), ctrlm_rcu_wakeup_config_str(controller->get_wakeup_config()));
-                  //schedule_status_print();
-                  //schedule_status_event();
+                  schedule_status_print();
+                  schedule_status_event();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_WAKEUP_CUSTOM_LIST:
                   controller->setWakeupCustomList(dqm->rcu_data.wakeup_custom_list, dqm->rcu_data.wakeup_custom_list_size);
                   XLOGD_INFO("Controller <%s> notified wakeup custom list = <%s>", controller->ieee_address_get().to_string().c_str(), controller->wakeupCustomListToString().c_str());
-                  //schedule_status_print();
-                  //schedule_status_event();
+                  schedule_status_print();
+                  schedule_status_event();
                   break;
                case CTRLM_HAL_BLE_PROPERTY_IRDBS_SUPPORTED:
                   controller->setSupportedIrdbs(dqm->rcu_data.irdbs_supported);
@@ -2155,7 +2155,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                         controller->ieee_address_get().to_string().c_str());
                      XLOGD_INFO("------------------------------------------------------------------------");
 
-                     ctrlm_voice_iarm_call_voice_session_t v_params;
+                     ctrlm_voice_iarm_call_voice_session_t v_params = {};
                      v_params.ieee_address = dqm->rcu_data.ieee_address;
 
                      ctrlm_main_queue_msg_voice_session_t msg;

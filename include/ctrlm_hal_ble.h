@@ -53,6 +53,14 @@ typedef enum {
    CTRLM_HAL_BLE_VOICE_STREAM_END_UNKNOWN
 } ctrlm_hal_ble_VoiceStreamEnd_t;
 
+/// @brief MFV wake word detection types (matches BleRcuAudioService::DetectionType values).
+typedef enum {
+   CTRLM_HAL_BLE_MFV_DETECTION_UNKNOWN         = 0x00,
+   CTRLM_HAL_BLE_MFV_DETECTION_FULL_POWER      = 0x01,
+   CTRLM_HAL_BLE_MFV_DETECTION_AAD             = 0x02,
+   CTRLM_HAL_BLE_MFV_DETECTION_BELOW_THRESHOLD = 0x03,
+} ctrlm_hal_ble_MfvDetectionType_t;
+
 /// @brief Supported voice data encoding types.
 typedef enum {
    CTRLM_HAL_BLE_PROPERTY_IEEE_ADDDRESS = 0,
@@ -85,6 +93,10 @@ typedef enum {
    CTRLM_HAL_BLE_PROPERTY_WAKEUP_CONFIG,
    CTRLM_HAL_BLE_PROPERTY_WAKEUP_CUSTOM_LIST,
    CTRLM_HAL_BLE_PROPERTY_IRDBS_SUPPORTED,
+   CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_TYPE,
+   CTRLM_HAL_BLE_PROPERTY_MFV_DETECTION_DATA,
+   CTRLM_HAL_BLE_PROPERTY_MFV_PRIVACY,
+   CTRLM_HAL_BLE_PROPERTY_MFV_CAPABILITIES,
    CTRLM_HAL_BLE_PROPERTY_UNKNOWN
 } ctrlm_hal_ble_RcuProperty_t;
 /// @}
@@ -95,34 +107,40 @@ typedef enum {
 /// @details The Control Manager HAL provides structures that are used in calls to the HAL networks.
 
 typedef struct {
-   int                           device_minor_id;
-   uint8_t                       battery_level;
-   bool                          connected;
-   unsigned long long            ieee_address;
-   char                          fw_revision[CTRLM_MAX_PARAM_STR_LEN];
-   char                          hw_revision[CTRLM_MAX_PARAM_STR_LEN];
-   char                          sw_revision[CTRLM_MAX_PARAM_STR_LEN];
-   char                          manufacturer[CTRLM_MAX_PARAM_STR_LEN];
-   char                          model[CTRLM_MAX_PARAM_STR_LEN];
-   char                          name[CTRLM_MAX_PARAM_STR_LEN];
-   char                          serial_number[CTRLM_MAX_PARAM_STR_LEN];
-   int                           ir_code;
-   uint8_t                       audio_gain_level;
-   uint32_t                      audio_codecs;
-   bool                          audio_streaming;
-   unsigned int                  touch_mode;
-   bool                          touch_mode_settable;
-   bool                          is_upgrading;
-   int                           upgrade_progress;
-   char                          upgrade_error[CTRLM_MAX_PARAM_STR_LEN];
-   ctrlm_ble_RcuUnpairReason_t   unpair_reason;
-   ctrlm_ble_RcuRebootReason_t   reboot_reason;
-   char                          assert_report[CTRLM_RCU_ASSERT_REPORT_MAX_SIZE+1];
-   uint16_t                      last_wakeup_key;
-   uint8_t                       wakeup_config;
-   int                           wakeup_custom_list[CTRLM_WAKEUP_CONFIG_LIST_MAX_SIZE];
-   int                           wakeup_custom_list_size;
-   uint8_t                       irdbs_supported;
+   int                              device_minor_id;
+   uint8_t                          battery_level;
+   bool                             connected;
+   unsigned long long               ieee_address;
+   char                             fw_revision[CTRLM_MAX_PARAM_STR_LEN];
+   char                             hw_revision[CTRLM_MAX_PARAM_STR_LEN];
+   char                             sw_revision[CTRLM_MAX_PARAM_STR_LEN];
+   char                             manufacturer[CTRLM_MAX_PARAM_STR_LEN];
+   char                             model[CTRLM_MAX_PARAM_STR_LEN];
+   char                             name[CTRLM_MAX_PARAM_STR_LEN];
+   char                             serial_number[CTRLM_MAX_PARAM_STR_LEN];
+   int                              ir_code;
+   uint8_t                          audio_gain_level;
+   uint32_t                         audio_codecs;
+   bool                             audio_streaming;
+   unsigned int                     touch_mode;
+   bool                             touch_mode_settable;
+   bool                             is_upgrading;
+   int                              upgrade_progress;
+   char                             upgrade_error[CTRLM_MAX_PARAM_STR_LEN];
+   ctrlm_ble_RcuUnpairReason_t      unpair_reason;
+   ctrlm_ble_RcuRebootReason_t      reboot_reason;
+   char                             assert_report[CTRLM_RCU_ASSERT_REPORT_MAX_SIZE+1];
+   uint16_t                         last_wakeup_key;
+   uint8_t                          wakeup_config;
+   int                              wakeup_custom_list[CTRLM_WAKEUP_CONFIG_LIST_MAX_SIZE];
+   int                              wakeup_custom_list_size;
+   uint8_t                          irdbs_supported;
+   ctrlm_hal_ble_MfvDetectionType_t mfv_detection_type;
+   uint16_t                         mfv_ww_start;
+   uint16_t                         mfv_ww_end;
+   uint16_t                         mfv_confidence; // encoded as percentage * 10 (e.g. 976 = 97.6%)
+   bool                             mfv_privacy_enabled;
+   uint8_t                          mfv_capabilities;
 } ctrlm_hal_ble_rcu_data_t;
 
 typedef struct {

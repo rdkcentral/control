@@ -105,6 +105,12 @@ public:
         AdvertisingConfigCustomList = 0xed06,
         AssertReport = 0xed07,
         RawBatteryVoltage = 0xed08,
+        SessionStart = 0xea08,
+        DetectionData = 0xea09,
+        WakeWordModelVersion = 0xea0a,
+        PrivacySettings = 0xea0b,
+        ModelConfiguration = 0xea0c,
+        MfvCapabilities = 0xea0d,
     };
 
     enum DescriptorType {

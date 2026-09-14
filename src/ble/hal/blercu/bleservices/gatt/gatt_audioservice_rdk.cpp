@@ -192,6 +192,9 @@ void GattAudioServiceRdk::onEnteredIdle() {
         m_mfvPromiseResults.reset();
     }
 
+    // Invalidate any MFV write completions still in flight so late arrivals are ignored.
+    ++m_mfvWriteGeneration;
+
     // Reset cached MFV values so callers don't observe stale data after stop/disconnect.
     m_mfvDetectionType = Unknown;
     m_mfvDetectionData = {};
@@ -1234,8 +1237,15 @@ void GattAudioServiceRdk::writeMfvPrivacy(bool enabled, PendingReply<> &&reply)
     const vector<uint8_t> value(1, enabled ? 0x01 : 0x00);
     XLOGD_INFO("Writing MFV Privacy = %s", enabled ? "enabled" : "disabled");
 
+    const unsigned int generation = m_mfvWriteGeneration;
+
     m_mfvPrivacyCharacteristic->writeValue(value, PendingReply<>(getIsAlivePtr(),
-        [this, enabled](PendingReply<> *reply) {
+        [this, enabled, generation](PendingReply<> *reply) {
+            if (generation != m_mfvWriteGeneration) {
+                // Connection was reset since this write was issued; drop the stale completion.
+                XLOGD_WARN("Ignoring stale MFV Privacy write completion");
+                return;
+            }
             if (m_mfvState.supported && m_mfvPromiseResults && !reply->isError()) {
                 m_mfvPrivacyEnabled = enabled;
                 m_mfvState.privacyReadValid = true;
@@ -1299,8 +1309,15 @@ void GattAudioServiceRdk::writeMfvModelConfiguration(uint8_t sensitivity, uint8_
     XLOGD_INFO("Writing MFV Model Config: sensitivity=%u secondary=%u aad=%u",
         sensitivity, secondary, aad);
 
+    const unsigned int generation = m_mfvWriteGeneration;
+
     m_mfvModelConfigCharacteristic->writeValue(value, PendingReply<>(getIsAlivePtr(),
-        [this, value, previousConfig, previousValid](PendingReply<> *writeReply) mutable {
+        [this, value, previousConfig, previousValid, generation](PendingReply<> *writeReply) mutable {
+            if (generation != m_mfvWriteGeneration) {
+                // Connection was reset since this write was issued; drop the stale completion.
+                XLOGD_WARN("Ignoring stale MFV Model Config write completion");
+                return;
+            }
             if (writeReply->isError()) {
                 XLOGD_ERROR("failed to write MFV Model Config due to <%s>", writeReply->errorMessage().c_str());
 

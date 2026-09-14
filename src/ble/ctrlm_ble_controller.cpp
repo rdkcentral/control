@@ -560,22 +560,6 @@ void ctrlm_obj_controller_ble_t::setMfvDetectionData(uint16_t start, uint16_t en
    mfv_confidence_ = confidence;
 }
 
-uint16_t ctrlm_obj_controller_ble_t::getMfvWwStart() const {
-   return mfv_ww_start_;
-}
-
-uint16_t ctrlm_obj_controller_ble_t::getMfvWwEnd() const {
-   return mfv_ww_end_;
-}
-
-uint16_t ctrlm_obj_controller_ble_t::getMfvConfidence() const {
-   return mfv_confidence_;
-}
-
-float ctrlm_obj_controller_ble_t::getMfvConfidencePercent() const {
-   return mfv_confidence_ / 10.0f;
-}
-
 void ctrlm_obj_controller_ble_t::setMfvPrivacy(bool enabled) {
    mfv_privacy_enabled_ = enabled;
 }
@@ -606,10 +590,6 @@ bool ctrlm_obj_controller_ble_t::isMfvDetectionPending() const {
 
 int ctrlm_obj_controller_ble_t::getMfvDetectionAudioFd() const {
    return mfv_detection_audio_fd_;
-}
-
-void ctrlm_obj_controller_ble_t::setMfvDetectionDataFresh(bool fresh) {
-   mfv_detection_data_fresh_ = fresh;
 }
 
 bool ctrlm_obj_controller_ble_t::isMfvDetectionDataFresh() const {

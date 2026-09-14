@@ -1259,7 +1259,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                 // MFV only: the remote autonomously (re)started its wake-word stream for this request, so the old
                 // session's teardown must not stop the remote stream that now belongs to the new session. PTT and
                 // other BLE sessions are key-driven and still stop the remote on the old session end.
-                session->abort_for_same_controller = (device_type == CTRLM_VOICE_DEVICE_MFV);
+                session->abort_for_same_controller = (device_type == CTRLM_VOICE_DEVICE_MFV || session->voice_device == CTRLM_VOICE_DEVICE_MFV);
                 pre_session_terminate(cb_start_audio, cb_audio_start_params, cb_confirm, cb_confirm_param);
                 xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.
                 session->abort_for_same_controller = false;
@@ -2673,10 +2673,6 @@ void ctrlm_voice_t::voice_session_end_callback(ctrlm_voice_session_end_cb_t *ses
 
     session->session_active_server = false;
     if(session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING) {
-        // The source (e.g. an MFV/FF remote) is still streaming when the server session ended.  This
-        // occurs when end of speech is detected on the box side rather than via a controller key
-        // release.  Map the speech router's end reason to the appropriate ctrlm end reason so that a
-        // normal end of speech is reported as DONE rather than an error.
         ctrlm_voice_session_end_reason_t end_reason;
         switch(stats->session_end_reason) {
             case XRSR_SESSION_END_REASON_EOS:

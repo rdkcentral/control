@@ -150,22 +150,14 @@ public:
    void                             setMfvDetectionType(ctrlm_hal_ble_MfvDetectionType_t type);
    ctrlm_hal_ble_MfvDetectionType_t getMfvDetectionType() const;
    void                             setMfvDetectionData(uint16_t start, uint16_t end, uint16_t confidence);
-   uint16_t                         getMfvWwStart() const;
-   uint16_t                         getMfvWwEnd() const;
-   uint16_t                         getMfvConfidence() const;        // returns raw value encoded as integer * 10 (e.g. 953 = 95.3%)
-   float                            getMfvConfidencePercent() const; // returns confidence as a percentage (e.g. 95.3)
    void                             setMfvPrivacy(bool enabled);
    bool                             getMfvPrivacy() const;
    void                             setMfvCapabilities(uint8_t caps);
    uint8_t                          getMfvCapabilities() const;
 
-   // MFV wake-word (detection-triggered) session state.  Such a session starts audio streaming, waits
-   // for the detection data (wake word timing/confidence), then opens the voice session.  See
-   // ctrlm_obj_network_ble_t::req_process_detection_voice_session_begin().
    void                             setMfvDetectionPending(bool pending, int audio_fd = -1);
    bool                             isMfvDetectionPending() const;
    int                              getMfvDetectionAudioFd() const;
-   void                             setMfvDetectionDataFresh(bool fresh); // fresh detection data received for the current pending session (stale-data safeguard)
    bool                             isMfvDetectionDataFresh() const;
 
    void                             update_controller_id_and_db_entry(std::string name, ctrlm_network_id_t network_id, ctrlm_controller_id_t new_id);

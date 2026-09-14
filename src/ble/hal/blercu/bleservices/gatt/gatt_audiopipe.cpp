@@ -75,6 +75,7 @@ GattAudioPipe::GattAudioPipe(uint8_t frameSize, uint32_t frameCountMax, cbFrameV
     , m_frameBufferOffset(0)
     , m_frameValidator(frameValidator)
     , m_running(false)
+    , m_outputPipeClosedPending(false)
     , m_frameCount(0)
     , m_frameCountMax(frameCountMax)
     , m_recordingTimer(0)
@@ -440,6 +441,18 @@ void GattAudioPipe::onOutputPipeException(int pipeFd)
         XLOGD_ERROR("failed to close output pipe: error = <%d>, <%s>", errsv, strerror(errsv));
     }
     m_outputPipeWrFd = -1;
+
+    // Defer telling the parent state machine until the audio pipe lock is released, otherwise the
+    // state transition (which blocks on the main loop) deadlocks against onExitedStreamingState().
+    m_outputPipeClosedPending = true;
+}
+
+void GattAudioPipe::notifyOutputPipeClosed()
+{
+    if (!m_outputPipeClosedPending) {
+        return;
+    }
+    m_outputPipeClosedPending = false;
 
     // let the parent statemachine know that the output pipe is closed (this
     // triggers the state-machine to ask the RCU to stop sending data)

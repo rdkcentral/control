@@ -172,7 +172,7 @@ public:
 
     static const Event::Type AudioInfoTimeoutEvent      = Event::Type(Event::User + 11);
     static const Event::Type AudioLastFrameTimeoutEvent = Event::Type(Event::User + 12);
-
+    static const Event::Type RetryEnableNotificationsEvent = Event::Type(Event::User + 13);
 };
 
 #endif // !defined(GATT_AUDIOSERVICE_H)

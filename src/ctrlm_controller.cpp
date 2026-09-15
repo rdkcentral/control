@@ -236,8 +236,11 @@ void ctrlm_obj_controller_t::ota_failure_cnt_session_clear() {
 }
 
 bool ctrlm_obj_controller_t::retry_ota() const {
-   bool retry = ota_failure_cnt_session_ < OTA_MAX_RETRIES;
-   XLOGD_WARN("ota_failure_cnt_session_ = <%d>, retry OTA = <%s>",ota_failure_cnt_session_,retry ? "TRUE":"FALSE");
+   bool retry = false;
+#if OTA_MAX_RETRIES > 0
+   retry = ota_failure_cnt_session_ < OTA_MAX_RETRIES;
+#endif
+   XLOGD_WARN("ota_failure_cnt_session_ = <%d>, retry OTA = <%s>", ota_failure_cnt_session_, retry ? "TRUE" : "FALSE");
    return retry;
 }
 
@@ -337,7 +340,7 @@ void ctrlm_obj_controller_t::set_upgrade_progress(uint8_t progress) {
     ctrlm_rcu_upgrade_state_t previous_state = get_upgrade_state();
     ctrlm_rcu_upgrade_state_t new_state = CTRLM_RCU_UPGRADE_STATE_INVALID;
 
-    if (upgrade_progress_ >= 0 && upgrade_progress_ < 100) { // pending
+    if (upgrade_progress_ < 100) { // pending
        new_state = CTRLM_RCU_UPGRADE_STATE_PENDING;
        set_upgrade_error(""); // clear error messaging if pending
 

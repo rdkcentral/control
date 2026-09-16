@@ -419,8 +419,6 @@ typedef struct {
 } ctrlm_rcu_iarm_call_controller_status_t;
 
 typedef struct {
-
-typedef struct {
    unsigned char            api_revision;                                      ///< Revision of this API
    ctrlm_network_id_t       network_id;                                        ///< identifier of network on which the controller is bound
    ctrlm_network_type_t     network_type;                                      ///< type of network on which the controller is bound

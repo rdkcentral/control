@@ -20,6 +20,7 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include <utility>
 #include <unistd.h>
 #include <string.h>
 #include <semaphore.h>
@@ -574,8 +575,8 @@ bool ctrlm_voice_t::voice_configure_config_file_json(json_t *obj_voice, json_t *
             XLOGD_WARN("voice iarm settings is not the correct length, throwing away!");
         } else if(voice_settings != NULL) {
             this->voice_configure(voice_settings, true); // We want to write this to the database now, as this now writes to the new style DB
-            free(voice_settings);
         }
+        ctrlm_db_free((guchar *)voice_settings);
     }
 
     this->set_audio_mode(&audio_settings);
@@ -4093,7 +4094,7 @@ void ctrlm_voice_t::url_hostname_pattern_add(const char *pattern) {
         }
     } while(1);
 
-    this->prefs.server_hosts.push_back(regex);
+    this->prefs.server_hosts.push_back(std::move(regex));
 }
 
 void ctrlm_voice_t::url_hostname_patterns(const std::vector<std::string> &obj_server_hosts) {
@@ -4105,7 +4106,7 @@ void ctrlm_voice_t::url_hostname_patterns(const std::vector<std::string> &obj_se
     }
 }
 
-void ctrlm_voice_t::pre_session_terminate(std::function<void(ctrlm_voice_start_audio_params_t *)> cb_start_audio, ctrlm_voice_start_audio_params_t *cb_audio_start_params, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param) {
+void ctrlm_voice_t::pre_session_terminate(const std::function<void(ctrlm_voice_start_audio_params_t *)> &cb_start_audio, ctrlm_voice_start_audio_params_t *cb_audio_start_params, ctrlm_voice_session_rsp_confirm_t *cb_confirm, void **cb_confirm_param) {
     if (cb_start_audio != nullptr && cb_audio_start_params != nullptr) {
         if(cb_confirm != NULL && cb_confirm_param != NULL) {
            cb_audio_start_params->m_cb_confirm_voice_obj = ctrlm_voice_session_response_confirm;

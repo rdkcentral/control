@@ -30,23 +30,15 @@
 #include "ctrlm_utils.h"
 #include <xr_mq.h>
 #include <map>
+#include <tuple>
+#include <string>
 #include <linux/input.h>
 #include <uuid/uuid.h>
 
-// dsMgr includes
-#include "host.hpp"
-#include "exception.hpp"
-#include "videoOutputPort.hpp"
-#include "videoOutputPortType.hpp"
-#include "videoOutputPortConfig.hpp"
-#include "audioOutputPort.hpp"
-#include "frontPanelIndicator.hpp"
-#include "manager.hpp"
-#include "dsMgr.h"
-#include "dsRpc.h"
-#include "dsDisplay.h"
+#ifdef CTRLM_THUNDER
+#include "thunder/plugins/ctrlm_thunder_plugin_display_settings.h"
+#endif
 #include <regex>
-// end dsMgr includes
 
 using std::get;
 using std::map;
@@ -366,7 +358,6 @@ const char *ctrlm_main_queue_msg_type_str(ctrlm_main_queue_msg_type_t type) {
       case CTRLM_MAIN_QUEUE_MSG_TYPE_TERMINATE:                               return("TERMINATE");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STATUS:                             return("MAIN_STATUS");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_FACTORY_RESET:                      return("MAIN_FACTORY_RESET");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROLLER_UNBIND:                  return("MAIN_CONTROLLER_UNBIND");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_TIMEOUT_LINE_OF_SIGHT:              return("MAIN_TIMEOUT_LINE_OF_SIGHT");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_TIMEOUT_AUTOBIND:                   return("MAIN_TIMEOUT_AUTOBIND");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_TIMEOUT_BINDING_BUTTON:             return("MAIN_TIMEOUT_BINDING_BUTTON");
@@ -381,8 +372,6 @@ const char *ctrlm_main_queue_msg_type_str(ctrlm_main_queue_msg_type_t type) {
       case CTRLM_MAIN_QUEUE_MSG_TYPE_IR_REMOTE_USAGE:                         return("IR_REMOTE_USAGE");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_LAST_KEY_INFO:                           return("LAST_KEY_INFO");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STOP_BINDING_SCREEN:                return("MAIN_STOP_BINDING_SCREEN");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_SET_VALUES:         return("CONTROL_SERVICE_SET_VALUES");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES:         return("CONTROL_SERVICE_GET_VALUES");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_EXPORT_CONTROLLER_LIST:                  return("EXPORT_CONTROLLER_LIST");
       default: if (type >= CTRLM_MAIN_QUEUE_MSG_TYPE_VENDOR_FIRST && type <= CTRLM_MAIN_QUEUE_MSG_TYPE_VENDOR_LAST) {
          return("VENDOR SPECIFIC MESSAGE");
@@ -1542,87 +1531,60 @@ char *ctrlm_do_regex(char *re, char *str) {
 }
 
 bool ctrlm_dsmgr_init() {
-   if(device::Manager::IsInitialized) {
-      XLOGD_INFO("DSMgr already initialized");
-      return true;
-   }
-   try {
-      device::Manager::Initialize();
-      XLOGD_INFO("DSMgr is initialized");
-   }
-   catch (...) {
-      XLOGD_WARN("Failed to initialize DSMgr");
-      return false;
-   }
    return true;
 }
 
 bool ctrlm_dsmgr_deinit() {
-   try {
-      if(device::Manager::IsInitialized) {
-         device::Manager::DeInitialize();
-      }
-   }
-   catch(...) {
-      XLOGD_WARN("Failed to deinitialize DSMgr");
-      return false;
-   }
    return true;
 }
 
 bool ctrlm_dsmgr_mute_audio(bool mute) {
-  try {
-     dsAudioDuckingAction_t action = mute ? dsAUDIO_DUCKINGACTION_START : dsAUDIO_DUCKINGACTION_STOP;
-     device::Host::getInstance().getAudioOutputPort("SPEAKER0").setAudioDucking(action, dsAUDIO_DUCKINGTYPE_ABSOLUTE, mute ? 0 : 100);
-     XLOGD_INFO("Audio is %smuted", mute?"":"un-");
-  }
-  catch(std::exception& error) {
-    XLOGD_WARN("Muting sound error : %s", error.what());
-    return false;
-  }
-  return true;
+#ifdef CTRLM_THUNDER
+   auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
+   if(!ds) {
+      XLOGD_ERROR("DisplaySettings plugin not available");
+      return false;
+   }
+   bool ret = ds->set_audio_ducking(mute, false, mute ? 0 : 100);
+   if(ret) {
+      XLOGD_INFO("Audio is %smuted", mute?"":"un-");
+   } else {
+      XLOGD_WARN("Muting sound error");
+   }
+   return ret;
+#else
+   XLOGD_WARN("DisplaySettings not available (THUNDER disabled)");
+   return true;
+#endif
 }
 
 bool ctrlm_dsmgr_duck_audio(bool enable, bool relative, double vol) {
-  if(vol < 0 || vol > 1) {
+   if(vol < 0 || vol > 1) {
       XLOGD_ERROR("Invalid volume");
       return false;
-  }
-  try {
-     unsigned char level = (unsigned char)((vol * 100) + 0.5);
-
-     dsAudioDuckingAction_t action = enable   ? dsAUDIO_DUCKINGACTION_START  : dsAUDIO_DUCKINGACTION_STOP;
-     dsAudioDuckingType_t   type   = relative ? dsAUDIO_DUCKINGTYPE_RELATIVE : dsAUDIO_DUCKINGTYPE_ABSOLUTE;
-
-     device::Host::getInstance().getAudioOutputPort("SPEAKER0").setAudioDucking(action, type, level);
-
-     if(enable) {
-        XLOGD_INFO("Audio ducking enabled - type <%s> level <%u%%>", relative ? "RELATIVE" : "ABSOLUTE", level);
-     } else {
-        XLOGD_INFO("Audio ducking disabled");
-     }
-  }
-  catch(std::exception& error) {
-    XLOGD_WARN("Ducking sound error : %s", error.what());
-    return false;
-  }
-  return true;
-}
-
-bool ctrlm_dsmgr_LED(bool on) {
-  try {
-    device::FrontPanelIndicator &led =  device::FrontPanelIndicator::getInstance("Power");
-    if (on) {
-       led.setColor(0xFFFFFF);
-       led.setBrightness(100);
-    }
-    led.setState(on);
-  }
-  catch(std::exception& error) {
-    XLOGD_WARN("LED error : %s", error.what());
-    return false;
-  }
-  return true;
+   }
+#ifdef CTRLM_THUNDER
+   unsigned char level = (unsigned char)((vol * 100) + 0.5);
+   auto *ds = Thunder::DisplaySettings::ctrlm_thunder_plugin_display_settings_t::getInstance();
+   if(!ds) {
+      XLOGD_ERROR("DisplaySettings plugin not available");
+      return false;
+   }
+   bool ret = ds->set_audio_ducking(enable, relative, level);
+   if(ret) {
+      if(enable) {
+         XLOGD_INFO("Audio ducking enabled - type <%s> level <%u%%>", relative ? "RELATIVE" : "ABSOLUTE", level);
+      } else {
+         XLOGD_INFO("Audio ducking disabled");
+      }
+   } else {
+      XLOGD_WARN("Ducking sound error");
+   }
+   return ret;
+#else
+   XLOGD_WARN("DisplaySettings not available (THUNDER disabled)");
+   return true;
+#endif
 }
 
 bool ctrlm_is_voice_assistant(ctrlm_rcu_controller_type_t controller_type) {

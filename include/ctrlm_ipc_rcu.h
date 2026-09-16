@@ -22,7 +22,6 @@
 #define _CTRLM_IPC_RCU_H_
 
 #define CTRLM_RCU_IARM_CALL_CONTROLLER_STATUS            "Rcu_ControllerStatus"     ///< IARM Call to get controller information
-#define CTRLM_RCU_IARM_CALL_CONTROLLER_LINK_KEY          "Rcu_ControllerLinkKey"    ///< IARM Call to get controller link key
 #define CTRLM_RCU_IARM_CALL_RF4CE_POLLING_ACTION         "Rcu_Rf4cePollingAction"   ///< IARM Call to Send Remote Heartbeat Response Polling Action
 
 #define CTRLM_RCU_IARM_BUS_API_REVISION                  (13)    ///< Revision of the RCU IARM API
@@ -418,14 +417,6 @@ typedef struct {
    ctrlm_controller_id_t     controller_id; ///< IN
    ctrlm_controller_status_t status;        ///< Status of the controller
 } ctrlm_rcu_iarm_call_controller_status_t;
-
-typedef struct {
-   unsigned char             api_revision;  ///< Revision of this API
-   ctrlm_iarm_call_result_t  result;        ///< Result of the IARM call
-   ctrlm_network_id_t        network_id;    ///< IN The identifier of network on which the controller is bound
-   ctrlm_controller_id_t     controller_id; ///< IN
-   unsigned char             link_key[16];  ///< OUT The link key for the controller
-} ctrlm_rcu_iarm_call_controller_link_key_t;
 
 typedef struct {
    unsigned char            api_revision;                                      ///< Revision of this API

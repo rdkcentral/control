@@ -553,10 +553,14 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
          XLOGD_ERROR("Controller doesn't exist!");
          dqm->params->result = CTRLM_IARM_CALL_RESULT_ERROR_INVALID_PARAMETER;
       } else {
-         // BLE RCUs use PTT for keypress-triggered sessions and FF for MFV wake-word sessions.
-         // The voice_device field of the message is set by the caller; it defaults to
+         // BLE RCUs use PTT for keypress-triggered sessions and CTRLM_VOICE_DEVICE_MFV for MFV wake-word
+         // sessions. The voice_device field of the message is set by the caller; it defaults to
          // CTRLM_VOICE_DEVICE_PTT (0) when the struct is zeroed via memset.
          ctrlm_voice_device_t device = dqm->voice_device;
+         if (device < CTRLM_VOICE_DEVICE_PTT || device >= CTRLM_VOICE_DEVICE_INVALID) {
+            XLOGD_WARN("voice_device <%d> is out of range, defaulting to CTRLM_VOICE_DEVICE_PTT", (int)device);
+            device = CTRLM_VOICE_DEVICE_PTT;
+         }
          ctrlm_voice_session_response_status_t voice_status;
 
          // only support ADPCM from ble-rcu component
@@ -599,6 +603,15 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
          }
          if (VOICE_SESSION_RESPONSE_AVAILABLE != voice_status) {
             XLOGD_TELEMETRY("Failed opening voice session in ctrlm_voice_t, error = <%d>", voice_status);
+            if (audio_start_params.m_started && ble_rcu_interface_) {
+               // For an MFV replacement request, the outgoing session's stop is suppressed in anticipation
+               // of this request taking over the BLE audio stream (see abort_for_same_controller in
+               // ctrlm_voice_t::voice_session_req). Since this request failed to acquire a session, no new
+               // session will adopt the stream, so stop it explicitly rather than leaving the remote
+               // streaming indefinitely.
+               XLOGD_WARN("Voice session request failed after audio streaming was already started on remote <%s> - stopping stream", controllers_[controller_id]->ieee_address_get().to_string().c_str());
+               ble_rcu_interface_->stopAudioStreaming(ieee_address, 0);
+            }
          } else {
             int  fd = -1;
             bool success = false;
@@ -648,11 +661,17 @@ static gboolean ctrlm_ble_mfv_detection_timer_cb(gpointer user_data) {
 
 void ctrlm_obj_network_ble_t::req_process_mfv_detection_timeout(void *data, int size) {
    THREAD_ID_VALIDATE();
+   release_pending_mfv_detection("timeout");
+}
 
+// Releases whichever controller is currently the single pending MFV detection (if any), letting its
+// deferred voice session connect proceed without wake word stream parameters. Must be called before the
+// pending IEEE address / timer are reused for a different controller, otherwise the previously pending
+// controller is left stuck in the deferred-connect/buffering state indefinitely.
+void ctrlm_obj_network_ble_t::release_pending_mfv_detection(const char *reason) {
    unsigned long long ieee_address = g_ctrlm_ble_network.mfv_detection_pending_ieee;
    ctrlm_controller_id_t controller_id;
    if (!getControllerId(ieee_address, &controller_id)) {
-      XLOGD_WARN("MFV detection data timeout - controller no longer exists");
       return;
    }
    if (!controllers_[controller_id]->isMfvDetectionPending()) {
@@ -660,8 +679,8 @@ void ctrlm_obj_network_ble_t::req_process_mfv_detection_timeout(void *data, int 
       return;
    }
    controllers_[controller_id]->setMfvDetectionPending(false);
-   XLOGD_WARN("MFV detection data not received within timeout - releasing voice session connect without wake word stream parameters for device: %s",
-      controllers_[controller_id]->ieee_address_get().to_string().c_str());
+   XLOGD_WARN("MFV detection data not received (%s) - releasing voice session connect without wake word stream parameters for device: %s",
+      reason, controllers_[controller_id]->ieee_address_get().to_string().c_str());
    ctrlm_get_voice_obj()->voice_session_stream_params_update(CTRLM_VOICE_DEVICE_MFV, false, 0, 0, 0.0, 0.0);
 }
 
@@ -2169,6 +2188,12 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                      // connect/init in the buffering state until the wake word stream parameters are
                      // supplied.  Those arrive in a separate detection-data notification; a safety timeout
                      // releases the connect without them if they never come.
+                     if (g_ctrlm_ble_network.mfv_detection_pending_ieee != dqm->rcu_data.ieee_address) {
+                        // Only one MFV detection can be pending at a time (single global ieee/timer). If a
+                        // different controller is still waiting on its detection data, release it now so it
+                        // doesn't get stuck in the deferred-connect/buffering state indefinitely.
+                        release_pending_mfv_detection("a new MFV detection started for a different controller");
+                     }
                      controller->setMfvDetectionPending(true);
                      req_process_voice_session_begin(&msg, sizeof(msg));
 

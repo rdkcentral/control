@@ -1023,9 +1023,11 @@ void GattAudioServiceRdk::requestStartMfvSessionStartNotify()
         }
     };
 
+    const unsigned int generation = m_mfvWriteGeneration;
+
     m_mfvSessionStartCharacteristic->enableNotifications(
         Slot<const std::vector<uint8_t> &>(getIsAlivePtr(),
-            std::bind(&GattAudioServiceRdk::onMfvSessionStartChanged, this, std::placeholders::_1)),
+            std::bind(&GattAudioServiceRdk::onMfvSessionStartChanged, this, generation, std::placeholders::_1)),
         PendingReply<>(getIsAlivePtr(), replyHandler));
 }
 
@@ -1058,9 +1060,11 @@ void GattAudioServiceRdk::requestStartMfvDetectionDataNotify()
         }
     };
 
+    const unsigned int generation = m_mfvWriteGeneration;
+
     m_mfvDetectionDataCharacteristic->enableNotifications(
         Slot<const std::vector<uint8_t> &>(getIsAlivePtr(),
-            std::bind(&GattAudioServiceRdk::onMfvDetectionDataChanged, this, std::placeholders::_1)),
+            std::bind(&GattAudioServiceRdk::onMfvDetectionDataChanged, this, generation, std::placeholders::_1)),
         PendingReply<>(getIsAlivePtr(), replyHandler));
 }
 
@@ -1106,8 +1110,14 @@ void GattAudioServiceRdk::requestStartMfvPrivacyNotify()
     Called when a Session Start notification is received from the RCU.
     Payload: 1 byte detection type (0x01=FullPower, 0x02=AAD, 0x03=BelowThreshold).
  */
-void GattAudioServiceRdk::onMfvSessionStartChanged(const std::vector<uint8_t> &newValue)
+void GattAudioServiceRdk::onMfvSessionStartChanged(unsigned int generation, const std::vector<uint8_t> &newValue)
 {
+    if (generation != m_mfvWriteGeneration) {
+        // Connection was reset since these notifications were enabled; drop the stale notification.
+        XLOGD_WARN("Ignoring stale MFV Session Start notification");
+        return;
+    }
+
     if (newValue.size() != 1) {
         XLOGD_ERROR("MFV Session Start notification has invalid length (%zu bytes, expected 1)", newValue.size());
         return;
@@ -1131,8 +1141,14 @@ void GattAudioServiceRdk::onMfvSessionStartChanged(const std::vector<uint8_t> &n
     Called when a Detection Data notification is received from the RCU.
     Payload: 6 bytes, little-endian (start, end, confidence).
  */
-void GattAudioServiceRdk::onMfvDetectionDataChanged(const std::vector<uint8_t> &newValue)
+void GattAudioServiceRdk::onMfvDetectionDataChanged(unsigned int generation, const std::vector<uint8_t> &newValue)
 {
+    if (generation != m_mfvWriteGeneration) {
+        // Connection was reset since these notifications were enabled; drop the stale notification.
+        XLOGD_WARN("Ignoring stale MFV Detection Data notification");
+        return;
+    }
+
     if (newValue.size() != 6) {
         XLOGD_ERROR("MFV Detection Data notification has invalid length (%zu bytes, expected 6)", newValue.size());
         return;

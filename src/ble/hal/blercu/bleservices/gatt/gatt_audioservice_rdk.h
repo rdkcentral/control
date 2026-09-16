@@ -105,8 +105,8 @@ private:
     void requestStartMfvPrivacyNotify();
 
     // MFV notification handlers
-    void onMfvSessionStartChanged(const std::vector<uint8_t> &newValue);
-    void onMfvDetectionDataChanged(const std::vector<uint8_t> &newValue);
+    void onMfvSessionStartChanged(unsigned int generation, const std::vector<uint8_t> &newValue);
+    void onMfvDetectionDataChanged(unsigned int generation, const std::vector<uint8_t> &newValue);
     void onMfvPrivacyChanged(const std::vector<uint8_t> &newValue);
 
     // MFV write handlers
@@ -183,7 +183,8 @@ private:
 
     std::shared_ptr<PendingReply<>> m_mfvPromiseResults;
 
-    // Bumped on disconnect (onEnteredIdle) so stale MFV write completions from a prior connection can be detected and ignored.
+    // Bumped on disconnect (onEnteredIdle) so stale MFV write completions and notifications from a prior
+    // connection can be detected and ignored.
     unsigned int m_mfvWriteGeneration = 0;
 
     std::shared_ptr<BleGattCharacteristic> m_mfvSessionStartCharacteristic;

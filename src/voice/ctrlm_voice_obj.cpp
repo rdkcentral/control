@@ -1259,6 +1259,14 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                 // MFV only: the remote autonomously (re)started its wake-word stream for this request, so the old
                 // session's teardown must not stop the remote stream that now belongs to the new session. PTT and
                 // other BLE sessions are key-driven and still stop the remote on the old session end.
+                //
+                // This flag is set before we know whether this replacement request will itself succeed - the old
+                // session's end message is sent synchronously below, before xrsr_session_request() (further down
+                // this function) is even attempted. If this request goes on to fail, no new session adopts the
+                // stream that was just suppressed. The caller is responsible for cleaning that up: see the
+                // audio_start_params.m_started check in ctrlm_obj_network_ble_t::req_process_voice_session_begin(),
+                // which explicitly stops the remote's stream when voice_session_req() returns a failure status
+                // after having already started it.
                 session->abort_for_same_controller = (device_type == CTRLM_VOICE_DEVICE_MFV || session->voice_device == CTRLM_VOICE_DEVICE_MFV);
                 pre_session_terminate(cb_start_audio, cb_audio_start_params, cb_confirm, cb_confirm_param);
                 xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.

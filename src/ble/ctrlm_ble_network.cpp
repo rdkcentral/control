@@ -81,7 +81,17 @@ typedef struct {
    guint event_status_timer_tag;
    guint mfv_detection_timer_tag;
    unsigned long long mfv_detection_pending_ieee;
+   // Bumped each time a controller becomes the pending MFV detection, so a timeout queued for one
+   // detection can be told apart from a different detection that has since taken its place.
+   unsigned int mfv_detection_generation;
 } ctrlm_ble_network_t;
+
+// Snapshot of the pending MFV detection passed from the timer callback to the queued timeout handler,
+// so the handler can verify the detection it was queued for is still the one that's pending.
+typedef struct {
+   unsigned long long ieee_address;
+   unsigned int        generation;
+} ctrlm_ble_mfv_detection_timeout_msg_t;
 
 static ctrlm_ble_network_t g_ctrlm_ble_network;
 
@@ -651,16 +661,33 @@ static gboolean ctrlm_ble_mfv_detection_timer_cb(gpointer user_data) {
    ctrlm_network_id_t* net_id = (ctrlm_network_id_t*) user_data;
    g_ctrlm_ble_network.mfv_detection_timer_tag = 0;
    if (net_id != NULL) {
+      // Snapshot which detection this timeout is for so the queued handler can tell whether it's
+      // still the pending one by the time it actually runs (a new detection may replace it first).
+      ctrlm_ble_mfv_detection_timeout_msg_t msg;
+      msg.ieee_address = g_ctrlm_ble_network.mfv_detection_pending_ieee;
+      msg.generation   = g_ctrlm_ble_network.mfv_detection_generation;
+
       // Process on the ctrlm main thread to serialize with the other network handlers.
       ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK,
             (ctrlm_msg_handler_network_t)&ctrlm_obj_network_ble_t::req_process_mfv_detection_timeout,
-            NULL, 0, NULL, *net_id);
+            &msg, sizeof(msg), NULL, *net_id);
    }
    return false;
 }
 
 void ctrlm_obj_network_ble_t::req_process_mfv_detection_timeout(void *data, int size) {
    THREAD_ID_VALIDATE();
+   g_assert(data);
+   g_assert(size == sizeof(ctrlm_ble_mfv_detection_timeout_msg_t));
+   ctrlm_ble_mfv_detection_timeout_msg_t *msg = (ctrlm_ble_mfv_detection_timeout_msg_t *)data;
+
+   if (msg->ieee_address != g_ctrlm_ble_network.mfv_detection_pending_ieee ||
+       msg->generation   != g_ctrlm_ble_network.mfv_detection_generation) {
+      // A different detection has become pending since this timeout was queued - it has its own
+      // timer running, so don't release it early.
+      XLOGD_INFO("MFV detection timeout is stale - a newer detection is now pending, ignoring");
+      return;
+   }
    release_pending_mfv_detection("timeout");
 }
 
@@ -2198,6 +2225,7 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                      req_process_voice_session_begin(&msg, sizeof(msg));
 
                      g_ctrlm_ble_network.mfv_detection_pending_ieee = dqm->rcu_data.ieee_address;
+                     ++g_ctrlm_ble_network.mfv_detection_generation;
                      ctrlm_timeout_destroy(&g_ctrlm_ble_network.mfv_detection_timer_tag);
                      g_ctrlm_ble_network.mfv_detection_timer_tag = ctrlm_timeout_create(CTRLM_BLE_MFV_DETECTION_DATA_TIMEOUT, ctrlm_ble_mfv_detection_timer_cb, &id_);
                   }

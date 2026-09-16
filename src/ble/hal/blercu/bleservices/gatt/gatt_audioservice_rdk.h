@@ -35,6 +35,8 @@
 #include "blercu/blercuerror.h"
 #include "utils/bleuuid.h"
 
+#include <mutex>
+
 
 class BleGattService;
 class BleGattCharacteristic;
@@ -172,6 +174,11 @@ private:
 
     // MFV characteristics and state
     MfvState m_mfvState;
+
+    // Guards the cached MFV values below. They are written from the GATT notification handlers and
+    // reply handlers (which may run on a different thread than the caller of the accessors, e.g. the
+    // BlueZ notify thread vs. the thread calling getAllDeviceProperties()) and read via the accessors.
+    mutable std::mutex m_mfvDataMutex;
 
     DetectionType m_mfvDetectionType = Unknown;
     DetectionData m_mfvDetectionData;

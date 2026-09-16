@@ -196,13 +196,16 @@ void GattAudioServiceRdk::onEnteredIdle() {
     ++m_mfvWriteGeneration;
 
     // Reset cached MFV values so callers don't observe stale data after stop/disconnect.
-    m_mfvDetectionType = Unknown;
-    m_mfvDetectionData = {};
-    m_mfvModelVersionData = {};
-    m_mfvPrivacyEnabled = false;
-    m_mfvModelConfigurationData.clear();
-    m_mfvCapabilitiesValue = 0;
-    // m_mfvStreamStatsData = {};
+    {
+        std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
+        m_mfvDetectionType = Unknown;
+        m_mfvDetectionData = {};
+        m_mfvModelVersionData = {};
+        m_mfvPrivacyEnabled = false;
+        m_mfvModelConfigurationData.clear();
+        m_mfvCapabilitiesValue = 0;
+        // m_mfvStreamStatsData = {};
+    }
 
     GattAudioService::onEnteredIdle();
 }
@@ -762,10 +765,10 @@ void GattAudioServiceRdk::onMfvInitialReadComplete()
 {
     // Publish only values that were successfully read during initialization.
     if (m_mfvState.capabilitiesReadValid) {
-        m_mfvCapabilitiesChangedSlots.invoke(m_mfvCapabilitiesValue);
+        m_mfvCapabilitiesChangedSlots.invoke(mfvCapabilities());
     }
     if (m_mfvState.privacyReadValid) {
-        m_mfvPrivacyChangedSlots.invoke(m_mfvPrivacyEnabled);
+        m_mfvPrivacyChangedSlots.invoke(mfvPrivacyEnabled());
     }
 
     // Attempt to enable MFV notifications once initial reads are complete.
@@ -866,14 +869,19 @@ void GattAudioServiceRdk::requestMfvCapabilities()
         } else {
             std::vector<uint8_t> value = reply->result();
             if (value.size() == 1) {
-                m_mfvCapabilitiesValue = value[0];
+                uint8_t capabilities;
+                {
+                    std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
+                    m_mfvCapabilitiesValue = value[0];
+                    capabilities = m_mfvCapabilitiesValue;
+                }
                 m_mfvState.capabilitiesReadValid = true;
                 XLOGD_INFO("MFV Capabilities = 0x%02X (midfield=%d privacy_ctrl=%d soww_eoww=%d aad_ctrl=%d)",
-                    m_mfvCapabilitiesValue,
-                    !!(m_mfvCapabilitiesValue & MidfieldVoiceCapable),
-                    !!(m_mfvCapabilitiesValue & SoftwarePrivacyControl),
-                    !!(m_mfvCapabilitiesValue & SowwEowwTimingAvailable),
-                    !!(m_mfvCapabilitiesValue & AadSensitivityControlAvailable));
+                    capabilities,
+                    !!(capabilities & MidfieldVoiceCapable),
+                    !!(capabilities & SoftwarePrivacyControl),
+                    !!(capabilities & SowwEowwTimingAvailable),
+                    !!(capabilities & AadSensitivityControlAvailable));
             } else {
                 XLOGD_ERROR("MFV Capabilities has invalid length (%zu bytes, expected 1)", value.size());
             }
@@ -906,10 +914,16 @@ void GattAudioServiceRdk::requestMfvModelVersion()
         } else {
             std::vector<uint8_t> value = reply->result();
             if (value.size() == 2) {
-                m_mfvModelVersionData.major = value[0];
-                m_mfvModelVersionData.minor = value[1];
+                uint8_t major, minor;
+                {
+                    std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
+                    m_mfvModelVersionData.major = value[0];
+                    m_mfvModelVersionData.minor = value[1];
+                    major = m_mfvModelVersionData.major;
+                    minor = m_mfvModelVersionData.minor;
+                }
                 m_mfvState.modelVersionReadValid = true;
-                XLOGD_INFO("MFV Wake Word Model Version = %u.%u", m_mfvModelVersionData.major, m_mfvModelVersionData.minor);
+                XLOGD_INFO("MFV Wake Word Model Version = %u.%u", major, minor);
             } else {
                 XLOGD_ERROR("MFV Model Version has invalid length (%zu bytes, expected 2)", value.size());
             }
@@ -942,9 +956,14 @@ void GattAudioServiceRdk::requestMfvPrivacy()
         } else {
             std::vector<uint8_t> value = reply->result();
             if (value.size() == 1) {
-                m_mfvPrivacyEnabled = (value[0] != 0);
+                bool enabled;
+                {
+                    std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
+                    m_mfvPrivacyEnabled = (value[0] != 0);
+                    enabled = m_mfvPrivacyEnabled;
+                }
                 m_mfvState.privacyReadValid = true;
-                XLOGD_INFO("MFV Privacy = %s", m_mfvPrivacyEnabled ? "enabled" : "disabled");
+                XLOGD_INFO("MFV Privacy = %s", enabled ? "enabled" : "disabled");
             } else {
                 XLOGD_ERROR("MFV Privacy has invalid length (%zu bytes, expected 1)", value.size());
             }
@@ -978,7 +997,10 @@ void GattAudioServiceRdk::requestMfvModelConfig()
         } else {
             std::vector<uint8_t> value = reply->result();
             if (value.size() == 3) {
-                m_mfvModelConfigurationData = value;
+                {
+                    std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
+                    m_mfvModelConfigurationData = value;
+                }
                 m_mfvState.modelConfigReadValid = true;
                 XLOGD_INFO("MFV Model Config: sensitivity=%u secondary=%u aad=%u",
                     value[0], value[1], value[2]);
@@ -1129,8 +1151,13 @@ void GattAudioServiceRdk::onMfvSessionStartChanged(unsigned int generation, cons
         return;
     }
 
-    m_mfvDetectionType = static_cast<DetectionType>(raw);
-    m_mfvDetectionTypeChangedSlots.invoke(m_mfvDetectionType);
+    DetectionType detectionType;
+    {
+        std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
+        m_mfvDetectionType = static_cast<DetectionType>(raw);
+        detectionType = m_mfvDetectionType;
+    }
+    m_mfvDetectionTypeChangedSlots.invoke(detectionType);
     XLOGD_INFO("MFV Session Start: detection type = 0x%02X", raw);
 }
 
@@ -1154,15 +1181,20 @@ void GattAudioServiceRdk::onMfvDetectionDataChanged(unsigned int generation, con
         return;
     }
 
-    m_mfvDetectionData.start      = static_cast<uint16_t>(newValue[0]) | (static_cast<uint16_t>(newValue[1]) << 8);
-    m_mfvDetectionData.end        = static_cast<uint16_t>(newValue[2]) | (static_cast<uint16_t>(newValue[3]) << 8);
-    m_mfvDetectionData.confidence = static_cast<uint16_t>(newValue[4]) | (static_cast<uint16_t>(newValue[5]) << 8);
+    DetectionData detectionData;
+    {
+        std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
+        m_mfvDetectionData.start      = static_cast<uint16_t>(newValue[0]) | (static_cast<uint16_t>(newValue[1]) << 8);
+        m_mfvDetectionData.end        = static_cast<uint16_t>(newValue[2]) | (static_cast<uint16_t>(newValue[3]) << 8);
+        m_mfvDetectionData.confidence = static_cast<uint16_t>(newValue[4]) | (static_cast<uint16_t>(newValue[5]) << 8);
+        detectionData = m_mfvDetectionData;
+    }
 
     XLOGD_INFO("MFV Detection Data: start=%u end=%u confidence=%.1f%%",
-        m_mfvDetectionData.start, m_mfvDetectionData.end,
-        m_mfvDetectionData.confidence / 10.0);
+        detectionData.start, detectionData.end,
+        detectionData.confidence / 10.0);
 
-    m_mfvDetectionDataChangedSlots.invoke(m_mfvDetectionData);
+    m_mfvDetectionDataChangedSlots.invoke(detectionData);
 }
 
 // -----------------------------------------------------------------------------
@@ -1179,10 +1211,15 @@ void GattAudioServiceRdk::onMfvPrivacyChanged(const std::vector<uint8_t> &newVal
         return;
     }
 
-    m_mfvPrivacyEnabled = (newValue[0] != 0);
-    XLOGD_INFO("MFV Privacy changed: %s", m_mfvPrivacyEnabled ? "enabled" : "disabled");
+    bool enabled;
+    {
+        std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
+        m_mfvPrivacyEnabled = (newValue[0] != 0);
+        enabled = m_mfvPrivacyEnabled;
+    }
+    XLOGD_INFO("MFV Privacy changed: %s", enabled ? "enabled" : "disabled");
 
-    m_mfvPrivacyChangedSlots.invoke(m_mfvPrivacyEnabled);
+    m_mfvPrivacyChangedSlots.invoke(enabled);
 }
 
 // =============================================================================
@@ -1191,31 +1228,37 @@ void GattAudioServiceRdk::onMfvPrivacyChanged(const std::vector<uint8_t> &newVal
 
 BleRcuAudioService::DetectionType GattAudioServiceRdk::mfvDetectionType() const
 {
+    std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
     return m_mfvDetectionType;
 }
 
 BleRcuAudioService::DetectionData GattAudioServiceRdk::mfvDetectionData() const
 {
+    std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
     return m_mfvDetectionData;
 }
 
 BleRcuAudioService::ModelVersion GattAudioServiceRdk::mfvModelVersion() const
 {
+    std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
     return m_mfvModelVersionData;
 }
 
 bool GattAudioServiceRdk::mfvPrivacyEnabled() const
 {
+    std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
     return m_mfvPrivacyEnabled;
 }
 
 std::vector<uint8_t> GattAudioServiceRdk::mfvModelConfiguration() const
 {
+    std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
     return m_mfvModelConfigurationData;
 }
 
 uint8_t GattAudioServiceRdk::mfvCapabilities() const
 {
+    std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
     return m_mfvCapabilitiesValue;
 }
 
@@ -1263,7 +1306,10 @@ void GattAudioServiceRdk::writeMfvPrivacy(bool enabled, PendingReply<> &&reply)
                 return;
             }
             if (m_mfvState.supported && m_mfvPromiseResults && !reply->isError()) {
-                m_mfvPrivacyEnabled = enabled;
+                {
+                    std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
+                    m_mfvPrivacyEnabled = enabled;
+                }
                 m_mfvState.privacyReadValid = true;
             }
             this->onWriteMfvPrivacyReply(reply);
@@ -1281,7 +1327,12 @@ void GattAudioServiceRdk::onWriteMfvPrivacyReply(PendingReply<> *reply)
         }
     } else {
         XLOGD_INFO("MFV Privacy written successfully");
-        m_mfvPrivacyChangedSlots.invoke(m_mfvPrivacyEnabled);
+        bool enabled;
+        {
+            std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
+            enabled = m_mfvPrivacyEnabled;
+        }
+        m_mfvPrivacyChangedSlots.invoke(enabled);
         if (m_mfvPromiseResults) {
             m_mfvPromiseResults->finish();
             m_mfvPromiseResults.reset();
@@ -1316,7 +1367,11 @@ void GattAudioServiceRdk::writeMfvModelConfiguration(uint8_t sensitivity, uint8_
         return;
     }
 
-    auto previousConfig = m_mfvModelConfigurationData;
+    std::vector<uint8_t> previousConfig;
+    {
+        std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
+        previousConfig = m_mfvModelConfigurationData;
+    }
     auto previousValid  = m_mfvState.modelConfigReadValid;
 
     m_mfvPromiseResults = make_shared<PendingReply<>>(std::move(reply));
@@ -1338,7 +1393,10 @@ void GattAudioServiceRdk::writeMfvModelConfiguration(uint8_t sensitivity, uint8_
                 XLOGD_ERROR("failed to write MFV Model Config due to <%s>", writeReply->errorMessage().c_str());
 
                 // Restore last-known-good config on failure.
-                m_mfvModelConfigurationData = previousConfig;
+                {
+                    std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
+                    m_mfvModelConfigurationData = previousConfig;
+                }
                 m_mfvState.modelConfigReadValid = previousValid;
 
                 if (m_mfvPromiseResults) {
@@ -1349,7 +1407,10 @@ void GattAudioServiceRdk::writeMfvModelConfiguration(uint8_t sensitivity, uint8_
             } else {
                 XLOGD_INFO("MFV Model Config written successfully");
 
-                m_mfvModelConfigurationData = value;
+                {
+                    std::lock_guard<std::mutex> mfvDataGuard(m_mfvDataMutex);
+                    m_mfvModelConfigurationData = value;
+                }
                 m_mfvState.modelConfigReadValid = true;
 
                 if (m_mfvPromiseResults) {

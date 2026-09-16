@@ -31,12 +31,13 @@
 #include "ctrlm_network.h"
 #include "ctrlm_rf4ce_controller.h"
 #include "ctrlm_rf4ce_utils.h"
-#include "ctrlm_device_update.h"
 #include "json_config.h"
 #include "ctrlm_ir_rf_db.h"
 #include "network/attributes/ctrlm_rf4ce_network_attr_config.h"
 #include "ctrlm_rfc.h"
 #include "ctrlm_asb.h"
+
+struct ctrlm_main_queue_msg_update_file_check_t;
 
 #define CTRLM_RF4CE_AUTOBIND_OCTET       ((JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_FAIL << 3) | JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_PASS)
 #define CTRLM_RF4CE_AUTOBIND_OCTET_RESET (0x40 | (JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_FAIL << 3) | JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_PASS)

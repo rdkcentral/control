@@ -116,6 +116,10 @@ public:
      * @param value The value stored as a uint64_t for this attribute
      */
     ctrlm_uint64_attr_t(uint64_t _value = 0, std::string _name = "");
+    ctrlm_uint64_attr_t(const ctrlm_uint64_attr_t &) = default;
+    ctrlm_uint64_attr_t(ctrlm_uint64_attr_t &&) noexcept = default;
+    ctrlm_uint64_attr_t &operator=(const ctrlm_uint64_attr_t &) = default;
+    ctrlm_uint64_attr_t &operator=(ctrlm_uint64_attr_t &&) noexcept = default;
     /**
      * Destructor
      */
@@ -223,6 +227,10 @@ public:
      * @param ieee A uint64_t containing an IEEE address
      */
     ctrlm_ieee_addr_t(uint64_t ieee = 0);
+    ctrlm_ieee_addr_t(const ctrlm_ieee_addr_t &) = default;
+    ctrlm_ieee_addr_t(ctrlm_ieee_addr_t &&) noexcept = default;
+    ctrlm_ieee_addr_t &operator=(const ctrlm_ieee_addr_t &) = default;
+    ctrlm_ieee_addr_t &operator=(ctrlm_ieee_addr_t &&) noexcept = default;
     /**
      * Destructor
      */

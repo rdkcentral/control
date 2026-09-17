@@ -28,6 +28,7 @@ typedef struct {
    bool                 requires_transcription;
    bool                 requires_audio_file;
    bool                 supports_named_pipe;
+   bool                 controller_session;
    ctrlm_voice_device_t device;
    ctrlm_voice_format_t format;
    bool                 low_latency;
@@ -44,6 +45,7 @@ typedef struct voice_session_request_type_handler_s { const char *name; voice_se
 
 bool ctrlm_voice_ipc_request_supported_ptt_transcription(ctrlm_voice_ipc_request_config_t *config);
 bool ctrlm_voice_ipc_request_supported_ptt_audio_file(ctrlm_voice_ipc_request_config_t *config);
+bool ctrlm_voice_ipc_request_supported_ptt_listen(ctrlm_voice_ipc_request_config_t *config);
 bool ctrlm_voice_ipc_request_supported_mic_transcription(ctrlm_voice_ipc_request_config_t *config);
 bool ctrlm_voice_ipc_request_supported_mic_audio_file(ctrlm_voice_ipc_request_config_t *config);
 bool ctrlm_voice_ipc_request_supported_mic_stream_default(ctrlm_voice_ipc_request_config_t *config);

@@ -24,6 +24,7 @@
 #include "ctrlm_log.h"
 #include "ctrlm_voice_obj.h"
 #include "ctrlm_voice_ipc_request_type.h"
+#include "ctrlm_utils.h"
 #include <fcntl.h>
 #include <string>
 #include <algorithm>
@@ -557,6 +558,9 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_types(void *data) {
 
         int rc = json_array_append_new(obj_types, json_string("ptt_transcription"));
         rc |= json_array_append_new(obj_types, json_string("ptt_audio_file"));
+        if(!ctrlm_is_production_build()) {
+            rc |= json_array_append_new(obj_types, json_string("ptt_listen"));
+        }
 
         if(voice_obj->voice_stb_data_local_mic_get()) {
             rc |= json_array_append_new(obj_types, json_string("mic_audio_file"));
@@ -620,6 +624,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                 request_config.requires_transcription = false;
                 request_config.requires_audio_file    = false;
                 request_config.supports_named_pipe    = false;
+                request_config.controller_session     = false;
                 request_config.format                 = { .type = CTRLM_VOICE_FORMAT_PCM };
                 request_config.device                 = CTRLM_VOICE_DEVICE_PTT;
                 
@@ -630,6 +635,8 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                 std::string str_transcription  = "";
                 std::string str_audio_file     = "";
                 std::string str_name_of_source = "APPLICATION";
+                unsigned long long ieee_address = 0;
+                uint32_t audio_duration = 0;
                 int fd = -1;
                 if(obj_type == NULL || !json_is_string(obj_type)) {
                     XLOGD_ERROR("request type parameter not present");
@@ -751,6 +758,30 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                                    }
                                 }
                             }
+                            if(request_config.controller_session) {
+                                json_t *obj_mac_addr = json_object_get(obj, "macAddr");
+                                if(obj_mac_addr != NULL) {
+                                    if(!json_is_string(obj_mac_addr) || !ctrlm_validate_mac_addr_string(json_string_value(obj_mac_addr), ieee_address)) {
+                                        XLOGD_ERROR("invalid macAddr parameter.");
+                                        result = false;
+                                    }
+                                }
+                                json_t *obj_audio_duration = json_object_get(obj, "audioDuration");
+                                if(obj_audio_duration != NULL) {
+                                    if(!json_is_integer(obj_audio_duration)) {
+                                        XLOGD_ERROR("invalid audioDuration parameter.");
+                                        result = false;
+                                    } else {
+                                        json_int_t value = json_integer_value(obj_audio_duration);
+                                        if(value <= 0 || value > 5 * 60 * 1000) { // Limit to 5 minutes to avoid type conversion overflow issues
+                                            XLOGD_ERROR("invalid audioDuration parameter.");
+                                            result = false;
+                                        } else {
+                                            audio_duration = static_cast<uint32_t>(value);
+                                        }
+                                    }
+                                }
+                            }
                             json_t *obj_name_of_source = json_object_get(obj, "name");
                             if(obj_name_of_source != NULL) {
                                 if(!json_is_string(obj_name_of_source)) {
@@ -764,18 +795,22 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                 }
 
                 if (true == result) {
-                    ctrlm_voice_session_response_status_t voice_status = voice_obj->voice_session_req(
-                            CTRLM_MAIN_NETWORK_ID_INVALID, CTRLM_MAIN_CONTROLLER_ID_INVALID, 
-                            request_config.device, request_config.format, NULL, str_name_of_source.c_str(), "0.0.0.0", "0.0.0.0", 0.0,
-                            false, NULL, NULL, NULL, (fd >= 0) ? true : false, true, NULL, NULL,
-                            str_transcription.empty() ? NULL : str_transcription.c_str(), str_audio_file.empty() ? NULL : str_audio_file.c_str(), &request_uuid, request_config.low_latency, request_config.low_cpu_util, fd);
-                    if (voice_status != VOICE_SESSION_RESPONSE_AVAILABLE && 
-                        voice_status != VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
-                        XLOGD_ERROR("Failed opening voice session <%s>", ctrlm_voice_session_response_status_str(voice_status));
-                        if(fd >= 0) {
-                            close(fd);
+                    if(request_config.controller_session) {
+                        result = voice_obj->voice_session_controller_request(ieee_address, audio_duration, &request_uuid);
+                    } else {
+                        ctrlm_voice_session_response_status_t voice_status = voice_obj->voice_session_req(
+                                CTRLM_MAIN_NETWORK_ID_INVALID, CTRLM_MAIN_CONTROLLER_ID_INVALID,
+                                request_config.device, request_config.format, NULL, str_name_of_source.c_str(), "0.0.0.0", "0.0.0.0", 0.0,
+                                false, NULL, NULL, NULL, (fd >= 0) ? true : false, true, NULL, NULL,
+                                str_transcription.empty() ? NULL : str_transcription.c_str(), str_audio_file.empty() ? NULL : str_audio_file.c_str(), &request_uuid, request_config.low_latency, request_config.low_cpu_util, fd);
+                        if (voice_status != VOICE_SESSION_RESPONSE_AVAILABLE &&
+                            voice_status != VOICE_SESSION_RESPONSE_AVAILABLE_PAR_VOICE) {
+                            XLOGD_ERROR("Failed opening voice session <%s>", ctrlm_voice_session_response_status_str(voice_status));
+                            if(fd >= 0) {
+                                close(fd);
+                            }
+                            result = false;
                         }
-                        result = false;
                     }
                 }
                 json_decref(obj);
@@ -972,6 +1007,21 @@ bool ctrlm_voice_ipc_request_supported_ptt_audio_file(ctrlm_voice_ipc_request_co
    config->supports_named_pipe    = true;
    config->device                 = CTRLM_VOICE_DEVICE_PTT;
    config->format                 = { .type = CTRLM_VOICE_FORMAT_PCM };
+   config->low_latency            = false;
+   config->low_cpu_util           = false;
+   return(true);
+}
+
+bool ctrlm_voice_ipc_request_supported_ptt_listen(ctrlm_voice_ipc_request_config_t *config) {
+   if(ctrlm_is_production_build()) {
+      return(false);
+   }
+   config->requires_transcription = false;
+   config->requires_audio_file    = false;
+   config->supports_named_pipe    = false;
+   config->controller_session     = true;
+   config->device                 = CTRLM_VOICE_DEVICE_PTT;
+   config->format                 = { .type = CTRLM_VOICE_FORMAT_INVALID };
    config->low_latency            = false;
    config->low_cpu_util           = false;
    return(true);

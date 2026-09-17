@@ -394,6 +394,10 @@ void ctrlm_voice_generic_t::voice_sdk_update_routes() {
     if(!xrsr_route(routes)) {
         XLOGD_ERROR("failed to set routes");
     }
+
+    //Updating routes means updating inputs and outputs, so refresh the privacy setting in case inputs changed
+    this->voice_update_privacy();
+
 }
 
 void ctrlm_voice_generic_t::query_strings_updated() {

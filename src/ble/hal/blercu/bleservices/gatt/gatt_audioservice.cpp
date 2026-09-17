@@ -536,10 +536,8 @@ void GattAudioService::onOutputPipeClosed()
 void GattAudioService::startStreaming(Encoding encoding, PendingReply<int> &&reply, uint32_t durationMax)
 {
     // A same-controller session replacement (e.g. MFV) can request a new stream while the remote is
-    // still actively streaming for the outgoing session - its stop is intentionally suppressed so the
-    // replacement can take over the same physical stream without interrupting the remote. Swap in a
-    // fresh pipe for the new consumer instead of failing with "not ready", since re-entering the
-    // start/stop states would mean re-sending GATT commands the remote is already honouring.
+    // still streaming for the outgoing session, whose stop is intentionally suppressed so the
+    // replacement can take over. Swap in a fresh pipe rather than failing "not ready".
     if (m_stateMachine.state() == StreamingState) {
         XLOGD_INFO("already streaming - swapping in a new pipe for the replacement request");
         swapStreamingPipe(std::move(reply), durationMax);
@@ -601,9 +599,8 @@ void GattAudioService::startStreaming(Encoding encoding, PendingReply<int> &&rep
 /*!
     \internal
 
-    Called by startStreaming() when the service is already in StreamingState. Creates a fresh pipe for
-    the new consumer and completes \a reply immediately, without touching the start/stop states (and
-    therefore without sending any GATT command to the remote - it's already enabled and streaming).
+    Called by startStreaming() when already in StreamingState. Creates a fresh pipe for the new consumer
+    and completes \a reply directly, bypassing the start/stop states so no GATT command is resent.
 
  */
 void GattAudioService::swapStreamingPipe(PendingReply<int> &&reply, uint32_t durationMax)
@@ -632,9 +629,9 @@ void GattAudioService::swapStreamingPipe(PendingReply<int> &&reply, uint32_t dur
         frameCountMax = ((durationMax * 1000) + m_audioFrameDuration - 1) / m_audioFrameDuration;
     }
 
-    // Create the replacement pipe and swap it in. Dropping the old pipe here just closes its internal
-    // fds (its destructor doesn't touch the state machine), so the remote keeps streaming into the new
-    // pipe uninterrupted; the old consumer sees a normal EOF on the fd it was already given.
+    // Fully prepare the replacement pipe, including its fd, before touching m_audioPipe - the old pipe
+    // is only dropped once the new one is confirmed usable, so a failure here leaves the outgoing
+    // stream untouched instead of installing a consumer-less pipe.
     auto newAudioPipe = make_shared<GattAudioPipe>(m_frameSize, frameCountMax, frameValidator);
     if (!newAudioPipe || !newAudioPipe->isValid()) {
         guard.unlock();
@@ -643,22 +640,25 @@ void GattAudioService::swapStreamingPipe(PendingReply<int> &&reply, uint32_t dur
         reply.finish();
         return;
     }
-    m_audioPipe = newAudioPipe;
 
-    m_audioPipe->addOutputPipeClosedSlot(Slot<>(m_isAlive,
+    newAudioPipe->addOutputPipeClosedSlot(Slot<>(m_isAlive,
             std::bind(&GattAudioService::onOutputPipeClosed, this)));
 
-    m_audioPipe->start();
+    newAudioPipe->start();
 
-    int fd = m_audioPipe->takeOutputReadFd();
-    guard.unlock();
-
+    int fd = newAudioPipe->takeOutputReadFd();
     if (fd < 0) {
+        guard.unlock();
         m_lastStats.lastError = StreamingError::InternalError;
         reply.setError("Failed to acquire streaming pipe fd");
         reply.finish();
         return;
     }
+
+    // Swap in the new pipe. Dropping the old one just closes its fds (no state-machine side effects),
+    // so the remote keeps streaming uninterrupted while its old consumer sees a normal EOF.
+    m_audioPipe = newAudioPipe;
+    guard.unlock();
 
     reply.setResult(fd);
     reply.finish();

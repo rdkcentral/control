@@ -122,9 +122,8 @@ private:
     void onOutputPipeClosed();
 
     // Handles startStreaming() being called while already in StreamingState (a same-controller session
-    // replacement while the remote is still actively streaming for the outgoing session). Swaps in a
-    // fresh pipe/fd for the new consumer without re-entering the start/stop state machine states, so the
-    // remote is never told to stop or re-start - it keeps streaming uninterrupted throughout the handoff.
+    // replacement). Swaps in a fresh pipe/fd without re-entering the start/stop states, so the remote
+    // keeps streaming uninterrupted through the handoff.
     void swapStreamingPipe(PendingReply<int> &&reply, uint32_t durationMax);
 
 private:

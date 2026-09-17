@@ -1475,11 +1475,6 @@ void BleRcuAdapterBluez::onDeviceAdded(const std::string &path,
     XLOGD_INFO("added device %s named %s (connected: %s, paired: %s)", 
             bdaddr.toString().c_str(), name.c_str(), connected ? "TRUE" : "FALSE", paired ? "TRUE" : "FALSE");
 
-    if (paired && !connected) {
-        XLOGD_INFO("Device paired but not connected, sending connection request to bluez...");
-        device->connect();
-    }
-
     m_deviceFoundSlots.invoke(device->address(), device->name());
 }
 // -----------------------------------------------------------------------------

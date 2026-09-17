@@ -853,6 +853,18 @@ void GattUpgradeService::sendDATA()
         // set the block id
         packet.header[0] = OPCODE_DATA | uint8_t((blockId >> 8) & 0x3f);
         packet.header[1] = uint8_t(blockId & 0xff);
+        int64_t pos = blockId * FIRMWARE_PACKET_MTU;
+        if (pos > 100) {
+#if 0
+            // OTA error condition1
+            XLOGD_WARN("Sending invalid op code OPCODE_ERROR for RDKTV-13686 to test error condition in RCU!!!!!!!!!!!!!!!!!!");
+            packet.header[0] = OPCODE_ERROR | uint8_t((blockId >> 8) & 0x3f);
+#else
+            // OTA error condition2
+            XLOGD_WARN("Sending OPCODE_WRQ while upload already in progress for RDKTV-13686 to test error condition in RCU!!!");
+            sendWRQ();
+#endif
+        }
 
         // send / queue the data packet
         const char* buffer = reinterpret_cast<const char*>(&packet);

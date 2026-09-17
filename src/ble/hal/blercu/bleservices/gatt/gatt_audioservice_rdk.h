@@ -190,8 +190,8 @@ private:
 
     std::shared_ptr<PendingReply<>> m_mfvPromiseResults;
 
-    // Bumped on disconnect (onEnteredIdle) so stale MFV write completions and notifications from a prior
-    // connection can be detected and ignored.
+    // Bumped on disconnect (onEnteredIdle) so stale MFV write completions, notifications, and initial-read
+    // completions from a prior connection can be detected and ignored.
     unsigned int m_mfvWriteGeneration = 0;
 
     std::shared_ptr<BleGattCharacteristic> m_mfvSessionStartCharacteristic;

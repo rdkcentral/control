@@ -857,8 +857,15 @@ void GattAudioServiceRdk::scheduleMfvNotifyRetry()
  */
 void GattAudioServiceRdk::requestMfvCapabilities()
 {
-    auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
+    const unsigned int generation = m_mfvWriteGeneration;
+
+    auto replyHandler = [this, generation](PendingReply<std::vector<uint8_t>> *reply)
     {
+        if (generation != m_mfvWriteGeneration) {
+            // Connection was reset since this read was issued; drop the stale completion.
+            XLOGD_WARN("Ignoring stale MFV Capabilities read completion");
+            return;
+        }
         if (!m_mfvState.supported || (m_mfvState.initialReadsRemaining <= 0)) {
             XLOGD_DEBUG("ignoring late MFV Capabilities read callback (MFV inactive)");
             return;
@@ -902,8 +909,15 @@ void GattAudioServiceRdk::requestMfvCapabilities()
  */
 void GattAudioServiceRdk::requestMfvModelVersion()
 {
-    auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
+    const unsigned int generation = m_mfvWriteGeneration;
+
+    auto replyHandler = [this, generation](PendingReply<std::vector<uint8_t>> *reply)
     {
+        if (generation != m_mfvWriteGeneration) {
+            // Connection was reset since this read was issued; drop the stale completion.
+            XLOGD_WARN("Ignoring stale MFV Model Version read completion");
+            return;
+        }
         if (!m_mfvState.supported || (m_mfvState.initialReadsRemaining <= 0)) {
             XLOGD_DEBUG("ignoring late MFV Model Version read callback (MFV inactive)");
             return;
@@ -944,8 +958,15 @@ void GattAudioServiceRdk::requestMfvModelVersion()
  */
 void GattAudioServiceRdk::requestMfvPrivacy()
 {
-    auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
+    const unsigned int generation = m_mfvWriteGeneration;
+
+    auto replyHandler = [this, generation](PendingReply<std::vector<uint8_t>> *reply)
     {
+        if (generation != m_mfvWriteGeneration) {
+            // Connection was reset since this read was issued; drop the stale completion.
+            XLOGD_WARN("Ignoring stale MFV Privacy read completion");
+            return;
+        }
         if (!m_mfvState.supported || (m_mfvState.initialReadsRemaining <= 0)) {
             XLOGD_DEBUG("ignoring late MFV Privacy read callback (MFV inactive)");
             return;
@@ -985,8 +1006,15 @@ void GattAudioServiceRdk::requestMfvPrivacy()
  */
 void GattAudioServiceRdk::requestMfvModelConfig()
 {
-    auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
+    const unsigned int generation = m_mfvWriteGeneration;
+
+    auto replyHandler = [this, generation](PendingReply<std::vector<uint8_t>> *reply)
     {
+        if (generation != m_mfvWriteGeneration) {
+            // Connection was reset since this read was issued; drop the stale completion.
+            XLOGD_WARN("Ignoring stale MFV Model Config read completion");
+            return;
+        }
         if (!m_mfvState.supported || (m_mfvState.initialReadsRemaining <= 0)) {
             XLOGD_DEBUG("ignoring late MFV Model Config read callback (MFV inactive)");
             return;

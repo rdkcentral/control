@@ -806,7 +806,7 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
    } else {
       ctrlm_controller_id_t controller_id = dqm->controller_id;
       if (!is_managed_by_network(controller_id)) {
-         XLOGD_ERROR("Controller %d is not managed by the %s network", controller_id, name_get());
+         XLOGD_WARN("Controller %d is not managed by the %s network", controller_id, name_get());
       } else if (!controller_exists(controller_id)) {
          XLOGD_ERROR("Controller doesn't exist!");
       } else if (!controllers_[controller_id]->isSupportedIrdb(dqm->vendor_info)) {
@@ -839,7 +839,7 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
             std::map<ctrlm_key_code_t, std::vector<uint8_t>> ir_codes;
             
             // First add IR Codes to the IR RF Database (this contains all of the logic for maintaining TV vs AVR codes)
-            ir_rf_database_.add_irdb_codes(dqm->ir_codes, dqm->vendor_info.rcu_support_bitmask, dqm->vendor_info.name);
+            ir_rf_database_.add_irdb_codes(dqm->ir_codes, dqm->manufacturer, dqm->model, dqm->vendor_info.rcu_support_bitmask, dqm->vendor_info.name);
             XLOGD_INFO("\n%s", this->ir_rf_database_.to_string(false).c_str());
             XLOGD_DEBUG("\n%s", this->ir_rf_database_.to_string(true).c_str());
             // Now get the IR codes for the BLE IR slots
@@ -864,7 +864,8 @@ void ctrlm_obj_network_ble_t::req_process_program_ir_codes(void *data, int size)
                   success = true;
                   controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_TV, ir_rf_database_.get_tv_ir_code_id());
                   controllers_[controller_id]->irdb_entry_id_name_set(CTRLM_IRDB_DEV_TYPE_AVR, ir_rf_database_.get_avr_ir_code_id());
-                  XLOGD_INFO("irdb_entry_id_name = <%s>", dqm->ir_codes->id.c_str());
+                  controllers_[controller_id]->irdb_manufacturer_model_set(dqm->ir_codes->type, dqm->manufacturer, dqm->model);
+                  XLOGD_INFO("irdb_entry_id_name = <%s>, manufacturer/model = <%s / %s>", dqm->ir_codes->id.c_str(), dqm->manufacturer.c_str(), dqm->model.c_str());
                }
             }
             // Store the IR codes in the database

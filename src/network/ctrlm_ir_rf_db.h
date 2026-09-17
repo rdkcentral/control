@@ -58,9 +58,9 @@ public:
     /**
      * Function to add a CTRLM IRDB ir_codes to the IR RF Database
      * @param ir_codes A keymap supplied from the CTRLM IRDB component
-     * @reutrn True if the entries were added to the IRRF Database, False otherwise.
+     * @return True if the entries were added to the IRRF Database, False otherwise.
      */
-    bool add_irdb_codes(ctrlm_irdb_ir_code_set_t *ir_codes, unsigned char ir_vendor_id = 0, const std::string &ir_vendor_name = "");
+    bool add_irdb_codes(ctrlm_irdb_ir_code_set_t *ir_codes, const std::string &manufacturer = "INVALID", const std::string &model = "INVALID", unsigned char ir_vendor_id = 0, const std::string &ir_vendor_name = "");
 
     /**
      * Function to clear all TV IR codes stored in the IR RF Database
@@ -187,6 +187,10 @@ private:
     std::string avr_ir_code_id_;
     unsigned char avr_ir_vendor_id_;
     std::string avr_ir_vendor_name_;
+    std::string tv_manufacturer_;
+    std::string tv_model_;
+    std::string avr_manufacturer_;
+    std::string avr_model_;
 };
 
 

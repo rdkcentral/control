@@ -121,6 +121,11 @@ private:
 
     void onOutputPipeClosed();
 
+    // Handles startStreaming() being called while already in StreamingState (a same-controller session
+    // replacement). Swaps in a fresh pipe/fd without re-entering the start/stop states, so the remote
+    // keeps streaming uninterrupted through the handoff.
+    void swapStreamingPipe(PendingReply<int> &&reply, uint32_t durationMax);
+
 private:
     std::shared_ptr<bool> m_isAlive;
 
@@ -172,7 +177,7 @@ public:
 
     static const Event::Type AudioInfoTimeoutEvent      = Event::Type(Event::User + 11);
     static const Event::Type AudioLastFrameTimeoutEvent = Event::Type(Event::User + 12);
-
+    static const Event::Type RetryEnableNotificationsEvent = Event::Type(Event::User + 13);
 };
 
 #endif // !defined(GATT_AUDIOSERVICE_H)

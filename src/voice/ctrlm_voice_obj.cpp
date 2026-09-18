@@ -1268,7 +1268,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                 // which explicitly stops the remote's stream when voice_session_req() returns a failure status
                 // after having already started it.
                 session->abort_for_same_controller = (device_type == CTRLM_VOICE_DEVICE_MFV || session->voice_device == CTRLM_VOICE_DEVICE_MFV);
-                pre_session_terminate(cb_start_audio, cb_audio_start_params, cb_confirm, cb_confirm_param);
+                pre_session_terminate(std::move(cb_start_audio), cb_audio_start_params, cb_confirm, cb_confirm_param);
                 xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.
                 session->abort_for_same_controller = false;
             }
@@ -1675,7 +1675,8 @@ void ctrlm_voice_t::voice_session_data_post_processing(int bytes_sent, const cha
     } else {
        #ifdef VOICE_BUFFER_STATS
        if(voice_buffer_warning_triggered) {
-          XLOGD_AUTOMATION_DEBUG("Audio %s bytes <%lu> samples <%lu> pkt cnt <%3u> elapsed <%8llu ms> lag <%8lld ms> (%4.2f packets)", action, session->audio_sent_bytes, session->audio_sent_samples, packets_total, session_time / 1000, session_delta / 1000, (((float)session_delta) / this->voice_packet_interval));
+          float packets_over_interval = (this->voice_packet_interval != 0) ? (((float)session_delta) / this->voice_packet_interval) : 0.0f;
+          XLOGD_AUTOMATION_DEBUG("Audio %s bytes <%lu> samples <%lu> pkt cnt <%3u> elapsed <%8llu ms> lag <%8lld ms> (%4.2f packets)", action, session->audio_sent_bytes, session->audio_sent_samples, packets_total, session_time / 1000, session_delta / 1000, packets_over_interval);
        } else {
           XLOGD_AUTOMATION_DEBUG("Audio %s bytes <%lu> samples <%lu>", action, session->audio_sent_bytes, session->audio_sent_samples);
        }
@@ -4153,7 +4154,7 @@ void ctrlm_voice_t::url_hostname_pattern_add(const char *pattern) {
         }
     } while(1);
 
-    this->prefs.server_hosts.push_back(regex);
+    this->prefs.server_hosts.push_back(std::move(regex));
 }
 
 void ctrlm_voice_t::url_hostname_patterns(const std::vector<std::string> &obj_server_hosts) {

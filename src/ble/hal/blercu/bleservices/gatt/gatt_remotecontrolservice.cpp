@@ -244,8 +244,10 @@ void GattRemoteControlService::onEnteredState(int state)
         requestAdvConfig();
         requestAdvConfigCustomList();
         requestUnpairReason();
-        requestRebootReason();
         requestRawBatteryVoltage();
+    
+        // requestRebootReason() posts InitialValuesRetrievedEvent in its reply handler, so queue it last after the other initial reads.
+        requestRebootReason();
 
         m_readySlots.invoke();
 

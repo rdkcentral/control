@@ -17,9 +17,9 @@ flowchart TB
   VoiceControl --> ControlMgr
 
   ControlMgr --> BlueZ["BlueZ\nBLE remotes"]
-  ControlMgr --> IRDB["IR Database HAL\nthird-party IR codes"]
-  ControlMgr --> RF4CE["RF4CE HAL\nsupport for legacy remotes\n(deprecated)"]
-  ControlMgr --> FarField["Far Field Voice HAL\n supoort for hands-free voice\n(not yet supported)"]
+  ControlMgr --> IRDB["IR Database HAL\nProvides third-party IR codes"]
+  ControlMgr --> RF4CE["RF4CE HAL\nSupport for legacy remotes\n(deprecated)"]
+  ControlMgr --> FarField["Far Field Voice HAL\nSupport for hands-free voice\n(not yet supported)"]
 ```
 
 The HAL and service integrations are platform-facing implementation dependencies; the Thunder plugins are the primary public interface consumed by the rest of the RDK system. The RF4CE HAL integration is deprecated and is retained for legacy remote support.

@@ -579,9 +579,6 @@ uint8_t ctrlm_obj_controller_ble_t::getMfvCapabilities() const {
 void ctrlm_obj_controller_ble_t::setMfvDetectionPending(bool pending, int audio_fd) {
    mfv_detection_pending_  = pending;
    mfv_detection_audio_fd_ = pending ? audio_fd : -1;
-   if (!pending) {
-      mfv_detection_data_fresh_ = false;
-   }
 }
 
 bool ctrlm_obj_controller_ble_t::isMfvDetectionPending() const {
@@ -590,10 +587,6 @@ bool ctrlm_obj_controller_ble_t::isMfvDetectionPending() const {
 
 int ctrlm_obj_controller_ble_t::getMfvDetectionAudioFd() const {
    return mfv_detection_audio_fd_;
-}
-
-bool ctrlm_obj_controller_ble_t::isMfvDetectionDataFresh() const {
-   return mfv_detection_data_fresh_;
 }
 
 void ctrlm_obj_controller_ble_t::setSupportedIrdbs(uint8_t vendor_support_bitmask) {

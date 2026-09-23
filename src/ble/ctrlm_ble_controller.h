@@ -158,7 +158,6 @@ public:
    void                             setMfvDetectionPending(bool pending, int audio_fd = -1);
    bool                             isMfvDetectionPending() const;
    int                              getMfvDetectionAudioFd() const;
-   bool                             isMfvDetectionDataFresh() const;
 
    void                             update_controller_id_and_db_entry(std::string name, ctrlm_network_id_t network_id, ctrlm_controller_id_t new_id);
 
@@ -219,7 +218,6 @@ private:
    bool                                    mfv_privacy_enabled_  = false;
    uint8_t                                 mfv_capabilities_     = 0;
    bool                                    mfv_detection_pending_    = false; // a wake-word session has started audio and is awaiting its detection data
-   bool                                    mfv_detection_data_fresh_ = false; // fresh detection data arrived for the current pending session
    int                                     mfv_detection_audio_fd_   = -1;    // fd of the audio stream started for the pending session
 
    bool                                    conn_param_update_before_ota_supported_ = false;

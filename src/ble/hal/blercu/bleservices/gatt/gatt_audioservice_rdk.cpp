@@ -1147,9 +1147,11 @@ void GattAudioServiceRdk::requestStartMfvPrivacyNotify()
         }
     };
 
+    const unsigned int generation = m_mfvWriteGeneration;
+
     m_mfvPrivacyCharacteristic->enableNotifications(
         Slot<const std::vector<uint8_t> &>(getIsAlivePtr(),
-            std::bind(&GattAudioServiceRdk::onMfvPrivacyChanged, this, std::placeholders::_1)),
+            std::bind(&GattAudioServiceRdk::onMfvPrivacyChanged, this, generation, std::placeholders::_1)),
         PendingReply<>(getIsAlivePtr(), replyHandler));
 }
 
@@ -1232,8 +1234,14 @@ void GattAudioServiceRdk::onMfvDetectionDataChanged(unsigned int generation, con
     Called when a Privacy Settings notification is received from the RCU.
     Payload: 1 byte boolean (1 = enabled, 0 = disabled).
  */
-void GattAudioServiceRdk::onMfvPrivacyChanged(const std::vector<uint8_t> &newValue)
+void GattAudioServiceRdk::onMfvPrivacyChanged(unsigned int generation, const std::vector<uint8_t> &newValue)
 {
+    if (generation != m_mfvWriteGeneration) {
+        // Connection was reset since these notifications were enabled; drop the stale notification.
+        XLOGD_WARN("Ignoring stale MFV Privacy notification");
+        return;
+    }
+
     if (newValue.size() != 1) {
         XLOGD_ERROR("MFV Privacy notification has invalid length (%zu bytes, expected 1)", newValue.size());
         return;

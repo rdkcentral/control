@@ -109,7 +109,7 @@ private:
     // MFV notification handlers
     void onMfvSessionStartChanged(unsigned int generation, const std::vector<uint8_t> &newValue);
     void onMfvDetectionDataChanged(unsigned int generation, const std::vector<uint8_t> &newValue);
-    void onMfvPrivacyChanged(const std::vector<uint8_t> &newValue);
+    void onMfvPrivacyChanged(unsigned int generation, const std::vector<uint8_t> &newValue);
 
     // MFV write handlers
     void onWriteMfvPrivacyReply(PendingReply<> *reply);

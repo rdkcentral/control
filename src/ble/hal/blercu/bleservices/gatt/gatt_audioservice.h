@@ -119,7 +119,7 @@ private:
 
     void onExitedStreamingSuperState();
 
-    void onOutputPipeClosed();
+    void onOutputPipeClosed(uint32_t generation);
 
     // Handles startStreaming() being called while already in StreamingState (a same-controller session
     // replacement). Swaps in a fresh pipe/fd without re-entering the start/stop states, so the remote
@@ -150,6 +150,8 @@ private:
 
     std::mutex mAudioPipeMutex;
     std::shared_ptr<GattAudioPipe> m_audioPipe;
+    // Bumped on every m_audioPipe replace/reset; ties a close notification to its pipe.
+    uint32_t m_audioPipeGeneration = 0;
     bool m_emitOneTimeStreamingSignal;
 
     uint32_t m_missedSequences;

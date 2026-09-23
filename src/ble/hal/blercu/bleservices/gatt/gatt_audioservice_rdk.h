@@ -36,6 +36,7 @@
 #include "utils/bleuuid.h"
 
 #include <mutex>
+#include <atomic>
 
 
 class BleGattService;
@@ -175,9 +176,10 @@ private:
     // MFV characteristics and state
     MfvState m_mfvState;
 
-    // Guards the cached MFV values below. They are written from the GATT notification handlers and
-    // reply handlers (which may run on a different thread than the caller of the accessors, e.g. the
-    // BlueZ notify thread vs. the thread calling getAllDeviceProperties()) and read via the accessors.
+    // Guards the cached MFV values below (BlueZ notify thread vs. e.g. getAllDeviceProperties()).
+    // MfvState, m_mfvNotifyRetryTimer, the characteristic pointers, and m_mfvPromiseResults are not
+    // guarded: they're only touched from the single GMainLoop thread (start()/onEnteredIdle()/GATT
+    // read+write reply callbacks), which the state machine already serializes.
     mutable std::mutex m_mfvDataMutex;
 
     DetectionType m_mfvDetectionType = Unknown;
@@ -191,8 +193,9 @@ private:
     std::shared_ptr<PendingReply<>> m_mfvPromiseResults;
 
     // Bumped on disconnect (onEnteredIdle) so stale MFV write completions, notifications, and initial-read
-    // completions from a prior connection can be detected and ignored.
-    unsigned int m_mfvWriteGeneration = 0;
+    // completions from a prior connection can be detected and ignored. Atomic because notification
+    // handlers read it from the BlueZ notify thread, not just the GMainLoop thread.
+    std::atomic<unsigned int> m_mfvWriteGeneration{0};
 
     std::shared_ptr<BleGattCharacteristic> m_mfvSessionStartCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_mfvDetectionDataCharacteristic;

@@ -217,7 +217,8 @@
    },
    "network_ble" : {
       "options": {
-         "disable_voice"                 :     false
+         "disable_voice"                                :     false,
+         "mfv_below_threshold_session_enabled"          :     false
       },
       "timeouts": {
          "discovery": 15000,

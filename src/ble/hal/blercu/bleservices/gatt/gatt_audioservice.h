@@ -152,6 +152,10 @@ private:
     std::shared_ptr<GattAudioPipe> m_audioPipe;
     // Bumped on every m_audioPipe replace/reset; ties a close notification to its pipe.
     uint32_t m_audioPipeGeneration = 0;
+    // Set by onOutputPipeClosed() right before posting OutputPipeCloseEvent, and re-checked by
+    // onExitedStreamingState() under the same lock; catches a swapStreamingPipe() that replaced the
+    // pipe in the gap between that check and the state machine actually processing the event.
+    int64_t m_pendingOutputPipeCloseGeneration = -1;
     bool m_emitOneTimeStreamingSignal;
 
     uint32_t m_missedSequences;
@@ -160,6 +164,12 @@ private:
     bool     m_frameCountSupported = false;
     uint16_t m_frameCount          = 0;
     uint32_t m_audioDurationMs     = 0;
+
+protected:
+    // True for the duration of onEnteredStopStreamingState() when the just-exited StreamingState was
+    // caused by a stale OutputPipeCloseEvent (superseded by a swapStreamingPipe() replacement); lets
+    // subclasses skip sending a real stop command for a stream that's still actually running.
+    bool m_lastStreamingExitWasStaleClose = false;
 
 public:
     static const Event::Type StartServiceRequestEvent   = Event::Type(Event::User + 1);

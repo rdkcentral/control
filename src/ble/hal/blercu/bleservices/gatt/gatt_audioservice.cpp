@@ -335,6 +335,17 @@ void GattAudioService::onExitedStreamingState()
 {
     std::unique_lock<std::mutex> guard(mAudioPipeMutex);
 
+    // Re-check: a swapStreamingPipe() replacement may have landed after onOutputPipeClosed()'s own
+    // check passed but before this transition ran. If so, leave the replacement alone entirely.
+    const int64_t pendingGeneration = m_pendingOutputPipeCloseGeneration;
+    m_pendingOutputPipeCloseGeneration = -1;
+    m_lastStreamingExitWasStaleClose =
+        (pendingGeneration >= 0) && (static_cast<uint32_t>(pendingGeneration) != m_audioPipeGeneration);
+    if (m_lastStreamingExitWasStaleClose) {
+        XLOGD_WARN("ignoring stale output-pipe-closed transition; a replacement pipe is now active");
+        return;
+    }
+
     // destroy the audio pipe
     if (!m_audioPipe) {
         XLOGD_ERROR("odd, audio pipe not created ?");
@@ -534,6 +545,8 @@ void GattAudioService::onOutputPipeClosed(uint32_t generation)
                 generation, m_audioPipeGeneration);
             return;
         }
+        // re-checked by onExitedStreamingState() in case a replacement is installed before then
+        m_pendingOutputPipeCloseGeneration = generation;
     }
 
     XLOGD_INFO("audio output pipe closed");
@@ -675,6 +688,14 @@ void GattAudioService::swapStreamingPipe(PendingReply<int> &&reply, uint32_t dur
     // so the remote keeps streaming uninterrupted while its old consumer sees a normal EOF.
     m_audioPipe = newAudioPipe;
     m_audioPipeGeneration = generation;
+
+    // Restart the 30s session timeout for the replacement; otherwise it would inherit the outgoing
+    // session's deadline (or have none, if that timeout already fired/was canceled).
+    if (m_timeoutEventIdSession >= 0) {
+        m_stateMachine.cancelDelayedEvent(m_timeoutEventIdSession);
+    }
+    m_timeoutEventIdSession = m_stateMachine.postDelayedEvent(StopStreamingRequestEvent, 30000);
+
     guard.unlock();
 
     reply.setResult(fd);

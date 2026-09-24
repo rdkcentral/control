@@ -156,6 +156,9 @@ private:
     // onExitedStreamingState() under the same lock; catches a swapStreamingPipe() that replaced the
     // pipe in the gap between that check and the state machine actually processing the event.
     int64_t m_pendingOutputPipeCloseGeneration = -1;
+    // Set when posting ResumeStreamingEvent for a stale close; tells onEnteredStreamingState() to skip
+    // setup that swapStreamingPipe() already did for the replacement pipe (slot, fd, session timeout).
+    bool m_resumingFromStaleClose = false;
     bool m_emitOneTimeStreamingSignal;
 
     uint32_t m_missedSequences;
@@ -190,6 +193,9 @@ public:
     static const Event::Type AudioInfoTimeoutEvent      = Event::Type(Event::User + 11);
     static const Event::Type AudioLastFrameTimeoutEvent = Event::Type(Event::User + 12);
     static const Event::Type RetryEnableNotificationsEvent = Event::Type(Event::User + 13);
+    // Recovers from a stale OutputPipeCloseEvent: returns to StreamingState without redoing setup
+    // that swapStreamingPipe() already did for the replacement pipe.
+    static const Event::Type ResumeStreamingEvent       = Event::Type(Event::User + 14);
 };
 
 #endif // !defined(GATT_AUDIOSERVICE_H)

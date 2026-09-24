@@ -108,6 +108,7 @@ void GattAudioService::init()
     m_stateMachine.addTransition(StreamingState,            AudioLastFrameTimeoutEvent, StopStreamingState);
 
     m_stateMachine.addTransition(StopStreamingState,        StreamingStoppedEvent,      ReadyState);
+    m_stateMachine.addTransition(StopStreamingState,        ResumeStreamingEvent,       StreamingState);
 
     m_stateMachine.addTransition(StreamingSuperState,       GattErrorEvent,             ReadyState);
 
@@ -277,6 +278,13 @@ void GattAudioService::onEnteredStreamingState()
 {
     std::unique_lock<std::mutex> guard(mAudioPipeMutex);
 
+    if (m_resumingFromStaleClose) {
+        // swapStreamingPipe() already registered the closed-slot, started the pipe, handed back its
+        // fd, and scheduled the session timeout for the replacement - nothing left to do here.
+        m_resumingFromStaleClose = false;
+        return;
+    }
+
     // sanity check we have an audio output pipe
     if (!m_audioPipe) {
         XLOGD_ERROR("odd, no audio pipe already created");
@@ -342,7 +350,11 @@ void GattAudioService::onExitedStreamingState()
     m_lastStreamingExitWasStaleClose =
         (pendingGeneration >= 0) && (static_cast<uint32_t>(pendingGeneration) != m_audioPipeGeneration);
     if (m_lastStreamingExitWasStaleClose) {
-        XLOGD_WARN("ignoring stale output-pipe-closed transition; a replacement pipe is now active");
+        XLOGD_WARN("ignoring stale output-pipe-closed transition; returning to streaming for the replacement pipe");
+        // Posting here is queued and drained by the state machine right after this transition
+        // finishes (before any other event), so there's no window where we're left in StopStreamingState.
+        m_resumingFromStaleClose = true;
+        m_stateMachine.postEvent(ResumeStreamingEvent);
         return;
     }
 

@@ -1260,15 +1260,18 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                 // session's teardown must not stop the remote stream that now belongs to the new session. PTT and
                 // other BLE sessions are key-driven and still stop the remote on the old session end.
                 //
-                // This flag is set before we know whether this replacement request will itself succeed - the old
-                // session's end message is sent synchronously below, before xrsr_session_request() (further down
-                // this function) is even attempted. If this request goes on to fail, no new session adopts the
-                // stream that was just suppressed. The caller is responsible for cleaning that up: see the
-                // audio_start_params.m_started check in ctrlm_obj_network_ble_t::req_process_voice_session_begin(),
-                // which explicitly stops the remote's stream when voice_session_req() returns a failure status
-                // after having already started it.
+                // This flag is set before we know whether this replacement request will itself succeed, but
+                // pre_session_terminate() below synchronously runs cb_start_audio (start_controller_audio_streaming),
+                // which populates cb_audio_start_params->m_started - so by the time xrsr_session_terminate() sends
+                // the old session's end message, we know whether the replacement actually took over the stream.
+                // If it didn't (e.g. swapStreamingPipe() failed), downgrade back to a normal stop so the remote
+                // isn't left streaming indefinitely: the m_started-gated cleanup in
+                // ctrlm_obj_network_ble_t::req_process_voice_session_begin() only fires when m_started is true.
                 session->abort_for_same_controller = (device_type == CTRLM_VOICE_DEVICE_MFV || session->voice_device == CTRLM_VOICE_DEVICE_MFV);
                 pre_session_terminate(std::move(cb_start_audio), cb_audio_start_params, cb_confirm, cb_confirm_param);
+                if (cb_audio_start_params && !cb_audio_start_params->m_started) {
+                    session->abort_for_same_controller = false;
+                }
                 xrsr_session_terminate(voice_device_to_xrsr(session->voice_device)); // Synchronous - this will take a bit of time.  Might need to revisit this down the road.
                 session->abort_for_same_controller = false;
             }

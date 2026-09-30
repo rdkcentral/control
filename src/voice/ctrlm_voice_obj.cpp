@@ -1216,6 +1216,12 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
 
     ctrlm_voice_session_t *session = &this->voice_session[voice_device_to_session_group(device_type)];
 
+    // Networks that gate same-controller-while-streaming behavior on device type (e.g. BLE's MFV
+    // pipe-swap handoff) read this back via start_controller_audio_streaming().
+    if (cb_audio_start_params) {
+        cb_audio_start_params->m_device_type = device_type;
+    }
+
     if(CTRLM_VOICE_STATE_SRC_INVALID == session->state_src) {
         XLOGD_ERROR("Voice is not ready");
         this->voice_session_notify_abort(network_id, controller_id, 0, CTRLM_VOICE_SESSION_ABORT_REASON_SERVER_NOT_READY);

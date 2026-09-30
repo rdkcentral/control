@@ -90,7 +90,7 @@ private:
 public:
     bool isStreaming() const override;
     
-    void startStreaming(Encoding encoding, PendingReply<int> &&reply, uint32_t durationMax = 0) override;
+    void startStreaming(Encoding encoding, PendingReply<int> &&reply, uint32_t durationMax = 0, bool allowPipeSwap = false) override;
     void stopStreaming(uint32_t audioDuration, PendingReply<> &&reply) override;
 
     void status(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs) override;

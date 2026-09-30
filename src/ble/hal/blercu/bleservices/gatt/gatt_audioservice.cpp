@@ -571,14 +571,20 @@ void GattAudioService::onOutputPipeClosed(uint32_t generation)
     \overload
 
  */
-void GattAudioService::startStreaming(Encoding encoding, PendingReply<int> &&reply, uint32_t durationMax)
+void GattAudioService::startStreaming(Encoding encoding, PendingReply<int> &&reply, uint32_t durationMax, bool allowPipeSwap)
 {
-    // A same-controller session replacement (e.g. MFV) can request a new stream while the remote is
-    // still streaming for the outgoing session, whose stop is intentionally suppressed so the
-    // replacement can take over. Swap in a fresh pipe rather than failing "not ready".
+    // A same-controller replacement (MFV only) can swap in a fresh pipe while the remote keeps
+    // streaming, since the outgoing session's stop is suppressed for it. Other callers (e.g. PTT)
+    // aren't backed by that suppression, so they're rejected as busy instead.
     if (m_stateMachine.state() == StreamingState) {
-        XLOGD_INFO("already streaming - swapping in a new pipe for the replacement request");
-        swapStreamingPipe(std::move(reply), durationMax);
+        if (allowPipeSwap) {
+            XLOGD_INFO("already streaming - swapping in a new pipe for the replacement request");
+            swapStreamingPipe(std::move(reply), durationMax);
+        } else {
+            XLOGD_WARN("already streaming - rejecting same-controller request as busy (pipe swap not allowed)");
+            reply.setError("Service is busy");
+            reply.finish();
+        }
         return;
     }
 
@@ -700,6 +706,12 @@ void GattAudioService::swapStreamingPipe(PendingReply<int> &&reply, uint32_t dur
     // so the remote keeps streaming uninterrupted while its old consumer sees a normal EOF.
     m_audioPipe = newAudioPipe;
     m_audioPipeGeneration = generation;
+
+    // Reset per-stream metadata, same as a fresh onEnteredStreamingState() - otherwise these still
+    // describe the outgoing stream and a quick stop can report stats for the wrong stream.
+    m_frameCount      = 0;
+    m_audioDurationMs = -1;
+    m_emitOneTimeStreamingSignal = true;
 
     // Restart the 30s session timeout for the replacement; otherwise it would inherit the outgoing
     // session's deadline (or have none, if that timeout already fired/was canceled).

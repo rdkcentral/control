@@ -3089,7 +3089,9 @@ void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start
     }
 
     uint64_t ieee_address = rcu->ieee_address_get().get_value();
-    if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd)) {
+    // Only MFV may take over an already-streaming pipe; everything else is rejected as busy.
+    const bool allowPipeSwap = (params->m_device_type == CTRLM_VOICE_DEVICE_MFV);
+    if (!ble_rcu_interface_->startAudioStreaming(ieee_address, encoding, streamEnd, fd, allowPipeSwap)) {
        XLOGD_ERROR("failed to start audio streaming on remote");
        return;
     }

@@ -2217,8 +2217,12 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                      // releases the connect without them if they never come.
                      if (g_ctrlm_ble_network.mfv_detection_pending_ieee != dqm->rcu_data.ieee_address) {
                         // Only one MFV detection can be pending at a time (single global ieee/timer). If a
-                        // different controller is still waiting on its detection data, release it now so it
-                        // doesn't get stuck in the deferred-connect/buffering state indefinitely.
+                        // different controller is still waiting on its detection data, its voice session is
+                        // still open and occupies the shared MFV session slot - end it (and stop its BLE
+                        // stream) before admitting the new controller, otherwise req_process_voice_session_begin()
+                        // below is rejected as busy, yet this controller is still marked pending and its
+                        // detection data would later be misapplied to the old session.
+                        end_voice_session_for_controller(g_ctrlm_ble_network.mfv_detection_pending_ieee, CTRLM_VOICE_SESSION_END_REASON_NEW_SESSION);
                         release_pending_mfv_detection("a new MFV detection started for a different controller");
                      }
                      controller->setMfvDetectionPending(true);

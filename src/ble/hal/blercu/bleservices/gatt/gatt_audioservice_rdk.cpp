@@ -318,10 +318,11 @@ void GattAudioServiceRdk::onEnteredStartStreamingState()
  */
 void GattAudioServiceRdk::onEnteredStopStreamingState()
 {
-    if (m_lastStreamingExitWasStaleClose) {
-        // The pipe close that drove us here was already superseded by a swapStreamingPipe()
-        // replacement; the RCU is still streaming to it, so don't tell it to stop.
-        XLOGD_WARN("skipping stop-streaming write for stale output-pipe-closed transition");
+    if (m_lastStreamingExitWasStale) {
+        // Whatever drove us here (a close, a stop-completion timeout, end-of-stream) was already
+        // superseded by a swapStreamingPipe() replacement; the RCU is still streaming to it, so
+        // don't tell it to stop.
+        XLOGD_WARN("skipping stop-streaming write for stale streaming-exit transition");
         GattAudioService::onEnteredStopStreamingState();
         return;
     }

@@ -706,6 +706,9 @@ void ctrlm_obj_network_ble_t::release_pending_mfv_detection(const char *reason) 
       return;
    }
    controllers_[controller_id]->setMfvDetectionPending(false);
+   // Nothing pending anymore - clear the identity so a later detection from another controller
+   // doesn't mistake this (possibly now unrelated) controller for still having one pending.
+   g_ctrlm_ble_network.mfv_detection_pending_ieee = 0;
    XLOGD_WARN("MFV detection data not received (%s) - releasing voice session connect without wake word stream parameters for device: %s",
       reason, controllers_[controller_id]->ieee_address_get().to_string().c_str());
    ctrlm_get_voice_obj()->voice_session_stream_params_update(CTRLM_VOICE_DEVICE_MFV, false, 0, 0, 0.0, 0.0);
@@ -2215,7 +2218,10 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                      // connect/init in the buffering state until the wake word stream parameters are
                      // supplied.  Those arrive in a separate detection-data notification; a safety timeout
                      // releases the connect without them if they never come.
-                     if (g_ctrlm_ble_network.mfv_detection_pending_ieee != dqm->rcu_data.ieee_address) {
+                     // mfv_detection_pending_ieee is 0 when nothing is pending (cleared on every release
+                     // path above); only preempt when it genuinely still refers to a different controller.
+                     if (g_ctrlm_ble_network.mfv_detection_pending_ieee != 0 &&
+                         g_ctrlm_ble_network.mfv_detection_pending_ieee != dqm->rcu_data.ieee_address) {
                         // Only one MFV detection can be pending at a time (single global ieee/timer). If a
                         // different controller is still waiting on its detection data, its voice session is
                         // still open and occupies the shared MFV session slot - end it (and stop its BLE
@@ -2245,6 +2251,9 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   // sent with them included.
                   if (controller->isMfvDetectionPending()) {
                      controller->setMfvDetectionPending(false);
+                     if (g_ctrlm_ble_network.mfv_detection_pending_ieee == dqm->rcu_data.ieee_address) {
+                        g_ctrlm_ble_network.mfv_detection_pending_ieee = 0;
+                     }
                      ctrlm_timeout_destroy(&g_ctrlm_ble_network.mfv_detection_timer_tag);
                      // Confidence is encoded as percent * 10 (e.g. 991 = 99.1%); normalize to 0.0 - 1.0.
                      double confidence = dqm->rcu_data.mfv_confidence / 1000.0;
@@ -2592,6 +2601,9 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
             if (controller->isMfvDetectionPending()) {
                XLOGD_INFO("Push-to-talk pressed while an MFV wake-word session was pending - releasing it for device: %s", controller->ieee_address_get().to_string().c_str());
                controller->setMfvDetectionPending(false);
+               if (g_ctrlm_ble_network.mfv_detection_pending_ieee == dqm->ieee_address) {
+                  g_ctrlm_ble_network.mfv_detection_pending_ieee = 0;
+               }
                ctrlm_timeout_destroy(&g_ctrlm_ble_network.mfv_detection_timer_tag);
                ctrlm_get_voice_obj()->voice_session_stream_params_update(CTRLM_VOICE_DEVICE_MFV, false, 0, 0, 0.0, 0.0);
             }

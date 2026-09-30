@@ -152,13 +152,14 @@ private:
     std::shared_ptr<GattAudioPipe> m_audioPipe;
     // Bumped on every m_audioPipe replace/reset; ties a close notification to its pipe.
     uint32_t m_audioPipeGeneration = 0;
-    // Set by onOutputPipeClosed() right before posting OutputPipeCloseEvent, and re-checked by
-    // onExitedStreamingState() under the same lock; catches a swapStreamingPipe() that replaced the
-    // pipe in the gap between that check and the state machine actually processing the event.
-    int64_t m_pendingOutputPipeCloseGeneration = -1;
-    // Set when posting ResumeStreamingEvent for a stale close; tells onEnteredStreamingState() to skip
+    // Generation the current pipe was on when something last armed a reason to leave StreamingState
+    // (a close notification, a stop-completion timeout, or an end-of-stream event). Re-checked by
+    // onExitedStreamingState() under the same lock, so a swapStreamingPipe() replacement installed in
+    // the gap between arming and the state machine actually processing the event is caught.
+    int64_t m_pendingStreamingExitGeneration = -1;
+    // Set when posting ResumeStreamingEvent for a stale exit; tells onEnteredStreamingState() to skip
     // setup that swapStreamingPipe() already did for the replacement pipe (slot, fd, session timeout).
-    bool m_resumingFromStaleClose = false;
+    bool m_resumingFromStaleExit = false;
     bool m_emitOneTimeStreamingSignal;
 
     uint32_t m_missedSequences;
@@ -170,9 +171,9 @@ private:
 
 protected:
     // True for the duration of onEnteredStopStreamingState() when the just-exited StreamingState was
-    // caused by a stale OutputPipeCloseEvent (superseded by a swapStreamingPipe() replacement); lets
-    // subclasses skip sending a real stop command for a stream that's still actually running.
-    bool m_lastStreamingExitWasStaleClose = false;
+    // caused by a stale event from the outgoing pipe (superseded by a swapStreamingPipe() replacement);
+    // lets subclasses skip sending a real stop command for a stream that's still actually running.
+    bool m_lastStreamingExitWasStale = false;
 
 public:
     static const Event::Type StartServiceRequestEvent   = Event::Type(Event::User + 1);

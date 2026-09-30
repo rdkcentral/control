@@ -2782,8 +2782,22 @@ void ctrlm_obj_network_ble_t::ind_process_voice_session_end(void *data, int size
    if (dqm->suppress_stream_stop) {
       // A new session on the same controller has already re-adopted the remote's stream. Stopping it here
       // would tear down the new session's audio and prevent the remote from delivering its detection data.
+      // Note: that new session has already re-armed isMfvDetectionPending()/mfv_detection_pending_ieee for
+      // this same controller by this point, so the cleanup below must not run in this branch.
       XLOGD_INFO("skipping stopAudioStreaming for controller id <%u> - stream reused by new session", controller_id);
       return;
+   }
+
+   if (controllers_[controller_id]->isMfvDetectionPending()) {
+      // The session ended (normally, via timeout, or disconnect) before its detection data ever
+      // arrived. Clear the pending state now so a late/stale Detection Data notification can't be
+      // misapplied to whatever MFV session (possibly a different, newer one) is active by then.
+      XLOGD_WARN("MFV session ended for controller id <%u> while detection was still pending - clearing it", controller_id);
+      controllers_[controller_id]->setMfvDetectionPending(false);
+      if (g_ctrlm_ble_network.mfv_detection_pending_ieee == ieee_address) {
+         g_ctrlm_ble_network.mfv_detection_pending_ieee = 0;
+         ctrlm_timeout_destroy(&g_ctrlm_ble_network.mfv_detection_timer_tag);
+      }
    }
 
    if (ble_rcu_interface_) {

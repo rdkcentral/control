@@ -108,8 +108,7 @@ public:
                                 int customListSize);
 
     bool getAudioFormat(uint64_t ieee_address, ctrlm_hal_ble_VoiceEncoding_t encoding, AudioFormat &format);
-    // allowPipeSwap: lets a same-controller request replace an already-streaming pipe instead of
-    // being rejected as busy. Only MFV should pass true.
+    // allowPipeSwap: lets a same-controller request replace an already-streaming pipe instead of being rejected as busy (MFV only).
     bool startAudioStreaming(uint64_t ieee_address, ctrlm_hal_ble_VoiceEncoding_t encoding, ctrlm_hal_ble_VoiceStreamEnd_t streamEnd, int &fd, bool allowPipeSwap = false);
     bool stopAudioStreaming(uint64_t ieee_address, uint32_t audioDuration = 0);
     bool getAudioStatus(uint64_t ieee_address, uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs);

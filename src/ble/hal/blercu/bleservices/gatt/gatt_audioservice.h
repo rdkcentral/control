@@ -152,13 +152,10 @@ private:
     std::shared_ptr<GattAudioPipe> m_audioPipe;
     // Bumped on every m_audioPipe replace/reset; ties a close notification to its pipe.
     uint32_t m_audioPipeGeneration = 0;
-    // Generation the current pipe was on when something last armed a reason to leave StreamingState
-    // (a close notification, a stop-completion timeout, or an end-of-stream event). Re-checked by
-    // onExitedStreamingState() under the same lock, so a swapStreamingPipe() replacement installed in
-    // the gap between arming and the state machine actually processing the event is caught.
+    // Generation recorded when something last armed a reason to leave StreamingState; onExitedStreamingState()
+    // re-checks it so a pipe swap installed in the meantime is detected as stale.
     int64_t m_pendingStreamingExitGeneration = -1;
-    // Set when posting ResumeStreamingEvent for a stale exit; tells onEnteredStreamingState() to skip
-    // setup that swapStreamingPipe() already did for the replacement pipe (slot, fd, session timeout).
+    // Set when posting ResumeStreamingEvent for a stale exit, so onEnteredStreamingState() skips redundant setup.
     bool m_resumingFromStaleExit = false;
     bool m_emitOneTimeStreamingSignal;
 
@@ -170,9 +167,7 @@ private:
     uint32_t m_audioDurationMs     = 0;
 
 protected:
-    // True for the duration of onEnteredStopStreamingState() when the just-exited StreamingState was
-    // caused by a stale event from the outgoing pipe (superseded by a swapStreamingPipe() replacement);
-    // lets subclasses skip sending a real stop command for a stream that's still actually running.
+    // True during onEnteredStopStreamingState() for a stale exit; lets subclasses skip the real stop command.
     bool m_lastStreamingExitWasStale = false;
 
 public:
@@ -194,8 +189,7 @@ public:
     static const Event::Type AudioInfoTimeoutEvent      = Event::Type(Event::User + 11);
     static const Event::Type AudioLastFrameTimeoutEvent = Event::Type(Event::User + 12);
     static const Event::Type RetryEnableNotificationsEvent = Event::Type(Event::User + 13);
-    // Recovers from a stale OutputPipeCloseEvent: returns to StreamingState without redoing setup
-    // that swapStreamingPipe() already did for the replacement pipe.
+    // Recovers from a stale exit: returns to StreamingState without redoing the replacement's setup.
     static const Event::Type ResumeStreamingEvent       = Event::Type(Event::User + 14);
 };
 

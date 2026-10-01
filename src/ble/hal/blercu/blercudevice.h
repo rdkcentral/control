@@ -140,8 +140,7 @@ public:
     virtual bool audioStreaming() const = 0;
 
     virtual bool getAudioFormat(Encoding encoding, AudioFormat &format) const = 0;
-    // allowPipeSwap: lets a same-controller request replace an already-streaming pipe instead of
-    // being rejected as busy. Only MFV should pass true.
+    // allowPipeSwap: lets a same-controller request replace an already-streaming pipe instead of being rejected as busy (MFV only).
     virtual void startAudioStreaming(uint32_t encoding, PendingReply<int> &&reply, uint32_t durationMax = 0, bool allowPipeSwap = false) = 0;
     virtual void stopAudioStreaming(uint32_t audioDuration, PendingReply<> &&reply) = 0;
     virtual void getAudioStatus(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs) = 0;

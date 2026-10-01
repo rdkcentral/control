@@ -63,8 +63,7 @@ public:
     virtual uint32_t audioCodecs() const = 0;
 
     virtual bool audioFormat(Encoding encoding, AudioFormat &format) const = 0;
-    // allowPipeSwap: lets a same-controller request take over an already-streaming pipe (see
-    // swapStreamingPipe()) instead of being rejected as busy. Only MFV should pass true.
+    // allowPipeSwap: lets a same-controller request take over an already-streaming pipe instead of being rejected as busy (MFV only).
     virtual void startStreaming(Encoding encoding, PendingReply<int> &&reply, uint32_t durationMax = 0, bool allowPipeSwap = false) = 0;
     virtual void stopStreaming(uint32_t audioDuration, PendingReply<> &&reply) = 0;
     

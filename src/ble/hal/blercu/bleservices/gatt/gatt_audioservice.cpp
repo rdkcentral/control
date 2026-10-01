@@ -279,8 +279,7 @@ void GattAudioService::onEnteredStreamingState()
     std::unique_lock<std::mutex> guard(mAudioPipeMutex);
 
     if (m_resumingFromStaleExit) {
-        // swapStreamingPipe() already registered the closed-slot, started the pipe, handed back its
-        // fd, and scheduled the session timeout for the replacement - nothing left to do here.
+        // swapStreamingPipe() already did this setup for the replacement pipe.
         m_resumingFromStaleExit = false;
         return;
     }
@@ -343,18 +342,15 @@ void GattAudioService::onExitedStreamingState()
 {
     std::unique_lock<std::mutex> guard(mAudioPipeMutex);
 
-    // Re-check: a swapStreamingPipe() replacement may have landed after whatever armed this exit last
-    // checked but before this transition ran. If so, leave the replacement alone entirely.
+    // A swap may have landed after whatever armed this exit last checked; if so, leave it alone.
     const int64_t pendingGeneration = m_pendingStreamingExitGeneration;
     m_pendingStreamingExitGeneration = -1;
     m_lastStreamingExitWasStale =
         (pendingGeneration >= 0) && (static_cast<uint32_t>(pendingGeneration) != m_audioPipeGeneration);
     if (m_lastStreamingExitWasStale) {
         XLOGD_WARN("ignoring stale streaming-exit transition; returning to streaming for the replacement pipe");
-        // Posting here is queued and drained by the state machine right after this transition
-        // finishes (before any other event), so there's no window where we're left in StopStreamingState.
         m_resumingFromStaleExit = true;
-        m_stateMachine.postEvent(ResumeStreamingEvent);
+        m_stateMachine.postEvent(ResumeStreamingEvent); // queued and drained before any other event
         return;
     }
 
@@ -442,9 +438,7 @@ void GattAudioService::onAudioDataNotification(const vector<uint8_t> &value)
     if (audioPipe) {
         bool endOfStream = audioPipe->addNotification(reinterpret_cast<const uint8_t*>(value.data()), value.size());
         if (endOfStream) {
-            // Re-checked by onExitedStreamingState() in case a replacement is installed before the
-            // event below is processed.
-            m_pendingStreamingExitGeneration = m_audioPipeGeneration;
+            m_pendingStreamingExitGeneration = m_audioPipeGeneration; // generation-guard this exit
         }
         guard.unlock();
         audioPipe->notifyOutputPipeClosed();
@@ -488,9 +482,7 @@ void GattAudioService::onAudioInfoReceived(uint16_t frameCount, uint32_t duratio
     }
     
     if(m_StreamStopPending && !more_frames) { // if stream stop is pending and no more frames are needed, then stop the stream
-        // Re-checked by onExitedStreamingState() in case a replacement is installed before the
-        // event below is processed.
-        m_pendingStreamingExitGeneration = m_audioPipeGeneration;
+        m_pendingStreamingExitGeneration = m_audioPipeGeneration; // generation-guard this exit
         guard.unlock();
 
         m_stateMachine.postEvent(StopStreamingRequestEvent);
@@ -498,9 +490,7 @@ void GattAudioService::onAudioInfoReceived(uint16_t frameCount, uint32_t duratio
         XLOGD_INFO("wait for stream stop request");
     } else {
         XLOGD_INFO("wait for remaining frames to arrive");
-        // Re-checked by onExitedStreamingState() in case a replacement is installed before this
-        // timeout fires.
-        m_pendingStreamingExitGeneration = m_audioPipeGeneration;
+        m_pendingStreamingExitGeneration = m_audioPipeGeneration; // generation-guard this exit
         // Set a timeout event for receiving the remaining audio frames
         m_timeoutEventIdAudioLastFrame = m_stateMachine.postDelayedEvent(AudioLastFrameTimeoutEvent, 500);
     }
@@ -584,9 +574,8 @@ void GattAudioService::onOutputPipeClosed(uint32_t generation)
  */
 void GattAudioService::startStreaming(Encoding encoding, PendingReply<int> &&reply, uint32_t durationMax, bool allowPipeSwap)
 {
-    // A same-controller replacement (MFV only) can swap in a fresh pipe while the remote keeps
-    // streaming, since the outgoing session's stop is suppressed for it. Other callers (e.g. PTT)
-    // aren't backed by that suppression, so they're rejected as busy instead.
+    // MFV-only: swap in a fresh pipe for a same-controller replacement, since only MFV suppresses the
+    // outgoing session's stop command; others are rejected as busy instead.
     if (m_stateMachine.state() == StreamingState) {
         if (allowPipeSwap) {
             XLOGD_INFO("already streaming - swapping in a new pipe for the replacement request");
@@ -718,22 +707,18 @@ void GattAudioService::swapStreamingPipe(PendingReply<int> &&reply, uint32_t dur
     m_audioPipe = newAudioPipe;
     m_audioPipeGeneration = generation;
 
-    // Reset per-stream metadata, same as a fresh onEnteredStreamingState() - otherwise these still
-    // describe the outgoing stream and a quick stop can report stats for the wrong stream.
+    // Reset per-stream metadata too, same as a fresh start - these still described the outgoing stream.
     m_frameCount      = 0;
     m_audioDurationMs = -1;
     m_emitOneTimeStreamingSignal = true;
 
-    // Restart the 30s session timeout for the replacement; otherwise it would inherit the outgoing
-    // session's deadline (or have none, if that timeout already fired/was canceled).
+    // Restart the session timeout; otherwise it would inherit the outgoing session's deadline.
     if (m_timeoutEventIdSession >= 0) {
         m_stateMachine.cancelDelayedEvent(m_timeoutEventIdSession);
     }
     m_timeoutEventIdSession = m_stateMachine.postDelayedEvent(StopStreamingRequestEvent, 30000);
 
-    // Cancel any outgoing-stream timeouts too - left armed, they'd fire against the replacement and
-    // drive it into StopStreamingState. Also drop any pending-exit watermark the outgoing pipe left
-    // behind, so a leftover stale value can't be mistaken for the replacement's own later exit.
+    // Cancel outgoing-stream timeouts too - left armed, they'd drive the replacement into StopStreamingState.
     if (m_timeoutEventIdAudioInfo >= 0) {
         m_stateMachine.cancelDelayedEvent(m_timeoutEventIdAudioInfo);
         m_timeoutEventIdAudioInfo = -1;
@@ -742,7 +727,7 @@ void GattAudioService::swapStreamingPipe(PendingReply<int> &&reply, uint32_t dur
         m_stateMachine.cancelDelayedEvent(m_timeoutEventIdAudioLastFrame);
         m_timeoutEventIdAudioLastFrame = -1;
     }
-    m_pendingStreamingExitGeneration = -1;
+    m_pendingStreamingExitGeneration = -1; // drop any stale watermark left by the outgoing pipe
 
     guard.unlock();
 
@@ -799,10 +784,7 @@ void GattAudioService::stopStreaming(uint32_t audioDuration, PendingReply<> &&re
                     postEvent = false;
 
                     m_StreamStopPending = true;
-
-                    // Re-checked by onExitedStreamingState() in case a replacement is installed before
-                    // this timeout fires.
-                    m_pendingStreamingExitGeneration = m_audioPipeGeneration;
+                    m_pendingStreamingExitGeneration = m_audioPipeGeneration; // generation-guard this exit
 
                     // The audio info descriptor could be explicitly read, but that will generate more BLE traffic and in most cases the audio info notification will arrive soon.
                     // Instead a timeout will be used to handle any error scenarios where the audio info notification doesn't arrive.
@@ -812,9 +794,7 @@ void GattAudioService::stopStreaming(uint32_t audioDuration, PendingReply<> &&re
                     XLOGD_INFO("wait for remaining frames to arrive");
                     postEvent = false;
 
-                    // Re-checked by onExitedStreamingState() in case a replacement is installed before
-                    // this timeout fires.
-                    m_pendingStreamingExitGeneration = m_audioPipeGeneration;
+                    m_pendingStreamingExitGeneration = m_audioPipeGeneration; // generation-guard this exit
                     m_timeoutEventIdAudioLastFrame = m_stateMachine.postDelayedEvent(AudioLastFrameTimeoutEvent, 500);
                 }
             } else {

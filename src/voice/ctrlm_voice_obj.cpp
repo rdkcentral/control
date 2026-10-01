@@ -1216,8 +1216,7 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
 
     ctrlm_voice_session_t *session = &this->voice_session[voice_device_to_session_group(device_type)];
 
-    // Networks that gate same-controller-while-streaming behavior on device type (e.g. BLE's MFV
-    // pipe-swap handoff) read this back via start_controller_audio_streaming().
+    // BLE reads this back in start_controller_audio_streaming() to gate its MFV pipe-swap handoff.
     if (cb_audio_start_params) {
         cb_audio_start_params->m_device_type = device_type;
     }
@@ -1262,17 +1261,11 @@ ctrlm_voice_session_response_status_t ctrlm_voice_t::voice_session_req(ctrlm_net
                 request_new_session = false;
             } else { // Cancel current speech router session
                 XLOGD_WARN("Session in progress with same controller - src <%s> dst <%s>, aborting this and continuing..", ctrlm_voice_state_src_str(session->state_src), ctrlm_voice_state_dst_str(session->state_dst));
-                // MFV only: the remote autonomously (re)started its wake-word stream for this request, so the old
-                // session's teardown must not stop the remote stream that now belongs to the new session. PTT and
-                // other BLE sessions are key-driven and still stop the remote on the old session end.
-                //
-                // This flag is set before we know whether this replacement request will itself succeed, but
-                // pre_session_terminate() below synchronously runs cb_start_audio (start_controller_audio_streaming),
-                // which populates cb_audio_start_params->m_started - so by the time xrsr_session_terminate() sends
-                // the old session's end message, we know whether the replacement actually took over the stream.
-                // If it didn't (e.g. swapStreamingPipe() failed), downgrade back to a normal stop so the remote
-                // isn't left streaming indefinitely: the m_started-gated cleanup in
-                // ctrlm_obj_network_ble_t::req_process_voice_session_begin() only fires when m_started is true.
+                // MFV only: the remote autonomously restarted its wake-word stream, so the old session's
+                // teardown must not stop it. PTT/other BLE sessions are key-driven and still stop normally.
+                // Set before we know the replacement will succeed, but pre_session_terminate() below
+                // synchronously populates cb_audio_start_params->m_started first, so we can downgrade back
+                // to a normal stop here if it didn't take over the stream (leaving nothing else to clean up).
                 session->abort_for_same_controller = (device_type == CTRLM_VOICE_DEVICE_MFV || session->voice_device == CTRLM_VOICE_DEVICE_MFV);
                 pre_session_terminate(std::move(cb_start_audio), cb_audio_start_params, cb_confirm, cb_confirm_param);
                 if (cb_audio_start_params && !cb_audio_start_params->m_started) {

@@ -57,17 +57,7 @@ See [PRODUCT.md](PRODUCT.md) for a fuller description of product capabilities an
 
 Builds require an RDK-compatible Linux environment or the corresponding Yocto SDK/container. The project links to platform-provided components such as Thunder/WPEFramework, BLE and RF4CE libraries, `xr-voice-sdk`, GLib, SQLite, D-Bus, and other RDK libraries. A regular macOS or generic Linux installation does not provide these dependencies by itself.
 
-The top-level CMake project exposes feature flags for platform variants. The principal defaults are BLE enabled, RF4CE enabled, and Thunder enabled:
-
-```sh
-cmake -S . -B build \
-  -DBUILD_SYSTEM=YOCTO \
-  -DCMAKE_BUILD_TYPE=Release
-cmake --build build --target controlMgr
-cmake --install build --prefix "$DESTDIR"
-```
-
-For a native CI build, inspect the scripts in [`ci/`](ci/) and the [native build workflow](.github/workflows/native_full_build.yml). Enable or disable features with CMake options such as `BLE_ENABLED`, `RF4CE_ENABLED`, `THUNDER`, `TELEMETRY_SUPPORT`, `AUTH_ENABLED`, `BREAKPAD`, `XRSR_HTTP`, and `XRSR_SDT`. The exact options and their dependencies are defined in [CMakeLists.txt](CMakeLists.txt).
+For a native CI build, inspect the scripts in [`ci/`](ci/) and the [native build workflow](.github/workflows/native_full_build.yml). Enable or disable features with CMake options.  The exact options and their dependencies are defined in [CMakeLists.txt](CMakeLists.txt).
 
 ## Runtime Configuration
 
@@ -89,7 +79,7 @@ The `network_ble` object controls BLE network behavior:
 Each `models` entry has these fields:
 
 - `name` is a required field for the model identifier used by Control Manager.
-- `advertisingNames.regexPairing` is a required field that needs to match the bluetooth advertising name.  This is a ECMAScript regular expression matched during discovery and pairing.  A regex can be used here for remotes that include unique identifiers in the advertising name, for example `[U][0-9][0-9][0-9] RDK-RCU`
+- `advertisingNames.regexPairing` is a required field that needs to match the bluetooth advertising name.  This is an ECMAScript regular expression matched during discovery and pairing.  A regex can be used here for remotes that include unique identifiers in the advertising name, for example `[U][0-9][0-9][0-9] RDK-RCU`
 - `advertisingNames.optional.regexReconnect` optionally supplies a different expression for reconnecting to a previously paired remote.  This is useful for models that change the advertising name based on paired status or include unique identifier digits, for example `[UP][0-9][0-9][0-9] RDK-RCU`
 - `advertisingNames.optional.formatSpecifierTargetedPairing` optionally formats a targeted-pairing name, for example `U%03hhu RDK-RCU`.  This is used for models that include unique identifiers in the name and allows for targeting a specific device for pairing.
 - `otaProductName` optionally identifies the product name used by remote firmware updates.

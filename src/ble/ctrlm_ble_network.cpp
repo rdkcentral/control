@@ -697,6 +697,9 @@ void ctrlm_obj_network_ble_t::req_process_mfv_detection_timeout(void *data, int 
 // controller is left stuck in the deferred-connect/buffering state indefinitely.
 void ctrlm_obj_network_ble_t::release_pending_mfv_detection(const char *reason) {
    unsigned long long ieee_address = g_ctrlm_ble_network.mfv_detection_pending_ieee;
+   g_ctrlm_ble_network.mfv_detection_pending_ieee = 0; // always clear, even if nothing below applies
+   ctrlm_timeout_destroy(&g_ctrlm_ble_network.mfv_detection_timer_tag);
+
    ctrlm_controller_id_t controller_id;
    if (!getControllerId(ieee_address, &controller_id)) {
       return;
@@ -706,7 +709,6 @@ void ctrlm_obj_network_ble_t::release_pending_mfv_detection(const char *reason) 
       return;
    }
    controllers_[controller_id]->setMfvDetectionPending(false);
-   g_ctrlm_ble_network.mfv_detection_pending_ieee = 0; // nothing pending anymore
    XLOGD_WARN("MFV detection data not received (%s) - releasing voice session connect without wake word stream parameters for device: %s",
       reason, controllers_[controller_id]->ieee_address_get().to_string().c_str());
    ctrlm_get_voice_obj()->voice_session_stream_params_update(CTRLM_VOICE_DEVICE_MFV, false, 0, 0, 0.0, 0.0);

@@ -1058,8 +1058,14 @@ void GattAudioServiceRdk::requestMfvModelConfig()
  */
 void GattAudioServiceRdk::requestStartMfvSessionStartNotify()
 {
-    auto replyHandler = [this](PendingReply<> *reply)
+    const unsigned int generation = m_mfvWriteGeneration;
+
+    auto replyHandler = [this, generation](PendingReply<> *reply)
     {
+        if (generation != m_mfvWriteGeneration) {
+            XLOGD_WARN("Ignoring stale MFV Session Start notify-enable completion");
+            return;
+        }
         if (reply->isError()) {
             m_mfvState.sessionStartNotifyRequested = false;
             ++m_mfvState.sessionStartNotifyRetries;
@@ -1079,8 +1085,6 @@ void GattAudioServiceRdk::requestStartMfvSessionStartNotify()
         }
     };
 
-    const unsigned int generation = m_mfvWriteGeneration;
-
     m_mfvSessionStartCharacteristic->enableNotifications(
         Slot<const std::vector<uint8_t> &>(getIsAlivePtr(),
             std::bind(&GattAudioServiceRdk::onMfvSessionStartChanged, this, generation, std::placeholders::_1)),
@@ -1095,8 +1099,14 @@ void GattAudioServiceRdk::requestStartMfvSessionStartNotify()
  */
 void GattAudioServiceRdk::requestStartMfvDetectionDataNotify()
 {
-    auto replyHandler = [this](PendingReply<> *reply)
+    const unsigned int generation = m_mfvWriteGeneration;
+
+    auto replyHandler = [this, generation](PendingReply<> *reply)
     {
+        if (generation != m_mfvWriteGeneration) {
+            XLOGD_WARN("Ignoring stale MFV Detection Data notify-enable completion");
+            return;
+        }
         if (reply->isError()) {
             m_mfvState.detectionDataNotifyRequested = false;
             ++m_mfvState.detectionDataNotifyRetries;
@@ -1116,8 +1126,6 @@ void GattAudioServiceRdk::requestStartMfvDetectionDataNotify()
         }
     };
 
-    const unsigned int generation = m_mfvWriteGeneration;
-
     m_mfvDetectionDataCharacteristic->enableNotifications(
         Slot<const std::vector<uint8_t> &>(getIsAlivePtr(),
             std::bind(&GattAudioServiceRdk::onMfvDetectionDataChanged, this, generation, std::placeholders::_1)),
@@ -1132,8 +1140,14 @@ void GattAudioServiceRdk::requestStartMfvDetectionDataNotify()
  */
 void GattAudioServiceRdk::requestStartMfvPrivacyNotify()
 {
-    auto replyHandler = [this](PendingReply<> *reply)
+    const unsigned int generation = m_mfvWriteGeneration;
+
+    auto replyHandler = [this, generation](PendingReply<> *reply)
     {
+        if (generation != m_mfvWriteGeneration) {
+            XLOGD_WARN("Ignoring stale MFV Privacy notify-enable completion");
+            return;
+        }
         if (reply->isError()) {
             m_mfvState.privacyNotifyRequested = false;
             ++m_mfvState.privacyNotifyRetries;
@@ -1152,8 +1166,6 @@ void GattAudioServiceRdk::requestStartMfvPrivacyNotify()
             maybeEnableMfvNotifications();
         }
     };
-
-    const unsigned int generation = m_mfvWriteGeneration;
 
     m_mfvPrivacyCharacteristic->enableNotifications(
         Slot<const std::vector<uint8_t> &>(getIsAlivePtr(),

@@ -36,6 +36,7 @@
 
 #include "utils/statemachine.h"
 #include <mutex>
+#include <atomic>
 #include "ctrlm_hal.h"
 
 class BleGattService;
@@ -157,7 +158,8 @@ private:
     int64_t m_pendingStreamingExitGeneration = -1;
     // Set when posting ResumeStreamingEvent for a stale exit, so onEnteredStreamingState() skips redundant setup.
     bool m_resumingFromStaleExit = false;
-    bool m_emitOneTimeStreamingSignal;
+    // Atomic: onAudioDataNotification() reads/writes this from the BlueZ notify thread without the mutex.
+    std::atomic<bool> m_emitOneTimeStreamingSignal;
 
     uint32_t m_missedSequences;
     uint8_t  m_lastSequenceNumber;

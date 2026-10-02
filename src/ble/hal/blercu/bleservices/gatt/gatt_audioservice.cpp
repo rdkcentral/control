@@ -574,9 +574,8 @@ void GattAudioService::onOutputPipeClosed(uint32_t generation)
  */
 void GattAudioService::startStreaming(Encoding encoding, PendingReply<int> &&reply, uint32_t durationMax, bool allowPipeSwap)
 {
-    // MFV-only: swap in a fresh pipe for a same-controller replacement, since only MFV suppresses the
-    // outgoing session's stop command; others are rejected as busy instead.
     if (m_stateMachine.state() == StreamingState) {
+        // MFV-only: swap in a fresh pipe for a same-controller replacement
         if (allowPipeSwap) {
             XLOGD_INFO("already streaming - swapping in a new pipe for the replacement request");
             swapStreamingPipe(std::move(reply), durationMax);

@@ -159,7 +159,7 @@ public:
     bool audioStreaming() const override;
 
     bool getAudioFormat(Encoding encoding, AudioFormat &format) const override;
-    void startAudioStreaming(uint32_t encoding, PendingReply<int> &&reply, uint32_t durationMax = 0) override;
+    void startAudioStreaming(uint32_t encoding, PendingReply<int> &&reply, uint32_t durationMax = 0, bool allowPipeSwap = false) override;
     void stopAudioStreaming(uint32_t audioDuration, PendingReply<> &&reply) override;
     void getAudioStatus(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs) override;
     bool getFirstAudioDataTime(ctrlm_timestamp_t &time) override;

@@ -36,6 +36,7 @@
 
 #include "utils/statemachine.h"
 #include <mutex>
+#include <atomic>
 #include "ctrlm_hal.h"
 
 class BleGattService;
@@ -90,7 +91,7 @@ private:
 public:
     bool isStreaming() const override;
     
-    void startStreaming(Encoding encoding, PendingReply<int> &&reply, uint32_t durationMax = 0) override;
+    void startStreaming(Encoding encoding, PendingReply<int> &&reply, uint32_t durationMax = 0, bool allowPipeSwap = false) override;
     void stopStreaming(uint32_t audioDuration, PendingReply<> &&reply) override;
 
     void status(uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs) override;
@@ -119,7 +120,12 @@ private:
 
     void onExitedStreamingSuperState();
 
-    void onOutputPipeClosed();
+    void onOutputPipeClosed(uint32_t generation);
+
+    // Handles startStreaming() being called while already in StreamingState (a same-controller session
+    // replacement). Swaps in a fresh pipe/fd without re-entering the start/stop states, so the remote
+    // keeps streaming uninterrupted through the handoff.
+    void swapStreamingPipe(PendingReply<int> &&reply, uint32_t durationMax);
 
 private:
     std::shared_ptr<bool> m_isAlive;
@@ -145,7 +151,15 @@ private:
 
     std::mutex mAudioPipeMutex;
     std::shared_ptr<GattAudioPipe> m_audioPipe;
-    bool m_emitOneTimeStreamingSignal;
+    // Bumped on every m_audioPipe replace/reset; ties a close notification to its pipe.
+    uint32_t m_audioPipeGeneration = 0;
+    // Generation recorded when something last armed a reason to leave StreamingState; onExitedStreamingState()
+    // re-checks it so a pipe swap installed in the meantime is detected as stale.
+    int64_t m_pendingStreamingExitGeneration = -1;
+    // Set when posting ResumeStreamingEvent for a stale exit, so onEnteredStreamingState() skips redundant setup.
+    bool m_resumingFromStaleExit = false;
+    // Atomic: onAudioDataNotification() reads/writes this from the BlueZ notify thread without the mutex.
+    std::atomic<bool> m_emitOneTimeStreamingSignal;
 
     uint32_t m_missedSequences;
     uint8_t  m_lastSequenceNumber;
@@ -153,6 +167,10 @@ private:
     bool     m_frameCountSupported = false;
     uint16_t m_frameCount          = 0;
     uint32_t m_audioDurationMs     = 0;
+
+protected:
+    // True during onEnteredStopStreamingState() for a stale exit; lets subclasses skip the real stop command.
+    bool m_lastStreamingExitWasStale = false;
 
 public:
     static const Event::Type StartServiceRequestEvent   = Event::Type(Event::User + 1);
@@ -172,7 +190,9 @@ public:
 
     static const Event::Type AudioInfoTimeoutEvent      = Event::Type(Event::User + 11);
     static const Event::Type AudioLastFrameTimeoutEvent = Event::Type(Event::User + 12);
-
+    static const Event::Type RetryEnableNotificationsEvent = Event::Type(Event::User + 13);
+    // Recovers from a stale exit: returns to StreamingState without redoing the replacement's setup.
+    static const Event::Type ResumeStreamingEvent       = Event::Type(Event::User + 14);
 };
 
 #endif // !defined(GATT_AUDIOSERVICE_H)

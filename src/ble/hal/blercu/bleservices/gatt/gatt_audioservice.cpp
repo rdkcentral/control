@@ -108,6 +108,7 @@ void GattAudioService::init()
     m_stateMachine.addTransition(StreamingState,            AudioLastFrameTimeoutEvent, StopStreamingState);
 
     m_stateMachine.addTransition(StopStreamingState,        StreamingStoppedEvent,      ReadyState);
+    m_stateMachine.addTransition(StopStreamingState,        ResumeStreamingEvent,       StreamingState);
 
     m_stateMachine.addTransition(StreamingSuperState,       GattErrorEvent,             ReadyState);
 
@@ -277,6 +278,12 @@ void GattAudioService::onEnteredStreamingState()
 {
     std::unique_lock<std::mutex> guard(mAudioPipeMutex);
 
+    if (m_resumingFromStaleExit) {
+        // swapStreamingPipe() already did this setup for the replacement pipe.
+        m_resumingFromStaleExit = false;
+        return;
+    }
+
     // sanity check we have an audio output pipe
     if (!m_audioPipe) {
         XLOGD_ERROR("odd, no audio pipe already created");
@@ -291,8 +298,9 @@ void GattAudioService::onEnteredStreamingState()
 
 
     // connect to the closed signal from the client audio pipe
-    m_audioPipe->addOutputPipeClosedSlot(Slot<>(m_isAlive, 
-            std::bind(&GattAudioService::onOutputPipeClosed, this)));
+    const uint32_t generation = m_audioPipeGeneration;
+    m_audioPipe->addOutputPipeClosedSlot(Slot<>(m_isAlive,
+            std::bind(&GattAudioService::onOutputPipeClosed, this, generation)));
 
 
     // and finally start the audio pipe
@@ -334,6 +342,18 @@ void GattAudioService::onExitedStreamingState()
 {
     std::unique_lock<std::mutex> guard(mAudioPipeMutex);
 
+    // A swap may have landed after whatever armed this exit last checked; if so, leave it alone.
+    const int64_t pendingGeneration = m_pendingStreamingExitGeneration;
+    m_pendingStreamingExitGeneration = -1;
+    m_lastStreamingExitWasStale =
+        (pendingGeneration >= 0) && (static_cast<uint32_t>(pendingGeneration) != m_audioPipeGeneration);
+    if (m_lastStreamingExitWasStale) {
+        XLOGD_WARN("ignoring stale streaming-exit transition; returning to streaming for the replacement pipe");
+        m_resumingFromStaleExit = true;
+        m_stateMachine.postEvent(ResumeStreamingEvent); // queued and drained before any other event
+        return;
+    }
+
     // destroy the audio pipe
     if (!m_audioPipe) {
         XLOGD_ERROR("odd, audio pipe not created ?");
@@ -351,6 +371,7 @@ void GattAudioService::onExitedStreamingState()
 
         // destroy the audio pipe (closes all file handles)
         m_audioPipe.reset();
+        ++m_audioPipeGeneration;
     }
 
     // cancel the audio info timeout event
@@ -413,9 +434,14 @@ void GattAudioService::onAudioDataNotification(const vector<uint8_t> &value)
 
     std::unique_lock<std::mutex> guard(mAudioPipeMutex);
     // add the notification to the audio pipe
-    if (m_audioPipe) {
-        bool endOfStream = m_audioPipe->addNotification(reinterpret_cast<const uint8_t*>(value.data()), value.size());
+    std::shared_ptr<GattAudioPipe> audioPipe = m_audioPipe; // keep the pipe alive past the unlock
+    if (audioPipe) {
+        bool endOfStream = audioPipe->addNotification(reinterpret_cast<const uint8_t*>(value.data()), value.size());
+        if (endOfStream) {
+            m_pendingStreamingExitGeneration = m_audioPipeGeneration; // generation-guard this exit
+        }
         guard.unlock();
+        audioPipe->notifyOutputPipeClosed();
         if(endOfStream) {
             m_stateMachine.postEvent(StopStreamingRequestEvent);
         }
@@ -456,6 +482,7 @@ void GattAudioService::onAudioInfoReceived(uint16_t frameCount, uint32_t duratio
     }
     
     if(m_StreamStopPending && !more_frames) { // if stream stop is pending and no more frames are needed, then stop the stream
+        m_pendingStreamingExitGeneration = m_audioPipeGeneration; // generation-guard this exit
         guard.unlock();
 
         m_stateMachine.postEvent(StopStreamingRequestEvent);
@@ -463,6 +490,7 @@ void GattAudioService::onAudioInfoReceived(uint16_t frameCount, uint32_t duratio
         XLOGD_INFO("wait for stream stop request");
     } else {
         XLOGD_INFO("wait for remaining frames to arrive");
+        m_pendingStreamingExitGeneration = m_audioPipeGeneration; // generation-guard this exit
         // Set a timeout event for receiving the remaining audio frames
         m_timeoutEventIdAudioLastFrame = m_stateMachine.postDelayedEvent(AudioLastFrameTimeoutEvent, 500);
     }
@@ -492,6 +520,7 @@ void GattAudioService::onExitedStreamingSuperState()
         m_lastStats.expectedPackets = std::max(m_lastStats.expectedPackets, m_lastStats.actualPackets);
 
         m_audioPipe.reset();
+        ++m_audioPipeGeneration;
 
         XLOGD_INFO("audio frame stats: actual=%u, expected=%u",
               m_lastStats.actualPackets, m_lastStats.expectedPackets);
@@ -519,8 +548,20 @@ void GattAudioService::onExitedStreamingSuperState()
     to stop the audio streaming.
 
  */
-void GattAudioService::onOutputPipeClosed()
+void GattAudioService::onOutputPipeClosed(uint32_t generation)
 {
+    {
+        std::lock_guard<std::mutex> guard(mAudioPipeMutex);
+        if (generation != m_audioPipeGeneration) {
+            // stale pipe (already replaced/torn down); ignore
+            XLOGD_WARN("ignoring output pipe closed event for stale audio pipe generation %u (current %u)",
+                generation, m_audioPipeGeneration);
+            return;
+        }
+        // re-checked by onExitedStreamingState() in case a replacement is installed before then
+        m_pendingStreamingExitGeneration = generation;
+    }
+
     XLOGD_INFO("audio output pipe closed");
 
     m_stateMachine.postEvent(OutputPipeCloseEvent);
@@ -531,8 +572,21 @@ void GattAudioService::onOutputPipeClosed()
     \overload
 
  */
-void GattAudioService::startStreaming(Encoding encoding, PendingReply<int> &&reply, uint32_t durationMax)
+void GattAudioService::startStreaming(Encoding encoding, PendingReply<int> &&reply, uint32_t durationMax, bool allowPipeSwap)
 {
+    if (m_stateMachine.state() == StreamingState) {
+        // MFV-only: swap in a fresh pipe for a same-controller replacement
+        if (allowPipeSwap) {
+            XLOGD_INFO("already streaming - swapping in a new pipe for the replacement request");
+            swapStreamingPipe(std::move(reply), durationMax);
+        } else {
+            XLOGD_WARN("already streaming - rejecting same-controller request as busy (pipe swap not allowed)");
+            reply.setError("Service is busy");
+            reply.finish();
+        }
+        return;
+    }
+
     // check the current state
     if (m_stateMachine.state() != ReadyState) {
         reply.setError("Service is not ready");
@@ -566,6 +620,7 @@ void GattAudioService::startStreaming(Encoding encoding, PendingReply<int> &&rep
 
     // create a new audio pipe for the client
     m_audioPipe = make_shared<GattAudioPipe>(m_frameSize, frameCountMax, frameValidator);
+    ++m_audioPipeGeneration;
     if (!m_audioPipe || !m_audioPipe->isValid()) {
         m_audioPipe.reset();
         guard.unlock();
@@ -582,6 +637,101 @@ void GattAudioService::startStreaming(Encoding encoding, PendingReply<int> &&rep
 
     // post a message to the state machine to start moving into the streaming state
     m_stateMachine.postEvent(StartStreamingRequestEvent);
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    \internal
+
+    Called by startStreaming() when already in StreamingState. Creates a fresh pipe for the new consumer
+    and completes \a reply directly, bypassing the start/stop states so no GATT command is resent.
+
+ */
+void GattAudioService::swapStreamingPipe(PendingReply<int> &&reply, uint32_t durationMax)
+{
+    // check we don't already have an outstanding pending call
+    if (m_startStreamingPromise || m_stopStreamingPromise) {
+        reply.setError("Service is busy");
+        reply.finish();
+        return;
+    }
+
+    // clear the last stats, same as a normal fresh start
+    m_lastStats.lastError       = NoError;
+    m_lastStats.actualPackets   = 0;
+    m_lastStats.expectedPackets = 0;
+    m_missedSequences           = 0;
+    m_lastSequenceNumber        = 0;
+    m_StreamStopPending         = false;
+
+    GattAudioPipe::cbFrameValidator frameValidator = std::bind(&GattAudioService::validateFrame, this, std::placeholders::_1, std::placeholders::_2);
+
+    std::unique_lock<std::mutex> guard(mAudioPipeMutex);
+
+    uint32_t frameCountMax = 0;
+    if(durationMax) { // Convert durationMax from milliseconds to audio frames
+        frameCountMax = ((durationMax * 1000) + m_audioFrameDuration - 1) / m_audioFrameDuration;
+    }
+
+    // Fully prepare the replacement pipe, including its fd, before touching m_audioPipe - the old pipe
+    // is only dropped once the new one is confirmed usable, so a failure here leaves the outgoing
+    // stream untouched instead of installing a consumer-less pipe.
+    auto newAudioPipe = make_shared<GattAudioPipe>(m_frameSize, frameCountMax, frameValidator);
+    if (!newAudioPipe || !newAudioPipe->isValid()) {
+        guard.unlock();
+        m_lastStats.lastError = StreamingError::InternalError;
+        reply.setError("Failed to create streaming pipe");
+        reply.finish();
+        return;
+    }
+
+    // reserved generation for this pipe; committed to m_audioPipeGeneration once installed below
+    const uint32_t generation = m_audioPipeGeneration + 1;
+    newAudioPipe->addOutputPipeClosedSlot(Slot<>(m_isAlive,
+            std::bind(&GattAudioService::onOutputPipeClosed, this, generation)));
+
+    newAudioPipe->start();
+
+    int fd = newAudioPipe->takeOutputReadFd();
+    if (fd < 0) {
+        guard.unlock();
+        m_lastStats.lastError = StreamingError::InternalError;
+        reply.setError("Failed to acquire streaming pipe fd");
+        reply.finish();
+        return;
+    }
+
+    // Swap in the new pipe. Dropping the old one just closes its fds (no state-machine side effects),
+    // so the remote keeps streaming uninterrupted while its old consumer sees a normal EOF.
+    m_audioPipe = newAudioPipe;
+    m_audioPipeGeneration = generation;
+
+    // Reset per-stream metadata too, same as a fresh start - these still described the outgoing stream.
+    m_frameCount      = 0;
+    m_audioDurationMs = -1;
+    m_emitOneTimeStreamingSignal = true;
+
+    // Restart the session timeout; otherwise it would inherit the outgoing session's deadline.
+    if (m_timeoutEventIdSession >= 0) {
+        m_stateMachine.cancelDelayedEvent(m_timeoutEventIdSession);
+    }
+    m_timeoutEventIdSession = m_stateMachine.postDelayedEvent(StopStreamingRequestEvent, 30000);
+
+    // Cancel outgoing-stream timeouts too - left armed, they'd drive the replacement into StopStreamingState.
+    if (m_timeoutEventIdAudioInfo >= 0) {
+        m_stateMachine.cancelDelayedEvent(m_timeoutEventIdAudioInfo);
+        m_timeoutEventIdAudioInfo = -1;
+    }
+    if (m_timeoutEventIdAudioLastFrame >= 0) {
+        m_stateMachine.cancelDelayedEvent(m_timeoutEventIdAudioLastFrame);
+        m_timeoutEventIdAudioLastFrame = -1;
+    }
+    m_pendingStreamingExitGeneration = -1; // drop any stale watermark left by the outgoing pipe
+
+    guard.unlock();
+
+    reply.setResult(fd);
+    reply.finish();
 }
 
 // -----------------------------------------------------------------------------
@@ -633,6 +783,7 @@ void GattAudioService::stopStreaming(uint32_t audioDuration, PendingReply<> &&re
                     postEvent = false;
 
                     m_StreamStopPending = true;
+                    m_pendingStreamingExitGeneration = m_audioPipeGeneration; // generation-guard this exit
 
                     // The audio info descriptor could be explicitly read, but that will generate more BLE traffic and in most cases the audio info notification will arrive soon.
                     // Instead a timeout will be used to handle any error scenarios where the audio info notification doesn't arrive.
@@ -642,6 +793,7 @@ void GattAudioService::stopStreaming(uint32_t audioDuration, PendingReply<> &&re
                     XLOGD_INFO("wait for remaining frames to arrive");
                     postEvent = false;
 
+                    m_pendingStreamingExitGeneration = m_audioPipeGeneration; // generation-guard this exit
                     m_timeoutEventIdAudioLastFrame = m_stateMachine.postDelayedEvent(AudioLastFrameTimeoutEvent, 500);
                 }
             } else {

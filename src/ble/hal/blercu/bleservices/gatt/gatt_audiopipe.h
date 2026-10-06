@@ -63,6 +63,10 @@ public:
 
     bool addNotification(const uint8_t value[20], const uint8_t length);
 
+    // Delivers a pending output pipe closed notification. The state machine transition it triggers
+    // blocks on the main loop, so it must be called without the caller's audio pipe lock held.
+    void notifyOutputPipeClosed();
+
     bool setFrameCountMax(uint32_t frameCountMax);
     bool getFirstAudioDataTime(struct timespec &time);
 
@@ -91,6 +95,7 @@ private:
     cbFrameValidator m_frameValidator;
 
     bool m_running;
+    bool m_outputPipeClosedPending;
 
     uint32_t m_frameCount;
     uint32_t m_frameCountMax;

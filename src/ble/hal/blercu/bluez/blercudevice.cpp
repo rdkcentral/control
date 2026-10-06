@@ -1133,9 +1133,9 @@ bool BleRcuDeviceBluez::getAudioFormat(Encoding encoding, AudioFormat &format) c
     }
     return(false);
 }
-void BleRcuDeviceBluez::startAudioStreaming(uint32_t encoding, PendingReply<int> &&reply, uint32_t durationMax)
+void BleRcuDeviceBluez::startAudioStreaming(uint32_t encoding, PendingReply<int> &&reply, uint32_t durationMax, bool allowPipeSwap)
 {
-    audioService()->startStreaming(BleRcuAudioService::Encoding(encoding), std::move(reply), durationMax);
+    audioService()->startStreaming(BleRcuAudioService::Encoding(encoding), std::move(reply), durationMax, allowPipeSwap);
 }
 void BleRcuDeviceBluez::stopAudioStreaming(uint32_t audioDuration, PendingReply<> &&reply)
 {

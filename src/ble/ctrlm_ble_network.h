@@ -146,6 +146,7 @@ public:
    virtual void                  req_process_controller_status(void *data, int size);
    
    virtual void                  req_process_voice_session_begin(void *data, int size);
+   virtual void                  req_process_mfv_detection_timeout(void *data, int size);
    virtual void                  req_process_voice_session_end(void *data, int size);
 
    virtual void                  req_process_start_pairing(void *data, int size);
@@ -217,6 +218,7 @@ private:
    bool                                      end_voice_session_for_controller(uint64_t ieee_address, ctrlm_voice_session_end_reason_t reason, int32_t audioDuration = -1, int32_t startLag = -1, rdkx_timestamp_t *keyDownTime = NULL, rdkx_timestamp_t *keyUpTime = NULL);
    ctrlm_controller_id_t                     find_controller_from_upgrade_session_uuid(const std::string &uuid);
    void                                      emit_irdb_program_result(int ir_state, const std::string &fail_reason, uint8_t rcu_bitmask, const std::string &vendor_name, uint8_t vendor_bitmask);
+   void                                      release_pending_mfv_detection(const char *reason);
 
    json_t *                                  json_config_               = NULL;
    bool                                      voice_disabled_            = false;
@@ -225,6 +227,7 @@ private:
    ctrlm_ble_unpair_metrics_t                last_rcu_unpair_metrics_;
    int                                       print_status_defer_count_  = 0;
    int                                       event_status_defer_count_  = 0;
+   bool                                      mfv_below_threshold_session_enabled_ = false;
 
    std::map <ctrlm_controller_id_t, ctrlm_obj_controller_ble_t *> controllers_;
    std::map <std::string, ctrlm_ble_upgrade_image_info_t>         upgrade_images_;

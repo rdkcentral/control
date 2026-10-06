@@ -53,7 +53,7 @@ typedef enum {
    RF4CE_DEVICE_UPDATE_IMAGE_LOAD_CANCEL        = 0x04
 } rf4ce_device_update_image_load_when_t;
 
-typedef struct {
+typedef struct ctrlm_main_queue_msg_update_file_check_t {
    ctrlm_main_queue_msg_header_t                         header;
    ctrlm_rf4ce_controller_type_t                         controller_type;
    ctrlm_controller_id_t                                 controller_id;

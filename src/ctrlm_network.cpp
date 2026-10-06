@@ -116,7 +116,10 @@ ctrlm_obj_network_t::~ctrlm_obj_network_t() {
       } else {
          // Wait for thread to exit
          XLOGD_INFO("Waiting for thread to exit");
-         g_thread_join(thread_id);
+         // Coverity is likely not modeling the ownership transfer of thread_id. Use an explicitly balanced extra reference so both GLib and Coverity see correct ownership.
+         GThread *join_thread_id = g_thread_ref(thread_id);
+         g_thread_join(join_thread_id);
+         g_thread_unref(thread_id);
          XLOGD_INFO("thread exited.");
       }
       ctrlm_network_term_hal_unref(term_data);
@@ -577,38 +580,6 @@ void ctrlm_obj_network_t::hal_init_cfm(void *data, int size) {
    }
 }
 
-void ctrlm_obj_network_t::req_process_rib_set(void *data, int size) {
-   ctrlm_main_queue_msg_rib_t *dqm = (ctrlm_main_queue_msg_rib_t *)data;
-
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_rib_t));
-
-   if(dqm->cmd_result && *dqm->cmd_result == CTRLM_RIB_REQUEST_PENDING) {
-      XLOGD_WARN("not implemented for %s network", name_get());
-      *dqm->cmd_result = CTRLM_RIB_REQUEST_ERROR;
-   }
-
-   if(dqm->semaphore) {
-      sem_post(dqm->semaphore);
-   }   
-}
-
-void ctrlm_obj_network_t::req_process_rib_get(void *data, int size) {
-   ctrlm_main_queue_msg_rib_t *dqm = (ctrlm_main_queue_msg_rib_t *)data;
-
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_rib_t));
-
-   if(dqm->cmd_result && *dqm->cmd_result == CTRLM_RIB_REQUEST_PENDING) {
-      XLOGD_WARN("not implemented for %s network", name_get());
-      *dqm->cmd_result = CTRLM_RIB_REQUEST_ERROR;
-   }
-
-   if(dqm->semaphore) {
-      sem_post(dqm->semaphore);
-   }   
-}
-
 void ctrlm_obj_network_t::req_process_network_status(void *data, int size) {
    ctrlm_main_queue_msg_main_network_status_t *dqm = (ctrlm_main_queue_msg_main_network_status_t *)data;
 
@@ -936,7 +907,7 @@ bool ctrlm_obj_network_t::discovery_config_set(ctrlm_controller_discovery_config
    return false;
 }
 
-void ctrlm_obj_network_t::cs_values_set(const ctrlm_cs_values_t *values, bool db_load) {
+void ctrlm_obj_network_t::cs_values_set(const ctrlm_cs_values_t *values) {
    XLOGD_WARN("not implemented for %s network", name_get());
 }
 

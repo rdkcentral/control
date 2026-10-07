@@ -76,6 +76,10 @@ using namespace std;
 #define CTRLM_DB_AVR_IR_CODE_ID                   "avr_ir_code_id"
 #define CTRLM_DB_AVR_IR_VENDOR_ID                 "avr_ir_vendor_id"
 #define CTRLM_DB_AVR_IR_VENDOR_NAME               "avr_ir_vendor_name"
+#define CTRLM_DB_TV_MANUFACTURER                  "tv_manufacturer"
+#define CTRLM_DB_TV_MODEL                         "tv_model"
+#define CTRLM_DB_AVR_MANUFACTURER                 "avr_manufacturer"
+#define CTRLM_DB_AVR_MODEL                        "avr_model"
 
 #define CTRLM_DB_TABLE_VOICE                      "ctrlm_voice"
 
@@ -476,7 +480,7 @@ gpointer ctrlm_db_thread(gpointer param) {
          case CTRLM_DB_QUEUE_MSG_TYPE_WRITE_BLOB: {
             ctrlm_db_queue_msg_write_blob_t *blob = (ctrlm_db_queue_msg_write_blob_t *)msg;
             XLOGD_DEBUG("WRITE BLOB %s:%s:%u", blob->table, blob->key, blob->length);
-            ctrlm_print_data_hex(__FUNCTION__, blob->value, blob->length, 16);
+            // ctrlm_print_data_hex(__FUNCTION__, blob->value, blob->length, 16);
             ctrlm_db_write_blob_(blob->table, blob->key, blob->value, blob->length);
             break;
          }
@@ -767,6 +771,70 @@ void ctrlm_db_avr_ir_code_id_read(std::string &id, unsigned char &vendor_id, std
       ctrlm_db_free(data);
    } else {
       XLOGD_WARN("Failed to load %s from db", CTRLM_DB_AVR_IR_VENDOR_NAME);
+   }
+}
+
+void ctrlm_db_tv_manufacturer_write(const std::string manufacturer) {
+   ctrlm_db_write_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_TV_MANUFACTURER, (const guchar*) manufacturer.c_str(), manufacturer.length());
+}
+
+void ctrlm_db_tv_manufacturer_read(std::string &manufacturer) {
+   guchar *data = NULL;
+   guint32 length = 0;
+   ctrlm_db_read_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_TV_MANUFACTURER, &data, &length);
+   if(NULL != data) {
+      manufacturer.assign((char *)data, length);
+      ctrlm_db_free(data);
+   } else {
+      XLOGD_WARN("Failed to load tv_manufacturer from db");
+   }
+}
+
+void ctrlm_db_tv_model_write(const std::string model) {
+   ctrlm_db_write_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_TV_MODEL, (const guchar*) model.c_str(), model.length());
+}
+
+void ctrlm_db_tv_model_read(std::string &model) {
+   guchar *data = NULL;
+   guint32 length = 0;
+   ctrlm_db_read_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_TV_MODEL, &data, &length);
+   if(NULL != data) {
+      model.assign((char *)data, length);
+      ctrlm_db_free(data);
+   } else {
+      XLOGD_WARN("Failed to load tv_model from db");
+   }
+}
+
+void ctrlm_db_avr_manufacturer_write(const std::string manufacturer) {
+   ctrlm_db_write_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_AVR_MANUFACTURER, (const guchar*) manufacturer.c_str(), manufacturer.length());
+}
+
+void ctrlm_db_avr_manufacturer_read(std::string &manufacturer) {
+   guchar *data = NULL;
+   guint32 length = 0;
+   ctrlm_db_read_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_AVR_MANUFACTURER, &data, &length);
+   if(NULL != data) {
+      manufacturer.assign((char *)data, length);
+      ctrlm_db_free(data);
+   } else {
+      XLOGD_WARN("Failed to load avr_manufacturer from db");
+   }
+}
+
+void ctrlm_db_avr_model_write(const std::string model) {
+   ctrlm_db_write_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_AVR_MODEL, (const guchar*) model.c_str(), model.length());
+}
+
+void ctrlm_db_avr_model_read(std::string &model) {
+   guchar *data = NULL;
+   guint32 length = 0;
+   ctrlm_db_read_blob(CTRLM_DB_TABLE_CTRLMGR, CTRLM_DB_AVR_MODEL, &data, &length);
+   if(NULL != data) {
+      model.assign((char *)data, length);
+      ctrlm_db_free(data);
+   } else {
+      XLOGD_WARN("Failed to load avr_model from db");
    }
 }
 

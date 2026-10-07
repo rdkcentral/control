@@ -42,15 +42,9 @@
 #include <iomanip>
 #include <memory>
 #include <sstream>
+#include <algorithm>
 
 using namespace std;
-
-typedef enum {
-    CTRLM_IRDB_AUTOLOOKUP_SOURCE_EDID = 0,
-    CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC,
-    CTRLM_IRDB_AUTOLOOKUP_SOURCE_INFOFRAME,
-    CTRLM_IRDB_AUTOLOOKUP_SOURCE_UNKNOWN
-} ctrlm_irdb_autolookup_source_t;
 
 typedef enum {
     CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS = 0,
@@ -64,10 +58,12 @@ typedef enum {
 
 class ctrlm_irdb_t2_autolookup_entry_t {
 public:
-    ctrlm_irdb_t2_autolookup_entry_t(int p, ctrlm_irdb_autolookup_source_t s, ctrlm_irdb_autolookup_result_t r): port(p), source(s), result(r) {}
+    ctrlm_irdb_t2_autolookup_entry_t(int p, ctrlm_irdb_lookup_source_t s, ctrlm_irdb_autolookup_result_t r, ctrlm_irdb_dev_type_t t = CTRLM_IRDB_DEV_TYPE_INVALID, const ctrlm_irdb_autolookup_ranked_list_t &c = {}): port(p), source(s), result(r), type(t), codes(c) {}
     int port = -1;
-    ctrlm_irdb_autolookup_source_t source = CTRLM_IRDB_AUTOLOOKUP_SOURCE_UNKNOWN;
+    ctrlm_irdb_lookup_source_t source = CTRLM_IRDB_LOOKUP_SOURCE_UNKNOWN;
     ctrlm_irdb_autolookup_result_t result = CTRLM_IRDB_AUTOLOOKUP_RESULT_UNKNOWN;
+    ctrlm_irdb_dev_type_t type = CTRLM_IRDB_DEV_TYPE_INVALID;
+    ctrlm_irdb_autolookup_ranked_list_t codes;
 };
 
 static ctrlm_irdb_interface_t *_instance = NULL;
@@ -424,6 +420,15 @@ bool ctrlm_irdb_interface_t::get_irdb_entry_ids(ctrlm_irdb_entry_id_list_t &code
     if (g_irdb.pluginGetEntryIds) {
         ret = (*g_irdb.pluginGetEntryIds)(codes, type, manufacturer, model);
     }
+    if(ret) {
+        for(auto id = codes.begin(); id != codes.end() && std::distance(codes.begin(), id) < 20; ++id) {
+            auto &last_entry = m_irdb_cache[*id];
+            last_entry.type = type;
+            last_entry.manufacturer = manufacturer;
+            last_entry.model = model;
+            last_entry.source = CTRLM_IRDB_LOOKUP_SOURCE_MANUAL;
+        }
+    }
     return ret;
 }
 
@@ -459,26 +464,26 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                         if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                             codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
                             ret = true;
-                            t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS);
+                            t2_info.emplace_back(-1, CTRLM_IRDB_LOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS, type, ir_codes);
                         } else {
                             XLOGD_ERROR("edid dev type invalid");
-                            t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_DEV_TYPE_INVALID);
+                            t2_info.emplace_back(-1, CTRLM_IRDB_LOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_DEV_TYPE_INVALID);
                         }
                     } else {
                         XLOGD_ERROR("no codes for edid data");
-                        t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_CODES_FOR_SOURCE);
+                        t2_info.emplace_back(-1, CTRLM_IRDB_LOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_CODES_FOR_SOURCE);
                     }
                 } else {
                     XLOGD_ERROR("Failed getting codes by edid");
-                    t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_FAILED);
+                    t2_info.emplace_back(-1, CTRLM_IRDB_LOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_FAILED);
                 }
             } else {
                 XLOGD_ERROR("No EDID data");
-                t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_SOURCE_DATA);
+                t2_info.emplace_back(-1, CTRLM_IRDB_LOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_SOURCE_DATA);
             }
         } else {
             XLOGD_ERROR("display_settings is NULL");
-            t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_NULL);
+            t2_info.emplace_back(-1, CTRLM_IRDB_LOOKUP_SOURCE_EDID, CTRLM_IRDB_AUTOLOOKUP_RESULT_NULL);
         }
         if(g_irdb.cec_source) {
             // Check CEC data
@@ -494,27 +499,27 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                             if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                                 codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
                                 ret = true;
-                                t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS);
+                                t2_info.emplace_back(itr.port, CTRLM_IRDB_LOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS, type, ir_codes);
                             } else {
                                 XLOGD_ERROR("cec dev type invalid");
-                                t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_DEV_TYPE_INVALID);
+                                t2_info.emplace_back(itr.port, CTRLM_IRDB_LOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_DEV_TYPE_INVALID);
                             }
                         } else {
                             XLOGD_WARN("no code for cec device <%s>", itr.osd.c_str());
-                            t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_CODES_FOR_SOURCE);
+                            t2_info.emplace_back(itr.port, CTRLM_IRDB_LOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_CODES_FOR_SOURCE);
                         }
                     } else {
                         XLOGD_WARN("Failed to get codes for cec device <%s>", itr.osd.c_str());
-                        t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_FAILED);
+                        t2_info.emplace_back(itr.port, CTRLM_IRDB_LOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_FAILED);
                     }
                 }
             } else {
                 XLOGD_ERROR("No CEC device data");
-                t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_SOURCE_DATA);
+                t2_info.emplace_back(-1, CTRLM_IRDB_LOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_SOURCE_DATA);
             }
         } else {
             XLOGD_ERROR("cec is NULL");
-            t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NULL);
+            t2_info.emplace_back(-1, CTRLM_IRDB_LOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NULL);
         }
     } else {
         if(g_irdb.av_input) {
@@ -530,27 +535,27 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                             if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                                 codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
                                 ret = true;
-                                t2_info.emplace_back(itr.first, CTRLM_IRDB_AUTOLOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS);
+                                t2_info.emplace_back(itr.first, CTRLM_IRDB_LOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS, type, ir_codes);
                             } else {
                                 XLOGD_ERROR("port %d infoframe dev type invalid", itr.first);
-                                t2_info.emplace_back(itr.first, CTRLM_IRDB_AUTOLOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_DEV_TYPE_INVALID);
+                                t2_info.emplace_back(itr.first, CTRLM_IRDB_LOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_DEV_TYPE_INVALID);
                             }
                         } else {
                             XLOGD_WARN("no code for port %d infoframe", itr.first);
-                            t2_info.emplace_back(itr.first, CTRLM_IRDB_AUTOLOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_CODES_FOR_SOURCE);
+                            t2_info.emplace_back(itr.first, CTRLM_IRDB_LOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_CODES_FOR_SOURCE);
                         }
                     } else {
                         XLOGD_WARN("Failed to get codes for port %d infoframe", itr.first);
-                        t2_info.emplace_back(itr.first, CTRLM_IRDB_AUTOLOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_FAILED);
+                        t2_info.emplace_back(itr.first, CTRLM_IRDB_LOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_FAILED);
                     }
                 } else {
                     XLOGD_WARN("no infoframe for port %d", itr.first);
-                    t2_info.emplace_back(itr.first, CTRLM_IRDB_AUTOLOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_SOURCE_DATA);
+                    t2_info.emplace_back(itr.first, CTRLM_IRDB_LOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_SOURCE_DATA);
                 }
             }
         } else {
             XLOGD_ERROR("hdmi is NULL");
-            t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_NULL);
+            t2_info.emplace_back(-1, CTRLM_IRDB_LOOKUP_SOURCE_INFOFRAME, CTRLM_IRDB_AUTOLOOKUP_RESULT_NULL);
         }
         if(g_irdb.cec_sink) {
             // Check CEC data
@@ -565,30 +570,44 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
                             if(type != CTRLM_IRDB_DEV_TYPE_INVALID) {
                                 codes[type].insert(codes[type].end(), ir_codes.begin(), ir_codes.end());
                                 ret = true;
-                                t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS);
+                                t2_info.emplace_back(itr.port, CTRLM_IRDB_LOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS, type, ir_codes);
                             } else {
                                 XLOGD_ERROR("cec dev type invalid");
-                                t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_DEV_TYPE_INVALID);
+                                t2_info.emplace_back(itr.port, CTRLM_IRDB_LOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_DEV_TYPE_INVALID);
                             }
                         } else {
                             XLOGD_WARN("no code for cec device <%s>", itr.osd.c_str());
-                            t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_CODES_FOR_SOURCE);
+                            t2_info.emplace_back(itr.port, CTRLM_IRDB_LOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_CODES_FOR_SOURCE);
                         }
                     } else {
                         XLOGD_WARN("Failed to get codes for cec device <%s>", itr.osd.c_str());
-                        t2_info.emplace_back(itr.port, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_FAILED);
+                        t2_info.emplace_back(itr.port, CTRLM_IRDB_LOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_FAILED);
                     }
                 }
             } else {
                 XLOGD_ERROR("No CEC device data");
-                t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_SOURCE_DATA);
+                t2_info.emplace_back(-1, CTRLM_IRDB_LOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NO_SOURCE_DATA);
             }
         } else {
             XLOGD_ERROR("cec is NULL");
-            t2_info.emplace_back(-1, CTRLM_IRDB_AUTOLOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NULL);
+            t2_info.emplace_back(-1, CTRLM_IRDB_LOOKUP_SOURCE_CEC, CTRLM_IRDB_AUTOLOOKUP_RESULT_NULL);
         }
     }
     #endif
+
+    m_irdb_cache.clear();
+    for(const auto &entry : t2_info) {
+        if(entry.result != CTRLM_IRDB_AUTOLOOKUP_RESULT_SUCCESS) {
+            continue;
+        }
+        for(const auto &code : entry.codes) {
+            auto &last_entry = m_irdb_cache[code.id];
+            last_entry.type = entry.type;
+            last_entry.manufacturer = code.manufacturer;
+            last_entry.model = code.model;
+            last_entry.source = entry.source;
+        }
+    }
 
     // Sort the code lists by the rank value in descending order so that the best codes are listed first in the lists.
     if(codes.count(CTRLM_IRDB_DEV_TYPE_TV) > 0) {
@@ -636,8 +655,22 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
 bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_dev_type_t type, const std::string &id) {
     std::unique_lock<std::mutex> guard(m_mutex);
     bool ret = false;
+    std::string manufacturer;
+    std::string model;
 
-    XLOGD_INFO("Programming IR codes for (%u, %u) with database id <%s>", network_id, controller_id, id.c_str());
+
+    auto last_entry_itr = m_irdb_cache.find(id);
+    if(last_entry_itr != m_irdb_cache.end() && last_entry_itr->second.type == type) {
+        manufacturer = last_entry_itr->second.manufacturer;
+        model = last_entry_itr->second.model;
+    }
+    
+    XLOGD_INFO("Programming IR codes for (%u, %u) with database id <%s>, manufacturer <%s>, model <%s>",
+               network_id,
+               controller_id,
+               id.c_str(),
+               manufacturer.empty() ? "INVALID" : manufacturer.c_str(),
+               model.empty() ? "INVALID" : model.c_str());
 
     ctrlm_irdb_ir_code_set_t code_set;
     if (g_irdb.pluginGetCodeSet) {
@@ -645,14 +678,14 @@ bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctr
             XLOGD_ERROR("Failed getting IR code set");
         } else {
             guard.unlock();
-            ret = this->_program_ir_codes(network_id, controller_id, &code_set);
+            ret = this->_program_ir_codes(network_id, controller_id, &code_set, manufacturer, model);
         }
     }
     return(ret);
 }
 
 
-bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes) {
+bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_ir_code_set_t *ir_codes, const std::string &manufacturer, const std::string &model) {
     bool ret = false;
     vector<char> success_vec;
 
@@ -660,6 +693,8 @@ bool ctrlm_irdb_interface_t::_program_ir_codes(ctrlm_network_id_t network_id, ct
     msg->network_id         = network_id;
     msg->controller_id      = controller_id;
     msg->ir_codes           = ir_codes;
+    msg->manufacturer       = manufacturer;
+    msg->model              = model;
     msg->success            = &success_vec;
 
     if (false == get_vendor_info(msg->vendor_info)) {

@@ -9,6 +9,7 @@ struct voice_session_request_type_handler_s;
 %%
 ptt_transcription,     ctrlm_voice_ipc_request_supported_ptt_transcription
 ptt_audio_file,        ctrlm_voice_ipc_request_supported_ptt_audio_file
+ptt_listen,            ctrlm_voice_ipc_request_supported_ptt_listen
 mic_transcription,     ctrlm_voice_ipc_request_supported_mic_transcription
 mic_audio_file,        ctrlm_voice_ipc_request_supported_mic_audio_file
 mic_stream_default,    ctrlm_voice_ipc_request_supported_mic_stream_default

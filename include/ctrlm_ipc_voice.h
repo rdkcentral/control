@@ -22,9 +22,6 @@
 
 #include "ctrlm_ipc.h"
 
-#define CTRLM_VOICE_IARM_CALL_SESSION_BEGIN              "Voice_SessionBegin"            ///< starts a voice streaming session
-#define CTRLM_VOICE_IARM_CALL_SESSION_END                "Voice_SessionEnd"              ///< ends a voice streaming session
-
 #define CTRLM_VOICE_IARM_CALL_STATUS                     "Voice_Status"                  ///< IARM Call to get status
 #define CTRLM_VOICE_IARM_CALL_CONFIGURE_VOICE            "Voice_ConfigureVoice"          ///< IARM Call to set up voice with JSON payload
 #define CTRLM_VOICE_IARM_CALL_SET_VOICE_INIT             "Voice_SetVoiceInit"            ///< IARM Call to set application data with JSON payload in the voice server init message
@@ -141,14 +138,6 @@ typedef struct {
    unsigned char            battery_percentage;    ///< RCU's battery percentage from 0-100.
 } ctrlm_voice_stats_reboot_t;
 
-
-typedef struct {
-   unsigned char              api_revision;        ///< The revision of this API.
-   ctrlm_network_id_t         network_id;          ///< Identifier of network
-   ctrlm_controller_id_t      controller_id;       ///< A unique identifier of the remote
-   unsigned long long         ieee_address;        ///< IEEE MAC address of the remote
-   ctrlm_iarm_call_result_t   result;              ///< OUT - The result of the operation.
-} ctrlm_voice_iarm_call_voice_session_t;
 
 // APIs for Thunder Plugin
 

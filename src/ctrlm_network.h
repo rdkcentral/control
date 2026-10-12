@@ -242,7 +242,7 @@ public:
    virtual void         factory_reset();
    virtual bool         binding_config_set(ctrlm_controller_bind_config_t conf);
    virtual bool         discovery_config_set(ctrlm_controller_discovery_config_t conf);
-   virtual void         cs_values_set(const ctrlm_cs_values_t *values, bool db_load);
+   virtual void         cs_values_set(const ctrlm_cs_values_t *values);
    virtual void         recovery_set(ctrlm_recovery_type_t recovery);
    virtual bool         backup_hal_nvm();
    virtual void         bind_validation_begin(ctrlm_main_queue_msg_bind_validation_begin_t *dqm);
@@ -255,7 +255,6 @@ public:
    virtual ctrlm_rf_pair_state_t                 get_rf_pair_state() const;
    virtual bool         get_legacy_remote_data(ctrlm_legacy_rf4ce_network_status_t *network_status, std::vector<std::pair<ctrlm_controller_id_t, ctrlm_controller_status_t>> *controller_status);
 
-   virtual void         req_process_controller_link_key(void *data, int size);
    virtual void         req_process_controller_status(void *data, int size);
    virtual void         req_process_controller_product_name(void *data, int size);
    virtual void         req_process_voice_session_begin(void *data, int size);
@@ -273,8 +272,6 @@ public:
    virtual void         req_process_ir_clear_codes(void *data, int size);
    virtual void         req_process_find_my_remote(void *data, int size);
 
-   virtual void         req_process_rib_set(void *data, int size);
-   virtual void         req_process_rib_get(void *data, int size);
    virtual void         req_process_polling_action_push(void *data, int size);
    
    virtual void         req_process_network_managed_upgrade(void *data, int size);

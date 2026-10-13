@@ -355,15 +355,21 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_net_status(void *arg)
     if(call_data->payload[0] != '\0') {
         json_error_t error;
         json_t *payload = json_loads(call_data->payload, JSON_REJECT_DUPLICATES, &error);
-        json_t *verbose_value = payload && json_is_object(payload) ? json_object_get(payload, "verbose") : NULL;
-        if(payload == NULL || !json_is_object(payload) || (verbose_value != NULL && !json_is_boolean(verbose_value))) {
+        if(payload == NULL || !json_is_object(payload)) {
             XLOGD_ERROR("Invalid payload");
             if(payload != NULL) {
                 json_decref(payload);
             }
             return(IARM_RESULT_INVALID_PARAM);
         }
+        
+        json_t *verbose_value = json_object_get(payload, "verbose");
         if(verbose_value != NULL) {
+            if(!json_is_boolean(verbose_value)) {
+                XLOGD_ERROR("Invalid verbose value");
+                json_decref(payload);
+                return(IARM_RESULT_INVALID_PARAM);
+            }
             verbose = json_is_true(verbose_value);
         }
         json_decref(payload);

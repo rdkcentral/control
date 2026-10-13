@@ -773,7 +773,7 @@ IARM_Result_t ctrlm_voice_ipc_iarm_thunder_t::voice_session_request(void *data) 
                                         result = false;
                                     } else {
                                         json_int_t value = json_integer_value(obj_audio_duration);
-                                        if(value <= 0 || value > 5 * 60 * 1000) { // Limit to 5 minutes to avoid type conversion overflow issues
+                                        if(value <= 0 || value > 30 * 1000) { // Limit to 30 seconds to avoid type conversion overflow issues and align with BLE streaming timeouts
                                             XLOGD_ERROR("invalid audioDuration parameter.");
                                             result = false;
                                         } else {

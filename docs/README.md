@@ -54,15 +54,15 @@ flowchart LR
 
 ## Design
 
-Control Manager is structured as a single long-running daemon process (`controlMgr`) built around a GLib main loop. All internal state transitions are serialized through a single `GAsyncQueue` message queue processed on the main thread. This design eliminates data races without requiring fine-grained locking for most operations: all network objects, controller objects, voice session state, and binding state are mutated exclusively from the main thread by dequeuing and processing typed message structs.
+Control Manager is structured as a single long-running daemon process (`controlMgr`) with a GLib event loop on the process thread and a separate `Ctrlm Main` worker that serializes many network and global state transitions through a `GAsyncQueue`. Dedicated subsystem threads and Voice SDK callbacks also manage subsystem state, so not every internal mutation passes through the main queue.
 
-Northbound IPC is handled by the IPC bus layer. The daemon registers a set of named call handlers on startup and broadcasts events to other bus participants as state changes occur. The bus registration and event dispatch are thin wrappers around the underlying IPC mechanism and do not directly touch the main-loop state; call handlers enqueue message structs into the GLib queue and, where a response is required, signal a semaphore that the calling thread waits on.
+Northbound IPC is handled by the IPC bus layer. Many call handlers enqueue typed messages for the `ctrlm_main` worker and, when a synchronous response is required, wait on a semaphore; subsystem-specific handlers may instead execute directly against their thread-safe subsystem APIs. Events are broadcast through the IPC wrapper as state changes occur.
 
 The southbound interface toward radio hardware is a dynamically loaded HAL plugin model. The RF4CE HAL shared library is loaded at startup via `dlopen`. When present, it enables the RF4CE network at runtime. The BLE network delegates to the BTMgr library. Both HAL paths present a uniform `ctrlm_obj_network_t` interface to the core so that network-type-specific behavior is encapsulated in the network object subclasses.
 
-Persistence is managed by a dedicated database thread (`Ctrlm Database`). The main thread calls non-blocking queue push functions to schedule read or write operations, which the database thread executes against the SQLite file. On power state changes, the database flushes and optionally backs up its file to `/opt/ctrlm.back`.
+Persistence is backed by SQLite. Reads execute synchronously in the caller, while writes and maintenance requests are queued to the dedicated database thread (`Ctrlm Database`). Deep-sleep power transitions close and reopen the database; backups to `/opt/ctrlm.back` are refreshed after successful initialization.
 
-The voice subsystem runs the voice SDK in a dedicated thread (`Voice SDK`) and communicates with the main thread through the same message queue pattern. Voice session lifecycle events (begin, stream begin/end, keyword verification, server messages, session end) are forwarded to other middleware components as JSON-payload IPC bus events.
+The voice subsystem integrates with callbacks from the dedicated Voice SDK thread. These callbacks update voice-session state and publish lifecycle IPC events directly, while selected follow-up operations are posted to the `Ctrlm Main` queue.
 
 ```mermaid
 graph TD
@@ -116,13 +116,13 @@ graph TD
 - **Threading Architecture**: Multi-threaded with a single-threaded main event loop serving as the authoritative state owner.
 - **Main Thread** (`Ctrlm Main`): Owns and mutates all global and network state. Processes all inbound messages from the `GAsyncQueue`. Dispatches IPC bus call responses and fires IPC bus broadcast events.
 - **Worker Threads**:
-  - _Ctrlm Database_: Executes all SQLite read and write operations asynchronously relative to the main thread. Receives work via its own `GAsyncQueue`.
+  - _Ctrlm Database_: Executes queued SQLite writes and maintenance operations asynchronously relative to the callers; reads execute synchronously in the calling thread. Receives queued work via its own `GAsyncQueue`.
   - _Ctrlm Device Update_: Manages the controller firmware download and load scheduling flow.
-  - _Voice SDK_: Runs the voice SDK event loop and audio processing pipeline. Communicates back to the main thread via queue messages.
+  - _Voice SDK_: Runs the voice SDK event loop and audio processing pipeline. Publishes lifecycle IPC events directly from callbacks and posts selected follow-up operations to the main thread.
   - _IR Controller_: Monitors input device events for IR remote key input and forwards them to the main thread.
   - _RF4CE_ / _BLE_: Network-specific threads created by the HAL or network object during initialization.
-- **Synchronization**: Semaphores (`sem_t`) are used for synchronous IPC call patterns where the calling bus thread must wait for the main thread to process the operation and produce a result. The `GAsyncQueue` is the primary lock-free producer–consumer mechanism between threads.
-- **Async / Event Dispatch**: IPC bus events are broadcast directly from the main thread after state is updated. Voice SDK callbacks post message structs to the main thread queue and return immediately.
+- **Synchronization**: Semaphores (`sem_t`) are used for synchronous IPC call patterns where the calling bus thread must wait for the main thread to process the operation and produce a result. The `GAsyncQueue` is the primary thread-safe producer–consumer mechanism between threads.
+- **Async / Event Dispatch**: IPC bus events are broadcast directly from the main thread after state is updated. Voice SDK callbacks update voice-session state and publish lifecycle IPC events directly from the callback thread, posting only selected follow-up operations to the main thread queue.
 
 ### Prerequisites and Dependencies
 
@@ -131,9 +131,9 @@ graph TD
 - **Build Dependencies**: `xr-voice-sdk`, `sqlite3`, `curl`, `glib-2.0`, `gio-2.0`, `dbus-1`, `jansson`, `nopoll`, `openssl`, `libarchive`, `rfcapi`, `secure_wrapper`, `libevdev`, `systemd`, `uuid`. Optional: `BTMgr` (BLE), `WPEFrameworkCore`/`WPEFrameworkPlugins` (Thunder), `telemetry_msgsender` (Telemetry 2.0), `breakpadwrapper` (crash dumps), `RdkCertSelector` (auth).
 - **Plugin Dependencies**: With `THUNDER` enabled, the `DeviceInfo` and `System` WPEFramework plugins are required to populate device identity fields at startup. The `PowerManager` plugin provides power state coordination.
 - **HAL**: The RF4CE HAL shared library is loaded at runtime via `dlopen`, enabling the RF4CE network when present. BLE support is provided by the `BTMgr` shared library. Device Settings APIs (`dsDisplay`, `dsRpc`) are used for display-related queries at initialization.
-- **IPC Bus**: Registers on the `Ctrlm` IPC bus namespace. Subscribes to system manager (`sysMgr`) events for firmware image information. Depends on the IPC bus daemon being active before initialization.
+- **IPC Bus**: Registers on the `Ctrlm` IPC bus namespace and requires the IPC bus daemon to be active before initialization.
 - **Systemd Services**: Signals readiness to systemd with `sd_notify(0, "READY=1")` after successful initialization. Relies on the IPC bus daemon being started before `controlMgr`.
-- **Configuration Files**: `/etc/ctrlm_config.json` — generated at build time by merging `ctrlm_config_default.json` with any platform-specific overlays. Read at startup via `ctrlm_load_config()`.
+- **Configuration Files**: Build-time defaults are generated from `ctrlm_config.json` and compiled into `ctrlm_config_default.h`. At runtime, `ctrlm_load_config()` applies `/etc/vendor/input/ctrlm_config.json` and, on non-production builds, `/opt/ctrlm_config.json` overrides.
 - **Startup Order**: Must start after the IPC bus daemon and, when Thunder is enabled, after WPEFramework is reachable.
 
 ---
@@ -142,9 +142,9 @@ graph TD
 
 #### Initialization to Active State
 
-Control Manager starts with `ctrlm_iarm_init()` to connect to the IPC bus, then spawns the main thread which runs a GLib main loop. Within the main loop startup sequence, the daemon loads its JSON configuration, initializes the SQLite database, creates the RF4CE and BLE (and optionally IP) network objects via `ctrlm_vendor_network_factory()`, initializes the voice subsystem, the IR controller, and the RFC and telemetry managers. After all subsystems are ready, it registers IPC bus call handlers and signals systemd readiness.
+Control Manager first connects to IARM, creates the GLib loop and core subsystem objects, loads runtime overrides, creates networks (RF4CE directly and BLE/vendor networks via `ctrlm_vendor_network_factory()`), and initializes recovery, the database, validation, RCU, and device update. It then starts the queue-processing `Ctrlm Main` thread, initializes network HALs and IR/voice integration, and enqueues startup actions that register IPC handlers, notify systemd, fetch RFC attributes, and start the networks.
 
-The component transitions through the following states during its lifecycle: **Initializing** (IPC bus connect, GLib loop start, config load, DB open) → **NetworkInit** (HAL load, network object creation, per-network HAL init) → **Registering** (IPC bus call handler registration) → **Active** (handling IPC bus calls and events, managing controllers) → **Shutdown** (network teardown, DB flush and backup, IPC bus disconnect).
+The component transitions through the following states during its lifecycle: **Initializing** (IPC bus connect, GLib loop creation, config load, DB open) → **NetworkInit** (HAL load, network object creation, per-network HAL init) → **Registering** (IPC bus call handler registration) → **Active** (handling IPC bus calls and events, managing controllers) → **Shutdown** (network teardown, queued DB work drain and close, IPC bus disconnect).
 
 ```mermaid
 sequenceDiagram
@@ -159,23 +159,22 @@ sequenceDiagram
     Main->>IPC: ctrlm_iarm_init() - connect to bus
     IPC-->>Main: Connected
 
-    Main->>Main: GLib main loop start, spawn main thread
-    Main->>Main: ctrlm_load_config() - read ctrlm_config.json
+    Main->>Main: Create GLib loop, load RF4CE HAL, initialize core objects
+    Main->>Main: ctrlm_load_config() - apply OEM/local overrides
+    Main->>NW: ctrlm_networks_pre_init() - create RF4CE and vendor networks
     Main->>DB: ctrlm_db_init() - open SQLite database
     DB-->>Main: DB ready
+    Main->>Main: Init validation, RCU, device update; spawn Ctrlm Main queue thread
+    Main->>NW: ctrlm_networks_init() - initialize HALs
 
-    Main->>NW: ctrlm_vendor_network_factory() - create RF4CE / BLE networks
-    NW->>NW: Load RF4CE HAL via dlopen, init BLE via BTMgr
-
-    Main->>Main: Voice subsystem init (ctrlm_voice_t)
-    Main->>Main: RFC init, Telemetry init, IR controller init
+    Main->>Main: Initialize IR controller
+    Main->>Thunder: Initialize Thunder-facing adapters
+    Main->>Main: Configure voice subsystem
+    Main->>Main: Enqueue startup actions
     Main->>IPC: ctrlm_main_iarm_init() - register IPC call handlers
     IPC-->>Main: Handlers registered
-
-    Main->>Thunder: Connect to DeviceInfo, System, PowerManager plugins
-    Thunder-->>Main: Plugins ready
-
     Main->>System: sd_notify READY=1
+    Main->>Main: Fetch RFC attributes and start networks
 
     loop Runtime
         IPC->>Main: IPC call dispatch (enqueue msg)
@@ -185,7 +184,7 @@ sequenceDiagram
 
     System->>Main: SIGTERM
     Main->>NW: ctrlm_networks_terminate()
-    Main->>DB: ctrlm_db_terminate() - flush and backup
+    Main->>DB: ctrlm_db_terminate() - drain queued work and close
     Main->>IPC: ctrlm_iarm_terminate()
     Main-->>System: exit
 ```
@@ -196,7 +195,7 @@ sequenceDiagram
 
 - A power state transition received from the PowerManager plugin causes Control Manager to update `g_ctrlm.power_state`, notify the voice subsystem, and adjust networked standby behavior if supported by the platform.
 - A pairing mode activation (binding button press, line-of-sight signal, screen bind, or autobind) starts a timed pairing window. On window expiry, the pairing window closes and the appropriate IPC bus event is broadcast.
-- A controller unbind operation (received via `Main_ControllerUnbind` or `Main_FactoryReset`) removes the controller's persistent database entry, destroys the network object's controller record, and broadcasts `CTRLM_MAIN_IARM_EVENT_CONTROLLER_UNBIND`.
+- A controller unbind operation (received through `Main_Unpair` or `Main_FactoryReset`, or initiated internally) removes the controller's persistent database entry and network record and publishes updated RCU status.
 - RFC attribute fetch completion triggers registered listeners in the RF4CE, BLE, voice, and global subsystems so they can apply updated runtime configuration values.
 
 **Context Switching Scenarios:**
@@ -310,27 +309,26 @@ sequenceDiagram
 
 ### Events Published
 
-| Event Name                                         | IPC Bus Topic | Trigger Condition                                                    | Subscriber Components              |
-| -------------------------------------------------- | ------------- | -------------------------------------------------------------------- | ---------------------------------- |
-| `CTRLM_MAIN_IARM_EVENT_BINDING_BUTTON`             | `Ctrlm` bus   | Front panel binding button state change                              | UI, control service clients        |
-| `CTRLM_MAIN_IARM_EVENT_BINDING_LINE_OF_SIGHT`      | `Ctrlm` bus   | Line-of-sight pairing signal received or window expired              | UI, control service clients        |
-| `CTRLM_MAIN_IARM_EVENT_AUTOBIND_LINE_OF_SIGHT`     | `Ctrlm` bus   | Autobind line-of-sight signal received or window expired             | UI, control service clients        |
-| `CTRLM_MAIN_IARM_EVENT_CONTROLLER_UNBIND`          | `Ctrlm` bus   | A paired controller is removed from the binding table                | UI, control service clients        |
-| `CTRLM_RCU_IARM_EVENT_KEY_PRESS`                   | `Ctrlm` bus   | Key down, repeat, or up event received from any paired controller    | Input event consumers, app manager |
-| `CTRLM_RCU_IARM_EVENT_FUNCTION`                    | `Ctrlm` bus   | A setup-key function sequence executed on a controller               | Diagnostic clients                 |
-| `CTRLM_RCU_IARM_EVENT_KEY_GHOST`                   | `Ctrlm` bus   | A ghost key code received from a controller                          | Input event consumers              |
-| `CTRLM_RCU_IARM_EVENT_RIB_ACCESS_CONTROLLER`       | `Ctrlm` bus   | A controller reads or writes a RIB attribute entry                   | Diagnostic clients                 |
-| `CTRLM_RCU_IARM_EVENT_BATTERY_MILESTONE`           | `Ctrlm` bus   | Battery level crosses a low/critical threshold                       | UI battery warning                 |
-| `CTRLM_RCU_IARM_EVENT_REMOTE_REBOOT`               | `Ctrlm` bus   | A paired remote reboots                                              | Diagnostic clients                 |
-| `CTRLM_RCU_IARM_EVENT_RCU_REVERSE_CMD_BEGIN/END`   | `Ctrlm` bus   | Find My Remote audible/visual alarm starts or stops                  | UI                                 |
-| `CTRLM_RCU_IARM_EVENT_CONTROL`                     | `Ctrlm` bus   | Control event received from a controller                             | Input event consumers              |
-| `CTRLM_RCU_IARM_EVENT_RCU_STATUS`                  | `Ctrlm` bus   | BLE remote status changes (pairing state, firmware version, battery) | Thunder RCU plugin                 |
-| `CTRLM_VOICE_IARM_EVENT_JSON_SESSION_BEGIN`        | `Ctrlm` bus   | Voice session initiated                                              | Thunder Voice plugin               |
-| `CTRLM_VOICE_IARM_EVENT_JSON_STREAM_BEGIN`         | `Ctrlm` bus   | Audio stream started within a voice session                          | Thunder Voice plugin               |
-| `CTRLM_VOICE_IARM_EVENT_JSON_KEYWORD_VERIFICATION` | `Ctrlm` bus   | Wake word detected and verified                                      | Thunder Voice plugin               |
-| `CTRLM_VOICE_IARM_EVENT_JSON_SERVER_MESSAGE`       | `Ctrlm` bus   | Message received from voice server                                   | Thunder Voice plugin               |
-| `CTRLM_VOICE_IARM_EVENT_JSON_STREAM_END`           | `Ctrlm` bus   | Audio stream ended                                                   | Thunder Voice plugin               |
-| `CTRLM_VOICE_IARM_EVENT_JSON_SESSION_END`          | `Ctrlm` bus   | Voice session ended                                                  | Thunder Voice plugin               |
+| Event Name                                         | IPC Bus Topic | Trigger Condition                                                                            | Subscriber Components              |
+| -------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `CTRLM_MAIN_IARM_EVENT_BINDING_BUTTON`             | `Ctrlm` bus   | Front panel binding button state change                                                      | UI, control service clients        |
+| `CTRLM_MAIN_IARM_EVENT_BINDING_LINE_OF_SIGHT`      | `Ctrlm` bus   | Line-of-sight pairing signal received or window expired                                      | UI, control service clients        |
+| `CTRLM_MAIN_IARM_EVENT_AUTOBIND_LINE_OF_SIGHT`     | `Ctrlm` bus   | Autobind line-of-sight signal received or window expired                                     | UI, control service clients        |
+| `CTRLM_RCU_IARM_EVENT_KEY_PRESS`                   | `Ctrlm` bus   | Key down, repeat, or up event received from any paired controller                            | Input event consumers, app manager |
+| `CTRLM_RCU_IARM_EVENT_FUNCTION`                    | `Ctrlm` bus   | A setup-key function sequence executed on a controller                                       | Diagnostic clients                 |
+| `CTRLM_RCU_IARM_EVENT_KEY_GHOST`                   | `Ctrlm` bus   | A ghost key code received from a controller                                                  | Input event consumers              |
+| `CTRLM_RCU_IARM_EVENT_RIB_ACCESS_CONTROLLER`       | `Ctrlm` bus   | A controller reads or writes a RIB attribute entry                                           | Diagnostic clients                 |
+| `CTRLM_RCU_IARM_EVENT_BATTERY_MILESTONE`           | `Ctrlm` bus   | Battery level crosses a low/critical threshold                                               | UI battery warning                 |
+| `CTRLM_RCU_IARM_EVENT_REMOTE_REBOOT`               | `Ctrlm` bus   | A paired remote reboots                                                                      | Diagnostic clients                 |
+| `CTRLM_RCU_IARM_EVENT_RCU_REVERSE_CMD_BEGIN/END`   | `Ctrlm` bus   | Find My Remote audible/visual alarm starts or stops                                          | UI                                 |
+| `CTRLM_RCU_IARM_EVENT_CONTROL`                     | `Ctrlm` bus   | Control event received from a controller                                                     | Input event consumers              |
+| `CTRLM_RCU_IARM_EVENT_RCU_STATUS`                  | `Ctrlm` bus   | BLE remote status changes (pairing state, firmware version, battery), or a controller unbind | Thunder RCU plugin                 |
+| `CTRLM_VOICE_IARM_EVENT_JSON_SESSION_BEGIN`        | `Ctrlm` bus   | Voice session initiated                                                                      | Thunder Voice plugin               |
+| `CTRLM_VOICE_IARM_EVENT_JSON_STREAM_BEGIN`         | `Ctrlm` bus   | Audio stream started within a voice session                                                  | Thunder Voice plugin               |
+| `CTRLM_VOICE_IARM_EVENT_JSON_KEYWORD_VERIFICATION` | `Ctrlm` bus   | Wake word detected and verified                                                              | Thunder Voice plugin               |
+| `CTRLM_VOICE_IARM_EVENT_JSON_SERVER_MESSAGE`       | `Ctrlm` bus   | Message received from voice server                                                           | Thunder Voice plugin               |
+| `CTRLM_VOICE_IARM_EVENT_JSON_STREAM_END`           | `Ctrlm` bus   | Audio stream ended                                                                           | Thunder Voice plugin               |
+| `CTRLM_VOICE_IARM_EVENT_JSON_SESSION_END`          | `Ctrlm` bus   | Voice session ended                                                                          | Thunder Voice plugin               |
 
 ### IPC Flow Patterns
 
@@ -360,7 +358,7 @@ sequenceDiagram
 
 **Event Notification Flow:**
 
-Hardware or network events arrive in network-specific HAL threads (or in the Voice SDK thread) and are forwarded to the main thread as message structs via the GLib queue. The main thread processes the event, updates internal state, and calls `IARM_Bus_BroadcastEvent` to distribute the event to all registered IPC bus subscribers.
+Hardware events from network-specific HAL threads are forwarded to the main thread as message structs via the GLib queue, which processes them and calls `IARM_Bus_BroadcastEvent` to distribute the event to all registered IPC bus subscribers. Voice SDK callbacks instead publish their lifecycle IPC events directly from the callback thread, posting only selected follow-up operations to the main queue.
 
 ```mermaid
 sequenceDiagram
@@ -413,9 +411,9 @@ sequenceDiagram
 
 ### Key Configuration Files
 
-| Configuration File       | Purpose                                                                                                                                                                   | Override Mechanism                                                                                   |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `/etc/ctrlm_config.json` | Primary runtime configuration. Generated at build time by merging `ctrlm_config_default.json` with platform-specific JSON overlays. Contains settings for all subsystems. | Platform-specific JSON overlay files applied at build time via `CTRLM_CONFIG_JSON_*` CMake variables |
+| Configuration File                                                                            | Purpose                                                                                                                                                                      | Override Mechanism                                                                                                |
+| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `/etc/vendor/input/ctrlm_config.json` and, on non-production builds, `/opt/ctrlm_config.json` | Runtime configuration overrides applied by `ctrlm_load_config()` on top of build-time defaults compiled into `ctrlm_config_default.h`. Contains settings for all subsystems. | `/opt/ctrlm_config.json` is only applied on non-production builds, appended on top of or in place of the OEM file |
 
 ### Key Configuration Parameters
 
@@ -458,4 +456,4 @@ Relevant TR-181 paths:
 
 ### Configuration Persistence
 
-Controller binding state, battery milestones, IR remote usage statistics, pairing metrics, last key press information, voice settings, IR code selections, chime settings, and conversational mode are all persisted to the SQLite database at `/opt/ctrlm.sql`. A backup of the database is written to `/opt/ctrlm.back` on power state transitions and before crash recovery operations. Configuration changes received at runtime via IPC calls (for example, chime enable/disable, conversational mode, IR command repeats) are written to the database and survive reboots.
+Controller binding state, battery milestones, IR remote usage statistics, pairing metrics, last key press information, voice settings, IR code selections, chime settings, and conversational mode are all persisted to the SQLite database at `/opt/ctrlm.sql`. A backup of the database is written to `/opt/ctrlm.back` after successful initialization and is used for restoration during crash recovery. Configuration changes received at runtime via IPC calls (for example, chime enable/disable, conversational mode, IR command repeats) are written to the database and survive reboots.

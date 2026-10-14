@@ -40,12 +40,12 @@ flowchart LR
 
 - **Multi-network remote control management**: Manages simultaneous RF4CE and BLE remote control networks through a network-type-agnostic object model. Each network is assigned a numeric identifier and handled by a distinct network object backed by a platform HAL.
 - **Remote pairing and validation**: Implements all supported pairing modes — line-of-sight, autobind, binding button, screen bind, and one-touch autobind — including a multi-attempt validation flow with configurable timeouts and maximum attempt limits.
-- **Key event distribution**: Receives key events from paired controllers and broadcasts them system-wide over the IPC bus as `CTRLM_RCU_IARM_EVENT_KEY_PRESS` events. Also distributes ghost codes and function key events.
+- **Key event distribution**: Receives key events from paired controllers and forwards them through transport-specific input handling; the RF4CE implementation injects Linux input events through `uinput`. Control Manager also distributes ghost codes and function key events over the IPC bus.
 - **Voice session lifecycle management**: Manages voice streaming sessions initiated from RF4CE or BLE remotes, interfacing with the voice SDK for push-to-talk and far-field voice modes.
 - **Controller firmware update**: Orchestrates over-the-air firmware updates for paired controllers, including background download, load scheduling, and update status reporting.
 - **IR database and code management**: Maintains and queries an IR code database. Supports automatic IR code lookup using EDID, InfoFrame, and CEC data, and programs IR codes into BLE remotes.
 - **Persistent state storage**: Uses an SQLite database (`/opt/ctrlm.sql`) to persist controller bindings, battery state, IR remote usage, pairing metrics, voice settings, and other controller attributes across reboots.
-- **RFC-based runtime configuration**: Reads TR-181 RFC parameters for subsystem-specific feature flags at startup and responds to changes, enabling platform-level configuration of telemetry, voice, RF4CE, and BLE subsystems.
+- **RFC-based startup configuration**: Reads TR-181 RFC parameters for subsystem-specific settings during startup, allowing platform-level configuration of telemetry, voice, RF4CE, and BLE subsystems.
 - **Power state coordination**: Monitors power state transitions through a Thunder PowerManager plugin abstraction and applies appropriate behavior changes (for example, enabling networked standby when allowed).
 - **Telemetry reporting**: Collects and reports operational metrics covering global state, RF4CE, BLE, IP, and voice subsystems on a configurable interval using Telemetry 2.0.
 - **Crash recovery**: Maintains a crash counter and backs up the SQLite database and HAL NVM. On recovery threshold breach, restores from backup or performs a factory reset.
@@ -113,8 +113,8 @@ graph TD
 
 #### Threading Model
 
-- **Threading Architecture**: Multi-threaded with a single-threaded main event loop serving as the authoritative state owner.
-- **Main Thread** (`Ctrlm Main`): Owns and mutates all global and network state. Processes all inbound messages from the `GAsyncQueue`. Dispatches IPC bus call responses and fires IPC bus broadcast events.
+- **Threading Architecture**: Multi-threaded, with a GLib event loop on the process thread and a `Ctrlm Main` queue worker that serializes most network and global transitions.
+- **Main Worker** (`Ctrlm Main`): Processes inbound `GAsyncQueue` messages, performs queued global/network state transitions, dispatches IPC call responses, and fires IPC broadcast events.
 - **Worker Threads**:
   - _Ctrlm Database_: Executes queued SQLite writes and maintenance operations asynchronously relative to the callers; reads execute synchronously in the calling thread. Receives queued work via its own `GAsyncQueue`.
   - _Ctrlm Device Update_: Manages the controller firmware download and load scheduling flow.
@@ -129,7 +129,7 @@ graph TD
 #### Platform and Integration Requirements
 
 - **Build Dependencies**: `xr-voice-sdk`, `sqlite3`, `curl`, `glib-2.0`, `gio-2.0`, `dbus-1`, `jansson`, `nopoll`, `openssl`, `libarchive`, `rfcapi`, `secure_wrapper`, `libevdev`, `systemd`, `uuid`. Optional: `BTMgr` (BLE), `WPEFrameworkCore`/`WPEFrameworkPlugins` (Thunder), `telemetry_msgsender` (Telemetry 2.0), `breakpadwrapper` (crash dumps), `RdkCertSelector` (auth).
-- **Plugin Dependencies**: With `THUNDER` enabled, the `DeviceInfo` and `System` WPEFramework plugins are required to populate device identity fields at startup. The `PowerManager` plugin provides power state coordination.
+- **Plugin Dependencies**: With `THUNDER` enabled, the `DeviceInfo` plugin supplies the device type and the `System` plugin supplies the device MAC address and firmware-update state at startup. The `AuthService` plugin supplies device ID, account ID, and partner ID. The `PowerManager` plugin provides power state coordination.
 - **HAL**: The RF4CE HAL shared library is loaded at runtime via `dlopen`, enabling the RF4CE network when present. BLE support is provided by the `BTMgr` shared library. Device Settings APIs (`dsDisplay`, `dsRpc`) are used for display-related queries at initialization.
 - **IPC Bus**: Registers on the `Ctrlm` IPC bus namespace and requires the IPC bus daemon to be active before initialization.
 - **Systemd Services**: Signals readiness to systemd with `sd_notify(0, "READY=1")` after successful initialization. Relies on the IPC bus daemon being started before `controlMgr`.
@@ -264,23 +264,23 @@ sequenceDiagram
 
 ## Internal Modules
 
-| Module / Class                 | Description                                                                                                                                                                                                         | Key Files                                                        |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `ctrlm_global_t`               | Central global state struct holding all runtime state: network map, voice session pointer, power state, pairing window, and subsystem handles. Owned exclusively by the main thread.                                | `ctrlm_main.cpp`, `ctrlm.h`                                      |
-| `ctrlm_obj_network_t`          | Abstract base class for all network transports. Subclassed by RF4CE and BLE network implementations. Owns the collection of bound controller objects for its transport.                                             | `ctrlm_network.cpp`, `ctrlm_network.h`                           |
-| `ctrlm_obj_controller_t`       | Abstract base class for a paired remote controller. Holds identity, version, battery, IR database, and last-key state. Serializes itself to/from the SQLite database.                                               | `ctrlm_controller.cpp`, `ctrlm_controller.h`                     |
-| `ctrlm_voice_t`                | Manages the voice session lifecycle. Interfaces with the voice SDK for audio routing, session begin/end, stream control, and keyword verification. Dispatches JSON-payload IPC events for each session phase.       | `ctrlm_voice_obj.cpp`, `ctrlm_voice_obj.h`                       |
-| `ctrlm_ir_controller_t`        | Class managing IR input device events from the local input subsystem. Runs in a dedicated thread and forwards key events to the main thread.                                                                        | `ctrlm_ir_controller.cpp`, `ctrlm_ir_controller.h`               |
-| `ctrlm_database`               | SQLite-backed persistence layer. Provides typed read/write functions for all persisted attributes. Runs on a dedicated database thread.                                                                             | `ctrlm_database.cpp`, `ctrlm_database.h`                         |
-| `ctrlm_rfc_t`                  | Class that fetches RFC (Remote Feature Control) attribute values from TR-181 parameters via the `rfcapi` library. Notifies registered listeners on fetch completion or attribute change.                            | `ctrlm_rfc.cpp`, `ctrlm_rfc.h`                                   |
-| `ctrlm_telemetry_t`            | Class that collects telemetry events and fires periodic reports to the Telemetry 2.0 infrastructure via `telemetry_msgsender`. Covers global, RF4CE, BLE, IP, and voice report categories.                          | `ctrlm_telemetry.cpp`, `ctrlm_telemetry.h`                       |
-| `ctrlm_validation`             | Implements the controller pairing validation state machine. Manages validation timeouts, key sequence checking, and binding-type-specific flows.                                                                    | `ctrlm_validation.cpp`, `ctrlm_validation.h`                     |
-| `ctrlm_recovery`               | Manages crash detection, backup creation (`/opt/ctrlm.back`, `/opt/hal_nvm.back`), and recovery type selection (restore from backup vs. factory reset).                                                             | `ctrlm_recovery.cpp`, `ctrlm_recovery.h`                         |
-| `ctrlm_device_update`          | Orchestrates controller firmware update sessions. Determines whether to fetch from the update server or from the filesystem, and coordinates the download and load phases.                                          | `ctrlm_device_update.cpp`, `ctrlm_device_update.h`               |
-| `ctrlm_rcp_ipc_iarm_thunder_t` | IPC adapter that registers the Thunder-facing IPC calls (`Main_StartPairing`, `Main_FindMyRemote`, etc.) and publishes RCU status and validation events as JSON-formatted IPC events consumable by Thunder plugins. | `ctrlm_rcp_ipc_iarm_thunder.cpp`, `ctrlm_rcp_ipc_iarm_thunder.h` |
-| `ctrlm_thunder_plugin_t`       | Base class for all WPEFramework plugin adapters used within Control Manager. Handles plugin activation polling, state change callbacks, and JSON-RPC call dispatch toward Thunder.                                  | `ctrlm_thunder_plugin.cpp`, `ctrlm_thunder_plugin.h`             |
-| `ctrlm_powermanager_t`         | Abstract class for power state queries. Concrete implementation is created at runtime by `ctrlm_powermanager_factory` based on platform capability.                                                                 | `ctrlm_powermanager.h`, `ctrlm_powermanager_factory.cpp`         |
-| `ctrlm_auth_t`                 | Abstract base for the authentication service client. Provides device ID, account ID, partner ID, and SAT token retrieval. Enabled conditionally via `AUTH_ENABLED` build option.                                    | `ctrlm_auth.cpp`, `ctrlm_auth.h`                                 |
+| Module / Class                 | Description                                                                                                                                                                                                                                                                   | Key Files                                                        |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `ctrlm_global_t`               | Core process state struct holding the network map, voice-session pointer, power state, pairing-window state, and subsystem handles. Most runtime transitions are serialized by the `Ctrlm Main` worker, with selected GLib and subsystem callbacks running in other contexts. | `ctrlm_main.cpp`, `ctrlm.h`                                      |
+| `ctrlm_obj_network_t`          | Abstract base class for all network transports. Subclassed by RF4CE and BLE network implementations. Owns the collection of bound controller objects for its transport.                                                                                                       | `ctrlm_network.cpp`, `ctrlm_network.h`                           |
+| `ctrlm_obj_controller_t`       | Abstract base class for a paired remote controller. Holds identity, version, battery, IR database, and last-key state. Serializes itself to/from the SQLite database.                                                                                                         | `ctrlm_controller.cpp`, `ctrlm_controller.h`                     |
+| `ctrlm_voice_t`                | Manages the voice session lifecycle. Interfaces with the voice SDK for audio routing, session begin/end, stream control, and keyword verification. Dispatches JSON-payload IPC events for each session phase.                                                                 | `ctrlm_voice_obj.cpp`, `ctrlm_voice_obj.h`                       |
+| `ctrlm_ir_controller_t`        | Class managing IR input device events from the local input subsystem. Runs in a dedicated thread and forwards key events to the main thread.                                                                                                                                  | `ctrlm_ir_controller.cpp`, `ctrlm_ir_controller.h`               |
+| `ctrlm_database`               | SQLite-backed persistence layer. Provides typed read/write functions for all persisted attributes. Runs on a dedicated database thread.                                                                                                                                       | `ctrlm_database.cpp`, `ctrlm_database.h`                         |
+| `ctrlm_rfc_t`                  | Class that fetches RFC (Remote Feature Control) attribute values from TR-181 parameters via the `rfcapi` library. Notifies registered listeners on fetch completion or attribute change.                                                                                      | `ctrlm_rfc.cpp`, `ctrlm_rfc.h`                                   |
+| `ctrlm_telemetry_t`            | Class that collects telemetry events and fires periodic reports to the Telemetry 2.0 infrastructure via `telemetry_msgsender`. Covers global, RF4CE, BLE, IP, and voice report categories.                                                                                    | `ctrlm_telemetry.cpp`, `ctrlm_telemetry.h`                       |
+| `ctrlm_validation`             | Implements the controller pairing validation state machine. Manages validation timeouts, key sequence checking, and binding-type-specific flows.                                                                                                                              | `ctrlm_validation.cpp`, `ctrlm_validation.h`                     |
+| `ctrlm_recovery`               | Manages crash detection, backup creation (`/opt/ctrlm.back`, `/opt/hal_nvm.back`), and recovery type selection (restore from backup vs. factory reset).                                                                                                                       | `ctrlm_recovery.cpp`, `ctrlm_recovery.h`                         |
+| `ctrlm_device_update`          | Processes controller firmware archives supplied by the update service or local filesystem, selects compatible images, and coordinates controller download and load phases.                                                                                                    | `ctrlm_device_update.cpp`, `ctrlm_device_update.h`               |
+| `ctrlm_rcp_ipc_iarm_thunder_t` | IPC adapter that registers the Thunder-facing IPC calls (`Main_StartPairing`, `Main_FindMyRemote`, etc.) and publishes RCU status and validation events as JSON-formatted IPC events consumable by Thunder plugins.                                                           | `ctrlm_rcp_ipc_iarm_thunder.cpp`, `ctrlm_rcp_ipc_iarm_thunder.h` |
+| `ctrlm_thunder_plugin_t`       | Base class for all WPEFramework plugin adapters used within Control Manager. Handles plugin activation polling, state change callbacks, and JSON-RPC call dispatch toward Thunder.                                                                                            | `ctrlm_thunder_plugin.cpp`, `ctrlm_thunder_plugin.h`             |
+| `ctrlm_powermanager_t`         | Abstract class for power state queries. Concrete implementation is created at runtime by `ctrlm_powermanager_factory` based on platform capability.                                                                                                                           | `ctrlm_powermanager.h`, `ctrlm_powermanager_factory.cpp`         |
+| `ctrlm_auth_t`                 | Abstract base for the authentication service client. Provides device ID, account ID, partner ID, and SAT token retrieval. Enabled conditionally via `AUTH_ENABLED` build option.                                                                                              | `ctrlm_auth.cpp`, `ctrlm_auth.h`                                 |
 
 ---
 
@@ -291,21 +291,21 @@ sequenceDiagram
 | Target Component / Layer    | Interaction Purpose                                                                                                               | Key APIs / Topics                                                                          |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | **Plugins**                 |                                                                                                                                   |                                                                                            |
-| `DeviceInfo`                | Retrieve device identity (device ID, device type, partner ID, experience) at startup                                              | `ctrlm_thunder_plugin_device_info_t`                                                       |
-| `System`                    | Monitor firmware image information and system readiness notifications                                                             | `ctrlm_thunder_plugin_system_t`                                                            |
+| `DeviceInfo`                | Retrieve the device type used to initialize device-specific behavior and IRDB mode                                                | `ctrlm_thunder_plugin_device_info_t`                                                       |
+| `System`                    | Retrieve the device MAC address and monitor firmware-update state changes                                                         | `ctrlm_thunder_plugin_system_t`                                                            |
 | `PowerManager`              | Query current power state and receive power state change events                                                                   | `ctrlm_thunder_plugin_powermanager_t`, `ctrlm_thunder_powermanager.cpp`                    |
 | `SystemAudioPlayer`         | Play chime audio files (open chime, close chime, privacy chime) on voice session events                                           | `ctrlm_thunder_plugin_system_audio_player_t`                                               |
 | **Device Services /HAL**    |                                                                                                                                   |                                                                                            |
-| RF4CE HAL                   | Wireless RF4CE radio control: discovery, binding, key event receive, firmware delivery                                            | `ctrlm_hal_rf4ce_main_t` (loaded via `dlopen`), `ctrlm_hal_rf4ce.h`                        |
+| RF4CE HAL                   | Wireless RF4CE radio control: discovery, binding, key event receive (delivered to the system via `uinput`), firmware delivery     | `ctrlm_hal_rf4ce_main_t` (loaded via `dlopen`), `ctrlm_hal_rf4ce.h`                        |
 | BLE HAL                     | BLE remote control management via BTMgr library                                                                                   | `ctrlm_hal_ble.h`, `BTMgr` library                                                         |
 | Device Settings (Display)   | Display-related queries used during initialization                                                                                | `dsDisplay.h`, `dsRpc.h`                                                                   |
 | **IPC Bus**                 |                                                                                                                                   |                                                                                            |
 | IPC Bus (`Ctrlm` namespace) | Exposes all remote control services; distributes key press, binding, voice, and firmware update events to system bus participants | `IARM_Bus_RegisterCall`, `IARM_Bus_BroadcastEvent`                                         |
 | **External Systems**        |                                                                                                                                   |                                                                                            |
 | RFC / TR-181                | Runtime feature flag delivery for voice, RF4CE, BLE, telemetry, and global subsystem configuration                                | `rfcapi`, TR-181 parameters under `Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.*` |
-| Auth Service                | SAT token, device ID, and account ID retrieval for voice session authorization                                                    | `ctrlm_auth_service_create()`, HTTP endpoint configured via `url_auth_service` in config   |
+| Auth Service                | SAT token, device ID, account ID, and partner ID retrieval for voice session authorization                                        | `ctrlm_auth_service_create()`, HTTP endpoint configured via `url_auth_service` in config   |
 | Voice Server                | Receives audio streams and returns voice recognition results                                                                      | `xr-voice-sdk` (xrsr), HTTP and/or SDT transport endpoints                                 |
-| Firmware Update Server      | Provides controller firmware images                                                                                               | `xconf`-compatible endpoint, checked by `ctrlm_device_update`                              |
+| Firmware Update Server      | Supplies local firmware archive paths via the `DeviceUpdate_UpdateAvail` IARM call                                                | `xconf`-compatible update manager, delivered to `ctrlm_device_update`                      |
 
 ### Events Published
 
@@ -362,17 +362,19 @@ Hardware events from network-specific HAL threads are forwarded to the main thre
 
 ```mermaid
 sequenceDiagram
-    participant HAL as HAL Thread / Voice SDK Thread
+    participant HAL as HAL Thread
+    participant Voice as Voice SDK Thread
     participant Queue as GAsyncQueue
     participant Main as Main Thread
     participant IPCBus as IPC Bus
     participant Sub1 as Subscriber (UI / App Manager)
     participant Sub2 as Subscriber (Thunder Plugin)
 
-    HAL->>Queue: Enqueue event message (key press, binding, voice, etc.)
+    HAL->>Queue: Enqueue event message (key press, binding, etc.)
     Queue->>Main: Dequeue message
     Main->>Main: Update internal state
     Main->>IPCBus: IARM_Bus_BroadcastEvent(event_id, payload)
+    Voice->>IPCBus: Publish lifecycle IPC event directly
     IPCBus->>Sub1: Event callback
     IPCBus->>Sub2: Event callback
 ```
@@ -393,7 +395,7 @@ sequenceDiagram
 
 ### Key Implementation Logic
 
-- **State / Lifecycle Management**: The `ctrlm_global_t` struct is the single owner of all runtime state. Pairing window state, power state, binding mode flags, and network maps are all fields within this struct and are exclusively modified from the main thread.
+- **State / Lifecycle Management**: The `ctrlm_global_t` struct holds core process state (network map, voice-session pointer, power state, pairing-window state, and subsystem handles). Most transitions are serialized by the `Ctrlm Main` worker, though GLib timeout callbacks and subsystem modules (database, validation, device update, voice) also mutate their own state outside the queue.
   - Core implementation: `ctrlm_main.cpp`
   - State transition handlers: `ctrlm_main.cpp`, `ctrlm_validation.cpp`
 
@@ -437,7 +439,7 @@ sequenceDiagram
 
 ### Runtime Configuration
 
-RFC TR-181 parameters can override subsystem-level defaults at runtime without a restart. The `ctrlm_rfc_t` module fetches these parameters at startup and re-applies them when triggered:
+RFC TR-181 parameters can override subsystem-level defaults. The `ctrlm_rfc_t` module fetches these parameters once at startup; periodic re-fetching is not currently implemented:
 
 ```bash
 # Example: read an RFC parameter via the rfcapi CLI

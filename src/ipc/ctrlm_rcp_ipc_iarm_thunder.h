@@ -52,6 +52,7 @@ namespace rcp_json_keys
     constexpr char const* SCAN_ENABLE          = "scanEnable";
     constexpr char const* SCAN_DISABLE         = "scanDisable";
     constexpr char const* SUCCESS              = "success";
+    constexpr char const* VERBOSE              = "verbose";
 }
 
 class ctrlm_rcp_ipc_iarm_thunder_t : public ctrlm_ipc_iarm_t

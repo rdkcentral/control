@@ -351,29 +351,22 @@ IARM_Result_t ctrlm_rcp_ipc_iarm_thunder_t::get_net_status(void *arg)
         return(IARM_RESULT_INVALID_PARAM);
     }
 
-    bool verbose = false;
-    if(call_data->payload[0] != '\0') {
-        json_error_t error;
-        json_t *payload = json_loads(call_data->payload, JSON_REJECT_DUPLICATES, &error);
-        if(payload == NULL || !json_is_object(payload)) {
-            XLOGD_ERROR("Invalid payload");
-            if(payload != NULL) {
-                json_decref(payload);
-            }
-            return(IARM_RESULT_INVALID_PARAM);
-        }
-        
-        json_t *verbose_value = json_object_get(payload, "verbose");
-        if(verbose_value != NULL) {
-            if(!json_is_boolean(verbose_value)) {
-                XLOGD_ERROR("Invalid verbose value");
-                json_decref(payload);
-                return(IARM_RESULT_INVALID_PARAM);
-            }
-            verbose = json_is_true(verbose_value);
-        }
+    json_error_t error;
+    json_t *payload = json_loads(call_data->payload, JSON_REJECT_DUPLICATES, &error);
+    json_config config(payload);
+
+    if (!payload || !config.current_object_get()) {
+        XLOGD_ERROR("Bad payload from call data");
         json_decref(payload);
+        return(IARM_RESULT_INVALID_PARAM);
     }
+
+    bool verbose = false;
+    if (!config.config_value_get(VERBOSE, verbose)) {
+        XLOGD_INFO("Missing %s parameter - defaulting to %s", VERBOSE, verbose ? "true" : "false");
+    }
+
+    json_decref(payload);
 
     ctrlm_pairing_metrics_status_t pairing_metrics = {};
     ctrlm_ir_remote_usage_t ir_remote_usage = {};

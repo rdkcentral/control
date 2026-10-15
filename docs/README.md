@@ -1,0 +1,463 @@
+# Control Manager
+
+Control Manager (`controlMgr`) is an RDK middleware daemon that manages all remote control devices connected to the set-top box. It operates as the central point for remote control pairing, key event distribution, voice session management, IR code handling, and controller firmware updates. The daemon exposes its services to the rest of the platform through an IPC bus under the namespace `Ctrlm`, and integrates with WPEFramework/Thunder for platform plugin access.
+
+Control Manager abstracts multiple wireless network transports — RF4CE and BLE — behind a uniform network object model. Each transport is managed by a distinct network object that communicates with a platform-specific HAL loaded at runtime. The daemon provides the application layer and other middleware components with a single, consistent IPC surface for all remote control operations, regardless of the underlying radio technology.
+
+At the device product level, Control Manager enables the user experience around remote controls: it drives the pairing flow between the set-top box and physical remotes, forwards key presses to the system, manages voice interaction sessions initiated from the remote, and handles over-the-air firmware delivery to paired controllers. It also maintains a persistent database of controller state and exposes telemetry metrics for platform diagnostics.
+
+```mermaid
+flowchart LR
+
+    subgraph Apps["Apps & Runtimes"]
+        RDKUI["UI"]
+        FBApps["Firebolt Apps"]
+        WPE_RT["WPE Runtime"]
+    end
+
+    subgraph RDKMW["RDK Core Middleware"]
+        AM["App Manager"]
+        Thunder["WPEFramework (Thunder)"]
+        CtrlM["Control Manager\n(controlMgr)"]
+        VoiceSDK["Voice SDK\n(xr-voice-sdk)"]
+        IRDB["IR Database"]
+    end
+
+    subgraph VL["Vendor Layer"]
+        RF4CE_HAL["RF4CE HAL\n(ctrlm_hal_rf4ce)"]
+        BLE_HAL["BLE HAL\n(BTMgr)"]
+    end
+
+    Apps -->|Firebolt APIs| Thunder
+    Thunder -->|Plugin API| CtrlM
+    CtrlM -->|HAL APIs| RF4CE_HAL
+    CtrlM -->|HAL APIs| BLE_HAL
+    CtrlM -->|Voice sessions| VoiceSDK
+    CtrlM -->|IR code lookup| IRDB
+```
+
+**Key Features & Responsibilities:**
+
+- **Multi-network remote control management**: Manages simultaneous RF4CE and BLE remote control networks through a network-type-agnostic object model. Each network is assigned a numeric identifier and handled by a distinct network object backed by a platform HAL.
+- **Remote pairing and validation**: Implements all supported pairing modes — line-of-sight, autobind, binding button, screen bind, and one-touch autobind — including a multi-attempt validation flow with configurable timeouts and maximum attempt limits.
+- **Key event distribution**: Receives key events from paired controllers and forwards them through transport-specific input handling; the RF4CE implementation injects Linux input events through `uinput`. Control Manager also distributes ghost codes and function key events over the IPC bus.
+- **Voice session lifecycle management**: Manages voice streaming sessions initiated from RF4CE or BLE remotes, interfacing with the voice SDK for push-to-talk and far-field voice modes.
+- **Controller firmware update**: Orchestrates over-the-air firmware updates for paired controllers, including background download, load scheduling, and update status reporting.
+- **IR database and code management**: Maintains and queries an IR code database. Supports automatic IR code lookup using EDID, InfoFrame, and CEC data, and programs IR codes into BLE remotes.
+- **Persistent state storage**: Uses an SQLite database (`/opt/ctrlm.sql`) to persist controller bindings, battery state, IR remote usage, pairing metrics, voice settings, and other controller attributes across reboots.
+- **RFC-based startup configuration**: Reads TR-181 RFC parameters for subsystem-specific settings during startup, allowing platform-level configuration of telemetry, voice, RF4CE, and BLE subsystems.
+- **Power state coordination**: Monitors power state transitions through a Thunder PowerManager plugin abstraction and applies appropriate behavior changes (for example, enabling networked standby when allowed).
+- **Telemetry reporting**: Collects and reports operational metrics covering global state, RF4CE, BLE, IP, and voice subsystems on a configurable interval using Telemetry 2.0.
+- **Crash recovery**: Maintains a crash counter and backs up the SQLite database and HAL NVM. On recovery threshold breach, restores from backup or performs a factory reset.
+
+---
+
+## Design
+
+Control Manager is structured as a single long-running daemon process (`controlMgr`) with a GLib event loop on the process thread and a separate `Ctrlm Main` worker that serializes many network and global state transitions through a `GAsyncQueue`. Dedicated subsystem threads and Voice SDK callbacks also manage subsystem state, so not every internal mutation passes through the main queue.
+
+Northbound IPC is handled by the IPC bus layer. Many call handlers enqueue typed messages for the `ctrlm_main` worker and, when a synchronous response is required, wait on a semaphore; subsystem-specific handlers may instead execute directly against their thread-safe subsystem APIs. Events are broadcast through the IPC wrapper as state changes occur.
+
+The southbound interface toward radio hardware is a dynamically loaded HAL plugin model. The RF4CE HAL shared library is loaded at startup via `dlopen`. When present, it enables the RF4CE network at runtime. The BLE network delegates to the BTMgr library. Both HAL paths present a uniform `ctrlm_obj_network_t` interface to the core so that network-type-specific behavior is encapsulated in the network object subclasses.
+
+Persistence is backed by SQLite. Reads execute synchronously in the caller, while writes and maintenance requests are queued to the dedicated database thread (`Ctrlm Database`). Deep-sleep power transitions close and reopen the database; backups to `/opt/ctrlm.back` are refreshed after successful initialization.
+
+The voice subsystem integrates with callbacks from the dedicated Voice SDK thread. These callbacks update voice-session state and publish lifecycle IPC events directly, while selected follow-up operations are posted to the `Ctrlm Main` queue.
+
+```mermaid
+graph TD
+    subgraph CtrlMDaemon["controlMgr Daemon"]
+        IARM_IN["IPC Bus Calls\nctrlm_main_iarm / ctrlm_rcu_iarm"]
+        MQ["Main Thread\nGAsyncQueue"]
+        NM["Network Manager\nctrlm_obj_network_t"]
+        VM["Voice Manager\nctrlm_voice_t"]
+        VAL["Pairing / Validation\nctrlm_validation"]
+        RCP_IPC["Thunder IPC Adapter\nctrlm_rcp_ipc_iarm_thunder_t"]
+        VSDK["Voice SDK Thread\nxr-voice-sdk"]
+        IRC["IR Controller Thread\nctrlm_ir_controller_t"]
+        DU["Device Update Thread\nctrlm_device_update"]
+        DB["Database Thread\nSQLite /opt/ctrlm.sql"]
+        IARM_OUT["IPC Bus Events\nBroadcastEvent"]
+    end
+
+    subgraph ThunderPlugins["WPEFramework / Thunder"]
+        TH_DEV["DeviceInfo"]
+        TH_SYS["System"]
+        TH_PWR["PowerManager"]
+        TH_SAP["SystemAudioPlayer"]
+    end
+
+    subgraph HALPlatform["HAL / Platform"]
+        RF4CE_HAL["RF4CE HAL\ndlopen"]
+        BLE_HAL["BLE HAL\nBTMgr"]
+    end
+
+    IARM_IN -->|enqueue| MQ
+    MQ --> NM
+    MQ --> VM
+    MQ --> VAL
+    MQ --> RCP_IPC
+    NM --> DB
+    DU --> DB
+    NM --> RF4CE_HAL
+    NM --> BLE_HAL
+    VM --> VSDK
+    IRC --> MQ
+    VSDK --> IARM_OUT
+    NM --> IARM_OUT
+    RCP_IPC --> TH_DEV
+    RCP_IPC --> TH_SYS
+    RCP_IPC --> TH_PWR
+    RCP_IPC --> TH_SAP
+```
+
+#### Threading Model
+
+- **Threading Architecture**: Multi-threaded, with a GLib event loop on the process thread and a `Ctrlm Main` queue worker that serializes most network and global transitions.
+- **Main Worker** (`Ctrlm Main`): Processes inbound `GAsyncQueue` messages, performs queued global/network state transitions, dispatches IPC call responses, and fires IPC broadcast events.
+- **Worker Threads**:
+  - _Ctrlm Database_: Executes queued SQLite writes and maintenance operations asynchronously relative to the callers; reads execute synchronously in the calling thread. Receives queued work via its own `GAsyncQueue`.
+  - _Ctrlm Device Update_: Manages the controller firmware download and load scheduling flow.
+  - _Voice SDK_: Runs the voice SDK event loop and audio processing pipeline. Publishes lifecycle IPC events directly from callbacks and posts selected follow-up operations to the main thread.
+  - _IR Controller_: Monitors input device events for IR remote key input and forwards them to the main thread.
+  - _RF4CE_ / _BLE_: Network-specific threads created by the HAL or network object during initialization.
+- **Synchronization**: Semaphores (`sem_t`) are used for synchronous IPC call patterns where the calling bus thread must wait for the main thread to process the operation and produce a result. The `GAsyncQueue` is the primary thread-safe producer–consumer mechanism between threads.
+- **Async / Event Dispatch**: IPC bus events are broadcast directly from the main thread after state is updated. Voice SDK callbacks update voice-session state and publish lifecycle IPC events directly from the callback thread, posting only selected follow-up operations to the main thread queue.
+
+### Prerequisites and Dependencies
+
+#### Platform and Integration Requirements
+
+- **Build Dependencies**: `xr-voice-sdk`, `sqlite3`, `curl`, `glib-2.0`, `gio-2.0`, `dbus-1`, `jansson`, `nopoll`, `openssl`, `libarchive`, `rfcapi`, `secure_wrapper`, `libevdev`, `systemd`, `uuid`. Optional: `BTMgr` (BLE), `WPEFrameworkCore`/`WPEFrameworkPlugins` (Thunder), `telemetry_msgsender` (Telemetry 2.0), `breakpadwrapper` (crash dumps), `RdkCertSelector` (auth).
+- **Plugin Dependencies**: With `THUNDER` enabled, the `DeviceInfo` plugin supplies the device type and the `System` plugin supplies the device MAC address. The `AuthService` plugin supplies device ID, account ID, and partner ID. The `PowerManager` plugin provides power state coordination.
+- **HAL**: The RF4CE HAL shared library is loaded at runtime via `dlopen`, enabling the RF4CE network when present. BLE support is provided by the `BTMgr` shared library. Device Settings APIs (`dsDisplay`, `dsRpc`) are used for display-related queries at initialization.
+- **IPC Bus**: Registers on the `Ctrlm` IPC bus namespace and requires the IPC bus daemon to be active before initialization.
+- **Systemd Services**: Signals readiness to systemd with `sd_notify(0, "READY=1")` after successful initialization. Relies on the IPC bus daemon being started before `controlMgr`.
+- **Configuration Files**: Build-time defaults are generated from `ctrlm_config.json` and compiled into `ctrlm_config_default.h`. At runtime, `ctrlm_load_config()` applies `/etc/vendor/input/ctrlm_config.json` and, on non-production builds, `/opt/ctrlm_config.json` overrides.
+- **Startup Order**: Must start after the IPC bus daemon and, when Thunder is enabled, after WPEFramework is reachable.
+
+---
+
+### Component State Flow
+
+#### Initialization to Active State
+
+Control Manager first connects to IARM, creates the GLib loop and core subsystem objects, loads runtime overrides, creates networks (RF4CE directly and BLE/vendor networks via `ctrlm_vendor_network_factory()`), and initializes recovery, the database, validation, RCU, and device update. It then starts the queue-processing `Ctrlm Main` thread, initializes network HALs and IR/voice integration, and enqueues startup actions that register IPC handlers, notify systemd, fetch RFC attributes, and start the networks.
+
+The component transitions through the following states during its lifecycle: **Initializing** (IPC bus connect, GLib loop creation, config load, DB open) → **NetworkInit** (HAL load, network object creation, per-network HAL init) → **Registering** (IPC bus call handler registration) → **Active** (handling IPC bus calls and events, managing controllers) → **Shutdown** (network teardown, queued DB work drain and close, IPC bus disconnect).
+
+```mermaid
+sequenceDiagram
+    participant System as systemd
+    participant Main as controlMgr (main)
+    participant IPC as IPC Bus
+    participant DB as Database Thread
+    participant NW as Network Objects
+    participant Thunder as WPEFramework
+
+    System->>Main: execve / service start
+    Main->>IPC: ctrlm_iarm_init() - connect to bus
+    IPC-->>Main: Connected
+
+    Main->>Main: Create GLib loop, load RF4CE HAL, initialize core objects
+    Main->>Main: ctrlm_load_config() - apply OEM/local overrides
+    Main->>NW: ctrlm_networks_pre_init() - create RF4CE and vendor networks
+    Main->>DB: ctrlm_db_init() - open SQLite database
+    DB-->>Main: DB ready
+    Main->>Main: Init validation, RCU, device update; spawn Ctrlm Main queue thread
+    Main->>NW: ctrlm_networks_init() - initialize HALs
+
+    Main->>Main: Initialize IR controller
+    Main->>Thunder: Initialize Thunder-facing adapters
+    Main->>Main: Configure voice subsystem
+    Main->>Main: Enqueue startup actions
+    Main->>IPC: ctrlm_main_iarm_init() - register IPC call handlers
+    IPC-->>Main: Handlers registered
+    Main->>System: sd_notify READY=1
+    Main->>Main: Fetch RFC attributes and start networks
+
+    loop Runtime
+        IPC->>Main: IPC call dispatch (enqueue msg)
+        NW->>Main: HAL event (enqueue msg)
+        Main->>IPC: BroadcastEvent (key press, binding, voice, etc.)
+    end
+
+    System->>Main: SIGTERM
+    Main->>NW: ctrlm_networks_terminate()
+    Main->>DB: ctrlm_db_terminate() - drain queued work and close
+    Main->>IPC: ctrlm_iarm_terminate()
+    Main-->>System: exit
+```
+
+#### Runtime State Changes
+
+**State Change Triggers:**
+
+- A power state transition received from the PowerManager plugin causes Control Manager to update `g_ctrlm.power_state`, notify the voice subsystem, and adjust networked standby behavior if supported by the platform.
+- A pairing mode activation (binding button press, line-of-sight signal, screen bind, or autobind) starts a timed pairing window. On window expiry, the pairing window closes and the appropriate IPC bus event is broadcast.
+- A controller unbind operation (received through `Main_Unpair` or `Main_FactoryReset`, or initiated internally) removes the controller's persistent database entry and network record and publishes updated RCU status.
+- RFC attribute fetch completion triggers registered listeners in the RF4CE, BLE, voice, and global subsystems so they can apply updated runtime configuration values.
+
+**Context Switching Scenarios:**
+
+- On networked standby entry, the daemon adjusts which network operations remain active while in standby to support wake-with-voice scenarios.
+- When the RFC fetch completes after startup, the daemon applies the updated configuration values over the in-use defaults.
+- When the crash count reaches `crash_recovery_threshold`, the daemon attempts to restore its backups before normal initialization. If recovery continues to fail and the count reaches twice the threshold with invalid HAL NVM or Control Manager DB state, it resets that invalid state.
+
+---
+
+### Call Flows
+
+#### Initialization Call Flow
+
+```mermaid
+sequenceDiagram
+    participant OS as systemd
+    participant CtrlM as controlMgr
+    participant Config as ctrlm_config.json
+    participant NW as Network HAL
+    participant DB as SQLite Database
+    participant IPC as IPC Bus
+
+    OS->>CtrlM: Start process
+    CtrlM->>IPC: ctrlm_iarm_init()
+    IPC-->>CtrlM: Connected
+    CtrlM->>Config: ctrlm_load_config()
+    Config-->>CtrlM: JSON config loaded
+    CtrlM->>NW: ctrlm_networks_pre_init() - create RF4CE and vendor networks
+    NW-->>CtrlM: Networks created
+    CtrlM->>DB: ctrlm_db_init(g_ctrlm.db_path.c_str())
+    DB-->>CtrlM: Database ready
+    CtrlM->>IPC: Register call handlers (Main_*, Rcu_*, Voice_*)
+    IPC-->>CtrlM: Registered
+    CtrlM->>OS: sd_notify READY=1
+```
+
+#### Request Processing Call Flow
+
+A caller on the IPC bus invokes a named call (for example, `Main_StartPairing`). The IPC call handler validates the API revision and input parameters, allocates a message struct on the heap, and pushes it to the main thread queue. The main thread dequeues the message, dispatches to the appropriate handler function which modifies state and broadcasts any resulting IPC events, and then signals the semaphore embedded in the message struct. The calling thread — which was sleeping on `sem_wait` — wakes up, reads the result fields populated by the main thread, and returns `IARM_RESULT_SUCCESS` to the IPC bus framework.
+
+```mermaid
+sequenceDiagram
+    participant Client as IPC Bus Client
+    participant IPCBus as IPC Bus
+    participant Handler as IPC Call Handler
+    participant Queue as GAsyncQueue
+    participant MainThread as Main Thread
+    participant NW as Network Object
+
+    Client->>IPCBus: IPC call Main_StartPairing(params)
+    IPCBus->>Handler: ctrlm_rcp_ipc_iarm_thunder_t::start_pairing()
+    Handler->>Handler: Validate API revision and parameters
+    Handler->>Queue: Enqueue ctrlm_main_queue_msg_start_pairing_t
+    Handler->>Handler: sem_wait(semaphore)
+    Queue->>MainThread: Dequeue message
+    MainThread->>NW: Open pairing window on all networks
+    NW-->>MainThread: Result
+    MainThread->>IPCBus: BroadcastEvent CTRLM_RCU_IARM_EVENT_RCU_STATUS (RF4CE pairing state)
+    MainThread->>Handler: sem_post(semaphore)
+    Handler-->>IPCBus: IARM_RESULT_SUCCESS
+    IPCBus-->>Client: Response with result
+```
+
+---
+
+## Internal Modules
+
+| Module / Class                 | Description                                                                                                                                                                                                                                                                   | Key Files                                                        |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `ctrlm_global_t`               | Core process state struct holding the network map, voice-session pointer, power state, pairing-window state, and subsystem handles. Most runtime transitions are serialized by the `Ctrlm Main` worker, with selected GLib and subsystem callbacks running in other contexts. | `ctrlm_main.cpp`, `ctrlm.h`                                      |
+| `ctrlm_obj_network_t`          | Abstract base class for all network transports. Subclassed by RF4CE and BLE network implementations. Owns the collection of bound controller objects for its transport.                                                                                                       | `ctrlm_network.cpp`, `ctrlm_network.h`                           |
+| `ctrlm_obj_controller_t`       | Abstract base class for a paired remote controller. Holds identity, version, battery, IR database, and last-key state. Serializes itself to/from the SQLite database.                                                                                                         | `ctrlm_controller.cpp`, `ctrlm_controller.h`                     |
+| `ctrlm_voice_t`                | Manages the voice session lifecycle. Interfaces with the voice SDK for audio routing, session begin/end, stream control, and keyword verification. Dispatches JSON-payload IPC events for each session phase.                                                                 | `ctrlm_voice_obj.cpp`, `ctrlm_voice_obj.h`                       |
+| `ctrlm_ir_controller_t`        | Class managing IR input device events from the local input subsystem. Runs in a dedicated thread and forwards key events to the main thread.                                                                                                                                  | `ctrlm_ir_controller.cpp`, `ctrlm_ir_controller.h`               |
+| `ctrlm_database`               | SQLite-backed persistence layer. Provides typed read/write functions for all persisted attributes. Runs on a dedicated database thread.                                                                                                                                       | `ctrlm_database.cpp`, `ctrlm_database.h`                         |
+| `ctrlm_rfc_t`                  | Class that fetches RFC (Remote Feature Control) attribute values from TR-181 parameters via the `rfcapi` library. Notifies registered listeners on fetch completion or attribute change.                                                                                      | `ctrlm_rfc.cpp`, `ctrlm_rfc.h`                                   |
+| `ctrlm_telemetry_t`            | Class that collects telemetry events and fires periodic reports to the Telemetry 2.0 infrastructure via `telemetry_msgsender`. Covers global, RF4CE, BLE, IP, and voice report categories.                                                                                    | `ctrlm_telemetry.cpp`, `ctrlm_telemetry.h`                       |
+| `ctrlm_validation`             | Implements the controller pairing validation state machine. Manages validation timeouts, key sequence checking, and binding-type-specific flows.                                                                                                                              | `ctrlm_validation.cpp`, `ctrlm_validation.h`                     |
+| `ctrlm_recovery`               | Manages crash detection, backup creation (`/opt/ctrlm.back`, `/opt/hal_nvm.back`), and recovery type selection (restore from backup vs. factory reset).                                                                                                                       | `ctrlm_recovery.cpp`, `ctrlm_recovery.h`                         |
+| `ctrlm_device_update`          | Processes controller firmware archives supplied by the update service or local filesystem, selects compatible images, and coordinates controller download and load phases.                                                                                                    | `ctrlm_device_update.cpp`, `ctrlm_device_update.h`               |
+| `ctrlm_rcp_ipc_iarm_thunder_t` | IPC adapter that registers the Thunder-facing IPC calls (`Main_StartPairing`, `Main_FindMyRemote`, etc.) and publishes RCU status and validation events as JSON-formatted IPC events consumable by Thunder plugins.                                                           | `ctrlm_rcp_ipc_iarm_thunder.cpp`, `ctrlm_rcp_ipc_iarm_thunder.h` |
+| `ctrlm_thunder_plugin_t`       | Base class for all WPEFramework plugin adapters used within Control Manager. Handles plugin activation polling, state change callbacks, and JSON-RPC call dispatch toward Thunder.                                                                                            | `ctrlm_thunder_plugin.cpp`, `ctrlm_thunder_plugin.h`             |
+| `ctrlm_powermanager_t`         | Abstract class for power state queries. Concrete implementation is created at runtime by `ctrlm_powermanager_factory` based on platform capability.                                                                                                                           | `ctrlm_powermanager.h`, `ctrlm_powermanager_factory.cpp`         |
+| `ctrlm_auth_t`                 | Abstract base for the authentication service client. Provides device ID, account ID, partner ID, and SAT token retrieval. Enabled conditionally via `AUTH_ENABLED` build option.                                                                                              | `ctrlm_auth.cpp`, `ctrlm_auth.h`                                 |
+
+---
+
+## Component Interactions
+
+### Interaction Matrix
+
+| Target Component / Layer    | Interaction Purpose                                                                                                               | Key APIs / Topics                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Plugins**                 |                                                                                                                                   |                                                                                                      |
+| `DeviceInfo`                | Retrieve the device type used to initialize device-specific behavior and IRDB mode                                                | `ctrlm_thunder_plugin_device_info_t`                                                                 |
+| `System`                    | Retrieve the device MAC address and monitor firmware-update state changes                                                         | `ctrlm_thunder_plugin_system_t`                                                                      |
+| `PowerManager`              | Query current power state and receive power state change events                                                                   | `ctrlm_thunder_plugin_powermanager_t`, `ctrlm_thunder_powermanager.cpp`                              |
+| `SystemAudioPlayer`         | Play the wake-word feedback beep before audio ducking when supported and enabled                                                  | `ctrlm_thunder_plugin_system_audio_player_t`                                                         |
+| **Device Services /HAL**    |                                                                                                                                   |                                                                                                      |
+| RF4CE HAL                   | Wireless RF4CE radio control: discovery, binding, key event receive (delivered to the system via `uinput`), firmware delivery     | `ctrlm_hal_rf4ce_main_t` (loaded via `dlopen`), `ctrlm_hal_rf4ce.h`                                  |
+| BLE HAL                     | BLE remote control management via BTMgr library                                                                                   | `ctrlm_hal_ble.h`, `BTMgr` library                                                                   |
+| Device Settings (Display)   | Display-related queries used during initialization                                                                                | `dsDisplay.h`, `dsRpc.h`                                                                             |
+| **IPC Bus**                 |                                                                                                                                   |                                                                                                      |
+| IPC Bus (`Ctrlm` namespace) | Exposes all remote control services; distributes key press, binding, voice, and firmware update events to system bus participants | `IARM_Bus_RegisterCall`, `IARM_Bus_BroadcastEvent`                                                   |
+| **External Systems**        |                                                                                                                                   |                                                                                                      |
+| RFC / TR-181                | Runtime feature flag delivery for voice, RF4CE, BLE, telemetry, and global subsystem configuration                                | `rfcapi`, TR-181 parameters under `Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.*`           |
+| Auth Service                | SAT token, device ID, account ID, and partner ID retrieval for voice session authorization                                        | `ctrlm_auth_service_create()`, Thunder `AuthService` plugin via `ctrlm_thunder_plugin_authservice_t` |
+| Voice Server                | Receives audio streams and returns voice recognition results                                                                      | `xr-voice-sdk` (xrsr), HTTP and/or SDT transport endpoints                                           |
+| Firmware Update Server      | Supplies local firmware archive paths via the `DeviceUpdate_UpdateAvail` IARM call                                                | `xconf`-compatible update manager, delivered to `ctrlm_device_update`                                |
+
+### Events Published
+
+| Event Name                                         | IPC Bus Topic | Trigger Condition                                                                                                       | Subscriber Components              |
+| -------------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `CTRLM_MAIN_IARM_EVENT_BINDING_BUTTON`             | `Ctrlm` bus   | Front panel binding button state change                                                                                 | UI, control service clients        |
+| `CTRLM_MAIN_IARM_EVENT_BINDING_LINE_OF_SIGHT`      | `Ctrlm` bus   | Line-of-sight pairing signal received or window expired                                                                 | UI, control service clients        |
+| `CTRLM_MAIN_IARM_EVENT_AUTOBIND_LINE_OF_SIGHT`     | `Ctrlm` bus   | Autobind line-of-sight signal received or window expired                                                                | UI, control service clients        |
+| `CTRLM_RCU_IARM_EVENT_KEY_PRESS`                   | `Ctrlm` bus   | Key down, repeat, or up event received from any paired controller                                                       | Input event consumers, app manager |
+| `CTRLM_RCU_IARM_EVENT_FUNCTION`                    | `Ctrlm` bus   | A setup-key function sequence executed on a controller                                                                  | Diagnostic clients                 |
+| `CTRLM_RCU_IARM_EVENT_KEY_GHOST`                   | `Ctrlm` bus   | A ghost key code received from a controller                                                                             | Input event consumers              |
+| `CTRLM_RCU_IARM_EVENT_RIB_ACCESS_CONTROLLER`       | `Ctrlm` bus   | A controller reads or writes a RIB attribute entry                                                                      | Diagnostic clients                 |
+| `CTRLM_RCU_IARM_EVENT_BATTERY_MILESTONE`           | `Ctrlm` bus   | Battery level crosses a low/critical threshold                                                                          | UI battery warning                 |
+| `CTRLM_RCU_IARM_EVENT_REMOTE_REBOOT`               | `Ctrlm` bus   | A paired remote reboots                                                                                                 | Diagnostic clients                 |
+| `CTRLM_RCU_IARM_EVENT_RCU_REVERSE_CMD_BEGIN/END`   | `Ctrlm` bus   | Find My Remote audible/visual alarm starts or stops                                                                     | UI                                 |
+| `CTRLM_RCU_IARM_EVENT_CONTROL`                     | `Ctrlm` bus   | Control event received from a controller                                                                                | Input event consumers              |
+| `CTRLM_RCU_IARM_EVENT_RCU_STATUS`                  | `Ctrlm` bus   | Network or controller status changes, including pairing state, IR programming state, firmware/battery status, or unbind | Thunder RCU plugin                 |
+| `CTRLM_VOICE_IARM_EVENT_JSON_SESSION_BEGIN`        | `Ctrlm` bus   | Voice session initiated                                                                                                 | Thunder Voice plugin               |
+| `CTRLM_VOICE_IARM_EVENT_JSON_STREAM_BEGIN`         | `Ctrlm` bus   | Audio stream started within a voice session                                                                             | Thunder Voice plugin               |
+| `CTRLM_VOICE_IARM_EVENT_JSON_KEYWORD_VERIFICATION` | `Ctrlm` bus   | Wake word detected and verified                                                                                         | Thunder Voice plugin               |
+| `CTRLM_VOICE_IARM_EVENT_JSON_SERVER_MESSAGE`       | `Ctrlm` bus   | Message received from voice server                                                                                      | Thunder Voice plugin               |
+| `CTRLM_VOICE_IARM_EVENT_JSON_STREAM_END`           | `Ctrlm` bus   | Audio stream ended                                                                                                      | Thunder Voice plugin               |
+| `CTRLM_VOICE_IARM_EVENT_JSON_SESSION_END`          | `Ctrlm` bus   | Voice session ended                                                                                                     | Thunder Voice plugin               |
+
+### IPC Flow Patterns
+
+**Primary Request / Response Flow:**
+
+Inbound IPC calls are received by registered handler functions. Network-oriented handlers such as `Main_StartPairing` marshal work to the `Ctrlm Main` queue and may wait synchronously for completion, while subsystem handlers such as voice status and configuration execute directly against their thread-safe APIs. Each handler returns either an IARM transport error or a response payload according to its API contract.
+
+```mermaid
+sequenceDiagram
+    participant Client as IPC Bus Client
+    participant IPCBus as IPC Bus
+    participant CtrlM as Control Manager (call handler)
+    participant Queue as GAsyncQueue
+    participant Main as Main Thread
+
+    Client->>IPCBus: IPC call (e.g., Main_GetRcuStatus)
+    IPCBus->>CtrlM: Dispatch to registered handler
+    CtrlM->>CtrlM: Validate params and API revision
+    CtrlM->>Queue: Enqueue message struct with embedded semaphore
+    CtrlM->>CtrlM: sem_wait()
+    Queue->>Main: Dequeue and process
+    Main->>Main: Populate result fields in message struct
+    Main->>CtrlM: sem_post()
+    CtrlM-->>IPCBus: IARM_RESULT_SUCCESS with result payload
+    IPCBus-->>Client: Response
+```
+
+**Event Notification Flow:**
+
+Hardware events from network-specific HAL threads are forwarded to the main thread as message structs via the GLib queue, which processes them and calls `IARM_Bus_BroadcastEvent` to distribute the event to all registered IPC bus subscribers. Voice SDK callbacks instead publish their lifecycle IPC events directly from the callback thread, posting only selected follow-up operations to the main queue.
+
+```mermaid
+sequenceDiagram
+    participant HAL as HAL Thread
+    participant Voice as Voice SDK Thread
+    participant Queue as GAsyncQueue
+    participant Main as Main Thread
+    participant IPCBus as IPC Bus
+    participant Sub1 as Subscriber (UI / App Manager)
+    participant Sub2 as Subscriber (Thunder Plugin)
+
+    HAL->>Queue: Enqueue event message (key press, binding, etc.)
+    Queue->>Main: Dequeue message
+    Main->>Main: Update internal state
+    Main->>IPCBus: IARM_Bus_BroadcastEvent(event_id, payload)
+    Voice->>IPCBus: Publish lifecycle IPC event directly
+    IPCBus->>Sub1: Event callback
+    IPCBus->>Sub2: Event callback
+```
+
+---
+
+## Implementation Details
+
+### Major HAL APIs Integration
+
+| HAL / DS API                                | Purpose                                                                                                                                                                                                   | Implementation File                     |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| `ctrlm_hal_rf4ce_main_t` (function pointer) | RF4CE HAL thread entry point loaded via `dlopen`. It receives initialization callbacks; the HAL confirms initialization asynchronously and supplies separate function pointers for subsequent operations. | `ctrlm_main.cpp`                        |
+| `ctrlm_hal_rf4ce_asb_init_t`                | Initializes the Advanced Secure Binding (ASB) HAL module for RF4CE key derivation. Loaded via a separate `dlopen` call.                                                                                   | `ctrlm_main.cpp`                        |
+| `ctrlm_hal_rf4ce_asb_key_derive_t`          | Derives a link key using the ASB algorithm for a controller during the binding security exchange.                                                                                                         | RF4CE network object                    |
+| BLE HAL (`ctrlm_hal_ble.h`)                 | Provides BLE remote management operations through BTMgr: discovery, connection, GATT attribute access, firmware update initiation.                                                                        | `ctrlm_ble_network.cpp`                 |
+| `dsDisplay` / `dsRpc`                       | Display information queries at initialization time.                                                                                                                                                       | `ctrlm_main.cpp`, `ctrlm_main_iarm.cpp` |
+
+### Key Implementation Logic
+
+- **State / Lifecycle Management**: The `ctrlm_global_t` struct holds core process state (network map, voice-session pointer, power state, pairing-window state, and subsystem handles). Most transitions are serialized by the `Ctrlm Main` worker, though GLib timeout callbacks and subsystem modules (database, validation, device update, voice) also mutate their own state outside the queue.
+  - Core implementation: `ctrlm_main.cpp`
+  - State transition handlers: `ctrlm_main.cpp`, `ctrlm_validation.cpp`
+
+- **Event Processing**: HAL event callbacks from the RF4CE and BLE HALs post typed message structs to the main thread `GAsyncQueue`. The main loop dequeues them and dispatches to the appropriate handler via a message type switch. The HAL layer handles hardware-level debounce before delivering events to Control Manager.
+
+- **Error Handling Strategy**: Error reporting depends on the IPC handler family. Legacy typed handlers generally place `CTRLM_IARM_CALL_RESULT_*` values in the response payload, while Thunder-facing JSON handlers may return `IARM_RESULT_INVALID_PARAM` or `IARM_RESULT_INVALID_STATE` directly and use a JSON `success` field for operation results. HAL errors are logged and recovery is attempted where supported.
+  - Timeout handling: Each pairing mode has a configurable timeout. On expiration, the pairing window closes and an appropriate IPC event is broadcast.
+
+- **Logging & Diagnostics**: Uses the `rdkx_logger` framework with a dedicated Control Manager module identifier. Standard info, error, and fatal log levels are used throughout. PII masking (key code values) is enabled for production builds via the `mask_pii` configuration field.
+  - Key log points: startup version line, HAL load success/failure, IPC bus registration, network initialization, pairing events, voice session transitions, crash recovery decisions.
+
+---
+
+## Configuration
+
+### Key Configuration Files
+
+| Configuration File                                                                            | Purpose                                                                                                                                                                      | Override Mechanism                                                                                                |
+| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `/etc/vendor/input/ctrlm_config.json` and, on non-production builds, `/opt/ctrlm_config.json` | Runtime configuration overrides applied by `ctrlm_load_config()` on top of build-time defaults compiled into `ctrlm_config_default.h`. Contains settings for all subsystems. | `/opt/ctrlm_config.json` is only applied on non-production builds, appended on top of or in place of the OEM file |
+
+### Key Configuration Parameters
+
+| Parameter                                                 | Type         | Default          | Description                                                             |
+| --------------------------------------------------------- | ------------ | ---------------- | ----------------------------------------------------------------------- |
+| `ctrlm_global.db_path`                                    | string       | `/opt/ctrlm.sql` | Filesystem path for the SQLite controller database.                     |
+| `ctrlm_global.minidump_path`                              | string       | `/opt/minidumps` | Directory where crash minidumps are written (when breakpad is enabled). |
+| `ctrlm_global.thread_monitor_period`                      | int          | `60`             | Interval in seconds between watchdog polls of worker threads.           |
+| `ctrlm_global.crash_recovery_threshold`                   | int          | `2`              | Number of successive crashes before recovery action is taken.           |
+| `ctrlm_global.mask_pii`                                   | bool (array) | `[true, false]`  | PII masking for production and development builds respectively.         |
+| `ctrlm_global.telemetry_report_interval`                  | int          | `900000`         | Telemetry report period in milliseconds (default 15 minutes).           |
+| `ctrlm_global.timeout_line_of_sight`                      | int          | `10000`          | Line-of-sight pairing window duration in milliseconds.                  |
+| `ctrlm_global.timeout_autobind`                           | int          | `1200`           | Autobind pairing window duration in milliseconds.                       |
+| `ctrlm_global.timeout_button_binding`                     | int          | `600000`         | Button binding window duration in milliseconds.                         |
+| `ctrlm_global.timeout_screen_bind`                        | int          | `600000`         | Screen bind pairing window duration in milliseconds.                    |
+| `ctrlm_global.validation_config.ctrlm.max_attempts`       | int          | `5`              | Maximum number of pairing validation attempts.                          |
+| `ctrlm_global.validation_config.ctrlm.timeout_initial`    | int          | `30000`          | Initial validation period timeout in milliseconds.                      |
+| `ctrlm_global.validation_config.ctrlm.timeout_subsequent` | int          | `10000`          | Subsequent validation attempt timeout in milliseconds.                  |
+| `network_rf4ce.autobind_config.enable`                    | bool         | `true`           | Enables automatic binding mode for RF4CE.                               |
+| `network_rf4ce.discovery_config.require_line_of_sight`    | bool         | `false`          | When true, restricts RF4CE discovery to line-of-sight remotes.          |
+
+### Runtime Configuration
+
+RFC TR-181 parameters can override subsystem-level defaults. The `ctrlm_rfc_t` module fetches these parameters once at startup; periodic re-fetching is not currently implemented:
+
+```bash
+# Example: read an RFC parameter via the rfcapi CLI
+rfcapi get Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.global
+```
+
+Relevant TR-181 paths:
+
+| TR-181 Parameter                                                     | Subsystem                   |
+| -------------------------------------------------------------------- | --------------------------- |
+| `Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.global`        | Global configuration        |
+| `Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.network_rf4ce` | RF4CE configuration         |
+| `Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.network_ble`   | BLE configuration           |
+| `Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.network_ip`    | IP configuration            |
+| `Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.voice`         | Voice configuration         |
+| `Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.vsdk`          | Voice SDK configuration     |
+| `Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.device_update` | Device update configuration |
+
+### Configuration Persistence
+
+Controller binding state, battery milestones, IR remote usage statistics, pairing metrics, last key press information, voice settings, IR code selections, chime settings, and conversational mode are all persisted to the SQLite database at `/opt/ctrlm.sql`. A backup of the database is written to `/opt/ctrlm.back` after successful initialization and is used for restoration during crash recovery. Runtime IPC persistence is API-specific; for example, the voice configuration call stores the `wwFeedback` preference in the database.

@@ -254,7 +254,7 @@ sequenceDiagram
     Queue->>MainThread: Dequeue message
     MainThread->>NW: Open pairing window on all networks
     NW-->>MainThread: Result
-    MainThread->>IPCBus: BroadcastEvent CTRLM_MAIN_IARM_EVENT_BINDING_LINE_OF_SIGHT (if applicable)
+    MainThread->>IPCBus: BroadcastEvent CTRLM_RCU_IARM_EVENT_RCU_STATUS (RF4CE pairing state)
     MainThread->>Handler: sem_post(semaphore)
     Handler-->>IPCBus: IARM_RESULT_SUCCESS
     IPCBus-->>Client: Response with result
@@ -288,24 +288,24 @@ sequenceDiagram
 
 ### Interaction Matrix
 
-| Target Component / Layer    | Interaction Purpose                                                                                                               | Key APIs / Topics                                                                          |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| **Plugins**                 |                                                                                                                                   |                                                                                            |
-| `DeviceInfo`                | Retrieve the device type used to initialize device-specific behavior and IRDB mode                                                | `ctrlm_thunder_plugin_device_info_t`                                                       |
-| `System`                    | Retrieve the device MAC address and monitor firmware-update state changes                                                         | `ctrlm_thunder_plugin_system_t`                                                            |
-| `PowerManager`              | Query current power state and receive power state change events                                                                   | `ctrlm_thunder_plugin_powermanager_t`, `ctrlm_thunder_powermanager.cpp`                    |
-| `SystemAudioPlayer`         | Play chime audio files (open chime, close chime, privacy chime) on voice session events                                           | `ctrlm_thunder_plugin_system_audio_player_t`                                               |
-| **Device Services /HAL**    |                                                                                                                                   |                                                                                            |
-| RF4CE HAL                   | Wireless RF4CE radio control: discovery, binding, key event receive (delivered to the system via `uinput`), firmware delivery     | `ctrlm_hal_rf4ce_main_t` (loaded via `dlopen`), `ctrlm_hal_rf4ce.h`                        |
-| BLE HAL                     | BLE remote control management via BTMgr library                                                                                   | `ctrlm_hal_ble.h`, `BTMgr` library                                                         |
-| Device Settings (Display)   | Display-related queries used during initialization                                                                                | `dsDisplay.h`, `dsRpc.h`                                                                   |
-| **IPC Bus**                 |                                                                                                                                   |                                                                                            |
-| IPC Bus (`Ctrlm` namespace) | Exposes all remote control services; distributes key press, binding, voice, and firmware update events to system bus participants | `IARM_Bus_RegisterCall`, `IARM_Bus_BroadcastEvent`                                         |
-| **External Systems**        |                                                                                                                                   |                                                                                            |
-| RFC / TR-181                | Runtime feature flag delivery for voice, RF4CE, BLE, telemetry, and global subsystem configuration                                | `rfcapi`, TR-181 parameters under `Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.*` |
-| Auth Service                | SAT token, device ID, account ID, and partner ID retrieval for voice session authorization                                        | `ctrlm_auth_service_create()`, HTTP endpoint configured via `url_auth_service` in config   |
-| Voice Server                | Receives audio streams and returns voice recognition results                                                                      | `xr-voice-sdk` (xrsr), HTTP and/or SDT transport endpoints                                 |
-| Firmware Update Server      | Supplies local firmware archive paths via the `DeviceUpdate_UpdateAvail` IARM call                                                | `xconf`-compatible update manager, delivered to `ctrlm_device_update`                      |
+| Target Component / Layer    | Interaction Purpose                                                                                                               | Key APIs / Topics                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Plugins**                 |                                                                                                                                   |                                                                                                      |
+| `DeviceInfo`                | Retrieve the device type used to initialize device-specific behavior and IRDB mode                                                | `ctrlm_thunder_plugin_device_info_t`                                                                 |
+| `System`                    | Retrieve the device MAC address and monitor firmware-update state changes                                                         | `ctrlm_thunder_plugin_system_t`                                                                      |
+| `PowerManager`              | Query current power state and receive power state change events                                                                   | `ctrlm_thunder_plugin_powermanager_t`, `ctrlm_thunder_powermanager.cpp`                              |
+| `SystemAudioPlayer`         | Play the wake-word feedback beep before audio ducking when supported and enabled                                                  | `ctrlm_thunder_plugin_system_audio_player_t`                                                         |
+| **Device Services /HAL**    |                                                                                                                                   |                                                                                                      |
+| RF4CE HAL                   | Wireless RF4CE radio control: discovery, binding, key event receive (delivered to the system via `uinput`), firmware delivery     | `ctrlm_hal_rf4ce_main_t` (loaded via `dlopen`), `ctrlm_hal_rf4ce.h`                                  |
+| BLE HAL                     | BLE remote control management via BTMgr library                                                                                   | `ctrlm_hal_ble.h`, `BTMgr` library                                                                   |
+| Device Settings (Display)   | Display-related queries used during initialization                                                                                | `dsDisplay.h`, `dsRpc.h`                                                                             |
+| **IPC Bus**                 |                                                                                                                                   |                                                                                                      |
+| IPC Bus (`Ctrlm` namespace) | Exposes all remote control services; distributes key press, binding, voice, and firmware update events to system bus participants | `IARM_Bus_RegisterCall`, `IARM_Bus_BroadcastEvent`                                                   |
+| **External Systems**        |                                                                                                                                   |                                                                                                      |
+| RFC / TR-181                | Runtime feature flag delivery for voice, RF4CE, BLE, telemetry, and global subsystem configuration                                | `rfcapi`, TR-181 parameters under `Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ctrlm.*`           |
+| Auth Service                | SAT token, device ID, account ID, and partner ID retrieval for voice session authorization                                        | `ctrlm_auth_service_create()`, Thunder `AuthService` plugin via `ctrlm_thunder_plugin_authservice_t` |
+| Voice Server                | Receives audio streams and returns voice recognition results                                                                      | `xr-voice-sdk` (xrsr), HTTP and/or SDT transport endpoints                                           |
+| Firmware Update Server      | Supplies local firmware archive paths via the `DeviceUpdate_UpdateAvail` IARM call                                                | `xconf`-compatible update manager, delivered to `ctrlm_device_update`                                |
 
 ### Events Published
 
@@ -460,4 +460,4 @@ Relevant TR-181 paths:
 
 ### Configuration Persistence
 
-Controller binding state, battery milestones, IR remote usage statistics, pairing metrics, last key press information, voice settings, IR code selections, chime settings, and conversational mode are all persisted to the SQLite database at `/opt/ctrlm.sql`. A backup of the database is written to `/opt/ctrlm.back` after successful initialization and is used for restoration during crash recovery. Configuration changes received at runtime via IPC calls (for example, chime enable/disable, conversational mode, IR command repeats) are written to the database and survive reboots.
+Controller binding state, battery milestones, IR remote usage statistics, pairing metrics, last key press information, voice settings, IR code selections, chime settings, and conversational mode are all persisted to the SQLite database at `/opt/ctrlm.sql`. A backup of the database is written to `/opt/ctrlm.back` after successful initialization and is used for restoration during crash recovery. Runtime IPC persistence is API-specific; for example, the voice configuration call stores the `wwFeedback` preference in the database.

@@ -1001,8 +1001,17 @@ void GattUpgradeService::onACKPacket(const vector<uint8_t> &data)
 
     const int fwDataSize = static_cast<int>(m_fwFile->size());
 
-    // check if the ACK is for the last block
-    if ((blockId * FIRMWARE_PACKET_MTU) > fwDataSize) {
+    // TEMP DIAGNOSTIC (RDKEMW-15306): confirm last-block detection over the final
+    // couple of windows (only log near the end to keep the log readable)
+    if ((blockId + 2 * m_windowSize) * FIRMWARE_PACKET_MTU >= fwDataSize) {
+        XLOGD_INFO("ACK diag: blockId=%d, blockId*MTU=%d, fwDataSize=%d, fwDataSize%%MTU=%d, lastBlock=%s",
+                   blockId, (blockId * FIRMWARE_PACKET_MTU), fwDataSize, (fwDataSize % FIRMWARE_PACKET_MTU),
+                   ((blockId * FIRMWARE_PACKET_MTU) >= fwDataSize) ? "TRUE" : "FALSE");
+    }
+
+    // check if the ACK is for the last block (>= so an image sized an exact
+    // multiple of FIRMWARE_PACKET_MTU also completes on its final block's ACK)
+    if ((blockId * FIRMWARE_PACKET_MTU) >= fwDataSize) {
 
         // stop the timeout
         if (m_timeoutTimer > 0) {

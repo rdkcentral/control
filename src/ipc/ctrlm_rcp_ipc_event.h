@@ -22,7 +22,9 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <utility>
 #include "ctrlm_ipc.h"
+#include "ctrlm_ipc_rcu.h"
 #include "ctrlm_attr_general.h"
 #include "jansson.h"
 
@@ -73,6 +75,17 @@ public:
 class ctrlm_obj_controller_t;
 class ctrlm_obj_network_t;
 
+typedef struct {
+    char                  version_hal[CTRLM_MAIN_VERSION_LENGTH];
+    unsigned char         controller_qty;
+    ctrlm_controller_id_t controllers[CTRLM_MAIN_MAX_BOUND_CONTROLLERS];
+    unsigned short        pan_id;
+    ctrlm_rf_channel_t    rf_channel_active;
+    unsigned long long    ieee_address;
+    unsigned short        short_address;
+    char                  chipset[CTRLM_MAIN_MAX_CHIPSET_LENGTH];
+} ctrlm_legacy_rf4ce_network_status_t;
+
 class ctrlm_rcp_ipc_controller_status_t : public ctrlm_virtual_json_t
 {
 public:
@@ -119,10 +132,11 @@ public:
     void                 set_net_id(ctrlm_network_id_t net_id)       { net_id_ = net_id; }
     ctrlm_network_type_t get_type() const                            { return net_type_; }
 
-    void                  populate_status(const ctrlm_obj_network_t &network);
+    void                  populate_status(ctrlm_obj_network_t &network, bool verbose = false);
     ctrlm_ir_state_t      get_ir_prog_state(void) const;
     ctrlm_rf_pair_state_t get_rf_pair_state(void) const;
     void                  get_controller_status_list(std::vector<ctrlm_rcp_ipc_controller_status_t> &list) const;
+    bool                  get_legacy_remote_data(ctrlm_legacy_rf4ce_network_status_t &network_status, std::vector<std::pair<ctrlm_controller_id_t, ctrlm_controller_status_t>> &controller_status) const;
 
 private:
     uint8_t                  api_revision_   = 0;
@@ -132,7 +146,10 @@ private:
     ctrlm_ir_state_t         irdb_state_     = CTRLM_IR_STATE_UNKNOWN;
     ctrlm_rf_pair_state_t    pair_state_     = CTRLM_RF_PAIR_STATE_UNKNOWN;
     ctrlm_iarm_call_result_t result_         = CTRLM_IARM_CALL_RESULT_INVALID;
+    bool                     legacy_remote_data_valid_ = false;
 
+    ctrlm_legacy_rf4ce_network_status_t legacy_network_status_ = {};
+    std::vector<std::pair<ctrlm_controller_id_t, ctrlm_controller_status_t>> legacy_controller_status_;
     std::vector<ctrlm_rcp_ipc_controller_status_t> controller_status_list_;
 };
 

@@ -117,7 +117,7 @@ json_t *ctrlm_rcp_ipc_net_status_t::to_json() const
     return (err) ? NULL : status;
 }
 
-void ctrlm_rcp_ipc_net_status_t::populate_status(const ctrlm_obj_network_t &network)
+void ctrlm_rcp_ipc_net_status_t::populate_status(ctrlm_obj_network_t &network, bool verbose)
 {
     api_revision_ = CTRLM_MAIN_IARM_BUS_API_REVISION;
     net_type_     = network.type_get();
@@ -133,6 +133,20 @@ void ctrlm_rcp_ipc_net_status_t::populate_status(const ctrlm_obj_network_t &netw
     for (auto controller : controller_list) {
         controller_status_list_.push_back(ctrlm_rcp_ipc_controller_status_t(*controller));
     }
+
+    if (verbose) {
+        legacy_remote_data_valid_ = network.get_legacy_remote_data(&legacy_network_status_, &legacy_controller_status_);
+    }
+}
+
+bool ctrlm_rcp_ipc_net_status_t::get_legacy_remote_data(ctrlm_legacy_rf4ce_network_status_t &network_status, std::vector<std::pair<ctrlm_controller_id_t, ctrlm_controller_status_t>> &controller_status) const
+{
+    if (!legacy_remote_data_valid_) {
+        return false;
+    }
+    network_status = legacy_network_status_;
+    controller_status = legacy_controller_status_;
+    return true;
 }
 
 ctrlm_ir_state_t ctrlm_rcp_ipc_net_status_t::get_ir_prog_state(void) const

@@ -20,6 +20,8 @@
 #define _CTRLM_IR_CONTROLLER_H_
 
 
+#include <chrono>
+#include <mutex>
 #include <string>
 #include <xr_mq.h>
 #include <ctrlm_utils.h>
@@ -73,7 +75,7 @@ public:
    void last_key_code_set(uint16_t val);
    void last_key_time_update();
 
-   void process_event_key(uint16_t key_code);
+   void process_event_key(ctrlm_key_status_t key_status, uint16_t key_code);
 
    xr_mq_t key_thread_msgq_get() const;
    void thread_poll(void *data);
@@ -91,6 +93,7 @@ private:
     *  Default Constructor (Private due to it being a Singleton)
     */
    ctrlm_ir_controller_t();
+   static gboolean pairing_event_sequence_timeout(gpointer user_data);
 
    std::vector<std::string>                input_device_names_;
 
@@ -104,6 +107,11 @@ private:
    xr_mq_t                                 key_thread_msgq_;
 
    int                                     scan_code_;
+   std::mutex                              pairing_event_sequence_mutex_;
+   bool                                    pairing_event_sequence_pending_;
+   uint8_t                                 pairing_event_sequence_code_;
+   std::chrono::steady_clock::time_point   pairing_event_sequence_time_;
+   guint                                   pairing_event_sequence_timer_tag_;
 };
 
 // End Class ctrlm_ir_controller_t

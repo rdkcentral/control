@@ -66,6 +66,8 @@ typedef struct {
 #define KEY_INPUT_DEVICE_BASE_DIR    "/dev/input/"
 #define KEY_INPUT_DEVICE_BASE_FILE   "event"
 
+#define PAIRING_EVENT_SEQUENCE_TIMEOUT_MS  (1000U)
+
 static guint g_retry_input_open_timer_tag = 0;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -94,6 +96,9 @@ ctrlm_ir_controller_t::ctrlm_ir_controller_t()
    , mask_key_codes_(true)
    , key_thread_msgq_(XR_MQ_INVALID)
    , scan_code_(0)
+   , pairing_event_sequence_pending_(false)
+   , pairing_event_sequence_code_(0)
+   , pairing_event_sequence_timer_tag_(0)
 {
 
    key_thread_.running = false;
@@ -118,6 +123,10 @@ ctrlm_ir_controller_t::~ctrlm_ir_controller_t() {
       msg.type = CTRLM_IR_KEY_QUEUE_MSG_TYPE_TERMINATE;
       ctrlm_utils_queue_msg_push(key_thread_msgq_, (const char *)&msg, sizeof(msg));
       ctrlm_utils_thread_join(&key_thread_, 2);
+   }
+   {
+      std::lock_guard<std::mutex> lock(pairing_event_sequence_mutex_);
+      ctrlm_timeout_destroy(&pairing_event_sequence_timer_tag_);
    }
    ctrlm_timeout_destroy(&g_retry_input_open_timer_tag);
    ctrlm_utils_message_queue_close(&key_thread_msgq_);
@@ -197,13 +206,46 @@ void ctrlm_ir_controller_t::last_key_time_update() {
    }
 }
 
-void ctrlm_ir_controller_t::process_event_key(uint16_t key_code) {
+void ctrlm_ir_controller_t::process_event_key(ctrlm_key_status_t key_status, uint16_t key_code) {
    last_key_code_->set_value((uint64_t)key_code);
    last_key_time_update();
 
+   // Handle BLE pairing keys
    if (key_code == KEY_BLUETOOTH || key_code == KEY_CONNECT) {
+      if (key_status != CTRLM_KEY_STATUS_DOWN) {
+         return;
+      }
+
       const uint8_t commandCode = (scan_code_ >> 0) & 0xff;
-      XLOGD_INFO("received IR key for BLE pairing (scan code 0x%06x : pairCode=%hhu)", scan_code_, commandCode);
+      const auto now = std::chrono::steady_clock::now();
+
+      // Require 2 consecutive key down pairing events received within PAIRING_EVENT_SEQUENCE_TIMEOUT_MS with matching pairing codes.
+      // This ensures that only valid pairing events trigger the BLE pairing process and not spurious or corrupted IR signals.
+      {
+         std::lock_guard<std::mutex> lock(pairing_event_sequence_mutex_);
+         const bool pairing_event_sequence_expired = pairing_event_sequence_pending_ &&
+            now - pairing_event_sequence_time_ >= std::chrono::milliseconds(PAIRING_EVENT_SEQUENCE_TIMEOUT_MS);
+
+         if (!pairing_event_sequence_pending_ || pairing_event_sequence_expired || pairing_event_sequence_code_ != commandCode) {
+            if (pairing_event_sequence_expired) {
+               XLOGD_WARN("BLE pairing key down sequence expired after %u ms", PAIRING_EVENT_SEQUENCE_TIMEOUT_MS);
+            } else if (pairing_event_sequence_pending_) {
+               XLOGD_WARN("received mismatched IR key down for BLE pairing (pending pairCode=%hhu, received pairCode=%hhu)", pairing_event_sequence_code_, commandCode);
+            }
+            pairing_event_sequence_pending_ = true;
+            pairing_event_sequence_code_ = commandCode;
+            pairing_event_sequence_time_ = now;
+            if (pairing_event_sequence_timer_tag_ == 0) {
+               pairing_event_sequence_timer_tag_ = ctrlm_timeout_create(PAIRING_EVENT_SEQUENCE_TIMEOUT_MS, pairing_event_sequence_timeout, this);
+            }
+            XLOGD_INFO("received first IR key down for BLE pairing (scan code 0x%06x : pairCode=%hhu)", scan_code_, commandCode);
+            return;
+         }
+
+         pairing_event_sequence_pending_ = false;
+      }
+
+      XLOGD_INFO("received second IR key for BLE pairing (scan code 0x%06x : pairCode=%hhu), initiating pairing", scan_code_, commandCode);
 
       ctrlm_iarm_call_StartPairWithCode_params_t params;
       params.pair_code = commandCode;
@@ -214,7 +256,16 @@ void ctrlm_ir_controller_t::process_event_key(uint16_t key_code) {
       msg.params = &params;
 
       ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_t::req_process_pair_with_code, &msg, sizeof(msg), NULL, CTRLM_MAIN_NETWORK_ID_ALL, true);
-   } else if(key_code == KEY_SETUP) {
+      return;
+   }
+
+   if (key_status == CTRLM_KEY_STATUS_DOWN) {
+      std::lock_guard<std::mutex> lock(pairing_event_sequence_mutex_);
+      pairing_event_sequence_pending_ = false;
+   }
+
+   // Handle RF4CE Line of Sight and Autobind keys
+   if(key_code == KEY_SETUP) {
       XLOGD_INFO("received IR key for Line of Sight");
 
       // Allocate a message and send it to Control Manager's queue
@@ -244,6 +295,31 @@ void ctrlm_ir_controller_t::process_event_key(uint16_t key_code) {
          ctrlm_main_queue_msg_push(msg);
       }
    }
+}
+
+gboolean ctrlm_ir_controller_t::pairing_event_sequence_timeout(gpointer user_data) {
+   ctrlm_ir_controller_t *ir_controller = static_cast<ctrlm_ir_controller_t *>(user_data);
+   std::lock_guard<std::mutex> lock(ir_controller->pairing_event_sequence_mutex_);
+   ir_controller->pairing_event_sequence_timer_tag_ = 0;
+
+   if (!ir_controller->pairing_event_sequence_pending_) {
+      return FALSE;
+   }
+
+   const auto now = std::chrono::steady_clock::now();
+   const auto deadline = ir_controller->pairing_event_sequence_time_ + std::chrono::milliseconds(PAIRING_EVENT_SEQUENCE_TIMEOUT_MS);
+   if (now >= deadline) {
+      ir_controller->pairing_event_sequence_pending_ = false;
+      XLOGD_WARN("BLE pairing key down sequence expired after %u ms", PAIRING_EVENT_SEQUENCE_TIMEOUT_MS);
+      return FALSE;
+   }
+
+   guint remaining_ms = static_cast<guint>(std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now).count());
+   if (remaining_ms == 0) {
+      remaining_ms = 1;
+   }
+   ir_controller->pairing_event_sequence_timer_tag_ = ctrlm_timeout_create(remaining_ms, pairing_event_sequence_timeout, ir_controller);
+   return FALSE;
 }
 
 void ctrlm_ir_controller_t::db_table_set(const std::string &table) {
@@ -492,7 +568,7 @@ void* ctrlm_ir_key_monitor_thread(void *data) {
                            ir_controller->mask_key_codes_get() ? -1 : event.code, 
                            ctrlm_linux_key_code_str(event.code, ir_controller->mask_key_codes_get()), ctrlm_key_status_str(key_status));
 
-                     ir_controller->process_event_key(event.code);
+                     ir_controller->process_event_key(key_status, event.code);
                   }
 
                   ir_controller->set_scan_code(0);
@@ -524,4 +600,3 @@ void* ctrlm_ir_key_monitor_thread(void *data) {
    }
    return NULL;
 }
-

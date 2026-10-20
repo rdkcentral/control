@@ -20,7 +20,6 @@
 #define _CTRLM_IR_CONTROLLER_H_
 
 
-#include <chrono>
 #include <mutex>
 #include <string>
 #include <xr_mq.h>
@@ -110,7 +109,7 @@ private:
    std::mutex                              pairing_event_sequence_mutex_;
    bool                                    pairing_event_sequence_pending_;
    uint8_t                                 pairing_event_sequence_code_;
-   std::chrono::steady_clock::time_point   pairing_event_sequence_time_;
+   ctrlm_timestamp_t                       pairing_event_sequence_time_;
    guint                                   pairing_event_sequence_timer_tag_;
 };
 

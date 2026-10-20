@@ -66,7 +66,7 @@ typedef struct {
 #define KEY_INPUT_DEVICE_BASE_DIR    "/dev/input/"
 #define KEY_INPUT_DEVICE_BASE_FILE   "event"
 
-#define PAIRING_EVENT_SEQUENCE_TIMEOUT_MS  (1000U)
+#define PAIRING_EVENT_SEQUENCE_TIMEOUT_MS  (1000)
 
 static guint g_retry_input_open_timer_tag = 0;
 
@@ -217,18 +217,19 @@ void ctrlm_ir_controller_t::process_event_key(ctrlm_key_status_t key_status, uin
       }
 
       const uint8_t commandCode = (scan_code_ >> 0) & 0xff;
-      const auto now = std::chrono::steady_clock::now();
+      ctrlm_timestamp_t now = {};
+      ctrlm_timestamp_get_monotonic(&now);
 
       // Require 2 consecutive key down pairing events received within PAIRING_EVENT_SEQUENCE_TIMEOUT_MS with matching pairing codes.
       // This ensures that only valid pairing events trigger the BLE pairing process and not spurious or corrupted IR signals.
       {
          std::lock_guard<std::mutex> lock(pairing_event_sequence_mutex_);
          const bool pairing_event_sequence_expired = pairing_event_sequence_pending_ &&
-            now - pairing_event_sequence_time_ >= std::chrono::milliseconds(PAIRING_EVENT_SEQUENCE_TIMEOUT_MS);
+            ctrlm_timestamp_subtract_ms(pairing_event_sequence_time_, now) >= PAIRING_EVENT_SEQUENCE_TIMEOUT_MS;
 
          if (!pairing_event_sequence_pending_ || pairing_event_sequence_expired || pairing_event_sequence_code_ != commandCode) {
             if (pairing_event_sequence_expired) {
-               XLOGD_WARN("BLE pairing key down sequence expired after %u ms", PAIRING_EVENT_SEQUENCE_TIMEOUT_MS);
+               XLOGD_WARN("BLE pairing key down sequence expired after %d ms", PAIRING_EVENT_SEQUENCE_TIMEOUT_MS);
             } else if (pairing_event_sequence_pending_) {
                XLOGD_WARN("received mismatched IR key down for BLE pairing (pending pairCode=%hhu, received pairCode=%hhu)", pairing_event_sequence_code_, commandCode);
             }
@@ -306,18 +307,16 @@ gboolean ctrlm_ir_controller_t::pairing_event_sequence_timeout(gpointer user_dat
       return FALSE;
    }
 
-   const auto now = std::chrono::steady_clock::now();
-   const auto deadline = ir_controller->pairing_event_sequence_time_ + std::chrono::milliseconds(PAIRING_EVENT_SEQUENCE_TIMEOUT_MS);
-   if (now >= deadline) {
+   ctrlm_timestamp_t now = {};
+   ctrlm_timestamp_get_monotonic(&now);
+   const signed long long elapsed_ms = ctrlm_timestamp_subtract_ms(ir_controller->pairing_event_sequence_time_, now);
+   if (elapsed_ms >= PAIRING_EVENT_SEQUENCE_TIMEOUT_MS) {
       ir_controller->pairing_event_sequence_pending_ = false;
-      XLOGD_WARN("BLE pairing key down sequence expired after %u ms", PAIRING_EVENT_SEQUENCE_TIMEOUT_MS);
+      XLOGD_WARN("BLE pairing key down sequence expired after %d ms", PAIRING_EVENT_SEQUENCE_TIMEOUT_MS);
       return FALSE;
    }
 
-   guint remaining_ms = static_cast<guint>(std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now).count());
-   if (remaining_ms == 0) {
-      remaining_ms = 1;
-   }
+   const guint remaining_ms = static_cast<guint>(PAIRING_EVENT_SEQUENCE_TIMEOUT_MS - elapsed_ms);
    ir_controller->pairing_event_sequence_timer_tag_ = ctrlm_timeout_create(remaining_ms, pairing_event_sequence_timeout, ir_controller);
    return FALSE;
 }

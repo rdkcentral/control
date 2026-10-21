@@ -1,6 +1,6 @@
 ---
 name: docs-readme
-description: "Guide an agent to create or update docs/README.md with source-verified C4 diagrams, data models, and API documentation."
+description: "Guide an agent to create or update docs/README.md with source-verified C4 diagrams, data models, API documentation, build instructions, and a complete /etc/vendor configuration file reference."
 disable-model-invocation: true
 ---
 # Repository Documentation: Architecture, Data Models, and APIs
@@ -82,9 +82,47 @@ Create a concise, navigable page with these sections, adjusting headings only wh
    Follow each diagram with a short explanation. Label optional, build-gated, product-dependent, or unverified integrations accurately.
 3. **Data models**: key entities/types, important relationships, configuration/state shape, and persistence/lifecycle only when implemented and verified. Link to authoritative definitions.
 4. **APIs and integrations**: exposed/inbound contracts in a distinct subsection from outbound calls and platform dependencies. Identify protocol/transport, service identity or callsign, version/revision, representative operations/events, payload type sources, and compatibility caveats where evidenced.
-5. **Related documentation**: links to existing build, configuration, API, deployment, and architecture resources only when those resources exist and the links resolve.
+5. **Building**: instructions for building the component, including dependencies, build commands, and any special environment setup.
+6. **Runtime Configuration**: instructions for configuring the component at runtime, including command-line options, configuration precedence, and a **detailed reference for every `/etc/vendor` JSON file** the source reads (see [Vendor Configuration File Reference Requirements](#vendor-configuration-file-reference-requirements)).
+7. **Related documentation**: links to existing build, configuration, API, deployment, and architecture resources only when those resources exist and the links resolve.
 
 Do not force a section to claim details the repository does not establish. If a requested area is absent or unclear, say so briefly and specifically rather than omitting it without explanation.
+
+## Vendor Configuration File Reference Requirements
+
+**⚠️ MANDATORY: The Runtime Configuration section MUST contain a dedicated subsection for EVERY JSON file under `/etc/vendor/` that the source code reads.** A summary table alone is NOT sufficient.
+
+### Discovery
+
+1. Search all of `src/` (and any other compiled source) for the literal `/etc/vendor` and for macros, constants, or string concatenations that build such paths. Do not limit the search to `/etc/vendor/input/`.
+2. Record every match: the exact file path, the defining symbol, and the function that opens it.
+3. Also record non-JSON vendor marker files (for example, files whose mere presence changes behavior). Document them briefly in the same section so readers see the complete vendor surface, but the detailed option reference below applies to JSON files.
+4. Include files that are compiled in only under a build option; label the gating option.
+
+### Required content for each vendor JSON file
+
+Each file gets its own heading (for example `#### /etc/vendor/input/ble_network_options.json`) containing:
+
+1. **Purpose**: what the file is for, who provides it (vendor/OEM layer), and the behavior it changes.
+2. **Loading behavior**: when it is read (startup, network init, on demand), which build options must be enabled, what happens if it is absent, and what happens if it is malformed (ignored, logged, startup failure).
+3. **Merge semantics**: whether the file **replaces** a configuration section, **merges** key-by-key into it, or is loaded as the whole configuration; state shallow vs. deep merge exactly as implemented; state precedence relative to compiled-in defaults and other override files.
+4. **Expected top-level JSON type**: object or array, and any wrapping (or lack of wrapping) relative to the main configuration's section names.
+5. **Complete option reference**: a table listing **every** key the code reads from that file or from the configuration section it feeds, with these columns:
+
+   | Key (full JSON path) | Type | Default | Units / allowed values | Required | Description |
+   | --- | --- | --- | --- | --- | --- |
+
+   - Derive the key list from the code that parses the file or section (JSON accessors, config path strings, generated `JSON_*_NAME_*` constants), not only from the default JSON. Include keys that are read but absent from the default JSON, and note keys present in the default JSON that no code reads.
+   - Derive defaults from the default configuration or compiled-in constants; write "none" when no default exists.
+   - State units (milliseconds, seconds, percentage) and valid ranges or enumerated values exactly as the code enforces them (min/max checks, enum maps, regex usage).
+   - For nested objects and arrays of objects (for example, model entries), document every nested field using its full path (for example `models[].advertisingNames.optional.regexReconnect`).
+   - When a key's effect cannot be determined from source, write "Effect not determined from reviewed source" rather than guessing.
+6. **Example**: at least one minimal, valid JSON example showing a realistic partial override. Examples must use only keys documented in the table and must not contain credentials, real hostnames, or production secrets.
+7. **Source links**: relative links to the code that reads the file and to the default values.
+
+### Large configuration files
+
+If a vendor file can override the entire main configuration (for example a vendor `ctrlm_config.json`), document every top-level section and every key within it, grouped into one table per section. This can be large: follow the **OUTPUT-SIZE WARNING** and add the tables through multiple focused edits (one or two sections per edit), re-reading each edited range. Do NOT abbreviate with "see default JSON for the rest".
 
 ## Documentation Guidelines
 
@@ -132,6 +170,12 @@ Use Mermaid C4 diagram types (`C4Context`, `C4Container`, `C4Component`) when su
 - **Bad**: “The service probably persists this configuration.”
 - **Why**: Explicit evidence limits let readers distinguish a verified absence from an unsupported guess.
 
+### 8. Document vendor files completely
+
+- **Good**: A `#### /etc/vendor/input/ble_network_timeouts.json` subsection explaining that the file is a JSON object merged key-by-key into `network_ble.timeouts`, followed by a table with `discovery`, `pair`, `setup`, `unpair`, `hidrawPoll`, and `hidrawLimit`, each with type, default, units, and effect, plus a minimal example.
+- **Bad**: A single table row saying "`ble_network_timeouts.json` — BLE timeouts."
+- **Why**: Vendor integrators configure products from this page; an undocumented key is effectively unusable and a missing merge rule causes silent misconfiguration.
+
 ## Worked Example: Evidence to README
 
 The following is a **format example only**. The names and paths are illustrative; never copy them as facts unless the target repository independently verifies them.
@@ -162,7 +206,7 @@ The second claim invents both a database and persistence. The example demonstrat
 - **File Path**: `docs/README.md` at the target repository root. Ask the user if the target repository is ambiguous; do not silently choose a nested repository.
 - **Persistent File Scope**: Modify only `docs/README.md`. A unique temporary tracker under `tmp/` is allowed during work and must be removed only if this task created it.
 - **Format**: Markdown compatible with the repository's existing documentation renderer. Use fenced code blocks with appropriate language identifiers and valid, renderer-supported Mermaid where available.
-- **Required Content**: responsibility and system boundary; C4 context/container/component views or explicit evidence-based explanation of missing views; grounded data-model summary; inbound API and outbound integration documentation; verified links to useful existing documentation.
+- **Required Content**: responsibility and system boundary; C4 context/container/component views or explicit evidence-based explanation of missing views; grounded data-model summary; inbound API and outbound integration documentation; build instructions; runtime configuration including a complete per-file reference for every `/etc/vendor` JSON file (purpose, loading and merge behavior, every option, example); verified links to useful existing documentation.
 - **Source Traceability**: Include relative links to relevant repository sources near non-obvious claims where practical. Do not add raw line-number citations that become misleading after normal edits.
 - **Quality**: Accurate, concise, navigable, maintainable, internally consistent, and free of broken relative links or unsupported guarantees.
 - **No Unrequested Outputs**: Do not create a separate architecture diagram, API document, tracking report, or code change.
@@ -326,6 +370,7 @@ Status: complete
 4. Trace outbound client calls separately. Identify the remote interface and dependency only as precisely as the code supports.
 5. Compare real definitions with tests or mocks where both exist. Use mocks as corroboration, never as the sole source for a disputed API shape when an authoritative definition is available.
 6. Record gaps explicitly. Do not claim a database, persistence guarantee, public method, or event because a type name or test fixture suggests one.
+7. Inventory every `/etc/vendor` file using the discovery steps in [Vendor Configuration File Reference Requirements](#vendor-configuration-file-reference-requirements). For each JSON file, trace the parsing code and the configuration section it feeds, and list every key read with type, default, units/range, and effect.
 
 **Update the tracker Sections 4-5** with:
 
@@ -337,6 +382,14 @@ Status: complete
 - Configuration, serialization, or lifecycle evidence:
 - Persistence mechanism (or "none found in reviewed code"):
 - Confidence/limitations:
+
+### Vendor configuration files
+- Path: [exact /etc/vendor/... path] (symbol, reading function, source path)
+  - Build gate: [option or "always"]
+  - Top-level type and merge semantics: [object/array; replace/merge/root load; shallow/deep]
+  - Absent / malformed behavior:
+  - Keys: [full path | type | default | units/range | effect | source]
+  - Keys in defaults but not read / read but not in defaults:
 
 ## 5. API and Integration Evidence
 Status: complete
@@ -359,7 +412,7 @@ Status: complete
 
 **REQUIRED OUTPUT**: A source-backed model inventory and a directionally separated list of inbound APIs and outbound integrations.
 
-**Validation**: Before proceeding, verify each documented type and contract points to an authoritative source; persistence statements are backed by implementation; mock-only shapes are not presented as facts; and inbound and outbound interfaces cannot be confused.
+**Validation**: Before proceeding, verify each documented type and contract points to an authoritative source; persistence statements are backed by implementation; mock-only shapes are not presented as facts; inbound and outbound interfaces cannot be confused; and every `/etc/vendor` path found by the source search has a tracker entry with a complete key list.
 
 ## PHASE 4: Consolidate Evidence and Plan the README
 
@@ -438,6 +491,20 @@ Use this structural template, adapting headings only to preserve existing conven
 ### Outbound integrations
 [Interfaces called, purpose, and conditions/optional status.]
 
+## Building
+[Environment, dependencies, required CMake variables, feature options, build commands.]
+
+## Runtime configuration
+### Command-line options
+[Options parsed by the executable, or an explicit statement that none are parsed.]
+### Configuration files and precedence
+[Defaults, override files, merge order.]
+### Vendor configuration files
+[Summary table of every /etc/vendor file, then one subsection per JSON file:]
+#### /etc/vendor/[path]/[file].json
+[Purpose; loading behavior; merge semantics; top-level type;
+complete option table; minimal example; source links.]
+
 ## Related documentation
 [Only existing, verified repository links.]
 ```
@@ -466,6 +533,7 @@ For every diagram relationship, use a label justified by evidence. Every diagram
 6. **Content preservation**: Compare against the pre-edit README assessment; retain useful accurate content and avoid unnecessary deletion.
 7. **Scope**: Review `git diff -- docs/README.md` and the full worktree status. Ensure no unrelated tracked or persistent file was changed by this task. Do not overwrite or revert changes that predated the task.
 8. **Renderer**: If a supported local renderer/check exists, validate the Mermaid C4 blocks with it. If not, inspect syntax and state that rendering was not locally tested; do not claim it was.
+9. **Vendor configuration completeness**: Re-run the `/etc/vendor` source search and confirm every JSON path found has its own README subsection. For each, compare the documented key table against the parsing code and default configuration: no key read by the code may be missing, and every type, default, unit, and merge rule must match the source. Validate each JSON example with a JSON parser (for example `python3 -m json.tool`).
 
 If a check fails, correct the README and rerun the affected checks. Report an unavailable check as unavailable, not passed.
 
@@ -528,6 +596,8 @@ Status: complete | blocked
 - [ ] Inbound APIs and outbound calls are separate and accurately identify protocol, service identity, version, operations/events, and payload sources where available.
 - [ ] Existing useful README content is preserved and inaccurate content is corrected with evidence.
 - [ ] Related links point only to existing, verified repository targets.
+- [ ] Every `/etc/vendor` JSON file read by the source has its own subsection with purpose, loading behavior, merge semantics, top-level type, a complete option table (full path, type, default, units/range, required, description), a valid example, and source links.
+- [ ] Non-JSON vendor marker files are listed with their effect.
 
 ## Quality and Scope Verification
 
@@ -558,3 +628,4 @@ This task is successful when:
 4. **Usability**: Developers can navigate the page and follow verified links to authoritative details.
 5. **Preservation**: Useful existing README information remains, with changes limited to requested documentation.
 6. **Validation**: Link, syntax, source, and diff checks are honestly recorded and all discovered in-scope issues are corrected.
+7. **Vendor configuration**: An integrator can author any `/etc/vendor` JSON file from the README alone, because every file's purpose, merge behavior, and every option are documented and match the source.

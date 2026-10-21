@@ -58,6 +58,9 @@ python3 -m pip install jsonref
 git clone --depth 1 --filter=blob:none --branch develop https://github.com/rdkcentral/xr-voice-sdk.git
 
 git clone --depth 1 --filter=blob:none https://github.com/rdkcentral/entservices-testframework.git
+# Pinned before bd808c9 (Refactoring DeviceSettings HAL mocks), which removed the force-included Tests/mocks/devicesettings.h
+git -C entservices-testframework fetch --depth 1 --filter=blob:none origin 26d155fef59a431ae6f65dff16f5d6dc4f3152e3
+git -C entservices-testframework checkout -q FETCH_HEAD
 
 git clone --depth 1 --filter=blob:none --sparse --branch develop https://github.com/rdkcentral/iarmmgrs.git
 git -C iarmmgrs sparse-checkout set hal

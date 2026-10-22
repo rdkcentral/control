@@ -1636,10 +1636,14 @@ bool BleRcuAdapterBluez::removeDevice(const BleAddress &address)
         device->cancelPairing();
     }
 
+    // stop the device's services before removal, bluez can crash if we're still
+    // setting up notifications on the device while it's being torn down
+    device->prepareForRemoval();
+
     // Ask the adapter to remove this device since if failed pairing.
-    // We add a listener on the result just so we can log any errors.
+    // We add a listener on the result so we can log any errors and undo the above.
     m_adapterProxy->RemoveDevice(device->bluezObjectPath(), 
-            PendingReply<>(m_isAlive, std::bind(&BleRcuAdapterBluez::onRemoveDeviceReply, this, std::placeholders::_1)));
+            PendingReply<>(m_isAlive, std::bind(&BleRcuAdapterBluez::onRemoveDeviceReply, this, std::placeholders::_1, device->address())));
 
     return true;
 }
@@ -1649,15 +1653,21 @@ bool BleRcuAdapterBluez::removeDevice(const BleAddress &address)
     \internal
 
     Called when we get a response to our asynchronous request to remove a device
-    from the adapter.  We only hook this point so we can log any errors.
+    from the adapter.  On error we log it and let the device resume normal
+    operation if it still exists.
 
     \see removeDevice()
  */
-void BleRcuAdapterBluez::onRemoveDeviceReply(PendingReply<> *reply)
+void BleRcuAdapterBluez::onRemoveDeviceReply(PendingReply<> *reply, const BleAddress &address)
 {
     // check for error
     if (reply->isError()) {
         XLOGD_ERROR("remove device request failed with error <%s>", reply->errorMessage().c_str());
+
+        map<BleAddress, shared_ptr<BleRcuDeviceBluez>>::iterator it = m_devices.find(address);
+        if (it != m_devices.end() && it->second) {
+            it->second->cancelRemoval();
+        }
     } else {
         XLOGD_DEBUG("remove device request successful");
     }

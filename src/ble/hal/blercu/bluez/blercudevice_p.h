@@ -96,6 +96,9 @@ public:
     void cancelPairing();
     void connect();
 
+    void prepareForRemoval();
+    void cancelRemoval();
+
     void block();
     void unblock();
 
@@ -231,6 +234,7 @@ private:
     bool m_lastPairedState;
     bool m_lastServicesResolvedState;
     bool m_isPairing;
+    bool m_isBeingRemoved;
 
     int m_pairingRetryCnt;
     int m_maxPairingRetries;

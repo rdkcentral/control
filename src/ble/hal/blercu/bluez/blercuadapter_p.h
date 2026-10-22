@@ -119,7 +119,7 @@ public:
 
     void onStartDiscoveryReply(PendingReply<> *reply);
     void onStopDiscoveryReply(PendingReply<> *reply);
-    void onRemoveDeviceReply(PendingReply<> *reply);
+    void onRemoveDeviceReply(PendingReply<> *reply, const BleAddress &address);
     void onPowerOnReply(PendingReply<> *reply);
 
     void onStateEntry(int state);

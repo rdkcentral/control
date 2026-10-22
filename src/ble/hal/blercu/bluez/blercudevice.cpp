@@ -77,6 +77,7 @@ BleRcuDeviceBluez::BleRcuDeviceBluez()
     , m_lastPairedState(false)
     , m_lastServicesResolvedState(false)
     , m_isPairing(false)
+    , m_isBeingRemoved(false)
     , m_timeSinceReady(0)
     , m_recoveryAttempts(0)
     , m_maxRecoveryAttempts(100)
@@ -97,6 +98,7 @@ BleRcuDeviceBluez::BleRcuDeviceBluez(const BleAddress &bdaddr,
     , m_lastPairedState(false)
     , m_lastServicesResolvedState(false)
     , m_isPairing(false)
+    , m_isBeingRemoved(false)
     , m_pairingRetryCnt(0)
     , m_maxPairingRetries(0)
     , m_timeSinceReady(0)
@@ -314,6 +316,53 @@ void BleRcuDeviceBluez::onCancelPairingRequestReply(PendingReply<> *reply)
     } else {
         XLOGD_DEBUG("%s cancel pairing request successful", m_address.toString().c_str());
         // TODO: start the timer to cancel the pairing after a certain amount of time
+    }
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    Called before asking bluez to remove the device.  Stops any running or
+    in-progress service setup so we're not issuing GATT requests (StartNotify,
+    AcquireNotify, etc) on a device that bluez is tearing down, and prevents
+    the services being restarted or recovery being attempted until either the
+    device is removed or the removal is cancelled.
+
+    \sa cancelRemoval()
+ */
+void BleRcuDeviceBluez::prepareForRemoval()
+{
+    XLOGD_INFO("preparing device %s for removal", m_address.toString().c_str());
+
+    m_isBeingRemoved = true;
+
+    m_stateMachine.cancelDelayedEvents(ServicesResolveTimeoutEvent);
+
+    if (m_services) {
+        m_services->stop();
+    }
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    Called if the bluez remove request failed, clears the removal flag and
+    restarts the services if we were part way through setting them up.
+
+    \sa prepareForRemoval()
+ */
+void BleRcuDeviceBluez::cancelRemoval()
+{
+    if (!m_isBeingRemoved) {
+        return;
+    }
+
+    XLOGD_INFO("cancelling removal of device %s", m_address.toString().c_str());
+
+    m_isBeingRemoved = false;
+
+    if (m_stateMachine.inState(ResolvingServicesState)) {
+        onEnteredResolvingServicesState();
+    } else if (m_stateMachine.inState(StartingServicesState)) {
+        onEnteredStartingServicesState();
     }
 }
 
@@ -632,6 +681,12 @@ void BleRcuDeviceBluez::onEnteredResolvingServicesState()
     // cancel any delayed events that may have previously been posted
     m_stateMachine.cancelDelayedEvents(ServicesResolveTimeoutEvent);
 
+    // don't move on to starting services or recovery if bluez is removing the device
+    if (m_isBeingRemoved) {
+        XLOGD_INFO("%s is being removed, not resolving services", m_address.toString().c_str());
+        return;
+    }
+
     // check if the services are already resolved
     if (m_lastServicesResolvedState == true) {
 
@@ -724,6 +779,11 @@ void BleRcuDeviceBluez::onEnteredRecoveryReconnectingState()
             }
         };
 
+    if (m_isBeingRemoved) {
+        XLOGD_INFO("%s is being removed, not reconnecting", m_address.toString().c_str());
+        return;
+    }
+
     // always send a connect request, even if bluez is telling us we're
     // connected (sometimes it lies)
     m_deviceProxy->Connect(PendingReply<>(m_isAlive, replyHandler));
@@ -743,6 +803,11 @@ void BleRcuDeviceBluez::onEnteredStartingServicesState()
     // sanity check
     if (!m_services) {
         XLOGD_ERROR("no services available for device");
+        return;
+    }
+
+    if (m_isBeingRemoved) {
+        XLOGD_INFO("%s is being removed, not starting services", m_address.toString().c_str());
         return;
     }
 

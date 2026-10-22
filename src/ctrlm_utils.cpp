@@ -1340,8 +1340,8 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_F7,            {"Record",               "Record"}},
    {KEY_F3,            {"Search",               "Search"}},
    {KEY_F6,            {"Provider",             "Provider"}},
-   {KEY_KPDOT,         {"App A",                "App A"}},        // A key for RF4CE remotes (also asterisk key)
-   {KEY_F14,           {"Quick Access",         "Quick Access"}}, // B key for RF4CE remotes (C and D are not defined yet)
+   {KEY_KPDOT,         {"App A",                "App A"}},
+   {KEY_F14,           {"Quick Access",         "Quick Access"}},
    {KEY_KPRIGHTPAREN,  {"App 1",                "App 1"}}, // APP key for LLAMA
    {KEY_KPLEFTPAREN,   {"App 2",                "App 2"}}, // APP key for LLAMA
    {KEY_KPCOMMA,       {"App 3",                "App 3"}}, // APP key for LLAMA
@@ -1361,7 +1361,8 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_PLAYPAUSE,     {"Play/Pause",           "Play/Pause"}},
    {KEY_CONFIG,        {"Config",               "Config"}},
    {KEY_POWER,         {"Power",                "Power"}},
-   {KEY_MUTE,          {"Mute",                 "Mute"}}
+   {KEY_MUTE,          {"Mute",                 "Mute"}},
+   {KEY_KPEQUAL,       {"Accessibility",        "Accessibility"}}
 };
 
 

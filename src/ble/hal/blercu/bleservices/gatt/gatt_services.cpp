@@ -59,6 +59,7 @@ using namespace std;
 GattServices::GattServices(const BleAddress &address,
                            const shared_ptr<BleGattProfile> &gattProfile,
                            const ConfigModelSettings &settings,
+                           const vector<ConfigVoiceKeyMode> &voiceKeyModes,
                            GMainLoop *mainLoop)
     : m_isAlive(make_shared<bool>(true))
     , m_address(address)
@@ -72,7 +73,7 @@ GattServices::GattServices(const BleAddress &address,
 {
     
     // Add the built-in services to the list of services available
-    m_audioServices.push_back(make_shared<GattAudioServiceRdk>(mainLoop));
+    m_audioServices.push_back(make_shared<GattAudioServiceRdk>(mainLoop, settings.name(), voiceKeyModes));
     m_infraredServices.push_back(make_shared<GattInfraredService>(settings, m_deviceInfoService, mainLoop));
     m_upgradeServices.push_back(make_shared<GattUpgradeService>(mainLoop));
 

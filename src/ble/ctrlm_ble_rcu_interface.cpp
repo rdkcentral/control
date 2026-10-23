@@ -99,9 +99,20 @@ bool ble_rcu_bounded_reply_wait(const std::shared_ptr<BleRcuBoundedReply> &resul
 
 } // namespace
 
-
-
-
+// Converts the raw Audio Mode Control characteristic value of (HID keycode, audio mode) byte pairs into
+// a list of linux key code / audio mode entries.  Unused entries (keycode 0 or CTRLM_HAL_BLE_AUDIO_MODE_CONTROL_UNUSED_KEY) are skipped.
+static int ConvertAudioModeControlToHal(const vector<uint8_t> &value, ctrlm_hal_ble_audio_mode_key_t *keys, int maxKeys)
+{
+    int idx = 0;
+    for (size_t i = 0; (i + 1 < value.size()) && (idx < maxKeys); i += 2) {
+        if (value[i] != 0 && value[i] != CTRLM_HAL_BLE_AUDIO_MODE_CONTROL_UNUSED_KEY) {
+            keys[idx].key_code   = ctrlm_ble_utils_ConvertUsbKbdCodeToLinux(value[i]);
+            keys[idx].audio_mode = value[i + 1];
+            idx++;
+        }
+    }
+    return idx;
+}
 
 ctrlm_ble_rcu_interface_t::ctrlm_ble_rcu_interface_t(json_t *jsonConfig)
     : m_isAlive(make_shared<bool>(true))
@@ -596,6 +607,58 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
         };
     device->addAudioCodecsChangedSlot(Slot<uint32_t>(m_isAlive, audioCodecsChangedSlot));
 
+    auto audioModeSupportChangedSlot = [this, address](uint32_t modes)
+        {
+            XLOGD_DEBUG("BLE RCU audio mode support changed to 0x%X", modes);
+
+            ctrlm_hal_ble_RcuStatusData_t params;
+            params.property_updated = CTRLM_HAL_BLE_PROPERTY_AUDIO_MODE_SUPPORT;
+            params.rcu_data.ieee_address = address.toUInt64();
+            params.rcu_data.audio_mode_support = modes;
+
+            m_rcuStatusChangedSlots.invoke(&params);
+        };
+    device->addAudioModeSupportChangedSlot(Slot<uint32_t>(m_isAlive, audioModeSupportChangedSlot));
+
+    auto audioModeControlChangedSlot = [this, address](const std::vector<uint8_t> &value)
+        {
+            XLOGD_DEBUG("BLE RCU audio mode control changed.");
+
+            ctrlm_hal_ble_RcuStatusData_t params;
+            params.property_updated = CTRLM_HAL_BLE_PROPERTY_AUDIO_MODE_CONTROL;
+            params.rcu_data.ieee_address = address.toUInt64();
+            params.rcu_data.audio_mode_control_size = ConvertAudioModeControlToHal(value, params.rcu_data.audio_mode_control, CTRLM_HAL_BLE_AUDIO_MODE_CONTROL_MAX_KEYS);
+
+            m_rcuStatusChangedSlots.invoke(&params);
+        };
+    device->addAudioModeControlChangedSlot(Slot<const std::vector<uint8_t> &>(m_isAlive, audioModeControlChangedSlot));
+
+    auto pressAndReleaseTimeoutChangedSlot = [this, address](uint32_t timeoutMs)
+        {
+            XLOGD_DEBUG("BLE RCU press and release timeout changed to %u ms", timeoutMs);
+
+            ctrlm_hal_ble_RcuStatusData_t params;
+            params.property_updated = CTRLM_HAL_BLE_PROPERTY_PRESS_AND_RELEASE_TIMEOUT;
+            params.rcu_data.ieee_address = address.toUInt64();
+            params.rcu_data.press_and_release_timeout = timeoutMs;
+
+            m_rcuStatusChangedSlots.invoke(&params);
+        };
+    device->addPressAndReleaseTimeoutChangedSlot(Slot<uint32_t>(m_isAlive, pressAndReleaseTimeoutChangedSlot));
+
+    auto pressAndReleaseThresholdChangedSlot = [this, address](uint32_t thresholdMs)
+        {
+            XLOGD_DEBUG("BLE RCU press and release threshold changed to %u ms", thresholdMs);
+
+            ctrlm_hal_ble_RcuStatusData_t params;
+            params.property_updated = CTRLM_HAL_BLE_PROPERTY_PRESS_AND_RELEASE_THRESHOLD;
+            params.rcu_data.ieee_address = address.toUInt64();
+            params.rcu_data.press_and_release_threshold = thresholdMs;
+
+            m_rcuStatusChangedSlots.invoke(&params);
+        };
+    device->addPressAndReleaseThresholdChangedSlot(Slot<uint32_t>(m_isAlive, pressAndReleaseThresholdChangedSlot));
+
     auto codeIdChangedSlot = [this, address](int32_t codeId)
         {
             XLOGD_DEBUG("BLE RCU IR code ID changed to %d", codeId);
@@ -746,6 +809,10 @@ ctrlm_hal_ble_rcu_data_t ctrlm_ble_rcu_interface_t::getAllDeviceProperties(uint6
     // Voice Service
     ret.audio_codecs = device->audioCodecs();
     ret.audio_gain_level = device->audioGainLevel();
+    ret.audio_mode_support = device->audioModeSupport();
+    ret.audio_mode_control_size = ConvertAudioModeControlToHal(device->audioModeControl(), ret.audio_mode_control, CTRLM_HAL_BLE_AUDIO_MODE_CONTROL_MAX_KEYS);
+    ret.press_and_release_timeout = device->pressAndReleaseTimeout();
+    ret.press_and_release_threshold = device->pressAndReleaseThreshold();
 
 
     return ret;
@@ -1204,6 +1271,95 @@ bool ctrlm_ble_rcu_interface_t::getFirstAudioDataTime(uint64_t ieee_address, ctr
     }
 
     return false;
+}
+
+bool ctrlm_ble_rcu_interface_t::writeDeviceSync(uint64_t ieee_address, const char *name,
+                                                const std::function<void(const std::shared_ptr<BleRcuDevice> &, PendingReply<> &&)> &writeFunc)
+{
+    BleAddress address(ieee_address);
+
+    if (!m_controller) {
+        XLOGD_ERROR("m_controller is NULL!!!");
+        return false;
+    }
+    const auto device = m_controller->managedDevice(address);
+    if (!device) {
+        XLOGD_ERROR("%s: device not found", address.toString().c_str());
+        return false;
+    }
+
+    // This method will wait for the operation to complete, so init a semaphore
+    sem_t semaphore;
+    bool success = false;
+
+    // lambda invoked when the request returns
+    auto replyHandler = [&semaphore, &success, address, name](PendingReply<> *reply) mutable
+        {
+            if (reply->isError()) {
+                XLOGD_ERROR("%s: failed to write %s due to <%s>", address.toString().c_str(), name, reply->errorMessage().c_str());
+                success = false;
+            } else {
+                XLOGD_INFO("%s: successfully wrote %s", address.toString().c_str(), name);
+                success = true;
+            }
+            sem_post(&semaphore);
+        };
+
+    XLOGD_INFO("writing %s on remote %s", name, address.toString().c_str());
+
+    sem_init(&semaphore, 0, 0);
+    writeFunc(device, PendingReply<>(m_isAlive, replyHandler));
+
+    // Wait for the result semaphore to be signaled
+    sem_wait(&semaphore);
+    sem_destroy(&semaphore);
+
+    return success;
+}
+
+bool ctrlm_ble_rcu_interface_t::writeAudioModeControl(uint64_t ieee_address, const ctrlm_hal_ble_audio_mode_key_t *keys, int numKeys)
+{
+    if (keys == NULL || numKeys <= 0 || numKeys > CTRLM_HAL_BLE_AUDIO_MODE_CONTROL_MAX_KEYS) {
+        XLOGD_ERROR("invalid audio mode control key list, numKeys = %d", numKeys);
+        return false;
+    }
+
+    // Only the (keycode, audio mode) pairs for the given keys are sent, unused entries are not padded
+    vector<uint8_t> value;
+    for (int i = 0; i < numKeys; i++) {
+        unsigned char hidCode = ctrlm_ble_utils_ConvertLinuxCodeToUsbKdb(keys[i].key_code);
+        if (hidCode == 0) {
+            XLOGD_ERROR("key code <%u> can't be converted to a HID keycode", keys[i].key_code);
+            return false;
+        }
+        if (keys[i].audio_mode >= CTRLM_HAL_BLE_AUDIO_MODE_INVALID) {
+            XLOGD_ERROR("invalid audio mode <%u> for key code <%u>", keys[i].audio_mode, keys[i].key_code);
+            return false;
+        }
+        value.push_back(hidCode);
+        value.push_back(keys[i].audio_mode);
+    }
+
+    return writeDeviceSync(ieee_address, "audio mode control",
+            [&value](const std::shared_ptr<BleRcuDevice> &device, PendingReply<> &&reply) {
+                device->writeAudioModeControl(value, std::move(reply));
+            });
+}
+
+bool ctrlm_ble_rcu_interface_t::writePressAndReleaseTimeout(uint64_t ieee_address, uint32_t timeoutMs)
+{
+    return writeDeviceSync(ieee_address, "press and release timeout",
+            [timeoutMs](const std::shared_ptr<BleRcuDevice> &device, PendingReply<> &&reply) {
+                device->writePressAndReleaseTimeout(timeoutMs, std::move(reply));
+            });
+}
+
+bool ctrlm_ble_rcu_interface_t::writePressAndReleaseThreshold(uint64_t ieee_address, uint32_t thresholdMs)
+{
+    return writeDeviceSync(ieee_address, "press and release threshold",
+            [thresholdMs](const std::shared_ptr<BleRcuDevice> &device, PendingReply<> &&reply) {
+                device->writePressAndReleaseThreshold(thresholdMs, std::move(reply));
+            });
 }
 
 bool ctrlm_ble_rcu_interface_t::setIrControl(uint64_t ieee_address, uint8_t vendor)

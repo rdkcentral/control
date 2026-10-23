@@ -30,6 +30,10 @@
 #include "configsettings.h"
 #include "ctrlm_log_ble.h"
 #include "config.h"
+#include "ctrlm_hal_ble.h"
+
+#include <cstring>
+#include <cstdint>
 
 using namespace std;
 
@@ -107,6 +111,129 @@ ConfigSettings::TimeOuts ConfigSettings::parseTimeouts(json_t *json)
     }
 
     return timeouts;
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    \internal
+
+    Parses the \a json "voice_key_mode" array which lists the audio mode to
+    program into the RCU for each voice key.  The array must be formatted like
+    the following
+
+    \code{.json}
+        [
+            { "hid_key" : 65, "mode": "disabled" },
+            { "hid_key" : 65, "mode": "hold" },
+            { "hid_key" : 65, "mode": "hybrid", "threshold": 300 },
+            { "hid_key" : 65, "mode": "timeout", "timeout": 4000 },
+            { "hid_key" : 65, "mode": "continuous" },
+            { "hid_key" : 65, "mode": "legacy" }
+        ]
+    \endcode
+
+    "hid_key" is the HID keycode of the voice key and "mode" is one of
+    "disabled", "hold", "hybrid", "timeout", "continuous" or "legacy".  The optional
+    "threshold" and "timeout" fields are in milliseconds.  Up to 5 keys can be
+    listed.  If any entry is invalid the whole array is ignored and an empty
+    list is returned, so the RCU model's default is used.
+
+    \see parseJson()
+ */
+std::vector<ConfigVoiceKeyMode> ConfigSettings::parseVoiceKeyModes(json_t *json)
+{
+    static const size_t MAX_VOICE_KEYS = CTRLM_HAL_BLE_AUDIO_MODE_CONTROL_MAX_KEYS;
+    static const struct {
+        const char *name;
+        uint8_t     mode;
+    } modes[] = {
+        { "disabled",   CTRLM_HAL_BLE_AUDIO_MODE_VOICE_DISABLED },
+        { "hold",       CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_HOLD },
+        { "hybrid",     CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_AND_HOLD_THRESHOLD },
+        { "timeout",    CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_TIMEOUT },
+        { "continuous", CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_CONTINUOUS },
+        { "legacy",     CTRLM_HAL_BLE_AUDIO_MODE_LEGACY },
+    };
+
+    std::vector<ConfigVoiceKeyMode> voiceKeyModes;
+
+    if (json == NULL) {
+        return voiceKeyModes;
+    }
+    if (!json_is_array(json)) {
+        XLOGD_ERROR("invalid 'voice_key_mode' field, must be an array (using RCU model defaults)");
+        return voiceKeyModes;
+    }
+    if (json_array_size(json) > MAX_VOICE_KEYS) {
+        XLOGD_ERROR("'voice_key_mode' has %u entries, max is %u (using RCU model defaults)", (unsigned int)json_array_size(json), (unsigned int)MAX_VOICE_KEYS);
+        return voiceKeyModes;
+    }
+
+    auto parseMs = [](json_t *entry, const char *name, unsigned int index, bool &present, uint32_t &value) -> bool {
+        present = false;
+        value   = 0;
+        json_t *obj = json_object_get(entry, name);
+        if (obj == NULL) {
+            return true;
+        }
+        if (!json_is_integer(obj) || json_integer_value(obj) < 0 || json_integer_value(obj) > (json_int_t)UINT32_MAX) {
+            XLOGD_ERROR("'voice_key_mode' entry %u has invalid '%s' field", index, name);
+            return false;
+        }
+        present = true;
+        value   = (uint32_t)json_integer_value(obj);
+        return true;
+    };
+
+    size_t index;
+    json_t *entry;
+    json_array_foreach(json, index, entry) {
+        ConfigVoiceKeyMode keyMode = {};
+
+        json_t *hidKey = json_object_get(entry, "hid_key");
+        if (!json_is_object(entry) || !hidKey || !json_is_integer(hidKey) ||
+            json_integer_value(hidKey) <= 0 || json_integer_value(hidKey) >= CTRLM_HAL_BLE_AUDIO_MODE_CONTROL_UNUSED_KEY) {
+            XLOGD_ERROR("'voice_key_mode' entry %u has missing or invalid 'hid_key' field (using RCU model defaults)", (unsigned int)index);
+            return std::vector<ConfigVoiceKeyMode>();
+        }
+        keyMode.hidKey = (uint8_t)json_integer_value(hidKey);
+
+        json_t *mode = json_object_get(entry, "mode");
+        const char *modeStr = (mode && json_is_string(mode)) ? json_string_value(mode) : NULL;
+        bool modeFound = false;
+        for (const auto &m : modes) {
+            if (modeStr && strcmp(modeStr, m.name) == 0) {
+                keyMode.audioMode = m.mode;
+                modeFound = true;
+                break;
+            }
+        }
+        if (!modeFound) {
+            XLOGD_ERROR("'voice_key_mode' entry %u has missing or invalid 'mode' field (using RCU model defaults)", (unsigned int)index);
+            return std::vector<ConfigVoiceKeyMode>();
+        }
+
+        if (!parseMs(entry, "threshold", index, keyMode.thresholdPresent, keyMode.thresholdMs) ||
+            !parseMs(entry, "timeout",   index, keyMode.timeoutPresent,   keyMode.timeoutMs)) {
+            XLOGD_ERROR("using RCU model defaults for voice key modes");
+            return std::vector<ConfigVoiceKeyMode>();
+        }
+
+        for (const auto &existing : voiceKeyModes) {
+            if (existing.hidKey == keyMode.hidKey) {
+                XLOGD_ERROR("'voice_key_mode' entry %u has duplicate 'hid_key' %u (using RCU model defaults)", (unsigned int)index, keyMode.hidKey);
+                return std::vector<ConfigVoiceKeyMode>();
+            }
+        }
+
+        const std::string thresholdStr = keyMode.thresholdPresent ? " threshold <" + std::to_string(keyMode.thresholdMs) + " ms>" : "";
+        const std::string timeoutStr   = keyMode.timeoutPresent   ? " timeout <"   + std::to_string(keyMode.timeoutMs)   + " ms>" : "";
+        XLOGD_INFO("voice_key_mode: hid_key <0x%02X> mode <%s>%s%s", keyMode.hidKey, modeStr, thresholdStr.c_str(), timeoutStr.c_str());
+
+        voiceKeyModes.push_back(keyMode);
+    }
+
+    return voiceKeyModes;
 }
 
 // -----------------------------------------------------------------------------
@@ -196,8 +323,10 @@ std::shared_ptr<ConfigSettings> ConfigSettings::parseJson(json_t *jsonConfig)
         json_decref(obj_network_ble);
     }
 
+    std::vector<ConfigVoiceKeyMode> voiceKeyModes = parseVoiceKeyModes(json_object_get(jsonConfig, "voice_key_mode"));
+
     // finally return the config
-    return std::make_shared<ConfigSettings>(timeouts, std::move(models));
+    return std::make_shared<ConfigSettings>(timeouts, std::move(models), std::move(voiceKeyModes));
 }
 
 // -----------------------------------------------------------------------------
@@ -226,6 +355,10 @@ bool ConfigSettings::updateJson(json_t *jsonConfig)
     json_t *modelArray = json_object_get(jsonConfig, "models");
     if (modelArray && json_is_array(modelArray)) {
         XLOGD_WARN("models cannot be updated");
+    }
+
+    if (json_object_get(jsonConfig, "voice_key_mode") != NULL) {
+        XLOGD_WARN("voice_key_mode cannot be updated");
     }
 
     return(updated);
@@ -285,9 +418,11 @@ std::shared_ptr<ConfigSettings> ConfigSettings::fromJsonBuffer(const char *jsonB
     \see fromJsonFile()
  */
 ConfigSettings::ConfigSettings(const TimeOuts &timeouts,
-                               std::vector<ConfigModelSettings> &&modelDetails)
+                               std::vector<ConfigModelSettings> &&modelDetails,
+                               std::vector<ConfigVoiceKeyMode> &&voiceKeyModes)
     : m_timeOuts(timeouts)
     , m_modelDetails(std::move(modelDetails))
+    , m_voiceKeyModes(std::move(voiceKeyModes))
 {
 }
 
@@ -325,6 +460,17 @@ ConfigModelSettings ConfigSettings::modelSettings(std::string name) const
 std::vector<ConfigModelSettings> ConfigSettings::modelSettings() const
 {
     return m_modelDetails;
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    Returns the voice key audio modes to program on all RCUs.  An empty list
+    means the built-in default for the RCU model is used.
+
+ */
+std::vector<ConfigVoiceKeyMode> ConfigSettings::voiceKeyModes() const
+{
+    return m_voiceKeyModes;
 }
 
 // -----------------------------------------------------------------------------

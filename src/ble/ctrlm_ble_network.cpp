@@ -1972,6 +1972,22 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   controller->setAudioCodecs(dqm->rcu_data.audio_codecs);
                   XLOGD_INFO("Controller <%s> audio codecs changed to <0x%X>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.audio_codecs);
                   break;
+               case CTRLM_HAL_BLE_PROPERTY_AUDIO_MODE_SUPPORT:
+                  controller->setAudioModeSupport(dqm->rcu_data.audio_mode_support);
+                  XLOGD_INFO("Controller <%s> audio mode support changed to <0x%X>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.audio_mode_support);
+                  break;
+               case CTRLM_HAL_BLE_PROPERTY_AUDIO_MODE_CONTROL:
+                  controller->setAudioModeControl(dqm->rcu_data.audio_mode_control, dqm->rcu_data.audio_mode_control_size);
+                  XLOGD_INFO("Controller <%s> audio mode control changed to <%s>", controller->ieee_address_get().to_string().c_str(), controller->audioModeControlToString().c_str());
+                  break;
+               case CTRLM_HAL_BLE_PROPERTY_PRESS_AND_RELEASE_TIMEOUT:
+                  controller->setPressAndReleaseTimeout(dqm->rcu_data.press_and_release_timeout);
+                  XLOGD_INFO("Controller <%s> press and release timeout changed to <%u ms>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.press_and_release_timeout);
+                  break;
+               case CTRLM_HAL_BLE_PROPERTY_PRESS_AND_RELEASE_THRESHOLD:
+                  controller->setPressAndReleaseThreshold(dqm->rcu_data.press_and_release_threshold);
+                  XLOGD_INFO("Controller <%s> press and release threshold changed to <%u ms>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.press_and_release_threshold);
+                  break;
                case CTRLM_HAL_BLE_PROPERTY_IS_UPGRADING:
                   XLOGD_AUTOMATION_INFO("Controller <%s> firmware upgrading = %s", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.is_upgrading ? "TRUE" : "FALSE");
                   upgrade_in_progress_ = dqm->rcu_data.is_upgrading;
@@ -2232,6 +2248,10 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::controller_add(ctrlm_hal_ble_rcu_
       auto controller = controllers_[id];
       controller->setName(string(rcu_data.name));
       controller->setAudioCodecs(rcu_data.audio_codecs);
+      controller->setAudioModeSupport(rcu_data.audio_mode_support);
+      controller->setAudioModeControl(rcu_data.audio_mode_control, rcu_data.audio_mode_control_size);
+      controller->setPressAndReleaseTimeout(rcu_data.press_and_release_timeout);
+      controller->setPressAndReleaseThreshold(rcu_data.press_and_release_threshold);
       controller->setConnected(rcu_data.connected);
       controller->setSupportedIrdbs(rcu_data.irdbs_supported);
 

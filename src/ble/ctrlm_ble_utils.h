@@ -59,5 +59,6 @@ void ctrlm_ble_utils_PrintRCUStatus(ctrlm_hal_ble_RcuStatusData_t *status);
 const char *ctrlm_ble_unpair_reason_str(ctrlm_ble_RcuUnpairReason_t reason);
 const char *ctrlm_ble_reboot_reason_str(ctrlm_ble_RcuRebootReason_t reason);
 const char *ctrlm_ble_rcu_action_str(ctrlm_ble_RcuAction_t reason);
+const char *ctrlm_ble_audio_mode_str(ctrlm_hal_ble_AudioMode_t mode);
 
 #endif

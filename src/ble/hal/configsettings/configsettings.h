@@ -34,6 +34,19 @@
 
 #include <string>
 #include <memory>
+#include <vector>
+#include <cstdint>
+
+
+// A single entry of the "voice_key_mode" array in the network_ble config
+struct ConfigVoiceKeyMode {
+    uint8_t  hidKey;            // HID keycode of the voice key
+    uint8_t  audioMode;         // ctrlm_hal_ble_AudioMode_t
+    bool     thresholdPresent;  // press and release threshold, RCU global setting
+    uint32_t thresholdMs;
+    bool     timeoutPresent;    // press and release timeout, RCU global setting
+    uint32_t timeoutMs;
+};
 
 
 class ConfigSettings
@@ -63,7 +76,8 @@ private:
 public:
     // friend class std::shared_ptr<ConfigSettings>;
     ConfigSettings(const TimeOuts &timeouts,
-                   std::vector<ConfigModelSettings> &&modelDetails);
+                   std::vector<ConfigModelSettings> &&modelDetails,
+                   std::vector<ConfigVoiceKeyMode> &&voiceKeyModes);
 
 public:
     bool updateFromJson(json_t *jsonConfig);
@@ -78,12 +92,16 @@ public:
     ConfigModelSettings modelSettings(std::string name) const;
     std::vector<ConfigModelSettings> modelSettings() const;
 
+    std::vector<ConfigVoiceKeyMode> voiceKeyModes() const;
+
 private:
     static TimeOuts parseTimeouts(json_t *json);
+    static std::vector<ConfigVoiceKeyMode> parseVoiceKeyModes(json_t *json);
 
 private:
     TimeOuts m_timeOuts;
     const std::vector<ConfigModelSettings> m_modelDetails;
+    const std::vector<ConfigVoiceKeyMode> m_voiceKeyModes;
 };
 
 

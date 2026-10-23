@@ -111,6 +111,15 @@ public:
    void                             setAudioGainLevel(guint8 gain);
    void                             setAudioCodecs(guint32 value);
    void                             setAudioStreaming(bool streaming);
+   void                             setAudioModeSupport(uint32_t modes);
+   uint32_t                         getAudioModeSupport() const;
+   void                             setAudioModeControl(const ctrlm_hal_ble_audio_mode_key_t *keys, int size);
+   std::vector<ctrlm_hal_ble_audio_mode_key_t> getAudioModeControl() const;
+   std::string                      audioModeControlToString() const;
+   void                             setPressAndReleaseTimeout(uint32_t timeout_ms);
+   uint32_t                         getPressAndReleaseTimeout() const;
+   void                             setPressAndReleaseThreshold(uint32_t threshold_ms);
+   uint32_t                         getPressAndReleaseThreshold() const;
    void                             setTouchMode(unsigned int param);
    void                             setTouchModeSettable(bool param);
 
@@ -175,6 +184,10 @@ private:
    uint8_t                                 audio_gain_level_     = 0;
    uint32_t                                audio_codecs_         = 0;
    bool                                    audio_streaming_      = false;
+   uint32_t                                audio_mode_support_   = 0;
+   std::vector<ctrlm_hal_ble_audio_mode_key_t> audio_mode_control_;
+   uint32_t                                press_and_release_timeout_ms_   = 0;
+   uint32_t                                press_and_release_threshold_ms_ = 0;
 
    unsigned int                            touch_mode_           = 0;
    bool                                    touch_mode_settable_  = false;

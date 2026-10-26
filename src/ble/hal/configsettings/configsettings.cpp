@@ -123,12 +123,12 @@ ConfigSettings::TimeOuts ConfigSettings::parseTimeouts(json_t *json)
 
     \code{.json}
         [
-            { "hid_key" : 65, "mode": "disabled" },
-            { "hid_key" : 65, "mode": "hold" },
-            { "hid_key" : 65, "mode": "hybrid", "threshold": 300 },
-            { "hid_key" : 65, "mode": "timeout", "timeout": 4000 },
-            { "hid_key" : 65, "mode": "continuous" },
-            { "hid_key" : 65, "mode": "legacy" }
+            { "hid_key" : 65,  "mode": "disabled" },
+            { "hid_key" : 113, "mode": "hold" },
+            { "hid_key" : 112, "mode": "hybrid", "threshold": 300 },
+            { "hid_key" : 78,  "mode": "timeout", "timeout": 4000 },
+            { "hid_key" : 30,  "mode": "continuous" },
+            { "hid_key" : 65,  "mode": "legacy" }
         ]
     \endcode
 

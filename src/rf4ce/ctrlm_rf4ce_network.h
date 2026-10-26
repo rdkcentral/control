@@ -21,6 +21,7 @@
 #define _CTRLM_RF4CE_NETWORK_H_
 
 #include <string>
+#include <array>
 #include <map>
 #include <vector>
 #include <semaphore.h>
@@ -304,7 +305,7 @@ public:
    void                                 short_address_get(ctrlm_hal_rf4ce_short_address_t  *short_address);
    void                                 rf_channel_info_get(ctrlm_rf4ce_rf_channel_info_t *rf_channel_info);
    bool                                 binding_config_set(ctrlm_controller_bind_config_t conf);
-   void                                 cs_values_set(const ctrlm_cs_values_t *values, bool db_load);
+   void                                 cs_values_set(const ctrlm_cs_values_t *values);
    void                                 factory_reset();
    void                                 controller_unbind(ctrlm_controller_id_t controller_id, ctrlm_unbind_reason_t reason);
    ctrlm_rf4ce_controller_type_t        controller_type_get(ctrlm_controller_id_t controller_id);
@@ -342,13 +343,11 @@ public:
    void                                 notify_controllers_polling_configuration(void *data, size_t size);
 
 //   void                                 req_process_voice_settings_update(ctrlm_main_queue_msg_voice_settings_update_t *dqm);
-   void req_process_rib_set(void *data, int size);
-   void req_process_rib_get(void *data, int size);
    ctrlm_rib_request_cmd_result_t req_process_rib_export(ctrlm_controller_id_t controller_id, uint8_t identifier, unsigned char index, unsigned char length, unsigned char *data);
    void req_process_controller_status(void *dqm, int size);
    void req_process_controller_product_name(void *data, int size);
    void req_process_network_status(void *data, int size);
-   void req_process_controller_link_key(void *data, int size);
+
    void req_process_dpi_control(void *data, int size);
    void req_process_polling_action_push(void *data, int size);
    virtual ctrlm_controller_status_cmd_result_t  req_process_reverse_cmd(ctrlm_main_queue_msg_rcu_reverse_cmd_t *dqm);
@@ -620,8 +619,6 @@ private:
    void                  controller_backup(ctrlm_controller_id_t controller_id, void *data);
    void                  controller_restore(ctrlm_controller_id_t controller_id);
    ctrlm_hal_result_t    controller_unpair(ctrlm_controller_id_t controller_id);
-   gboolean              is_attribute_network_wide(ctrlm_rf4ce_rib_attr_id_t attribute_id);
-   gboolean              rf4ce_rib_set_target(ctrlm_rf4ce_rib_attr_id_t identifier, guchar index, guchar length, guchar *data, gboolean *rib_entries_updated);
    gboolean              is_xr11_hardware_version(version_hardware_t version_hardware);
    gboolean              is_xr15_hardware_version(version_hardware_t version_hardware);
    gboolean              is_autobind_active(ctrlm_hal_rf4ce_ieee_address_t ieee_address);
@@ -660,5 +657,10 @@ private:
    static ctrlm_hal_result_t hal_rf4ce_decrypt_callback(ctrlm_hal_rf4ce_decrypt_params_t* param);
 #endif
    void                  controller_init_uinput(ctrlm_controller_id_t controller_id);
+
+   void                  info_file_write(unsigned long long controller_ieee, const unsigned char *key);
+   void                  info_file_delete(unsigned long long controller_ieee);
+   void                  info_file_consolidation();
 };
+
 #endif

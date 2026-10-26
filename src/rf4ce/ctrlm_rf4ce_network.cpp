@@ -38,6 +38,10 @@
 #include <limits.h>
 #include <errno.h>
 #include <sys/sysinfo.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <dirent.h>
 #include "ctrlm.h"
 #include "ctrlm_log.h"
 #include "ctrlm_utils.h"
@@ -54,6 +58,15 @@
 #include <zlib.h>
 #include "ctrlm_voice_obj.h"
 #include "comcastIrKeyCodes.h"
+
+#define CTRLM_RF4CE_CONTROLLER_INFO_LIB_DIR  "/opt/secure/lib"
+#define CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR "/opt/secure/lib/rf4ce"
+
+static void rf4ce_ieee_to_str(unsigned long long ieee, char *buf, size_t buf_size) {
+   snprintf(buf, buf_size, "%02llX:%02llX:%02llX:%02llX:%02llX:%02llX:%02llX:%02llX",
+            (ieee >> 56) & 0xFF, (ieee >> 48) & 0xFF, (ieee >> 40) & 0xFF, (ieee >> 32) & 0xFF,
+            (ieee >> 24) & 0xFF, (ieee >> 16) & 0xFF, (ieee >>  8) & 0xFF,  ieee        & 0xFF);
+}
 
 #if (JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_PASS > 7) || (JSON_INT_VALUE_NETWORK_RF4CE_AUTOBIND_CONFIG_QTY_PASS < 1)
 #error RF4CE AUTOBIND PASS THRESHOLD IS OUT OF RANGE
@@ -501,6 +514,7 @@ void ctrlm_obj_network_rf4ce_t::controller_unbind(ctrlm_controller_id_t controll
    }
    // Telemetry needs to keep track of unbinding.  
    controllers_[controller_id]->log_unbinding_for_telemetry();
+   info_file_delete(controllers_[controller_id]->ieee_address_get().get_value());
    // Remove the controller from the controller list and delete the DB entry
    controller_remove(controller_id, true);
 
@@ -933,6 +947,9 @@ void ctrlm_obj_network_rf4ce_t::hal_init_complete() {
          controller_stats_update(it->first);
          controller_init_uinput(it->first);
       }
+
+      // Consolidate the info files
+      info_file_consolidation();
 
       // Free the memory associated with the request
       ctrlm_hal_free(list);
@@ -1527,236 +1544,6 @@ void ctrlm_obj_network_rf4ce_t::process_event_key(ctrlm_controller_id_t controll
    controllers_[controller_id]->process_event_key(key_status, static_cast<uint16_t>(key_code), mask_key_codes_get());
 }
 
-void ctrlm_obj_network_rf4ce_t::req_process_rib_set(void *data, int size) {
-   THREAD_ID_VALIDATE();
-   ctrlm_main_queue_msg_rib_t *dqm = (ctrlm_main_queue_msg_rib_t *)data;
-
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_rib_t));
-   g_assert(dqm->cmd_result);
-
-   *dqm->cmd_result = CTRLM_RIB_REQUEST_SUCCESS;
-
-   ctrlm_controller_id_t controller_id = dqm->controller_id;
-   if(controller_id == CTRLM_MAIN_CONTROLLER_ID_ALL) { // set to all controllers
-      if(is_attribute_network_wide((ctrlm_rf4ce_rib_attr_id_t)dqm->attribute_id)) { // Some attributes are network wide
-         gboolean rib_entries_updated = false;
-         if(!rf4ce_rib_set_target((ctrlm_rf4ce_rib_attr_id_t)dqm->attribute_id, dqm->attribute_index, dqm->length, dqm->data, &rib_entries_updated)) {
-            *dqm->cmd_result = CTRLM_RIB_REQUEST_ERROR;
-         } else if(rib_entries_updated) {
-            guchar flag[CTRLM_RF4CE_RIB_ATTR_LEN_RIB_ENTRIES_UPDATED];
-            flag[0] = 0x01; // True
-            for(map<ctrlm_controller_id_t, ctrlm_obj_controller_rf4ce_t *>::iterator it = controllers_.begin(); it != controllers_.end(); it++) {
-               it->second->rf4ce_rib_set_target(CTRLM_RF4CE_RIB_ATTR_ID_RIB_ENTRIES_UPDATED, 0, CTRLM_RF4CE_RIB_ATTR_LEN_RIB_ENTRIES_UPDATED, flag);
-            }
-         }
-      } else {
-         for(map<ctrlm_controller_id_t, ctrlm_obj_controller_rf4ce_t *>::iterator it = controllers_.begin(); it != controllers_.end(); it++) {
-            it->second->rf4ce_rib_set_target((ctrlm_rf4ce_rib_attr_id_t)dqm->attribute_id, dqm->attribute_index, dqm->length, dqm->data);
-         }
-      }
-   } else { // set for specific controller
-      if(!controller_exists(controller_id)) {
-         XLOGD_WARN("Controller %u NOT present.", controller_id);
-         *dqm->cmd_result = CTRLM_RIB_REQUEST_ERROR;
-      } else {
-         controllers_[controller_id]->rf4ce_rib_set_target((ctrlm_rf4ce_rib_attr_id_t)dqm->attribute_id, dqm->attribute_index, dqm->length, dqm->data);
-      }
-   }
-   ctrlm_obj_network_t::req_process_rib_set(data, size);
-}
-
-gboolean ctrlm_obj_network_rf4ce_t::is_attribute_network_wide(ctrlm_rf4ce_rib_attr_id_t attribute_id) {
-   #ifdef CONTROLLER_SPECIFIC_NETWORK_ATTRIBUTES
-   return(false);
-   #else
-   switch(attribute_id) {
-      case CTRLM_RF4CE_RIB_ATTR_ID_SHORT_RF_RETRY_PERIOD:     return(true);
-      case CTRLM_RF4CE_RIB_ATTR_ID_MAXIMUM_UTTERANCE_LENGTH:  return(true);
-      case CTRLM_RF4CE_RIB_ATTR_ID_MAX_VOICE_DATA_RETRY:      return(true);
-      case CTRLM_RF4CE_RIB_ATTR_ID_MAX_VOICE_CSMA_BACKOFF:    return(true);
-      case CTRLM_RF4CE_RIB_ATTR_ID_MIN_VOICE_DATA_BACKOFF:    return(true);
-      case CTRLM_RF4CE_RIB_ATTR_ID_VOICE_TARG_AUDIO_PROFILES: return(true);
-      case CTRLM_RF4CE_RIB_ATTR_ID_RIB_UPDATE_CHECK_INTERVAL: return(true);
-      case CTRLM_RF4CE_RIB_ATTR_ID_UPDATE_POLLING_PERIOD:     return(true);
-      case CTRLM_RF4CE_RIB_ATTR_ID_DATA_REQUEST_WAIT_TIME:    return(true);
-      case CTRLM_RF4CE_RIB_ATTR_ID_VALIDATION_CONFIGURATION:  return(true);
-      default: return(false);
-   }
-   #endif
-}
-
-gboolean ctrlm_obj_network_rf4ce_t::rf4ce_rib_set_target(ctrlm_rf4ce_rib_attr_id_t attribute_id, guchar index, guchar length, guchar *data, gboolean *rib_entries_updated) {
-   #ifdef CONTROLLER_SPECIFIC_NETWORK_ATTRIBUTES
-   return(false);
-   #else
-   switch(attribute_id) {
-      case CTRLM_RF4CE_RIB_ATTR_ID_SHORT_RF_RETRY_PERIOD: {
-         if(length != CTRLM_RF4CE_RIB_ATTR_LEN_SHORT_RF_RETRY_PERIOD || index > 0) {
-            XLOGD_ERROR("INVALID PARAMETERS");
-            return(false);
-         }
-         short_rf_retry_period_ = (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | (data[0]);
-         XLOGD_INFO("%u us", short_rf_retry_period_);
-         return(true);
-      }
-      case CTRLM_RF4CE_RIB_ATTR_ID_MAXIMUM_UTTERANCE_LENGTH: {
-         if(length != CTRLM_RF4CE_RIB_ATTR_LEN_MAXIMUM_UTTERANCE_LENGTH || index > 0) {
-            XLOGD_ERROR("INVALID PARAMETERS");
-            return(false);
-         }
-         utterance_duration_max_ = (data[1] << 8) | (data[0]);
-         return(true);
-      }
-      case CTRLM_RF4CE_RIB_ATTR_ID_MAX_VOICE_DATA_RETRY: {
-         if(length != CTRLM_RF4CE_RIB_ATTR_LEN_MAX_VOICE_DATA_RETRY || index > 0) {
-            XLOGD_ERROR("INVALID PARAMETERS");
-            return(false);
-         }
-         if(voice_data_retry_max_ != data[0]) {
-            *rib_entries_updated = true;
-         }
-
-         voice_data_retry_max_ = data[0];
-         XLOGD_INFO("%u attempts", voice_data_retry_max_);
-         return(true);
-      }
-      case CTRLM_RF4CE_RIB_ATTR_ID_MAX_VOICE_CSMA_BACKOFF: {
-         if(length != CTRLM_RF4CE_RIB_ATTR_LEN_MAX_VOICE_CSMA_BACKOFF || index > 0) {
-            XLOGD_ERROR("INVALID PARAMETERS");
-            return(false);
-         }
-         guchar voice_csma_backoff_max = data[0];
-         if(voice_csma_backoff_max > 5) {
-            XLOGD_ERROR("INVALID PARAMETERS");
-            return(false);
-         }
-         if(voice_csma_backoff_max_ != voice_csma_backoff_max) {
-            *rib_entries_updated = true;
-         }
-         voice_csma_backoff_max_ = voice_csma_backoff_max;
-
-         XLOGD_INFO("%u backoffs", voice_csma_backoff_max_);
-         return(true);
-      }
-      case CTRLM_RF4CE_RIB_ATTR_ID_MIN_VOICE_DATA_BACKOFF: {
-         if(length != CTRLM_RF4CE_RIB_ATTR_LEN_MIN_VOICE_DATA_BACKOFF || index > 0) {
-            XLOGD_ERROR("INVALID PARAMETERS");
-            return(false);
-         }
-         guchar voice_data_backoff_exp_min = data[0];
-         if(voice_data_backoff_exp_min_ != voice_data_backoff_exp_min) {
-            *rib_entries_updated = true;
-         }
-         voice_data_backoff_exp_min_ = voice_data_backoff_exp_min;
-
-         XLOGD_INFO("backoff exponent %u", voice_data_backoff_exp_min_);
-         return(true);
-      }
-      case CTRLM_RF4CE_RIB_ATTR_ID_VOICE_TARG_AUDIO_PROFILES: {
-         if(length != CTRLM_RF4CE_RIB_ATTR_LEN_VOICE_TARG_AUDIO_PROFILES || index > 0) {
-            XLOGD_ERROR("INVALID PARAMETERS");
-            return(false);
-         } else {
-            XLOGD_ERROR("VOICE TARG AUDIO PROFILES - NOT SUPPORTED");
-            return(false);
-         }
-      }
-      case CTRLM_RF4CE_RIB_ATTR_ID_RIB_UPDATE_CHECK_INTERVAL: {
-         if(length != CTRLM_RF4CE_RIB_ATTR_LEN_RIB_UPDATE_CHECK_INTERVAL || index > 0) {
-            XLOGD_ERROR("INVALID PARAMETERS");
-            return(false);
-         }
-         guint16 rib_update_check_interval = (data[1] << 8) | data[0];
-         if(rib_update_check_interval > 8760) {
-            XLOGD_ERROR("INVALID PARAMETERS");
-            return(false);
-         }
-         if(rib_update_check_interval_ != rib_update_check_interval) {
-            *rib_entries_updated = true;
-         }
-         rib_update_check_interval_ = rib_update_check_interval;
-
-         XLOGD_INFO("%u hours", rib_update_check_interval_);
-         return(true);
-      }
-      case CTRLM_RF4CE_RIB_ATTR_ID_UPDATE_POLLING_PERIOD: {
-         if(length != CTRLM_RF4CE_RIB_ATTR_LEN_UPDATE_POLLING_PERIOD || index > 0) {
-            XLOGD_ERROR("INVALID PARAMETERS");
-            return(false);
-         }
-         update_polling_period_ = (data[1] << 8) | (data[0]);
-
-         XLOGD_INFO("%u hours", update_polling_period_);
-         return(true);
-      }
-      case CTRLM_RF4CE_RIB_ATTR_ID_DATA_REQUEST_WAIT_TIME: {
-         if(length != CTRLM_RF4CE_RIB_ATTR_LEN_DATA_REQUEST_WAIT_TIME || index > 0) {
-            XLOGD_ERROR("INVALID PARAMETERS");
-            return(false);
-         }
-         data_request_wait_time_ = (data[1] << 8) | (data[0]);
-
-         XLOGD_INFO("%u ms", data_request_wait_time_);
-         return(true);
-      }
-      case CTRLM_RF4CE_RIB_ATTR_ID_VALIDATION_CONFIGURATION: {
-         if(length != CTRLM_RF4CE_RIB_ATTR_LEN_VALIDATION_CONFIGURATION || index > 0) {
-            XLOGD_ERROR("INVALID PARAMETERS");
-            return(false);
-         }
-         auto_check_validation_period_ = (data[1] << 8) | (data[0]);
-         link_lost_wait_time_          = (data[3] << 8) | (data[2]);
-
-         XLOGD_INFO("auto check validation period %u ms", auto_check_validation_period_);
-         XLOGD_INFO("link lost wait time %u ms", link_lost_wait_time_);
-         return(true);
-      }
-      case CTRLM_RF4CE_RIB_ATTR_ID_VOICE_COMMAND_ENCRYPTION: {
-         if(length != CTRLM_RF4CE_RIB_ATTR_LEN_VOICE_COMMAND_ENCRYPTION || index > 0) {
-            XLOGD_ERROR("INVALID PARAMETERS");
-            return(false);
-         }
-         voice_command_encryption_t voice_command_encryption = (voice_command_encryption_t)data[0];
-
-         if(voice_command_encryption > VOICE_COMMAND_ENCRYPTION_DEFAULT) {
-            XLOGD_ERROR("INVALID PARAMETERS");
-            return(false);
-         }
-         if(voice_command_encryption_ != voice_command_encryption) {
-            *rib_entries_updated = true;
-         }
-         voice_command_encryption_ = voice_command_encryption;
-         XLOGD_INFO("<%s>", ctrlm_rf4ce_voice_command_encryption_str(voice_command_encryption));
-         return(true);
-      }
-      default: break;
-   }
-   return(false);
-   #endif
-}
-
-void ctrlm_obj_network_rf4ce_t::req_process_rib_get(void *data, int size) {
-   THREAD_ID_VALIDATE();
-   ctrlm_main_queue_msg_rib_t *dqm = (ctrlm_main_queue_msg_rib_t *)data;
-
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_rib_t));
-   g_assert(dqm->cmd_result);
-
-   *dqm->cmd_result = CTRLM_RIB_REQUEST_SUCCESS;
-
-   ctrlm_controller_id_t controller_id = dqm->controller_id;
-   if(!controller_exists(controller_id)) {
-      XLOGD_WARN("Controller %u NOT present.", controller_id);
-      *dqm->cmd_result = CTRLM_RIB_REQUEST_ERROR;
-   } else {
-      controllers_[controller_id]->rf4ce_rib_get_target((ctrlm_rf4ce_rib_attr_id_t)dqm->attribute_id, dqm->attribute_index, dqm->length, dqm->length_out, dqm->data);
-   }
-
-   ctrlm_obj_network_t::req_process_rib_get(data, size);
-}
-
 void ctrlm_obj_network_rf4ce_t::req_process_controller_status(void *data, int size) {
    THREAD_ID_VALIDATE();
    ctrlm_main_queue_msg_controller_status_t *dqm = (ctrlm_main_queue_msg_controller_status_t *)data;
@@ -1798,39 +1585,6 @@ void ctrlm_obj_network_rf4ce_t::req_process_controller_product_name(void *data, 
    ctrlm_obj_network_t::req_process_controller_product_name(data, size);
 }
 
-void ctrlm_obj_network_rf4ce_t::req_process_controller_link_key(void *data, int size) {
-   THREAD_ID_VALIDATE();
-   ctrlm_main_queue_msg_controller_link_key_t *dqm = (ctrlm_main_queue_msg_controller_link_key_t *)data;
-
-   g_assert(dqm);
-   g_assert(size == sizeof(ctrlm_main_queue_msg_controller_link_key_t));
-   g_assert(dqm->cmd_result);
-
-   ctrlm_hal_network_property_encryption_key_t property = {0};
-
-   if(!controller_exists(dqm->controller_id)) {
-      XLOGD_WARN("Controller %u NOT present.", dqm->controller_id);
-      *dqm->cmd_result = CTRLM_CONTROLLER_STATUS_REQUEST_ERROR;
-      ctrlm_obj_network_t::req_process_controller_link_key(data, size);
-      return;
-   }
-
-   XLOGD_INFO("Getting Link Key for Controller %u", dqm->controller_id);
-
-   // Get Link key
-   property.controller_id = dqm->controller_id;
-   if(CTRLM_HAL_RESULT_SUCCESS != property_get(CTRLM_HAL_NETWORK_PROPERTY_ENCRYPTION_KEY, (void **)&property)) {
-      XLOGD_ERROR("Failed to get Link Key from HAL");
-      *dqm->cmd_result = CTRLM_CONTROLLER_STATUS_REQUEST_ERROR;
-      ctrlm_obj_network_t::req_process_controller_link_key(data, size);
-      return;
-   }
-
-   errno_t safec_rc = memcpy_s(dqm->link_key, CTRLM_HAL_NETWORK_AES128_KEY_SIZE, property.aes128_key, CTRLM_HAL_NETWORK_AES128_KEY_SIZE);
-   ERR_CHK(safec_rc);
-   *dqm->cmd_result = CTRLM_CONTROLLER_STATUS_REQUEST_SUCCESS;
-   ctrlm_obj_network_t::req_process_controller_link_key(data, size);
-}
 
 ctrlm_rib_request_cmd_result_t ctrlm_obj_network_rf4ce_t::req_process_rib_export(ctrlm_controller_id_t controller_id, uint8_t identifier, unsigned char index, unsigned char length, unsigned char *data) {
    THREAD_ID_VALIDATE();
@@ -4133,7 +3887,7 @@ void ctrlm_obj_network_rf4ce_t::req_process_network_status(void *data, int size)
    ctrlm_obj_network_t::req_process_network_status(data, size);
 }
 
-void ctrlm_obj_network_rf4ce_t::cs_values_set(const ctrlm_cs_values_t *values, bool db_load) {
+void ctrlm_obj_network_rf4ce_t::cs_values_set(const ctrlm_cs_values_t *values) {
    if(values == NULL) {
       XLOGD_ERROR("values are NULL");
       return;
@@ -4149,8 +3903,6 @@ void ctrlm_obj_network_rf4ce_t::cs_values_set(const ctrlm_cs_values_t *values, b
    }
 
    // Far Field Configuration
-   far_field_configuration_t temp = ff_configuration_;
-   
    if(values->chime_open_enable) {
       ff_configuration_.flags |= FAR_FIELD_CONFIGURATION_FLAGS_OPENING_CHIME; 
    } else {
@@ -4183,12 +3935,6 @@ void ctrlm_obj_network_rf4ce_t::cs_values_set(const ctrlm_cs_values_t *values, b
    }
 
    ff_configuration_.volume_ir_repeats = values->ir_repeats;
-
-   if(!db_load && memcmp(&temp, &ff_configuration_, sizeof(temp))) {
-      // Configuration changed
-      update_far_field_configuration();
-   }
-
 }
  
 ctrlm_rf4ce_polling_configuration_t ctrlm_obj_network_rf4ce_t::controller_polling_configuration_heartbeat_get(ctrlm_rf4ce_controller_type_t controller_type) {
@@ -4830,6 +4576,161 @@ void ctrlm_obj_network_rf4ce_t::controller_init_uinput(ctrlm_controller_id_t con
    if(!controllers_[controller_id]->init_uinput_writer()) {
       XLOGD_ERROR("Failed to initialize a uinput device for controller %d", controller_id);
       return;
+   }
+}
+
+void ctrlm_obj_network_rf4ce_t::info_file_write(unsigned long long controller_ieee, const unsigned char *key) {
+   char network_mac[32];
+   char controller_mac[32];
+   char network_dir[128];
+   char controller_dir[160];
+   char file_path[192];
+
+   rf4ce_ieee_to_str(ieee_address_,    network_mac,    sizeof(network_mac));
+   rf4ce_ieee_to_str(controller_ieee, controller_mac, sizeof(controller_mac));
+   snprintf(network_dir,    sizeof(network_dir),    "%s/%s",    CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, network_mac);
+   snprintf(controller_dir, sizeof(controller_dir), "%s/%s",    network_dir, controller_mac);
+   snprintf(file_path,      sizeof(file_path),      "%s/info", controller_dir);
+
+   XLOGD_INFO("Creating info file <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path);
+
+   errno = 0;
+   if(mkdir(CTRLM_RF4CE_CONTROLLER_INFO_LIB_DIR, 0700) != 0 && errno != EEXIST) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create lib dir <%s> error <%s>", CTRLM_RF4CE_CONTROLLER_INFO_LIB_DIR, strerror(errsv));
+      return;
+   }
+   if(mkdir(CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, 0700) != 0 && errno != EEXIST) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create base dir <%s> error <%s>", CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, strerror(errsv));
+      return;
+   }
+   if(mkdir(network_dir, 0700) != 0 && errno != EEXIST) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create network dir <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : network_dir, strerror(errsv));
+      return;
+   }
+   if(mkdir(controller_dir, 0700) != 0 && errno != EEXIST) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create controller dir <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : controller_dir, strerror(errsv));
+      return;
+   }
+   
+   errno = 0;
+   int fd = open(file_path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+   if(fd < 0) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create info file <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path, strerror(errsv));
+      return;
+   }
+   FILE *f = fdopen(fd, "w");
+   if(f == NULL) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to create info file stream <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path, strerror(errsv));
+      close(fd);
+      return;
+   }
+
+   fprintf(f, "[ControllerKey]\nKey=");
+   for(int i = 0; i < CTRLM_HAL_NETWORK_AES128_KEY_SIZE; i++) {
+      fprintf(f, "%02X", key[i]);
+   }
+   fprintf(f, "\n");
+   fclose(f);
+}
+
+void ctrlm_obj_network_rf4ce_t::info_file_delete(unsigned long long controller_ieee) {
+   char network_mac[32];
+   char controller_mac[32];
+   char network_dir[128];
+   char controller_dir[160];
+   char file_path[192];
+
+   rf4ce_ieee_to_str(ieee_address_,   network_mac,    sizeof(network_mac));
+   rf4ce_ieee_to_str(controller_ieee, controller_mac, sizeof(controller_mac));
+   snprintf(network_dir,    sizeof(network_dir),    "%s/%s",    CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, network_mac);
+   snprintf(controller_dir, sizeof(controller_dir), "%s/%s",    network_dir, controller_mac);
+   snprintf(file_path,      sizeof(file_path),      "%s/info", controller_dir);
+
+   XLOGD_INFO("Deleting info file <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path);
+
+   errno = 0;
+   if(unlink(file_path) != 0 && errno != ENOENT) {
+      int errsv = errno;
+      XLOGD_ERROR("Failed to delete info file <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : file_path, strerror(errsv));
+   }
+   if(rmdir(controller_dir) != 0 && errno != ENOENT) {
+      int errsv = errno;
+      XLOGD_WARN("Failed to remove controller dir <%s> error <%s>", ctrlm_is_pii_mask_enabled() ? "***" : controller_dir, strerror(errsv));
+   }
+   rmdir(network_dir);
+}
+
+void ctrlm_obj_network_rf4ce_t::info_file_consolidation(void) {
+   char network_mac[32];
+   char network_dir[128];
+   rf4ce_ieee_to_str(ieee_address_, network_mac, sizeof(network_mac));
+   snprintf(network_dir, sizeof(network_dir), "%s/%s", CTRLM_RF4CE_CONTROLLER_INFO_BASE_DIR, network_mac);
+
+   XLOGD_INFO("Consolidating info files");
+
+   // Track which bound controllers already have a valid info file
+   std::set<unsigned long long> found_on_disk;
+
+   // Iterate over the directories in the network dir
+   DIR *dir = opendir(network_dir);
+   if(dir == NULL) {
+      XLOGD_WARN("unable to open network dir <%s>", ctrlm_is_pii_mask_enabled() ? "***" : network_dir);
+   } else {
+      struct dirent *entry;
+      while((entry = readdir(dir)) != NULL) {
+         if(entry->d_name[0] == '.') {
+            continue;
+         }
+
+         // Parse the controller MAC string back to a 64-bit value
+         unsigned int b[8] = {0};
+         if(sscanf(entry->d_name, "%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X",
+                   &b[0], &b[1], &b[2], &b[3], &b[4], &b[5], &b[6], &b[7]) != 8) {
+            XLOGD_WARN("Unexpected entry in network dir: <%s>, skipping", ctrlm_is_pii_mask_enabled() ? "***" : entry->d_name);
+            continue;
+         }
+         unsigned long long controller_ieee = ((unsigned long long)b[0] << 56) | ((unsigned long long)b[1] << 48) |
+                                              ((unsigned long long)b[2] << 40) | ((unsigned long long)b[3] << 32) |
+                                              ((unsigned long long)b[4] << 24) | ((unsigned long long)b[5] << 16) |
+                                              ((unsigned long long)b[6] <<  8) |  (unsigned long long)b[7];
+         
+         for(map<ctrlm_controller_id_t, ctrlm_obj_controller_rf4ce_t *>::iterator it = controllers_.begin(); it != controllers_.end(); it++) {
+            if(it->second->ieee_address_get().get_value() == controller_ieee) {
+               // Matching controller exists
+               found_on_disk.insert(controller_ieee);
+               break;
+            }
+         }
+
+         // Remove info file if no matching bound controller exists
+         if(found_on_disk.find(controller_ieee) == found_on_disk.end()) {
+            XLOGD_INFO("Removing stale info file for controller <%s>", ctrlm_is_pii_mask_enabled() ? "***" : entry->d_name);
+            info_file_delete(controller_ieee);
+         }
+      }
+      closedir(dir);
+   }
+
+   // Add info files for any bound controllers not found on disk
+   for(map<ctrlm_controller_id_t, ctrlm_obj_controller_rf4ce_t *>::iterator it = controllers_.begin(); it != controllers_.end(); it++) {
+      unsigned long long controller_ieee = it->second->ieee_address_get().get_value();
+      if(found_on_disk.find(controller_ieee) == found_on_disk.end()) {
+         XLOGD_INFO("Adding missing info file for controller 0x%016llX", ctrlm_is_pii_mask_enabled() ? 0 : controller_ieee);
+
+         ctrlm_hal_network_property_encryption_key_t key_prop = {0};
+         key_prop.controller_id = it->first;
+         if(CTRLM_HAL_RESULT_SUCCESS != property_get(CTRLM_HAL_NETWORK_PROPERTY_ENCRYPTION_KEY, (void **)&key_prop)) {
+            XLOGD_ERROR("Failed to get link key from HAL");
+         }
+
+         info_file_write(controller_ieee, key_prop.aes128_key);
+      }
    }
 }
 

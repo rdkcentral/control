@@ -440,6 +440,53 @@ void ctrlm_obj_controller_ble_t::setAudioCodecs(guint32 value) {
    audio_codecs_ = value;
 }
 
+void ctrlm_obj_controller_ble_t::setAudioModeSupport(uint32_t modes) {
+   XLOGD_DEBUG("Controller %u set Audio Mode Support to 0x%X", controller_id_get(), modes);
+   audio_mode_support_ = modes;
+}
+uint32_t ctrlm_obj_controller_ble_t::getAudioModeSupport() const {
+   return audio_mode_support_;
+}
+
+void ctrlm_obj_controller_ble_t::setAudioModeControl(const ctrlm_hal_ble_audio_mode_key_t *keys, int size) {
+   audio_mode_control_.clear();
+   if (keys != NULL) {
+      for (int i = 0; i < size && i < CTRLM_HAL_BLE_AUDIO_MODE_CONTROL_MAX_KEYS; i++) {
+         audio_mode_control_.push_back(keys[i]);
+      }
+   }
+   XLOGD_DEBUG("Controller %u set Audio Mode Control to <%s>", controller_id_get(), audioModeControlToString().c_str());
+}
+std::vector<ctrlm_hal_ble_audio_mode_key_t> ctrlm_obj_controller_ble_t::getAudioModeControl() const {
+   return audio_mode_control_;
+}
+std::string ctrlm_obj_controller_ble_t::audioModeControlToString() const {
+   std::ostringstream oss;
+   for (auto it = audio_mode_control_.begin(); it != audio_mode_control_.end(); ++it) {
+      if (it != audio_mode_control_.begin()) {
+         oss << ", ";
+      }
+      oss << ctrlm_linux_key_code_str(it->key_code, false) << ":" << ctrlm_ble_audio_mode_str((ctrlm_hal_ble_AudioMode_t)it->audio_mode);
+   }
+   return oss.str();
+}
+
+void ctrlm_obj_controller_ble_t::setPressAndReleaseTimeout(uint32_t timeout_ms) {
+   XLOGD_DEBUG("Controller %u set Press and Release Timeout to %u ms", controller_id_get(), timeout_ms);
+   press_and_release_timeout_ms_ = timeout_ms;
+}
+uint32_t ctrlm_obj_controller_ble_t::getPressAndReleaseTimeout() const {
+   return press_and_release_timeout_ms_;
+}
+
+void ctrlm_obj_controller_ble_t::setPressAndReleaseThreshold(uint32_t threshold_ms) {
+   XLOGD_DEBUG("Controller %u set Press and Release Threshold to %u ms", controller_id_get(), threshold_ms);
+   press_and_release_threshold_ms_ = threshold_ms;
+}
+uint32_t ctrlm_obj_controller_ble_t::getPressAndReleaseThreshold() const {
+   return press_and_release_threshold_ms_;
+}
+
 void ctrlm_obj_controller_ble_t::setTouchMode(unsigned int param) {
    XLOGD_DEBUG("Controller %u set Touch Mode to %u", controller_id_get(), param);
    touch_mode_ = param;
@@ -501,10 +548,24 @@ bool ctrlm_obj_controller_ble_t::is_stale(time_t stale_time_threshold) const {
 }
 
 bool ctrlm_obj_controller_ble_t::isVoiceKey(uint16_t key_code) const {
-   if(key_code == voice_key_code_) {
-      return true;
+   // Voice keys reported by the RCU in the audio mode control characteristic are in addition to the default voice key
+   for (const auto &key : audio_mode_control_) {
+      if (key.key_code == key_code) {
+         return (key.audio_mode != CTRLM_HAL_BLE_AUDIO_MODE_VOICE_DISABLED);
+      }
    }
-   return false;
+   return (key_code == voice_key_code_);
+}
+
+ctrlm_hal_ble_AudioMode_t ctrlm_obj_controller_ble_t::getAudioMode(uint16_t key_code) const {
+   if (key_code != CTRLM_KEY_CODE_INVALID) {
+      for (const auto &key : audio_mode_control_) {
+         if (key.key_code == key_code) {
+            return (key.audio_mode < CTRLM_HAL_BLE_AUDIO_MODE_INVALID) ? (ctrlm_hal_ble_AudioMode_t)key.audio_mode : CTRLM_HAL_BLE_AUDIO_MODE_INVALID;
+         }
+      }
+   }
+   return CTRLM_HAL_BLE_AUDIO_MODE_INVALID;
 }
 
 void ctrlm_obj_controller_ble_t::setPressAndHoldSupport(bool supported) {
@@ -513,6 +574,58 @@ void ctrlm_obj_controller_ble_t::setPressAndHoldSupport(bool supported) {
 
 bool ctrlm_obj_controller_ble_t::getPressAndHoldSupport() const {
    return(press_and_hold_supported_);
+}
+
+// Records the voice key that started the voice session along with its audio mode.  key_code is CTRLM_KEY_CODE_INVALID
+// if the session was not started by a key press.
+void ctrlm_obj_controller_ble_t::setVoiceSessionKey(uint16_t key_code) {
+   voice_session_key_code_    = key_code;
+   voice_session_audio_mode_  = getAudioMode(key_code);
+   voice_key_held_            = (key_code != CTRLM_KEY_CODE_INVALID);
+   voice_par_timeout_expired_ = false;
+}
+
+uint16_t ctrlm_obj_controller_ble_t::getVoiceSessionKey() const {
+   return(voice_session_key_code_);
+}
+
+ctrlm_hal_ble_AudioMode_t ctrlm_obj_controller_ble_t::getVoiceSessionAudioMode() const {
+   return(voice_session_audio_mode_);
+}
+
+// Returns true if the voice session's audio mode can be "Press and Release", in which case the RCU streams audio until
+// its press and release timeout expires.
+bool ctrlm_obj_controller_ble_t::isVoiceSessionParTimed() const {
+   return(voice_session_audio_mode_ == CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_AND_HOLD_THRESHOLD ||
+          voice_session_audio_mode_ == CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_TIMEOUT);
+}
+
+// Returns the press and release timeout programmed in the RCU, or the voice PAR end of speech timeout if the RCU's
+// value is not known.
+uint32_t ctrlm_obj_controller_ble_t::getVoiceSessionParTimeout() const {
+   if (press_and_release_timeout_ms_ > 0) {
+      return(press_and_release_timeout_ms_);
+   }
+   voice_params_par_t params_par;
+   params_par.par_voice_eos_timeout = 0;
+   ctrlm_get_voice_obj()->voice_params_par_get(&params_par);
+   return(params_par.par_voice_eos_timeout);
+}
+
+void ctrlm_obj_controller_ble_t::setVoiceKeyHeld(bool held) {
+   voice_key_held_ = held;
+}
+
+bool ctrlm_obj_controller_ble_t::getVoiceKeyHeld() const {
+   return(voice_key_held_);
+}
+
+void ctrlm_obj_controller_ble_t::setVoiceParTimeoutExpired(bool expired) {
+   voice_par_timeout_expired_ = expired;
+}
+
+bool ctrlm_obj_controller_ble_t::getVoiceParTimeoutExpired() const {
+   return(voice_par_timeout_expired_);
 }
 
 void ctrlm_obj_controller_ble_t::setVoiceStartTime(ctrlm_timestamp_t startTimeKey) {
@@ -693,6 +806,15 @@ void ctrlm_obj_controller_ble_t::print_status() {
    }
    XLOGD_INFO("Programmed TV IRDB Code      : %s", irdb_entry_id_name_tv_->to_string().c_str());
    XLOGD_INFO("Programmed AVR IRDB Code     : %s", irdb_entry_id_name_avr_->to_string().c_str());
+   XLOGD_INFO("");
+   if (audio_mode_support_) {
+   XLOGD_INFO("Audio Mode Support           : 0x%X", audio_mode_support_);
+   XLOGD_INFO("Audio Mode Control           : %s", audioModeControlToString().c_str());
+   XLOGD_INFO("Press and Release Timeout    : %u ms", press_and_release_timeout_ms_);
+   XLOGD_INFO("Press and Release Threshold  : %u ms", press_and_release_threshold_ms_);
+   } else {
+   XLOGD_INFO("Audio Mode Support           : N/A");
+   }
    XLOGD_INFO("");
    voice_metrics_->print(__FUNCTION__);
    XLOGD_WARN("------------------------------------------------------------");

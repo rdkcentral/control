@@ -1161,6 +1161,50 @@ void BleRcuDeviceBluez::addAudioCodecsChangedSlot(const Slot<uint32_t> &func)
 {
     audioService()->addAudioCodecsChangedSlot(func);
 }
+uint32_t BleRcuDeviceBluez::audioModeSupport() const
+{
+    return audioService()->audioModeSupport();
+}
+std::vector<uint8_t> BleRcuDeviceBluez::audioModeControl() const
+{
+    return audioService()->audioModeControl();
+}
+uint32_t BleRcuDeviceBluez::pressAndReleaseTimeout() const
+{
+    return audioService()->pressAndReleaseTimeout();
+}
+uint32_t BleRcuDeviceBluez::pressAndReleaseThreshold() const
+{
+    return audioService()->pressAndReleaseThreshold();
+}
+void BleRcuDeviceBluez::writeAudioModeControl(const std::vector<uint8_t> &value, PendingReply<> &&reply)
+{
+    audioService()->writeAudioModeControl(value, std::move(reply));
+}
+void BleRcuDeviceBluez::writePressAndReleaseTimeout(uint32_t timeoutMs, PendingReply<> &&reply)
+{
+    audioService()->writePressAndReleaseTimeout(timeoutMs, std::move(reply));
+}
+void BleRcuDeviceBluez::writePressAndReleaseThreshold(uint32_t thresholdMs, PendingReply<> &&reply)
+{
+    audioService()->writePressAndReleaseThreshold(thresholdMs, std::move(reply));
+}
+void BleRcuDeviceBluez::addAudioModeSupportChangedSlot(const Slot<uint32_t> &func)
+{
+    audioService()->addAudioModeSupportChangedSlot(func);
+}
+void BleRcuDeviceBluez::addAudioModeControlChangedSlot(const Slot<const std::vector<uint8_t> &> &func)
+{
+    audioService()->addAudioModeControlChangedSlot(func);
+}
+void BleRcuDeviceBluez::addPressAndReleaseTimeoutChangedSlot(const Slot<uint32_t> &func)
+{
+    audioService()->addPressAndReleaseTimeoutChangedSlot(func);
+}
+void BleRcuDeviceBluez::addPressAndReleaseThresholdChangedSlot(const Slot<uint32_t> &func)
+{
+    audioService()->addPressAndReleaseThresholdChangedSlot(func);
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////

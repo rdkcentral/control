@@ -75,6 +75,8 @@ typedef struct {
    guint upgrade_pause_timer_tag;
    guint print_status_timer_tag;
    guint event_status_timer_tag;
+   guint voice_par_timeout_timer_tag;
+   ctrlm_network_id_t network_id;
 } ctrlm_ble_network_t;
 
 static ctrlm_ble_network_t g_ctrlm_ble_network;
@@ -93,6 +95,7 @@ static gboolean ctrlm_ble_event_status_timer_cb(gpointer user_data);
 
 static gboolean ctrlm_ble_upgrade_controllers_timer_cb(gpointer user_data);
 static gboolean ctrlm_ble_upgrade_resume_timer_cb(gpointer user_data);
+static gboolean ctrlm_ble_voice_par_timeout_timer_cb(gpointer user_data);
 static bool ctrlm_ble_parse_upgrade_image_info(const std::string &filename, ctrlm_ble_upgrade_image_info_t &image_info);
 
 ctrlm_ble_unpair_metrics_t::ctrlm_ble_unpair_metrics_t()
@@ -307,6 +310,8 @@ ctrlm_obj_network_ble_t::ctrlm_obj_network_ble_t(ctrlm_network_type_t type, ctrl
 
    g_ctrlm_ble_network.upgrade_controllers_timer_tag = 0;
    g_ctrlm_ble_network.upgrade_pause_timer_tag = 0;
+   g_ctrlm_ble_network.voice_par_timeout_timer_tag = 0;
+   g_ctrlm_ble_network.network_id = id;
 
    if(json_obj_net_ble != NULL) {
       // Process network options
@@ -343,6 +348,7 @@ ctrlm_obj_network_ble_t::~ctrlm_obj_network_ble_t() {
    ctrlm_timeout_destroy(&g_ctrlm_ble_network.upgrade_pause_timer_tag);
    ctrlm_timeout_destroy(&g_ctrlm_ble_network.event_status_timer_tag);
    ctrlm_timeout_destroy(&g_ctrlm_ble_network.print_status_timer_tag);
+   ctrlm_timeout_destroy(&g_ctrlm_ble_network.voice_par_timeout_timer_tag);
 
    ctrlm_ble_iarm_terminate();
 
@@ -565,6 +571,21 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
             }
          }
 
+         // A new session replaces any previous session, so its press and release timeout no longer applies
+         voice_par_timeout_cancel();
+
+         // The voice session behavior depends on the audio mode programmed in the RCU for the voice key that started the session
+         ctrlm_obj_controller_ble_t *controller = controllers_[controller_id];
+         controller->setVoiceSessionKey(dqm->params->key_code);
+         if (controller->isVoiceSessionParTimed()) {
+            // Timeout mode is always "Press and Release".  Hybrid mode is treated as "Press and Release" until the voice key is
+            // released, when the time the key was held is compared to the threshold.
+            pressAndHoldSupport = false;
+            XLOGD_INFO("Controller <%s> voice key <%s> audio mode <%s>, press and release timeout <%u ms> threshold <%u ms>",
+                       controller->ieee_address_get().to_string().c_str(), ctrlm_linux_key_code_str(controller->getVoiceSessionKey(), false),
+                       ctrlm_ble_audio_mode_str(controller->getVoiceSessionAudioMode()), controller->getVoiceSessionParTimeout(), controller->getPressAndReleaseThreshold());
+         }
+
          ctrlm_voice_start_audio_params_t audio_start_params;
          audio_start_params.m_controller_id = controller_id;
          audio_start_params.m_fd            = -1;
@@ -605,6 +626,11 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
                end_voice_session_for_controller(ieee_address, CTRLM_VOICE_SESSION_END_REASON_OTHER_ERROR);
             } else {
                dqm->params->result = CTRLM_IARM_CALL_RESULT_SUCCESS;
+
+               if (controller->isVoiceSessionParTimed()) {
+                  // The RCU streams audio until its press and release timeout, measured from the voice key press
+                  voice_par_timeout_start(controller_id, controller->getVoiceSessionParTimeout());
+               }
             }
          }
       }
@@ -612,6 +638,78 @@ void ctrlm_obj_network_ble_t::req_process_voice_session_begin(void *data, int si
    if(dqm->semaphore) {
       sem_post(dqm->semaphore);
    }
+}
+
+// Ends a "Press and Release" voice session once the RCU's press and release timeout has expired.  The expected audio
+// duration is the press and release timeout, so the audio stream isn't stopped until all of the audio has been received.
+void ctrlm_obj_network_ble_t::end_voice_session_par(ctrlm_obj_controller_ble_t *controller) {
+   uint32_t         timeout             = controller->getVoiceSessionParTimeout();
+   rdkx_timestamp_t voiceStartTimeLocal = controller->getVoiceStartTimeLocal();
+   rdkx_timestamp_t endTimeLocal;
+   ctrlm_timestamp_get_monotonic(&endTimeLocal);
+
+   int32_t audioDuration = (timeout > 0 && timeout <= INT32_MAX) ? (int32_t)timeout : -1;
+
+   XLOGD_INFO("Controller <%s> press and release timeout <%u ms> expired, ending voice session", controller->ieee_address_get().to_string().c_str(), timeout);
+   end_voice_session_for_controller(controller->ieee_address_get().get_value(), CTRLM_VOICE_SESSION_END_REASON_DONE, audioDuration, -1, &voiceStartTimeLocal, &endTimeLocal);
+}
+
+bool ctrlm_obj_network_ble_t::voice_session_is_streaming(ctrlm_controller_id_t controller_id) {
+   ctrlm_voice_session_t *session = ctrlm_get_voice_obj()->voice_session_from_controller(network_id_get(), controller_id);
+   return(session != NULL && session->state_src == CTRLM_VOICE_STATE_SRC_STREAMING);
+}
+
+void ctrlm_obj_network_ble_t::voice_par_timeout_start(ctrlm_controller_id_t controller_id, uint32_t timeout_ms) {
+   voice_par_timeout_cancel();
+
+   if (timeout_ms == 0) {
+      XLOGD_WARN("press and release timeout is not known, voice session will end when the RCU stops streaming");
+      return;
+   }
+   voice_par_timeout_controller_id_ = controller_id;
+   g_ctrlm_ble_network.voice_par_timeout_timer_tag = ctrlm_timeout_create(timeout_ms, ctrlm_ble_voice_par_timeout_timer_cb, GUINT_TO_POINTER(voice_par_timeout_sequence_));
+}
+
+void ctrlm_obj_network_ble_t::voice_par_timeout_cancel() {
+   ctrlm_timeout_destroy(&g_ctrlm_ble_network.voice_par_timeout_timer_tag);
+   voice_par_timeout_controller_id_ = CTRLM_MAIN_CONTROLLER_ID_INVALID;
+   voice_par_timeout_sequence_++; // discard a timeout that already expired but hasn't been processed yet
+}
+
+void ctrlm_obj_network_ble_t::req_process_voice_par_timeout(void *data, int size) {
+   THREAD_ID_VALIDATE();
+   ctrlm_main_queue_msg_voice_par_timeout_t *dqm = (ctrlm_main_queue_msg_voice_par_timeout_t *)data;
+
+   g_assert(dqm);
+   g_assert(size == sizeof(ctrlm_main_queue_msg_voice_par_timeout_t));
+
+   if (dqm->sequence != voice_par_timeout_sequence_) {
+      XLOGD_DEBUG("stale press and release timeout, ignoring");
+      return;
+   }
+
+   ctrlm_controller_id_t controller_id = voice_par_timeout_controller_id_;
+   voice_par_timeout_controller_id_ = CTRLM_MAIN_CONTROLLER_ID_INVALID;
+
+   if (!controller_exists(controller_id)) {
+      XLOGD_WARN("Controller %u doesn't exist.", controller_id);
+      return;
+   }
+   ctrlm_obj_controller_ble_t *controller = controllers_[controller_id];
+   controller->setVoiceParTimeoutExpired(true);
+
+   if (!voice_session_is_streaming(controller_id)) {
+      XLOGD_INFO("Controller <%s> press and release timeout expired, voice session already ended", controller->ieee_address_get().to_string().c_str());
+      return;
+   }
+
+   if (controller->getVoiceSessionAudioMode() == CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_AND_HOLD_THRESHOLD && controller->getVoiceKeyHeld()) {
+      // The voice key is still held, so the session type is decided when the key is released
+      XLOGD_INFO("Controller <%s> press and release timeout expired while voice key is held, waiting for key release", controller->ieee_address_get().to_string().c_str());
+      return;
+   }
+
+   end_voice_session_par(controller);
 }
 
 bool ctrlm_obj_network_ble_t::end_voice_session_for_controller(uint64_t ieee_address, ctrlm_voice_session_end_reason_t reason, int32_t audioDuration, int32_t startLag, rdkx_timestamp_t *keyDownTime, rdkx_timestamp_t *keyUpTime) {
@@ -1361,6 +1459,19 @@ static gboolean ctrlm_ble_upgrade_resume_timer_cb(gpointer user_data) {
    return false;
 }
 
+static gboolean ctrlm_ble_voice_par_timeout_timer_cb(gpointer user_data) {
+   // Allocate a message and send it to Control Manager's queue
+   ctrlm_main_queue_msg_voice_par_timeout_t msg;
+   errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
+   ERR_CHK(safec_rc);
+   msg.sequence = GPOINTER_TO_UINT(user_data);
+
+   ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_ble_t::req_process_voice_par_timeout, &msg, sizeof(msg), NULL, g_ctrlm_ble_network.network_id);
+
+   g_ctrlm_ble_network.voice_par_timeout_timer_tag = 0;
+   return false;
+}
+
 void ctrlm_obj_network_ble_t::req_process_upgrade_controllers(void *data, int size) {
    ctrlm_main_queue_msg_continue_upgrade_t *dqm = (ctrlm_main_queue_msg_continue_upgrade_t *)data;
 
@@ -1972,6 +2083,22 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   controller->setAudioCodecs(dqm->rcu_data.audio_codecs);
                   XLOGD_INFO("Controller <%s> audio codecs changed to <0x%X>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.audio_codecs);
                   break;
+               case CTRLM_HAL_BLE_PROPERTY_AUDIO_MODE_SUPPORT:
+                  controller->setAudioModeSupport(dqm->rcu_data.audio_mode_support);
+                  XLOGD_INFO("Controller <%s> audio mode support changed to <0x%X>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.audio_mode_support);
+                  break;
+               case CTRLM_HAL_BLE_PROPERTY_AUDIO_MODE_CONTROL:
+                  controller->setAudioModeControl(dqm->rcu_data.audio_mode_control, dqm->rcu_data.audio_mode_control_size);
+                  XLOGD_INFO("Controller <%s> audio mode control changed to <%s>", controller->ieee_address_get().to_string().c_str(), controller->audioModeControlToString().c_str());
+                  break;
+               case CTRLM_HAL_BLE_PROPERTY_PRESS_AND_RELEASE_TIMEOUT:
+                  controller->setPressAndReleaseTimeout(dqm->rcu_data.press_and_release_timeout);
+                  XLOGD_INFO("Controller <%s> press and release timeout changed to <%u ms>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.press_and_release_timeout);
+                  break;
+               case CTRLM_HAL_BLE_PROPERTY_PRESS_AND_RELEASE_THRESHOLD:
+                  controller->setPressAndReleaseThreshold(dqm->rcu_data.press_and_release_threshold);
+                  XLOGD_INFO("Controller <%s> press and release threshold changed to <%u ms>", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.press_and_release_threshold);
+                  break;
                case CTRLM_HAL_BLE_PROPERTY_IS_UPGRADING:
                   XLOGD_AUTOMATION_INFO("Controller <%s> firmware upgrading = %s", controller->ieee_address_get().to_string().c_str(), dqm->rcu_data.is_upgrading ? "TRUE" : "FALSE");
                   upgrade_in_progress_ = dqm->rcu_data.is_upgrading;
@@ -2232,6 +2359,10 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::controller_add(ctrlm_hal_ble_rcu_
       auto controller = controllers_[id];
       controller->setName(string(rcu_data.name));
       controller->setAudioCodecs(rcu_data.audio_codecs);
+      controller->setAudioModeSupport(rcu_data.audio_mode_support);
+      controller->setAudioModeControl(rcu_data.audio_mode_control, rcu_data.audio_mode_control_size);
+      controller->setPressAndReleaseTimeout(rcu_data.press_and_release_timeout);
+      controller->setPressAndReleaseThreshold(rcu_data.press_and_release_threshold);
       controller->setConnected(rcu_data.connected);
       controller->setSupportedIrdbs(rcu_data.irdbs_supported);
 
@@ -2415,6 +2546,7 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
 
             ctrlm_voice_iarm_call_voice_session_t v_params;
             v_params.ieee_address = dqm->ieee_address;
+            v_params.key_code     = dqm->event.code;
 
             ctrlm_main_queue_msg_voice_session_t msg;
             errno_t safec_rc = memset_s(&msg, sizeof(msg), 0, sizeof(msg));
@@ -2458,7 +2590,38 @@ void ctrlm_obj_network_ble_t::ind_process_keypress(void *data, int size) {
       } else if (key_status == CTRLM_KEY_STATUS_UP) {
 
          if (controller->isVoiceKey(dqm->event.code)) {
-            if(!controller->getPressAndHoldSupport()) { // if the voice session is "Press and Release" then don't end session on voice key up event
+            bool pressAndHold = controller->getPressAndHoldSupport();
+            bool endParNow    = false;
+
+            if (controller->isVoiceSessionParTimed() && dqm->event.code == controller->getVoiceSessionKey() && controller->getVoiceKeyHeld()) {
+               controller->setVoiceKeyHeld(false);
+
+               rdkx_timestamp_t keyReleaseTime;
+               keyReleaseTime.tv_sec  = dqm->event.time.tv_sec;
+               keyReleaseTime.tv_nsec = dqm->event.time.tv_usec * 1000;
+               signed long long keyHeldMs = ctrlm_timestamp_subtract_ms(controller->getVoiceStartTimeKey(), keyReleaseTime);
+
+               if (controller->getVoiceSessionAudioMode() == CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_AND_HOLD_THRESHOLD &&
+                   keyHeldMs >= (signed long long)controller->getPressAndReleaseThreshold()) {
+                  // Held at least as long as the threshold, so the RCU stops streaming on key up
+                  pressAndHold = true;
+                  voice_par_timeout_cancel();
+                  XLOGD_INFO("Controller <%s> voice key held <%lld ms>, threshold <%u ms> reached, press and hold session", controller->ieee_address_get().to_string().c_str(),
+                             keyHeldMs, controller->getPressAndReleaseThreshold());
+               } else {
+                  // The RCU streams until its press and release timeout, so don't stop the audio stream before then
+                  pressAndHold = false;
+                  endParNow    = (controller->getVoiceSessionAudioMode() == CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_AND_HOLD_THRESHOLD && controller->getVoiceParTimeoutExpired());
+                  XLOGD_INFO("Controller <%s> voice key held <%lld ms>, press and release session, ends after press and release timeout <%u ms>", controller->ieee_address_get().to_string().c_str(),
+                             keyHeldMs, controller->getVoiceSessionParTimeout());
+               }
+            }
+
+            if (endParNow) { // the press and release timeout already expired while the key was held
+               if (voice_session_is_streaming(controller_id)) {
+                  end_voice_session_par(controller);
+               }
+            } else if(!pressAndHold) { // if the voice session is "Press and Release" then don't end session on voice key up event
                XLOGD_INFO("------------------------------------------------------------------------");
                XLOGD_AUTOMATION_INFO("CODE_VOICE_KEY button RELEASED event for device: %s (ignored for PAR session)", controller->ieee_address_get().to_string().c_str());
                XLOGD_INFO("------------------------------------------------------------------------");
@@ -2573,6 +2736,11 @@ void ctrlm_obj_network_ble_t::ind_process_voice_session_end(void *data, int size
    }
 
    unsigned long long ieee_address = controllers_[controller_id]->ieee_address_get().get_value();;
+
+   // The session has ended, so its press and release timeout no longer applies
+   if (voice_par_timeout_controller_id_ == controller_id) {
+      voice_par_timeout_cancel();
+   }
 
    if (ble_rcu_interface_) {
       int32_t audioDuration = -1;
@@ -2888,7 +3056,11 @@ void ctrlm_obj_network_ble_t::start_controller_audio_streaming(ctrlm_voice_start
     ctrlm_hal_ble_VoiceStreamEnd_t streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_KEY_UP;
     auto rcu = controllers_.at(id);
 
-    if (!rcu->getPressAndHoldSupport()) { // if the voice session is "Press and Release" then end stream on audio duration instead of key up event
+    if (rcu->isVoiceSessionParTimed()) {
+       // The session is ended by the voice key release (hybrid "Press and Hold") or the press and release timeout programmed
+       // in the RCU, so the stream must not be limited to the voice PAR end of speech timeout.
+       streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_KEY_UP;
+    } else if (!rcu->getPressAndHoldSupport()) { // if the voice session is "Press and Release" then end stream on audio duration instead of key up event
        streamEnd = CTRLM_HAL_BLE_VOICE_STREAM_END_ON_AUDIO_DURATION;
     }
 

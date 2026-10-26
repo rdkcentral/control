@@ -85,14 +85,48 @@ typedef enum {
    CTRLM_HAL_BLE_PROPERTY_WAKEUP_CONFIG,
    CTRLM_HAL_BLE_PROPERTY_WAKEUP_CUSTOM_LIST,
    CTRLM_HAL_BLE_PROPERTY_IRDBS_SUPPORTED,
+   CTRLM_HAL_BLE_PROPERTY_AUDIO_MODE_SUPPORT,
+   CTRLM_HAL_BLE_PROPERTY_AUDIO_MODE_CONTROL,
+   CTRLM_HAL_BLE_PROPERTY_PRESS_AND_RELEASE_TIMEOUT,
+   CTRLM_HAL_BLE_PROPERTY_PRESS_AND_RELEASE_THRESHOLD,
    CTRLM_HAL_BLE_PROPERTY_UNKNOWN
 } ctrlm_hal_ble_RcuProperty_t;
+
+/// @brief Bits of the RDK Voice Service Audio Mode Support characteristic (32-bit bit mask).
+typedef enum {
+   CTRLM_HAL_BLE_AUDIO_MODE_SUPPORT_PRESS_AND_HOLD                = (1 << 0),
+   CTRLM_HAL_BLE_AUDIO_MODE_SUPPORT_PRESS_AND_RELEASE_TIMEOUT     = (1 << 1),
+   CTRLM_HAL_BLE_AUDIO_MODE_SUPPORT_PRESS_AND_RELEASE_CONTINUOUS  = (1 << 2)  // NOT USED
+} ctrlm_hal_ble_AudioModeSupport_t;
+
+/// @brief Audio mode values of the RDK Voice Service Audio Mode Control characteristic.
+typedef enum {
+   CTRLM_HAL_BLE_AUDIO_MODE_VOICE_DISABLED                        = 0,
+   CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_HOLD                        = 1,
+   CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_AND_HOLD_THRESHOLD  = 2,
+   CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_TIMEOUT             = 3,
+   CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_CONTINUOUS          = 4,  // NOT USED
+   CTRLM_HAL_BLE_AUDIO_MODE_LEGACY                                = 5,  ///< Voice operation/behavior as it existed prior to configurable PAR and configurable voice keys
+   CTRLM_HAL_BLE_AUDIO_MODE_INVALID
+} ctrlm_hal_ble_AudioMode_t;
 /// @}
 
 /// @addtogroup HAL_BLE_Structs Structures
 /// @{
 /// @brief Structure Definitions
 /// @details The Control Manager HAL provides structures that are used in calls to the HAL networks.
+
+/// @brief Maximum number of voice keys in the RDK Voice Service Audio Mode Control characteristic.
+#define CTRLM_HAL_BLE_AUDIO_MODE_CONTROL_MAX_KEYS (5)
+
+/// @brief HID keycode used by the RCU to mark an unused entry in the Audio Mode Control characteristic.
+#define CTRLM_HAL_BLE_AUDIO_MODE_CONTROL_UNUSED_KEY (0xFF)
+
+/// @brief Audio mode programmed for a single voice key.
+typedef struct {
+   uint16_t                      key_code;   ///< Linux key code of the voice key
+   uint8_t                       audio_mode; ///< ctrlm_hal_ble_AudioMode_t
+} ctrlm_hal_ble_audio_mode_key_t;
 
 typedef struct {
    int                           device_minor_id;
@@ -123,6 +157,11 @@ typedef struct {
    int                           wakeup_custom_list[CTRLM_WAKEUP_CONFIG_LIST_MAX_SIZE];
    int                           wakeup_custom_list_size;
    uint8_t                       irdbs_supported;
+   uint32_t                      audio_mode_support;
+   ctrlm_hal_ble_audio_mode_key_t audio_mode_control[CTRLM_HAL_BLE_AUDIO_MODE_CONTROL_MAX_KEYS];
+   int                           audio_mode_control_size;
+   uint32_t                      press_and_release_timeout;
+   uint32_t                      press_and_release_threshold;
 } ctrlm_hal_ble_rcu_data_t;
 
 typedef struct {

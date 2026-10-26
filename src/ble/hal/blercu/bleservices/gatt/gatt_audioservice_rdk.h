@@ -34,6 +34,13 @@
 #include "gatt_audioservice.h"
 #include "blercu/blercuerror.h"
 #include "utils/bleuuid.h"
+#include "configsettings/configsettings.h"
+
+#include <deque>
+#include <functional>
+#include <mutex>
+#include <string>
+#include <vector>
 
 
 class BleGattService;
@@ -45,7 +52,9 @@ class GattAudioPipe;
 class GattAudioServiceRdk : public GattAudioService
 {
 public:
-    GattAudioServiceRdk(GMainLoop* mainLoop = NULL);
+    GattAudioServiceRdk(GMainLoop* mainLoop = NULL,
+                        const std::string &modelName = std::string(),
+                        const std::vector<ConfigVoiceKeyMode> &voiceKeyModes = std::vector<ConfigVoiceKeyMode>());
     ~GattAudioServiceRdk() final;
 
     BleUuid uuid() override;
@@ -67,6 +76,15 @@ public:
     uint8_t gainLevel() const override;
     void setGainLevel(uint8_t level) override;
 
+    uint32_t audioModeSupport() const override;
+    std::vector<uint8_t> audioModeControl() const override;
+    uint32_t pressAndReleaseTimeout() const override;
+    uint32_t pressAndReleaseThreshold() const override;
+
+    void writeAudioModeControl(const std::vector<uint8_t> &value, PendingReply<> &&reply) override;
+    void writePressAndReleaseTimeout(uint32_t timeoutMs, PendingReply<> &&reply) override;
+    void writePressAndReleaseThreshold(uint32_t thresholdMs, PendingReply<> &&reply) override;
+
 private:
 
     bool getAudioCodecsCharacteristic(const std::shared_ptr<const BleGattService> &gattService);
@@ -74,20 +92,52 @@ private:
     bool getAudioControlCharacteristic(const std::shared_ptr<const BleGattService> &gattService);
     bool getAudioDataCharacteristic(const std::shared_ptr<const BleGattService> &gattService);
     bool getAudioInfoCharacteristic(const std::shared_ptr<const BleGattService> &gattService);
+    bool getOptionalCharacteristic(const std::shared_ptr<const BleGattService> &gattService,
+                                   BleUuid::CustomRdkCharacteristicType uuid,
+                                   std::shared_ptr<BleGattCharacteristic> &characteristic);
 
     void requestGainLevel();
     void requestAudioCodecs();
+    void requestAudioModeControl(const std::function<void()> &onComplete = nullptr);
+    void requestUint32Characteristic(const std::shared_ptr<BleGattCharacteristic> &characteristic,
+                                     const char *name, uint32_t &value, Slots<uint32_t> &changedSlots,
+                                     const std::function<void()> &onComplete = nullptr);
+
+    void writeUint32Characteristic(const std::shared_ptr<BleGattCharacteristic> &characteristic,
+                                   const char *name, uint32_t newValue,
+                                   uint32_t &value, Slots<uint32_t> &changedSlots,
+                                   PendingReply<> &&reply);
+
+    struct VoiceKeyModeWriteStep {
+        const char *name;
+        std::function<void(PendingReply<> &&)> write;
+    };
+    void applyVoiceKeyModeConfig();
+    void runVoiceKeyModeWrites(const std::shared_ptr<std::deque<VoiceKeyModeWriteStep>> &steps);
 
     static const BleUuid m_serviceUuid;
 
+    const std::string                     m_modelName;
+    const std::vector<ConfigVoiceKeyMode> m_voiceKeyModes;
+
     uint8_t  m_gainLevel = 0xFF;
     uint32_t m_audioCodecs = 0;
+    uint32_t m_audioModeSupport = 0;
+    std::vector<uint8_t> m_audioModeControl;
+    bool                 m_audioModeControlValid = false;
+    mutable std::mutex   m_audioModeControlMutex;
+    uint32_t m_pressAndReleaseTimeout = 0;
+    uint32_t m_pressAndReleaseThreshold = 0;
 
     std::shared_ptr<BleGattCharacteristic> m_audioGainCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_audioCtrlCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_audioDataCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_audioInfoCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_audioCodecsCharacteristic;
+    std::shared_ptr<BleGattCharacteristic> m_audioModeSupportCharacteristic;
+    std::shared_ptr<BleGattCharacteristic> m_audioModeCtrlCharacteristic;
+    std::shared_ptr<BleGattCharacteristic> m_parTimeoutCharacteristic;
+    std::shared_ptr<BleGattCharacteristic> m_parThresholdCharacteristic;
 
 };
 

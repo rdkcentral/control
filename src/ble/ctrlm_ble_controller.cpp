@@ -557,12 +557,75 @@ bool ctrlm_obj_controller_ble_t::isVoiceKey(uint16_t key_code) const {
    return (key_code == voice_key_code_);
 }
 
+ctrlm_hal_ble_AudioMode_t ctrlm_obj_controller_ble_t::getAudioMode(uint16_t key_code) const {
+   if (key_code != CTRLM_KEY_CODE_INVALID) {
+      for (const auto &key : audio_mode_control_) {
+         if (key.key_code == key_code) {
+            return (key.audio_mode < CTRLM_HAL_BLE_AUDIO_MODE_INVALID) ? (ctrlm_hal_ble_AudioMode_t)key.audio_mode : CTRLM_HAL_BLE_AUDIO_MODE_INVALID;
+         }
+      }
+   }
+   return CTRLM_HAL_BLE_AUDIO_MODE_INVALID;
+}
+
 void ctrlm_obj_controller_ble_t::setPressAndHoldSupport(bool supported) {
    press_and_hold_supported_ = supported;
 }
 
 bool ctrlm_obj_controller_ble_t::getPressAndHoldSupport() const {
    return(press_and_hold_supported_);
+}
+
+// Records the voice key that started the voice session along with its audio mode.  key_code is CTRLM_KEY_CODE_INVALID
+// if the session was not started by a key press.
+void ctrlm_obj_controller_ble_t::setVoiceSessionKey(uint16_t key_code) {
+   voice_session_key_code_    = key_code;
+   voice_session_audio_mode_  = getAudioMode(key_code);
+   voice_key_held_            = (key_code != CTRLM_KEY_CODE_INVALID);
+   voice_par_timeout_expired_ = false;
+}
+
+uint16_t ctrlm_obj_controller_ble_t::getVoiceSessionKey() const {
+   return(voice_session_key_code_);
+}
+
+ctrlm_hal_ble_AudioMode_t ctrlm_obj_controller_ble_t::getVoiceSessionAudioMode() const {
+   return(voice_session_audio_mode_);
+}
+
+// Returns true if the voice session's audio mode can be "Press and Release", in which case the RCU streams audio until
+// its press and release timeout expires.
+bool ctrlm_obj_controller_ble_t::isVoiceSessionParTimed() const {
+   return(voice_session_audio_mode_ == CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_AND_HOLD_THRESHOLD ||
+          voice_session_audio_mode_ == CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_TIMEOUT);
+}
+
+// Returns the press and release timeout programmed in the RCU, or the voice PAR end of speech timeout if the RCU's
+// value is not known.
+uint32_t ctrlm_obj_controller_ble_t::getVoiceSessionParTimeout() const {
+   if (press_and_release_timeout_ms_ > 0) {
+      return(press_and_release_timeout_ms_);
+   }
+   voice_params_par_t params_par;
+   params_par.par_voice_eos_timeout = 0;
+   ctrlm_get_voice_obj()->voice_params_par_get(&params_par);
+   return(params_par.par_voice_eos_timeout);
+}
+
+void ctrlm_obj_controller_ble_t::setVoiceKeyHeld(bool held) {
+   voice_key_held_ = held;
+}
+
+bool ctrlm_obj_controller_ble_t::getVoiceKeyHeld() const {
+   return(voice_key_held_);
+}
+
+void ctrlm_obj_controller_ble_t::setVoiceParTimeoutExpired(bool expired) {
+   voice_par_timeout_expired_ = expired;
+}
+
+bool ctrlm_obj_controller_ble_t::getVoiceParTimeoutExpired() const {
+   return(voice_par_timeout_expired_);
 }
 
 void ctrlm_obj_controller_ble_t::setVoiceStartTime(ctrlm_timestamp_t startTimeKey) {

@@ -148,9 +148,20 @@ public:
 
    virtual bool                     is_stale(time_t stale_time_threshold) const;
    bool                             isVoiceKey(uint16_t key_code) const;
+   ctrlm_hal_ble_AudioMode_t        getAudioMode(uint16_t key_code) const;
 
    void                             setPressAndHoldSupport(bool supported);
    bool                             getPressAndHoldSupport() const;
+
+   void                             setVoiceSessionKey(uint16_t key_code);
+   uint16_t                         getVoiceSessionKey() const;
+   ctrlm_hal_ble_AudioMode_t        getVoiceSessionAudioMode() const;
+   bool                             isVoiceSessionParTimed() const;
+   uint32_t                         getVoiceSessionParTimeout() const;
+   void                             setVoiceKeyHeld(bool held);
+   bool                             getVoiceKeyHeld() const;
+   void                             setVoiceParTimeoutExpired(bool expired);
+   bool                             getVoiceParTimeoutExpired() const;
 
    void                             setVoiceStartTime(ctrlm_timestamp_t startTimeKey);
    ctrlm_timestamp_t                getVoiceStartTimeKey() const;
@@ -197,6 +208,12 @@ private:
 
    uint16_t                                last_wakeup_key_code_ = CTRLM_KEY_CODE_INVALID;
    uint16_t                                voice_key_code_       = KEY_F8;
+
+   // State of the voice session started by a voice key press
+   uint16_t                                voice_session_key_code_        = CTRLM_KEY_CODE_INVALID;
+   ctrlm_hal_ble_AudioMode_t               voice_session_audio_mode_      = CTRLM_HAL_BLE_AUDIO_MODE_INVALID;
+   bool                                    voice_key_held_                = false;
+   bool                                    voice_par_timeout_expired_     = false;
 
    bool                                    press_and_hold_supported_ = false;
    ctrlm_timestamp_t                       voice_start_time_key_;

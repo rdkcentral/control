@@ -96,7 +96,7 @@ private:
 
    void *m_irdbPluginHandle;
 
-   ctrlm_irdb_mode_t mode;
+   ctrlm_irdb_mode_t mode = CTRLM_IRDB_MODE_OFFLINE;
    bool              m_platform_tv;
    std::mutex        m_mutex;
 };

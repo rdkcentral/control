@@ -358,7 +358,6 @@ const char *ctrlm_main_queue_msg_type_str(ctrlm_main_queue_msg_type_t type) {
       case CTRLM_MAIN_QUEUE_MSG_TYPE_TERMINATE:                               return("TERMINATE");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STATUS:                             return("MAIN_STATUS");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_FACTORY_RESET:                      return("MAIN_FACTORY_RESET");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROLLER_UNBIND:                  return("MAIN_CONTROLLER_UNBIND");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_TIMEOUT_LINE_OF_SIGHT:              return("MAIN_TIMEOUT_LINE_OF_SIGHT");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_TIMEOUT_AUTOBIND:                   return("MAIN_TIMEOUT_AUTOBIND");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_TIMEOUT_BINDING_BUTTON:             return("MAIN_TIMEOUT_BINDING_BUTTON");
@@ -373,8 +372,6 @@ const char *ctrlm_main_queue_msg_type_str(ctrlm_main_queue_msg_type_t type) {
       case CTRLM_MAIN_QUEUE_MSG_TYPE_IR_REMOTE_USAGE:                         return("IR_REMOTE_USAGE");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_LAST_KEY_INFO:                           return("LAST_KEY_INFO");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_STOP_BINDING_SCREEN:                return("MAIN_STOP_BINDING_SCREEN");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_SET_VALUES:         return("CONTROL_SERVICE_SET_VALUES");
-      case CTRLM_MAIN_QUEUE_MSG_TYPE_MAIN_CONTROL_SERVICE_GET_VALUES:         return("CONTROL_SERVICE_GET_VALUES");
       case CTRLM_MAIN_QUEUE_MSG_TYPE_EXPORT_CONTROLLER_LIST:                  return("EXPORT_CONTROLLER_LIST");
       default: if (type >= CTRLM_MAIN_QUEUE_MSG_TYPE_VENDOR_FIRST && type <= CTRLM_MAIN_QUEUE_MSG_TYPE_VENDOR_LAST) {
          return("VENDOR SPECIFIC MESSAGE");
@@ -1327,8 +1324,8 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_F7,            {"Record",               "Record"}},
    {KEY_F3,            {"Search",               "Search"}},
    {KEY_F6,            {"Provider",             "Provider"}},
-   {KEY_KPDOT,         {"App A",                "App A"}},        // A key for RF4CE remotes (also asterisk key)
-   {KEY_F14,           {"Quick Access",         "Quick Access"}}, // B key for RF4CE remotes (C and D are not defined yet)
+   {KEY_KPDOT,         {"App A",                "App A"}},
+   {KEY_F14,           {"Quick Access",         "Quick Access"}},
    {KEY_KPRIGHTPAREN,  {"App 1",                "App 1"}},
    {KEY_KPLEFTPAREN,   {"App 2",                "App 2"}},
    {KEY_KPCOMMA,       {"App 3",                "App 3"}},
@@ -1352,7 +1349,8 @@ static const map<uint16_t, tuple<const char*, const char*>> ctrlm_linux_key_name
    {KEY_EQUAL,         {"Sports",               "Sports"}},
    {KEY_RIGHTBRACE,    {"Playlist/Library",     "Playlist/Library"}},
    {KEY_LEFTBRACE,     {"Live TV",              "Live TV"}},
-   {KEY_MINUS,         {"Best Of",              "Best Of"}}
+   {KEY_MINUS,         {"Best Of",              "Best Of"}},
+   {KEY_KPEQUAL,       {"Accessibility",        "Accessibility"}}
 };
 
 

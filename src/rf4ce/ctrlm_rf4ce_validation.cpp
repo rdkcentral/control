@@ -117,6 +117,13 @@ void ctrlm_obj_network_rf4ce_t::bind_validation_end(ctrlm_main_queue_msg_bind_va
       blackout_bind_fail();
       XLOGD_INFO("Failed pairing, MAC address: 0x%016llX", controllers_[dqm->controller_id]->ieee_address_get());
    } else {
+      ctrlm_hal_network_property_encryption_key_t key_prop = {0};
+      key_prop.controller_id = dqm->controller_id;
+      if(CTRLM_HAL_RESULT_SUCCESS != property_get(CTRLM_HAL_NETWORK_PROPERTY_ENCRYPTION_KEY, (void **)&key_prop)) {
+         XLOGD_ERROR("Failed to get link key from HAL");
+      }
+      info_file_write(controllers_[dqm->controller_id]->ieee_address_get().get_value(), key_prop.aes128_key);
+
       if(controller_id_to_remove_ != CTRLM_HAL_CONTROLLER_ID_INVALID) {
          // no space in the pairing table
          XLOGD_WARN("Out of space in the pairing table.  Will kick out Controller Id <%u>", controller_id_to_remove_);

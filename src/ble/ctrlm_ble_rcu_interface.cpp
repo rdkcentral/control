@@ -1288,33 +1288,34 @@ bool ctrlm_ble_rcu_interface_t::writeDeviceSync(uint64_t ieee_address, const cha
         return false;
     }
 
-    // This method will wait for the operation to complete, so init a semaphore
-    sem_t semaphore;
-    bool success = false;
+    // Bounded so a stalled GATT teardown can't hang the caller forever.
+    auto result = ble_rcu_bounded_reply_create();
 
     // lambda invoked when the request returns
-    auto replyHandler = [&semaphore, &success, address, name](PendingReply<> *reply) mutable
+    auto replyHandler = [result, address, name](PendingReply<> *reply) mutable
         {
             if (reply->isError()) {
                 XLOGD_ERROR("%s: failed to write %s due to <%s>", address.toString().c_str(), name, reply->errorMessage().c_str());
-                success = false;
+                result->success = false;
             } else {
                 XLOGD_INFO("%s: successfully wrote %s", address.toString().c_str(), name);
-                success = true;
+                result->success = true;
             }
-            sem_post(&semaphore);
+            result->post();
         };
 
     XLOGD_INFO("writing %s on remote %s", name, address.toString().c_str());
 
-    sem_init(&semaphore, 0, 0);
     writeFunc(device, PendingReply<>(m_isAlive, replyHandler));
 
-    // Wait for the result semaphore to be signaled
-    sem_wait(&semaphore);
-    sem_destroy(&semaphore);
+    // Wait for the result semaphore to be signaled, bounded so a stuck GATT teardown
+    // can't hang the caller forever.
+    if (!ble_rcu_bounded_reply_wait(result, CTRLM_BLE_RCU_ACTION_REPLY_TIMEOUT_SEC)) {
+        XLOGD_ERROR("timed out waiting for %s reply on remote %s", name, address.toString().c_str());
+        return false;
+    }
 
-    return success;
+    return result->success;
 }
 
 bool ctrlm_ble_rcu_interface_t::writeAudioModeControl(uint64_t ieee_address, const ctrlm_hal_ble_audio_mode_key_t *keys, int numKeys)

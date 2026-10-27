@@ -630,6 +630,7 @@ private:
    // Bastille 37 vulnerability private function
    gboolean              blackout_settings_get_rfc();
    static gboolean       binding_in_progress_timeout(gpointer user_data);
+   void                  binding_in_progress_timeout_process(void *data, int size);
    void                  default_polling_configuration();
    void                  polling_config_read(json_config *conf);
 

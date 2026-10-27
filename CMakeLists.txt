@@ -117,7 +117,7 @@ include_directories( ${CMAKE_CURRENT_BINARY_DIR}
                      ${CMAKE_SYSROOT}/usr/include/rdk/ds-rpc
                      ${CMAKE_SYSROOT}/usr/include/rdk/ds-hal
                      ${CMAKE_SYSROOT}/usr/include/rdk/halif/ds-hal
-                     ${CMAKE_SYSROOT}/usr/include/WPEFramework
+                     ${CMAKE_SYSROOT}/usr/include/Thunder
                      ${CMAKE_SYSROOT}/usr/include/breakpad
                    )
 
@@ -208,16 +208,16 @@ endif()
 
 if(THUNDER)
    add_compile_definitions(CTRLM_THUNDER)
-   target_link_libraries(controlMgr WPEFrameworkCore WPEFrameworkPlugins)
+   target_link_libraries(controlMgr ThunderCore ThunderPlugins)
    if(WPE_FRAMEWORK_COM_SOCKET)
-      target_link_libraries(controlMgr WPEFrameworkCOM WPEFrameworkWebSocket)
+      target_link_libraries(controlMgr ThunderCOM ThunderWebSocket)
    endif()
    if(WPE_FRAMEWORK_PROTO_TRACING)
-      target_link_libraries(controlMgr WPEFrameworkProtocols WPEFrameworkTracing)
+      target_link_libraries(controlMgr ThunderProtocols ThunderTracing)
    endif()
    if(THUNDER_SECURITY)
       add_compile_definitions(THUNDER_SECURITY)
-      target_link_libraries(controlMgr WPEFrameworkSecurityUtil)
+      target_link_libraries(controlMgr ThunderSecurityUtil)
    endif()
    if(AUTH_ENABLED)
       add_compile_definitions(AUTH_ENABLED)

@@ -18,9 +18,9 @@
 */
 #include "ctrlm_thunder_controller.h"
 #include "ctrlm_thunder_log.h"
-#include <WPEFramework/core/core.h>
-#include <WPEFramework/websocket/websocket.h>
-#include <WPEFramework/plugins/plugins.h>
+#include <Thunder/core/core.h>
+#include <Thunder/websocket/websocket.h>
+#include <Thunder/plugins/plugins.h>
 #include <secure_wrapper.h>
 #include "ctrlm_thunder_helpers.h"
 #include <glib.h>
@@ -35,7 +35,7 @@
 
 using namespace Thunder;
 using namespace Controller;
-using namespace WPEFramework;
+using namespace Thunder;
 
 static ctrlm_thunder_controller_t *_instance = NULL;
 
@@ -218,7 +218,7 @@ std::string ctrlm_thunder_controller_t::get_security_token() {
 }
 
 bool ctrlm_thunder_controller_t::is_thunder_active() {
-   return Thunder::Helpers::is_systemd_process_active("wpeframework.service");
+   return Thunder::Helpers::is_systemd_process_active("thunder.service");
 }
 
 bool ctrlm_thunder_controller_t::open_controller() {

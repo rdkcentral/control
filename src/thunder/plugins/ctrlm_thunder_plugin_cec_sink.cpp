@@ -18,15 +18,15 @@
 */
 #include "ctrlm_thunder_plugin_cec_sink.h"
 #include "ctrlm_log.h"
-#include <WPEFramework/core/core.h>
-#include <WPEFramework/websocket/websocket.h>
-#include <WPEFramework/plugins/plugins.h>
+#include <Thunder/core/core.h>
+#include <Thunder/websocket/websocket.h>
+#include <Thunder/plugins/plugins.h>
 #include <glib.h>
 #include <sstream>
 
 using namespace Thunder;
 using namespace CECSink;
-using namespace WPEFramework;
+using namespace Thunder;
 
 static int _on_device_changed_thread(void *data) {
     ctrlm_thunder_plugin_cec_sink_t *plugin = (ctrlm_thunder_plugin_cec_sink_t *)data;

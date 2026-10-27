@@ -20,15 +20,15 @@
 #include <ctrlm_log.h>
 #include <rdkx_logger.h>
 #include "ctrlmf_thunder_plugin.h"
-#include <WPEFramework/core/core.h>
-#include <WPEFramework/websocket/websocket.h>
-#include <WPEFramework/plugins/plugins.h>
+#include <Thunder/core/core.h>
+#include <Thunder/websocket/websocket.h>
+#include <Thunder/plugins/plugins.h>
 #include <sstream>
 #include <secure_wrapper.h>
 
 using namespace Thunder;
 using namespace Plugin;
-using namespace WPEFramework;
+using namespace Thunder;
 
 #define REGISTER_EVENTS_RETRY_MAX (5)
 

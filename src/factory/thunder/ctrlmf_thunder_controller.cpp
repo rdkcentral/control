@@ -22,16 +22,16 @@
 #include <ctrlm_fta_lib.h>
 #include <secure_wrapper.h>
 #include "ctrlmf_thunder_controller.h"
-#include <WPEFramework/core/core.h>
-#include <WPEFramework/websocket/websocket.h>
-#include <WPEFramework/plugins/plugins.h>
+#include <Thunder/core/core.h>
+#include <Thunder/websocket/websocket.h>
+#include <Thunder/plugins/plugins.h>
 
 #define THUNDER_CONTROLLER_OPEN_RETRY_MAX      (15)
 #define THUNDER_CONTROLLER_OPEN_RETRY_INTERVAL (5000)
 
 using namespace Thunder;
 using namespace Controller;
-using namespace WPEFramework;
+using namespace Thunder;
 
 static ctrlm_thunder_controller_t *_instance = NULL;
 
@@ -196,7 +196,7 @@ void ctrlm_thunder_controller_t::remove_ready_handler(thunder_ready_handler_t ha
 std::string ctrlm_thunder_controller_t::get_security_token() {
     std::string sToken = "";
 #ifdef THUNDER_SECURITY
-    FILE *pSecurity = v_secure_popen("r", "/usr/bin/WPEFrameworkSecurityUtility");
+    FILE *pSecurity = v_secure_popen("r", "/usr/bin/ThunderSecurityUtility");
     if(pSecurity) {
         JsonObject pSecurityJson;
         std::string pSecurityOutput;
@@ -221,7 +221,7 @@ std::string ctrlm_thunder_controller_t::get_security_token() {
 }
 
 bool ctrlm_thunder_controller_t::is_thunder_active() {
-   return(ctrlmf_systemd_is_service_active("wpeframework.service"));
+   return(ctrlmf_systemd_is_service_active("thunder.service"));
 }
 
 bool ctrlm_thunder_controller_t::open_controller() {

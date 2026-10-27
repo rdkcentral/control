@@ -19,13 +19,13 @@
 #include "ctrlmf_thunder_plugin_display_settings.h"
 #include <ctrlm_log.h>
 #include <rdkx_logger.h>
-#include <WPEFramework/core/core.h>
-#include <WPEFramework/websocket/websocket.h>
-#include <WPEFramework/plugins/plugins.h>
+#include <Thunder/core/core.h>
+#include <Thunder/websocket/websocket.h>
+#include <Thunder/plugins/plugins.h>
 
 using namespace Thunder;
 using namespace DisplaySettings;
-using namespace WPEFramework;
+using namespace Thunder;
 
 ctrlmf_thunder_plugin_display_settings_t::ctrlmf_thunder_plugin_display_settings_t() : ctrlm_thunder_plugin_t("DisplaySettings", "org.rdk.DisplaySettings", 1) {
 }

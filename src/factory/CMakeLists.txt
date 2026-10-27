@@ -64,17 +64,17 @@ if(THUNDER)
       thunder/ctrlmf_thunder_plugin_display_settings.cpp
    )
 
-   target_link_libraries(ctrlm-fta WPEFrameworkCore WPEFrameworkPlugins)
+   target_link_libraries(ctrlm-fta ThunderCore ThunderPlugins)
    if(WPE_FRAMEWORK_COM_SOCKET)
-      target_link_libraries(ctrlm-fta WPEFrameworkCOM WPEFrameworkWebSocket)
+      target_link_libraries(ctrlm-fta ThunderCOM ThunderWebSocket)
    endif()
    if(WPE_FRAMEWORK_PROTO_TRACING)
-      target_link_libraries(ctrlm-fta WPEFrameworkProtocols WPEFrameworkTracing)
+      target_link_libraries(ctrlm-fta ThunderProtocols ThunderTracing)
    endif()
 
    if(THUNDER_SECURITY)
       add_compile_definitions(PRIVATE THUNDER_SECURITY)
-      target_link_libraries(ctrlm-fta WPEFrameworkSecurityUtil secure_wrapper)
+      target_link_libraries(ctrlm-fta ThunderSecurityUtil secure_wrapper)
    endif()
 endif()
 

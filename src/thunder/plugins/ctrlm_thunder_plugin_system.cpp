@@ -18,13 +18,13 @@
 */
 #include "ctrlm_thunder_plugin_system.h"
 #include "ctrlm_thunder_log.h"
-#include <WPEFramework/core/core.h>
-#include <WPEFramework/websocket/websocket.h>
-#include <WPEFramework/plugins/plugins.h>
+#include <Thunder/core/core.h>
+#include <Thunder/websocket/websocket.h>
+#include <Thunder/plugins/plugins.h>
 
 using namespace Thunder;
 using namespace System;
-using namespace WPEFramework;
+using namespace Thunder;
 
 static void _on_firmware_update_state_change(ctrlm_thunder_plugin_system_t *plugin, JsonObject params) {
     plugin->on_firmware_update_state_change((firmware_update_state_t)params["firmwareUpdateStateChange"].Number());

@@ -55,7 +55,7 @@ See [PRODUCT.md](PRODUCT.md) for a fuller description of product capabilities an
 
 ## Building
 
-Builds require an RDK-compatible Linux environment or the corresponding Yocto SDK/container. The project links to platform-provided components such as Thunder/WPEFramework, BLE and RF4CE libraries, `xr-voice-sdk`, GLib, SQLite, D-Bus, and other RDK libraries. A regular macOS or generic Linux installation does not provide these dependencies by itself.
+Builds require an RDK-compatible Linux environment or the corresponding Yocto SDK/container. The project links to platform-provided components such as Thunder, BLE and RF4CE libraries, `xr-voice-sdk`, GLib, SQLite, D-Bus, and other RDK libraries. A regular macOS or generic Linux installation does not provide these dependencies by itself.
 
 For a native CI build, inspect the scripts in [`ci/`](ci/) and the [native build workflow](.github/workflows/native_full_build.yml). Enable or disable features with CMake options.  The exact options and their dependencies are defined in [CMakeLists.txt](CMakeLists.txt).
 

@@ -19,15 +19,15 @@
 #include "ctrlm_thunder_plugin_cec_source.h"
 #include "ctrlm_log.h"
 #include "ctrlm_thunder_helpers.h"
-#include <WPEFramework/core/core.h>
-#include <WPEFramework/websocket/websocket.h>
-#include <WPEFramework/plugins/plugins.h>
+#include <Thunder/core/core.h>
+#include <Thunder/websocket/websocket.h>
+#include <Thunder/plugins/plugins.h>
 #include <glib.h>
 #include <sstream>
 
 using namespace Thunder;
 using namespace CEC;
-using namespace WPEFramework;
+using namespace Thunder;
 
 static int _on_device_changed_thread(void *data) {
     ctrlm_thunder_plugin_cec_source_t *plugin = (ctrlm_thunder_plugin_cec_source_t *)data;

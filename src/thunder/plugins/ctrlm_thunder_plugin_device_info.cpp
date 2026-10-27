@@ -19,14 +19,14 @@
 #include "ctrlm_thunder_plugin_device_info.h"
 #include "ctrlm_thunder_log.h"
 #include "ctrlm_utils.h"
-#include <WPEFramework/core/core.h>
-#include <WPEFramework/websocket/websocket.h>
-#include <WPEFramework/plugins/plugins.h>
+#include <Thunder/core/core.h>
+#include <Thunder/websocket/websocket.h>
+#include <Thunder/plugins/plugins.h>
 #include <glib.h>
 
 using namespace Thunder;
 using namespace DeviceInfo;
-using namespace WPEFramework;
+using namespace Thunder;
 
 ctrlm_thunder_plugin_device_info_t::ctrlm_thunder_plugin_device_info_t() : ctrlm_thunder_plugin_t("DeviceInfo", "DeviceInfo", 1) {
     sem_init(&this->semaphore, 0, 1);

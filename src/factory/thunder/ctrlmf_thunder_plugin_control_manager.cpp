@@ -20,13 +20,13 @@
 #include <ctrlm_log.h>
 #include <rdkx_logger.h>
 #include "ctrlmf_thunder_plugin_control_manager.h"
-#include <WPEFramework/core/core.h>
-#include <WPEFramework/websocket/websocket.h>
-#include <WPEFramework/plugins/plugins.h>
+#include <Thunder/core/core.h>
+#include <Thunder/websocket/websocket.h>
+#include <Thunder/plugins/plugins.h>
 
 using namespace Thunder;
 using namespace ControlManager;
-using namespace WPEFramework;
+using namespace Thunder;
 
 static void _on_session_begin(ctrlm_thunder_plugin_control_manager_t *plugin, JsonObject params) {
     plugin->on_session_begin(params["remoteId"].Number(), params["sessionId"].String(), params["deviceType"].String(), params["keywordVerification"].Boolean());

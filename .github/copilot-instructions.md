@@ -1,7 +1,7 @@
 # Copilot Instructions
 
 ## Repository overview
-This is the **ctrlm-main** (Control Manager) plugin — a Thunder/WPEFramework plugin for RDK remote control management.
+This is the **ctrlm-main** (Control Manager) plugin — a Thunder plugin for RDK remote control management.
 
 ## ci/ directory
 The `ci/` directory contains **native CI build support files only**. It is not part of the application.

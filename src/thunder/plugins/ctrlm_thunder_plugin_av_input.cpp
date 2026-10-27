@@ -18,14 +18,14 @@
 */
 #include "ctrlm_thunder_plugin_av_input.h"
 #include "ctrlm_log.h"
-#include <WPEFramework/core/core.h>
-#include <WPEFramework/websocket/websocket.h>
-#include <WPEFramework/plugins/plugins.h>
+#include <Thunder/core/core.h>
+#include <Thunder/websocket/websocket.h>
+#include <Thunder/plugins/plugins.h>
 #include <glib.h>
 
 using namespace Thunder;
 using namespace AVInput;
-using namespace WPEFramework;
+using namespace Thunder;
 
 static int _on_hotplug_thread(void *data) {
     auto params = (std::pair<ctrlm_thunder_plugin_av_input_t *, JsonObject> *)data;

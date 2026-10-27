@@ -341,6 +341,11 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_autobind(ctrlm_main_queue_msg_r
    // Send the parameters for the pair response
    ctrlm_network_queue_deliver_result_pair(dqm, params);
 
+   if(CTRLM_HAL_RF4CE_RESULT_SUCCESS == status) {
+      set_rf_pair_state(CTRLM_RF_PAIR_STATE_PAIRING);
+      iarm_event_rcu_status();
+   }
+
    if(CTRLM_HAL_RF4CE_RESULT_SUCCESS == status && asb) {
       ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_rf4ce_t::rf4ce_asb_init, (void *)NULL, 0, this);
    }
@@ -613,7 +618,11 @@ void ctrlm_obj_network_rf4ce_t::process_pair_result(ctrlm_controller_id_t contro
       XLOGD_INFO("Pairing is not successful, reset Binding State");
       if(ctrlm_pairing_window_active_get()) {
          ctrlm_pairing_window_bind_status_set(CTRLM_BIND_STATUS_HAL_FAILURE);
+         // Closing the pairing window sets FAILED and fires the rcu status event
          ctrlm_close_pairing_window(CTRLM_CLOSE_PAIRING_WINDOW_REASON_END);
+      } else {
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+         iarm_event_rcu_status();
       }
       ctrlm_timeout_destroy(&binding_in_progress_tag_);
       g_atomic_int_set(&binding_in_progress_, FALSE);
@@ -732,5 +741,17 @@ gboolean ctrlm_obj_network_rf4ce_t::binding_in_progress_timeout(gpointer user_da
 
    rf4ce_net->controller_binding_in_progress_tag_reset();
 
+   // Runs on the GLib timer thread; hand off to the network thread for state/IARM updates
+   ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_rf4ce_t::binding_in_progress_timeout_process, (void *)NULL, 0, rf4ce_net);
+
    return(FALSE);
+}
+
+void ctrlm_obj_network_rf4ce_t::binding_in_progress_timeout_process(void *data, int size) {
+   THREAD_ID_VALIDATE();
+   // Only autobind sets PAIRING before the bind timer is cancelled by bind_validation_begin
+   if(CTRLM_RF_PAIR_STATE_PAIRING == state_) {
+      set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+      iarm_event_rcu_status();
+   }
 }

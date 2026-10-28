@@ -544,6 +544,8 @@ private:
    gint                                binding_in_progress_;
    guint                               binding_in_progress_tag_;
    guint                               binding_in_progress_timeout_;
+   ctrlm_controller_id_t               autobind_pair_controller_id_;
+   guint                               autobind_pair_timeout_tag_;
 
 #if (CTRLM_HAL_RF4CE_API_VERSION >= 11)
    ctrlm_hal_rf4ce_deepsleep_arguments_t *dpi_args_;

@@ -272,6 +272,8 @@ ctrlm_obj_network_rf4ce_t::ctrlm_obj_network_rf4ce_t(ctrlm_network_type_t type, 
    g_atomic_int_set(&binding_in_progress_, FALSE);
    binding_in_progress_tag_ = 0;
    binding_in_progress_timeout_ = JSON_INT_VALUE_NETWORK_RF4CE_BINDING_STATE_TIMEOUT;
+   autobind_pair_controller_id_ = CTRLM_HAL_CONTROLLER_ID_INVALID;
+   autobind_pair_timeout_tag_   = 0;
 
    safec_rc = memset_s(&target_irdb_status_, sizeof(target_irdb_status_t), 0, sizeof(target_irdb_status_t));
    ERR_CHK(safec_rc);

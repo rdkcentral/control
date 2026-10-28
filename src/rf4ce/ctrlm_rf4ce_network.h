@@ -544,6 +544,8 @@ private:
    gint                                binding_in_progress_;
    guint                               binding_in_progress_tag_;
    guint                               binding_in_progress_timeout_;
+   ctrlm_controller_id_t               autobind_pair_controller_id_;
+   guint                               autobind_pair_timeout_tag_;
 
 #if (CTRLM_HAL_RF4CE_API_VERSION >= 11)
    ctrlm_hal_rf4ce_deepsleep_arguments_t *dpi_args_;
@@ -630,6 +632,7 @@ private:
    // Bastille 37 vulnerability private function
    gboolean              blackout_settings_get_rfc();
    static gboolean       binding_in_progress_timeout(gpointer user_data);
+   void                  binding_in_progress_timeout_process(void *data, int size);
    void                  default_polling_configuration();
    void                  polling_config_read(json_config *conf);
 

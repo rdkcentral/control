@@ -172,7 +172,7 @@ cp "$POWER_HAL_DIR/include/plat_power.h" rdk/iarmmgrs-hal/pwrMgr.h
 [ -f rdk/iarmmgrs-hal/deepSleepMgr.h ]
 [ -f rdk/iarmmgrs-hal/pwrMgr.h ]
 
-# Device settings headers (types provided via force-included devicesettings.h mock)
+# Device settings headers (empty stubs; ctrlm includes them but uses no device settings symbols)
 touch rdk/ds/audioOutputPort.hpp
 touch rdk/ds/dsDisplay.h
 touch rdk/ds/dsError.h

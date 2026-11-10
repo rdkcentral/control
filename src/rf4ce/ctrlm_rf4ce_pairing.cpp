@@ -341,6 +341,13 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_autobind(ctrlm_main_queue_msg_r
    // Send the parameters for the pair response
    ctrlm_network_queue_deliver_result_pair(dqm, params);
 
+   if(CTRLM_HAL_RF4CE_RESULT_SUCCESS == status) {
+      autobind_pair_controller_id_ = params.controller_id;
+      autobind_pair_timeout_tag_   = binding_in_progress_tag_;
+      set_rf_pair_state(CTRLM_RF_PAIR_STATE_PAIRING);
+      iarm_event_rcu_status();
+   }
+
    if(CTRLM_HAL_RF4CE_RESULT_SUCCESS == status && asb) {
       ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_rf4ce_t::rf4ce_asb_init, (void *)NULL, 0, this);
    }
@@ -525,6 +532,9 @@ void ctrlm_obj_network_rf4ce_t::ind_process_pair_screen_bind(ctrlm_main_queue_ms
 }
 
 void ctrlm_obj_network_rf4ce_t::process_pair_result(ctrlm_controller_id_t controller_id, unsigned long long ieee_address, ctrlm_hal_result_pair_t result) {
+   autobind_pair_controller_id_ = CTRLM_HAL_CONTROLLER_ID_INVALID;
+   autobind_pair_timeout_tag_   = 0;
+
    bool screen_bind = controller_screen_bind_in_progress_get(controller_id);
    if(controller_autobind_in_progress_get(controller_id) || screen_bind) { // autobinding or screen bind
       if(result != CTRLM_HAL_RESULT_PAIR_SUCCESS) {
@@ -613,7 +623,11 @@ void ctrlm_obj_network_rf4ce_t::process_pair_result(ctrlm_controller_id_t contro
       XLOGD_INFO("Pairing is not successful, reset Binding State");
       if(ctrlm_pairing_window_active_get()) {
          ctrlm_pairing_window_bind_status_set(CTRLM_BIND_STATUS_HAL_FAILURE);
+         // Closing the pairing window sets FAILED and fires the rcu status event
          ctrlm_close_pairing_window(CTRLM_CLOSE_PAIRING_WINDOW_REASON_END);
+      } else {
+         set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+         iarm_event_rcu_status();
       }
       ctrlm_timeout_destroy(&binding_in_progress_tag_);
       g_atomic_int_set(&binding_in_progress_, FALSE);
@@ -670,8 +684,6 @@ void ctrlm_obj_network_rf4ce_t::ind_process_unpair(void *data, int size) { //ctr
          XLOGD_INFO("Fail configuration in progress");
          // Inform control manager that the configuration has failed
          ctrlm_inform_configuration_complete(network_id_get(), controller_id, CTRLM_RCU_CONFIGURATION_RESULT_FAILURE);
-         set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
-         iarm_event_rcu_status();
       }
 
       // Unbind the controller
@@ -732,5 +744,35 @@ gboolean ctrlm_obj_network_rf4ce_t::binding_in_progress_timeout(gpointer user_da
 
    rf4ce_net->controller_binding_in_progress_tag_reset();
 
+   // Runs on the GLib timer thread; hand off to the network thread for state/IARM updates
+   guint timeout_tag = g_source_get_id(g_main_current_source());
+   ctrlm_main_queue_handler_push(CTRLM_HANDLER_NETWORK, (ctrlm_msg_handler_network_t)&ctrlm_obj_network_rf4ce_t::binding_in_progress_timeout_process, &timeout_tag, sizeof(timeout_tag), rf4ce_net);
+
    return(FALSE);
+}
+
+void ctrlm_obj_network_rf4ce_t::binding_in_progress_timeout_process(void *data, int size) {
+   THREAD_ID_VALIDATE();
+   g_assert(data);
+   g_assert(size == sizeof(guint));
+   guint timeout_tag = *(guint *)data;
+
+   // Ignore if the pair result already arrived or a newer attempt owns the tracking
+   if(0 == autobind_pair_timeout_tag_ || timeout_tag != autobind_pair_timeout_tag_) {
+      return;
+   }
+   ctrlm_controller_id_t controller_id = autobind_pair_controller_id_;
+   autobind_pair_controller_id_ = CTRLM_HAL_CONTROLLER_ID_INVALID;
+   autobind_pair_timeout_tag_   = 0;
+
+   XLOGD_WARN("Autobind pair result not received for controller %u", controller_id);
+   if(controller_exists(controller_id)) {
+      if(controller_is_bound(controller_id)) {
+         controller_restore(controller_id);
+      } else {
+         controller_remove(controller_id, true);
+      }
+   }
+   set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+   iarm_event_rcu_status();
 }

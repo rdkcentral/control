@@ -2476,6 +2476,10 @@ gpointer ctrlm_main_thread(gpointer param) {
             }
 
             ctrlm_configuration_complete(hdr->network_id, dqm->controller_id, obj_net->ctrlm_controller_type_get(dqm->controller_id), obj_net->ctrlm_binding_type_get(dqm->controller_id), &status, dqm->result);
+            if(dqm->result != CTRLM_RCU_CONFIGURATION_RESULT_SUCCESS) {
+               obj_net->set_rf_pair_state(CTRLM_RF_PAIR_STATE_FAILED);
+               obj_net->iarm_event_rcu_status();
+            }
             break;
          }
          case CTRLM_MAIN_QUEUE_MSG_TYPE_NETWORK_PROPERTY_SET: {

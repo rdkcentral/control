@@ -87,7 +87,9 @@ bool ctrlm_string_db_attr_t::write_db(ctrlm_db_ctx_t ctx) {
     bool ret = false;
     ctrlm_db_blob_t blob(this->get_key(), this->get_table());
 
-    if(blob.from_string(this->value)) {
+    if (this->value.empty()) {
+        XLOGD_DEBUG("value is empty for db key <%s>", this->get_name().c_str());
+    } else if(blob.from_string(this->value)) {
         if(blob.write_db(ctx)) {
             ret = true;
             XLOGD_DEBUG("%s written to database: %s", this->get_name().c_str(), this->to_string().c_str());

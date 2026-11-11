@@ -50,6 +50,9 @@ option(XRSR_HTTP "Enable XRSR_HTTP" OFF)
 option(XRSR_SDT "Enable XRSR_SDT" OFF)
 option(ENABLE_ASYNC_SRVR_MSG "Enable Asynchronous Server Messaging Feature" OFF)
 option(ENABLE_AVS_WITH_SDT "Enable SDT Based AVS Support" OFF)
+option(INSTALL_HEADERS "Install public and private headers" OFF)
+
+include(GNUInstallDirs)
 
 # BUILD SYSTEM
 set(STAGING_BINDIR_NATIVE, "invalid" CACHE PATH "staging bin dir native")
@@ -245,6 +248,110 @@ endif()
 install(TARGETS  controlMgr RUNTIME DESTINATION bin)
 
 install(FILES ${CMAKE_BINARY_DIR}/ctrlm_config.json DESTINATION ${CMAKE_INSTALL_SYSCONFDIR} COMPONENT config )
+
+# HEADER FILES
+# Only installed when INSTALL_HEADERS=ON (used by the ctrlm-headers recipe via the install_headers target)
+if(INSTALL_HEADERS)
+   set(CTRLM_PRIVATE_INCLUDEDIR ${CMAKE_INSTALL_INCLUDEDIR}/ctrlm_private)
+
+   install(FILES include/ctrlm_ipc.h
+                 include/ctrlm_ipc_rcu.h
+                 include/ctrlm_ipc_voice.h
+                 include/ctrlm_ipc_key_codes.h
+                 include/ctrlm_ipc_device_update.h
+                 include/ctrlm_ipc_ble.h
+                 include/ctrlm_hal.h
+                 include/ctrlm_hal_ble.h
+                 include/ctrlm_hal_rf4ce.h
+           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} COMPONENT headers)
+
+   install(FILES src/ctrlm_vendor_network_factory.h
+                 src/ctrlm_log.h
+                 src/auth/ctrlm_auth.h
+                 src/factory/ctrlm_fta_platform.h
+                 src/asb/ctrlm_asb.h
+                 src/ctrlm.h
+                 src/ctrlm_rcu.h
+                 src/ctrlm_recovery.h
+                 src/ctrlm_utils.h
+                 src/ctrlm_validation.h
+                 src/ctrlm_network.h
+                 src/ctrlm_controller.h
+                 src/attributes/ctrlm_attr.h
+                 src/attributes/ctrlm_attr_general.h
+                 src/attributes/ctrlm_attr_voice.h
+                 src/attributes/ctrlm_version.h
+                 src/database/ctrlm_database.h
+                 src/database/ctrlm_db_attr.h
+                 src/rfc/ctrlm_rfc.h
+                 src/rfc/ctrlm_rfc_attr.h
+                 src/config/ctrlm_config_attr.h
+                 src/voice/ctrlm_voice_obj.h
+                 src/voice/ctrlm_voice_types.h
+                 src/voice/ipc/ctrlm_voice_ipc.h
+                 src/voice/telemetry/ctrlm_voice_telemetry_events.h
+                 src/json_config.h
+                 src/ctrlm_tr181.h
+                 src/telemetry/ctrlm_telemetry.h
+                 src/telemetry/ctrlm_telemetry_event.h
+                 src/telemetry/ctrlm_telemetry_markers.h
+                 src/thunder/ctrlm_thunder_plugin.h
+                 src/thunder/ctrlm_thunder_controller.h
+                 src/thunder/helpers/ctrlm_thunder_helpers.h
+                 src/ipc/ctrlm_rcp_ipc_iarm_thunder.h
+                 src/ipc/ctrlm_rcp_ipc_event.h
+                 src/server/ctrlm_server_app.h
+           DESTINATION ${CTRLM_PRIVATE_INCLUDEDIR} COMPONENT headers)
+
+   # BLE services
+   install(FILES src/ble/hal/blercu/blercuerror.h
+                 src/ble/hal/blercu/blegattservice.h
+                 src/ble/hal/blercu/blegattcharacteristic.h
+           DESTINATION ${CTRLM_PRIVATE_INCLUDEDIR}/blercu COMPONENT headers)
+
+   install(FILES src/ble/hal/blercu/bleservices/blercuaudioservice.h
+                 src/ble/hal/blercu/bleservices/blercuinfraredservice.h
+                 src/ble/hal/blercu/bleservices/blercuupgradeservice.h
+                 src/ble/hal/blercu/bleservices/blercudeviceinfoservice.h
+           DESTINATION ${CTRLM_PRIVATE_INCLUDEDIR}/blercu/bleservices COMPONENT headers)
+
+   install(FILES src/ble/hal/blercu/bleservices/gatt/gatt_audiopipe.h
+                 src/ble/hal/blercu/bleservices/gatt/gatt_audioservice.h
+                 src/ble/hal/blercu/bleservices/gatt/gatt_infraredservice.h
+                 src/ble/hal/blercu/bleservices/gatt/gatt_infraredsignal.h
+                 src/ble/hal/blercu/bleservices/gatt/gatt_upgradeservice.h
+                 src/ble/hal/blercu/bleservices/gatt/gatt_deviceinfoservice.h
+                 src/ble/hal/blercu/bleservices/gatt/gatt_external_services.h
+           DESTINATION ${CTRLM_PRIVATE_INCLUDEDIR}/blercu/bleservices/gatt COMPONENT headers)
+
+   install(FILES src/ble/hal/ctrlm_log_ble.h
+           DESTINATION ${CTRLM_PRIVATE_INCLUDEDIR}/ble/hal COMPONENT headers)
+
+   install(FILES src/ble/hal/dbus/dbusvariant.h
+                 src/ble/hal/dbus/dbusabstractinterface.h
+                 src/ble/hal/dbus/gdbusabstractinterface.h
+           DESTINATION ${CTRLM_PRIVATE_INCLUDEDIR}/ble/hal/dbus COMPONENT headers)
+
+   install(FILES src/ble/hal/configsettings/configsettings.h
+                 src/ble/hal/configsettings/configmodelsettings.h
+           DESTINATION ${CTRLM_PRIVATE_INCLUDEDIR}/configsettings COMPONENT headers)
+
+   install(FILES src/ble/hal/utils/slot.h
+                 src/ble/hal/utils/bleuuid.h
+                 src/ble/hal/utils/bleaddress.h
+                 src/ble/hal/utils/audioformat.h
+                 src/ble/hal/utils/pendingreply.h
+                 src/ble/hal/utils/filedescriptor.h
+                 src/ble/hal/utils/statemachine.h
+                 src/ble/hal/utils/futureaggregator.h
+                 src/ble/hal/utils/fwimagefile.h
+           DESTINATION ${CTRLM_PRIVATE_INCLUDEDIR}/utils COMPONENT headers)
+
+   # Installs only the headers component, without building controlMgr
+   add_custom_target(install_headers
+      COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR} --component headers
+      VERBATIM)
+endif()
 
 # GENERATED FILES
 add_custom_command( OUTPUT ctrlm_version_build.h

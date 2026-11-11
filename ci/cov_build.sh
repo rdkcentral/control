@@ -65,7 +65,6 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -DCMAKE_CXX_FLAGS=" \
 -I ${XRSDK_REAL_HEADERS} \
 -I ${MOCK_DIR} \
--I ${MOCK_DIR}/devicesettings \
 -I ${HEADERS_DIR} \
 -I ${HEADERS_DIR}/rdk/iarmbus \
 -I ${HEADERS_DIR}/rdk/ds \
@@ -74,7 +73,6 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -I /usr/include/libdrm \
 ${GLIB_CFLAGS} \
 -include ${MOCK_DIR}/Iarm.h \
--include ${MOCK_DIR}/devicesettings.h \
 -include ${MOCK_DIR}/Rfc.h \
 -Wall \
 -DDISABLE_SECURITY_TOKEN" \

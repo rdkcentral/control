@@ -59,6 +59,10 @@ bool ble_uuid_names_init(void)
     BleUuid(BleUuid::AudioGain,                               std::string("Audio Gain"));
     BleUuid(BleUuid::AudioControl,                            std::string("Audio Control"));
     BleUuid(BleUuid::AudioData,                               std::string("Audio Data"));
+    BleUuid(BleUuid::AudioModeSupport,                        std::string("Audio Mode Support"));
+    BleUuid(BleUuid::AudioModeControl,                        std::string("Audio Mode Control"));
+    BleUuid(BleUuid::PressAndReleaseTimeout,                  std::string("Press and Release Timeout"));
+    BleUuid(BleUuid::PressAndReleaseThreshold,                std::string("Press and Release Threshold"));
     BleUuid(BleUuid::InfraredStandby,                         std::string("Infrared Standby"));
     BleUuid(BleUuid::InfraredCodeId,                          std::string("Infrared CodeId"));
     BleUuid(BleUuid::InfraredSignal,                          std::string("Infrared Signal"));

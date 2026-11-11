@@ -148,6 +148,7 @@ typedef struct {
    ctrlm_controller_id_t      controller_id;       ///< A unique identifier of the remote
    unsigned long long         ieee_address;        ///< IEEE MAC address of the remote
    ctrlm_iarm_call_result_t   result;              ///< OUT - The result of the operation.
+   unsigned short             key_code;            ///< Internal use only - linux key code of the voice key that started the session (CTRLM_KEY_CODE_INVALID if not started by a key press). Ignored on IARM calls.
 } ctrlm_voice_iarm_call_voice_session_t;
 
 // APIs for Thunder Plugin

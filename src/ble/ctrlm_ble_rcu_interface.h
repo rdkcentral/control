@@ -36,6 +36,7 @@
 
 #include <memory>
 #include <map>
+#include <functional>
 #include <semaphore.h>
 
 #include <stdlib.h>
@@ -113,6 +114,10 @@ public:
     bool getAudioStatus(uint64_t ieee_address, uint32_t &lastError, uint32_t &expectedPackets, uint32_t &actualPackets, int32_t &voiceKeyHeldMs);
     bool getFirstAudioDataTime(uint64_t ieee_address, ctrlm_timestamp_t &time);
 
+    bool writeAudioModeControl(uint64_t ieee_address, const ctrlm_hal_ble_audio_mode_key_t *keys, int numKeys);
+    bool writePressAndReleaseTimeout(uint64_t ieee_address, uint32_t timeoutMs);
+    bool writePressAndReleaseThreshold(uint64_t ieee_address, uint32_t thresholdMs);
+
     bool setIrControl(uint64_t ieee_address, uint8_t vendor);
     bool programIrSignalWaveforms(uint64_t ieee_address, std::map<ctrlm_key_code_t, std::vector<uint8_t>> &&irWaveforms, uint8_t vendor);
     bool eraseIrSignals(uint64_t ieee_address);
@@ -178,6 +183,9 @@ private:
 
     void addNewDeviceKeyMonitorThread(BleAddress address);
     void removeDeviceKeyMonitorThread(BleAddress address);
+
+    bool writeDeviceSync(uint64_t ieee_address, const char *name,
+                         const std::function<void(const std::shared_ptr<BleRcuDevice> &, PendingReply<> &&)> &writeFunc);
 };
 
 #endif //__CTRLM_BLE_RCU_INTERFACE_H__

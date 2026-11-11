@@ -227,6 +227,8 @@
          "hidrawPoll": 20000,
          "hidrawLimit": 65000
       },
+      "voice_key_mode": [
+      ],
       "models": [
       ]
    },

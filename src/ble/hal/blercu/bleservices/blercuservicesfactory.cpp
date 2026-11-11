@@ -73,7 +73,7 @@ std::shared_ptr<BleRcuServices> BleRcuServicesFactory::createServices(const BleA
     // create the service type based on the communication method
     switch (settings.servicesType()) {
         case ConfigModelSettings::GattServiceType:
-            return std::make_shared<GattServices>(address, gattProfile, settings, mainLoop);
+            return std::make_shared<GattServices>(address, gattProfile, settings, m_config->voiceKeyModes(), mainLoop);
         default:
             XLOGD_ERROR("service interface not supported");
             return std::shared_ptr<BleRcuServices>(nullptr);

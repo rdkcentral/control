@@ -128,3 +128,16 @@ const char *ctrlm_ble_rcu_action_str(ctrlm_ble_RcuAction_t reason) {
         default:                                    return("INVALID__TYPE");
     }
 }
+
+const char *ctrlm_ble_audio_mode_str(ctrlm_hal_ble_AudioMode_t mode) {
+    switch(mode) {
+        case CTRLM_HAL_BLE_AUDIO_MODE_VOICE_DISABLED:                       return("VOICE_DISABLED");
+        case CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_HOLD:                       return("PRESS_AND_HOLD");
+        case CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_AND_HOLD_THRESHOLD: return("PRESS_AND_RELEASE_AND_HOLD_THRESHOLD");
+        case CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_TIMEOUT:            return("PRESS_AND_RELEASE_TIMEOUT");
+        case CTRLM_HAL_BLE_AUDIO_MODE_PRESS_AND_RELEASE_CONTINUOUS:         return("PRESS_AND_RELEASE_CONTINUOUS");
+        case CTRLM_HAL_BLE_AUDIO_MODE_LEGACY:                               return("LEGACY");
+        case CTRLM_HAL_BLE_AUDIO_MODE_INVALID:                              return("INVALID");
+        default:                                                            return("INVALID__TYPE");
+    }
+}

@@ -149,6 +149,18 @@ public:
     virtual void addGainLevelChangedSlot(const Slot<uint8_t> &func) = 0;
     virtual void addAudioCodecsChangedSlot(const Slot<uint32_t> &func) = 0;
 
+    virtual uint32_t audioModeSupport() const = 0;
+    virtual std::vector<uint8_t> audioModeControl() const = 0;
+    virtual uint32_t pressAndReleaseTimeout() const = 0;
+    virtual uint32_t pressAndReleaseThreshold() const = 0;
+    virtual void writeAudioModeControl(const std::vector<uint8_t> &value, PendingReply<> &&reply) = 0;
+    virtual void writePressAndReleaseTimeout(uint32_t timeoutMs, PendingReply<> &&reply) = 0;
+    virtual void writePressAndReleaseThreshold(uint32_t thresholdMs, PendingReply<> &&reply) = 0;
+    virtual void addAudioModeSupportChangedSlot(const Slot<uint32_t> &func) = 0;
+    virtual void addAudioModeControlChangedSlot(const Slot<const std::vector<uint8_t> &> &func) = 0;
+    virtual void addPressAndReleaseTimeoutChangedSlot(const Slot<uint32_t> &func) = 0;
+    virtual void addPressAndReleaseThresholdChangedSlot(const Slot<uint32_t> &func) = 0;
+
     // IR Service
     virtual int32_t irCode() const = 0;
     virtual uint8_t irSupport() const = 0;

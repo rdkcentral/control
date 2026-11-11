@@ -74,6 +74,11 @@ typedef struct {
 } ctrlm_main_queue_msg_continue_upgrade_t;
 
 typedef struct {
+   ctrlm_main_queue_msg_header_t                  header;
+   guint                                          sequence;   // identifies the timer that expired, to discard stale timeouts
+} ctrlm_main_queue_msg_voice_par_timeout_t;
+
+typedef struct {
    ctrlm_main_queue_msg_header_t             header;
    ctrlm_iarm_call_IrProtocol_params_t       *params;
    sem_t *                                   semaphore;
@@ -182,6 +187,7 @@ public:
    virtual void                  voice_command_status_set(void *data, int size);
    virtual void                  process_voice_controller_metrics(void *data, int size);
    virtual void                  ind_process_voice_session_end(void *data, int size);
+   void                          req_process_voice_par_timeout(void *data, int size);
 
    void                          ctrlm_ble_ProcessIndicateHAL_VoiceData(void *data, int size);
 
@@ -215,6 +221,10 @@ private:
    ctrlm_controller_id_t                     controller_id_assign(void);
    ctrlm_controller_id_t                     get_last_used_controller(void);
    bool                                      end_voice_session_for_controller(uint64_t ieee_address, ctrlm_voice_session_end_reason_t reason, int32_t audioDuration = -1, int32_t startLag = -1, rdkx_timestamp_t *keyDownTime = NULL, rdkx_timestamp_t *keyUpTime = NULL);
+   void                                      end_voice_session_par(ctrlm_obj_controller_ble_t *controller);
+   bool                                      voice_session_is_streaming(ctrlm_controller_id_t controller_id);
+   void                                      voice_par_timeout_start(ctrlm_controller_id_t controller_id, uint32_t timeout_ms);
+   void                                      voice_par_timeout_cancel();
    ctrlm_controller_id_t                     find_controller_from_upgrade_session_uuid(const std::string &uuid);
    void                                      emit_irdb_program_result(int ir_state, const std::string &fail_reason, uint8_t rcu_bitmask, const std::string &vendor_name, uint8_t vendor_bitmask);
 
@@ -225,6 +235,10 @@ private:
    ctrlm_ble_unpair_metrics_t                last_rcu_unpair_metrics_;
    int                                       print_status_defer_count_  = 0;
    int                                       event_status_defer_count_  = 0;
+
+   // Press and release timeout for the voice session in progress (only one voice session can be active at a time)
+   ctrlm_controller_id_t                     voice_par_timeout_controller_id_ = CTRLM_MAIN_CONTROLLER_ID_INVALID;
+   guint                                     voice_par_timeout_sequence_      = 0;
 
    std::map <ctrlm_controller_id_t, ctrlm_obj_controller_ble_t *> controllers_;
    std::map <std::string, ctrlm_ble_upgrade_image_info_t>         upgrade_images_;

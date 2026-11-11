@@ -36,6 +36,8 @@
 #include "utils/audioformat.h"
 #include "ctrlm_hal.h"
 
+#include <vector>
+
 class BleRcuAudioService
 {
 protected:
@@ -64,6 +66,32 @@ public:
     virtual void stopStreaming(uint32_t audioDuration, PendingReply<> &&reply) = 0;
     
     virtual bool getFirstAudioDataTime(ctrlm_timestamp_t &time) = 0;
+
+    // Optional audio mode characteristics.  Services that don't implement them report the values as unavailable (0 / empty)
+    // and fail any write requests.
+    virtual uint32_t audioModeSupport() const { return 0; }
+    virtual std::vector<uint8_t> audioModeControl() const { return std::vector<uint8_t>(); }
+    virtual uint32_t pressAndReleaseTimeout() const { return 0; }
+    virtual uint32_t pressAndReleaseThreshold() const { return 0; }
+
+    virtual void writeAudioModeControl(const std::vector<uint8_t> &value, PendingReply<> &&reply)
+    {
+        (void)value;
+        reply.setError("Audio mode control is not supported by this audio service");
+        reply.finish();
+    }
+    virtual void writePressAndReleaseTimeout(uint32_t timeoutMs, PendingReply<> &&reply)
+    {
+        (void)timeoutMs;
+        reply.setError("Press and release timeout is not supported by this audio service");
+        reply.finish();
+    }
+    virtual void writePressAndReleaseThreshold(uint32_t thresholdMs, PendingReply<> &&reply)
+    {
+        (void)thresholdMs;
+        reply.setError("Press and release threshold is not supported by this audio service");
+        reply.finish();
+    }
 
 public:
     enum StreamingError {
@@ -94,11 +122,31 @@ public:
     {
         m_audioCodecsChangedSlots.addSlot(func);
     }
+    inline void addAudioModeSupportChangedSlot(const Slot<uint32_t> &func)
+    {
+        m_audioModeSupportChangedSlots.addSlot(func);
+    }
+    inline void addAudioModeControlChangedSlot(const Slot<const std::vector<uint8_t> &> &func)
+    {
+        m_audioModeControlChangedSlots.addSlot(func);
+    }
+    inline void addPressAndReleaseTimeoutChangedSlot(const Slot<uint32_t> &func)
+    {
+        m_pressAndReleaseTimeoutChangedSlots.addSlot(func);
+    }
+    inline void addPressAndReleaseThresholdChangedSlot(const Slot<uint32_t> &func)
+    {
+        m_pressAndReleaseThresholdChangedSlots.addSlot(func);
+    }
 
 protected:
     Slots<bool> m_streamingChangedSlots;
     Slots<uint8_t> m_gainLevelChangedSlots;
     Slots<uint32_t> m_audioCodecsChangedSlots;
+    Slots<uint32_t> m_audioModeSupportChangedSlots;
+    Slots<const std::vector<uint8_t> &> m_audioModeControlChangedSlots;
+    Slots<uint32_t> m_pressAndReleaseTimeoutChangedSlots;
+    Slots<uint32_t> m_pressAndReleaseThresholdChangedSlots;
 };
 
 

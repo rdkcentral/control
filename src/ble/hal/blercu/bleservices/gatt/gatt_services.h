@@ -55,6 +55,7 @@ public:
     GattServices(const BleAddress &address,
                  const std::shared_ptr<BleGattProfile> &gattProfile,
                  const ConfigModelSettings &settings,
+                 const std::vector<ConfigVoiceKeyMode> &voiceKeyModes,
                  GMainLoop *mainLoop = NULL);
     ~GattServices();
 

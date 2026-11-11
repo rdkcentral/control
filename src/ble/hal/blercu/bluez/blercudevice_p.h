@@ -168,6 +168,18 @@ public:
     void addGainLevelChangedSlot(const Slot<uint8_t> &func) override;
     void addAudioCodecsChangedSlot(const Slot<uint32_t> &func) override;
 
+    uint32_t audioModeSupport() const override;
+    std::vector<uint8_t> audioModeControl() const override;
+    uint32_t pressAndReleaseTimeout() const override;
+    uint32_t pressAndReleaseThreshold() const override;
+    void writeAudioModeControl(const std::vector<uint8_t> &value, PendingReply<> &&reply) override;
+    void writePressAndReleaseTimeout(uint32_t timeoutMs, PendingReply<> &&reply) override;
+    void writePressAndReleaseThreshold(uint32_t thresholdMs, PendingReply<> &&reply) override;
+    void addAudioModeSupportChangedSlot(const Slot<uint32_t> &func) override;
+    void addAudioModeControlChangedSlot(const Slot<const std::vector<uint8_t> &> &func) override;
+    void addPressAndReleaseTimeoutChangedSlot(const Slot<uint32_t> &func) override;
+    void addPressAndReleaseThresholdChangedSlot(const Slot<uint32_t> &func) override;
+
     // IR Service
     int32_t irCode() const override;
     uint8_t irSupport() const override;

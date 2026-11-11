@@ -32,6 +32,7 @@
 
 #define IR_RF_DB_ENTRY_HEADER_LEN (8)
 #define IR_RF_DB_DATABASE_ENTRY_MAX_SIZE (92)
+#define IR_RF_DB_IR_CODE_MAX_SIZE (IR_RF_DB_DATABASE_ENTRY_MAX_SIZE - IR_RF_DB_ENTRY_HEADER_LEN)
 
 ctrlm_ir_rf_db_entry_t::ctrlm_ir_rf_db_entry_t() {
     this->type             = CTRLM_IR_RF_DB_DEV_TV;
@@ -81,13 +82,12 @@ ctrlm_ir_rf_db_entry_t* ctrlm_ir_rf_db_entry_t::from_rib_binary(uint8_t *data, u
                     ret->set_key_via_descriptor();
                     uint16_t ir_code_length = data[7];
                     uint8_t *ir_code = &data[8];
-                    if(length-8 == ir_code_length) {
-                        for(uint16_t i = 0; i < ir_code_length; i++) {
-                            ret->ir_code.push_back(ir_code[i]);
-                        }
-                    } else {
+                    if(ir_code_length > IR_RF_DB_IR_CODE_MAX_SIZE) {
+                        throw std::string("IR code length exceeds maximum");
+                    } else if(length - IR_RF_DB_ENTRY_HEADER_LEN != ir_code_length) {
                         throw std::string("IR code length mismatch");
                     }
+                    ret->ir_code.assign(ir_code, ir_code + ir_code_length);
                 } else {
                     throw std::string("Length is not long enough to contain all flags/descriptors/length fields");
                 }

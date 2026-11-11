@@ -634,19 +634,23 @@ bool ctrlm_irdb_interface_t::get_ir_codes_by_autolookup(ctrlm_autolookup_ranked_
 }
 
 bool ctrlm_irdb_interface_t::program_ir_codes(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_irdb_dev_type_t type, const std::string &id) {
-    std::unique_lock<std::mutex> guard(m_mutex);
     bool ret = false;
 
     XLOGD_INFO("Programming IR codes for (%u, %u) with database id <%s>", network_id, controller_id, id.c_str());
 
     ctrlm_irdb_ir_code_set_t code_set;
-    if (g_irdb.pluginGetCodeSet) {
-        if ( (*g_irdb.pluginGetCodeSet)(code_set, type, id) == false) {
-            XLOGD_ERROR("Failed getting IR code set");
-        } else {
-            guard.unlock();
-            ret = this->_program_ir_codes(network_id, controller_id, &code_set);
+    {
+        std::unique_lock<std::mutex> guard(m_mutex);
+        if (g_irdb.pluginGetCodeSet) {
+            if ( (*g_irdb.pluginGetCodeSet)(code_set, type, id) == false) {
+                XLOGD_ERROR("Failed getting IR code set");
+            } else {
+                ret = true;
+            }
         }
+    }
+    if(ret) {
+        ret = this->_program_ir_codes(network_id, controller_id, &code_set);
     }
     return(ret);
 }

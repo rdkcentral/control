@@ -1676,6 +1676,7 @@ void *KeyMonitorThread(void *data)
     int nfds = -1;
     errno_t safec_rc = -1;
     bool running = true;
+    bool inputDevicesEnabled = true;
     char msg[CTRLM_BLE_KEY_MSG_QUEUE_MSG_SIZE_MAX];
 
     // Unblock the caller that launched this thread
@@ -1687,7 +1688,9 @@ void *KeyMonitorThread(void *data)
         FD_ZERO(&rfds);
         FD_SET(metadata->m_keyThreadMsgQ, &rfds);
         nfds = metadata->m_keyThreadMsgQ;
-        FindRcuInputDevices(metadata, rcuKeypressFds, rfds, nfds);
+        if (inputDevicesEnabled) {
+            FindRcuInputDevices(metadata, rcuKeypressFds, rfds, nfds);
+        }
         nfds++;
 
         int ret = select(nfds, &rfds, NULL, NULL, NULL);

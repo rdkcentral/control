@@ -678,13 +678,13 @@ void ctrlm_ble_rcu_interface_t::handleDeepsleep(bool wakingUp)
             m_adapter->reconnectAllDevices();
         }
 
+    }
 
-        ctrlm_ble_key_queue_msg_header_t msg;
-        msg.type = CTRLM_BLE_KEY_QUEUE_MSG_TYPE_DEEPSLEEP_WAKEUP;
-        ctrlm_utils_queue_msg_push(m_keyThreadMsgQ, (const char *)&msg, sizeof(msg));
+    ctrlm_ble_key_queue_msg_header_t msg;
+    msg.type = wakingUp ? CTRLM_BLE_KEY_QUEUE_MSG_TYPE_DEEPSLEEP_WAKEUP : CTRLM_BLE_KEY_QUEUE_MSG_TYPE_DEEPSLEEP_ENTER;
+    ctrlm_utils_queue_msg_push(m_keyThreadMsgQ, (const char *)&msg, sizeof(msg));
 
-    } else {
-
+    if(!wakingUp) {
         // We are going into deepsleep, clean up
         shutdown();
     }
@@ -1676,6 +1676,7 @@ void *KeyMonitorThread(void *data)
     int nfds = -1;
     errno_t safec_rc = -1;
     bool running = true;
+    bool inputDevicesEnabled = true;
     char msg[CTRLM_BLE_KEY_MSG_QUEUE_MSG_SIZE_MAX];
 
     // Unblock the caller that launched this thread
@@ -1687,7 +1688,9 @@ void *KeyMonitorThread(void *data)
         FD_ZERO(&rfds);
         FD_SET(metadata->m_keyThreadMsgQ, &rfds);
         nfds = metadata->m_keyThreadMsgQ;
-        FindRcuInputDevices(metadata, rcuKeypressFds, rfds, nfds);
+        if (inputDevicesEnabled) {
+            FindRcuInputDevices(metadata, rcuKeypressFds, rfds, nfds);
+        }
         nfds++;
 
         int ret = select(nfds, &rfds, NULL, NULL, NULL);
@@ -1733,8 +1736,11 @@ void *KeyMonitorThread(void *data)
                         }
                         break;
                     }
+                    case CTRLM_BLE_KEY_QUEUE_MSG_TYPE_DEEPSLEEP_ENTER:
                     case CTRLM_BLE_KEY_QUEUE_MSG_TYPE_DEEPSLEEP_WAKEUP: {
-                        XLOGD_INFO("message type CTRLM_BLE_KEY_QUEUE_MSG_TYPE_DEEPSLEEP_WAKEUP");
+                        XLOGD_INFO("Handling %s", hdr->type == CTRLM_BLE_KEY_QUEUE_MSG_TYPE_DEEPSLEEP_ENTER ? "DEEPSLEEP_ENTER" : "DEEPSLEEP_WAKEUP");
+
+                        inputDevicesEnabled = (hdr->type == CTRLM_BLE_KEY_QUEUE_MSG_TYPE_DEEPSLEEP_WAKEUP);
 
                         for (auto &rcu : rcuKeypressFds) {
                             if (rcu.second >= 0) {

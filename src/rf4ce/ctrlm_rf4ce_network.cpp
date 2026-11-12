@@ -3408,7 +3408,7 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_request(void *data, in
                                                           sw_version.to_string().c_str(), hw_version.to_string().c_str(), 
                                                           (((double)battery_status.get_voltage_loaded()) *  4.0 / 255), command_status,
                                                           &dqm->timestamp, &cb_confirm_voice_obj, &cb_confirm_param,
-                                                          false, false, audio_start_cb, &start_audio_params);
+                                                          false, true, audio_start_cb, &start_audio_params);
 
    if(!start_audio_params.m_started) {
        start_audio_params.m_cb_confirm_voice_obj = cb_confirm_voice_obj;
@@ -3533,6 +3533,8 @@ void ctrlm_obj_network_rf4ce_t::ind_process_voice_session_stop(void *data, int s
    stats.rf_channel     = network_stats.rf_channel;
    stats.audio_duration = 0;
    stats.start_lag      = 0;
+   stats.time_key_down  = NULL;
+   stats.time_key_up    = NULL;
 
    signed long long startAudioLag = ctrlm_timestamp_subtract_ms(timestamp_voice_session_request_, timestamp_voice_first_packet_);
 

@@ -1697,7 +1697,8 @@ void *KeyMonitorThread(void *data)
         if (ret < 0) {
             int errsv = errno;
             XLOGD_DEBUG("select() failed: error = <%d>, <%s>", errsv, strerror(errsv));
-            continue;
+            usleep(200000);
+	    continue;
         }
 
         if(FD_ISSET(metadata->m_keyThreadMsgQ, &rfds)) {

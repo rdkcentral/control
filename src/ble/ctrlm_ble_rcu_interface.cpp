@@ -1696,6 +1696,9 @@ void *KeyMonitorThread(void *data)
         int ret = select(nfds, &rfds, NULL, NULL, NULL);
         if (ret < 0) {
             int errsv = errno;
+            if (errsv == EINTR) {
+                continue;
+            }
             XLOGD_ERROR("select() failed: error = <%d>, <%s>", errsv, strerror(errsv));
             for (auto &rcu : rcuKeypressFds) {
                 if (rcu.second >= 0) {

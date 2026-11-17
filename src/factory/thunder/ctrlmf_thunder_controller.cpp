@@ -114,8 +114,8 @@ plugin_state_t ctrlm_thunder_controller_t::get_plugin_state(std::string callsign
     plugin_state_t ret = PLUGIN_INVALID;
     auto clientObject = (JSONRPC::LinkType<Core::JSON::IElement>*)controller_client;
     if(clientObject) {
-        Core::JSON::ArrayType<PluginHost::MetaData::Service> response;
-        uint32_t thunderRet = clientObject->Get<Core::JSON::ArrayType<PluginHost::MetaData::Service> >(CALL_TIMEOUT, std::string("status@") + callsign, response);
+        Core::JSON::ArrayType<PluginHost::Metadata::Service> response;
+        uint32_t thunderRet = clientObject->Get<Core::JSON::ArrayType<PluginHost::Metadata::Service> >(CALL_TIMEOUT, std::string("status@") + callsign, response);
         if(thunderRet == Core::ERROR_NONE) {
             if(response[0].JSONState == PluginHost::IShell::ACTIVATED) {
                 ret = PLUGIN_ACTIVATED;

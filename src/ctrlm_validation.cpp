@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <glib.h>
+#include <openssl/rand.h>
 #include "libIBus.h"
 #include "ctrlm.h"
 #include "ctrlm_log.h"
@@ -84,16 +85,13 @@ static gboolean         ctrlm_validation_timeout(gpointer user_data);
 static gboolean         ctrlm_validation_timeout_ignore(gpointer user_data);
 static void             ctrlm_validation_timeout_update(gint timeout);
 static void             ctrlm_validation_random_code(ctrlm_network_id_t network_id, ctrlm_controller_id_t controller_id, ctrlm_rcu_controller_type_t controller_type);
+static guint8           ctrlm_validation_random_index(guint8 upper_bound);
 static ctrlm_key_code_t ctrlm_validation_random_number(void);
 static ctrlm_key_code_t ctrlm_validation_random_letter(void);
 static gboolean         ctrlm_validation_load_config(json_t *json_obj_validation);
 static gboolean         ctrlm_validation_ignore_abort(void);
 
 void ctrlm_validation_init(json_t *json_obj_validation) {
-   struct timespec tp;
-   clock_gettime(CLOCK_MONOTONIC, &tp);
-   srandom(tp.tv_nsec);
-
    g_ctrlm_validation.validation_in_progress    = FALSE;
    g_ctrlm_validation.configuration_in_progress = FALSE;
    g_ctrlm_validation.network_id                = 0;
@@ -612,12 +610,27 @@ void ctrlm_validation_random_code(ctrlm_network_id_t network_id, ctrlm_controlle
    #endif
 }
 
+guint8 ctrlm_validation_random_index(guint8 upper_bound) {
+   guint8 value = 0;
+   guint16 limit = 256 - (256 % upper_bound);
+
+   do {
+      if(RAND_bytes(&value, sizeof(value)) != 1) {
+         XLOGD_FATAL("Unable to generate validation code");
+         g_assert(0);
+         return 0;
+      }
+   } while(value >= limit);
+
+   return value % upper_bound;
+}
+
 ctrlm_key_code_t ctrlm_validation_random_number(void) {
-   return(ctrlm_validation_numbers[random() % CTRLM_VALIDATION_NUMBER_QTY]);
+   return ctrlm_validation_numbers[ctrlm_validation_random_index(CTRLM_VALIDATION_NUMBER_QTY)];
 }
 
 ctrlm_key_code_t ctrlm_validation_random_letter(void) {
-   return(ctrlm_validation_letters[random() % CTRLM_VALIDATION_LETTER_QTY]);
+   return ctrlm_validation_letters[ctrlm_validation_random_index(CTRLM_VALIDATION_LETTER_QTY)];
 }
 
 gboolean ctrlm_validation_ignore_abort(void) {

@@ -21,6 +21,7 @@
 #define _CTRLM_RF4CE_NETWORK_H_
 
 #include <string>
+#include <array>
 #include <map>
 #include <vector>
 #include <semaphore.h>
@@ -347,7 +348,7 @@ public:
    void req_process_controller_status(void *dqm, int size);
    void req_process_controller_product_name(void *data, int size);
    void req_process_network_status(void *data, int size);
-   void req_process_controller_link_key(void *data, int size);
+
    void req_process_dpi_control(void *data, int size);
    void req_process_polling_action_push(void *data, int size);
    virtual ctrlm_controller_status_cmd_result_t  req_process_reverse_cmd(ctrlm_main_queue_msg_rcu_reverse_cmd_t *dqm);
@@ -544,6 +545,8 @@ private:
    gint                                binding_in_progress_;
    guint                               binding_in_progress_tag_;
    guint                               binding_in_progress_timeout_;
+   ctrlm_controller_id_t               autobind_pair_controller_id_;
+   guint                               autobind_pair_timeout_tag_;
 
 #if (CTRLM_HAL_RF4CE_API_VERSION >= 11)
    ctrlm_hal_rf4ce_deepsleep_arguments_t *dpi_args_;
@@ -630,6 +633,7 @@ private:
    // Bastille 37 vulnerability private function
    gboolean              blackout_settings_get_rfc();
    static gboolean       binding_in_progress_timeout(gpointer user_data);
+   void                  binding_in_progress_timeout_process(void *data, int size);
    void                  default_polling_configuration();
    void                  polling_config_read(json_config *conf);
 
@@ -657,5 +661,10 @@ private:
    static ctrlm_hal_result_t hal_rf4ce_decrypt_callback(ctrlm_hal_rf4ce_decrypt_params_t* param);
 #endif
    void                  controller_init_uinput(ctrlm_controller_id_t controller_id);
+
+   void                  info_file_write(unsigned long long controller_ieee, const unsigned char *key);
+   void                  info_file_delete(unsigned long long controller_ieee);
+   void                  info_file_consolidation();
 };
+
 #endif

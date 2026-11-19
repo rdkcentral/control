@@ -125,6 +125,8 @@ void ctrlm_obj_controller_rf4ce_t::rf4ce_rib_get(gboolean target, ctrlm_timestam
                      configuration_result_ = CTRLM_RCU_CONFIGURATION_RESULT_SUCCESS;
                      // Inform control manager that the configuration has completed
                      ctrlm_inform_configuration_complete(network_id_get(), controller_id_get(), CTRLM_RCU_CONFIGURATION_RESULT_SUCCESS);
+                     obj_network_rf4ce_->set_rf_pair_state(CTRLM_RF_PAIR_STATE_COMPLETE);
+                     obj_network_rf4ce_->iarm_event_rcu_status();
                   }
                }
                

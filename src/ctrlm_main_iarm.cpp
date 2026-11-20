@@ -30,8 +30,6 @@
 #include "ctrlm_network.h"
 #include "ctrlm_tr181.h"
 #include "ctrlm_utils.h"
-#include "dsMgr.h"
-#include "dsRpc.h"
 
 static IARM_Result_t ctrlm_main_iarm_call_status_get(void *arg);
 static IARM_Result_t ctrlm_main_iarm_call_network_status_get(void *arg);

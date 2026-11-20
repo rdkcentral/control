@@ -70,9 +70,6 @@
 #include "rf4ce/ctrlm_rf4ce_network.h"
 #include "ctrlm_device_update.h"
 #include "ctrlm_vendor_network_factory.h"
-#include "dsMgr.h"
-#include "dsRpc.h"
-#include "dsDisplay.h"
 #include <systemd/sd-daemon.h>
 #include <systemd/sd-bus.h>
 #include "xr_voice_sdk.h"

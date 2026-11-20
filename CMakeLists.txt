@@ -148,12 +148,10 @@ target_link_libraries(
       dbus-1
       uuid
       IARMBus
-      ds
       nopoll
       ssl
       crypto
       systemd
-      dshalcli
       rfcapi
       secure_wrapper
       evdev

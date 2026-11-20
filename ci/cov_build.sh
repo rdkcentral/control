@@ -68,13 +68,11 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/control \
 -I ${MOCK_DIR}/devicesettings \
 -I ${HEADERS_DIR} \
 -I ${HEADERS_DIR}/rdk/iarmbus \
--I ${HEADERS_DIR}/rdk/ds \
 -I ${HEADERS_DIR}/rdk/iarmmgrs-hal \
 -I ${GITHUB_WORKSPACE}/install/usr/include \
 -I /usr/include/libdrm \
 ${GLIB_CFLAGS} \
 -include ${MOCK_DIR}/Iarm.h \
--include ${MOCK_DIR}/devicesettings.h \
 -include ${MOCK_DIR}/Rfc.h \
 -Wall \
 -DDISABLE_SECURITY_TOKEN" \
@@ -83,7 +81,6 @@ ${GLIB_CFLAGS} \
 -I ${MOCK_DIR} \
 -I ${HEADERS_DIR} \
 -I ${HEADERS_DIR}/rdk/iarmbus \
--I ${HEADERS_DIR}/rdk/ds \
 -I ${HEADERS_DIR}/rdk/iarmmgrs-hal \
 -I ${GITHUB_WORKSPACE}/install/usr/include \
 -I /usr/include/libdrm \

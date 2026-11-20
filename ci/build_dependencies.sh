@@ -172,24 +172,6 @@ cp "$POWER_HAL_DIR/include/plat_power.h" rdk/iarmmgrs-hal/pwrMgr.h
 [ -f rdk/iarmmgrs-hal/deepSleepMgr.h ]
 [ -f rdk/iarmmgrs-hal/pwrMgr.h ]
 
-# Device settings headers (types provided via force-included devicesettings.h mock)
-touch rdk/ds/audioOutputPort.hpp
-touch rdk/ds/dsDisplay.h
-touch rdk/ds/dsError.h
-touch rdk/ds/dsMgr.h
-touch rdk/ds/dsRpc.h
-touch rdk/ds/dsTypes.h
-touch rdk/ds/dsUtl.h
-touch rdk/ds/exception.hpp
-touch rdk/ds/host.hpp
-touch rdk/ds/manager.hpp
-touch rdk/ds/videoOutputPort.hpp
-touch rdk/ds/videoOutputPortConfig.hpp
-touch rdk/ds/videoOutputPortType.hpp
-touch rdk/ds/videoResolution.hpp
-touch rdk/ds/frontPanelIndicator.hpp
-touch rdk/ds/frontPanelConfig.hpp
-
 # rfcapi.h (types provided via -include Rfc.h)
 touch rfcapi.h
 

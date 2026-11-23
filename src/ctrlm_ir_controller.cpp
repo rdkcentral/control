@@ -217,6 +217,13 @@ void ctrlm_ir_controller_t::process_event_key(ctrlm_key_status_t key_status, uin
          return;
       }
 
+      // scan_code_ is cleared after every key event, so 0 means this event had no MSC_SCAN data (e.g. an autorepeat).
+      // Without valid scan data there is no pairing code, so the event must not start or complete a pairing sequence.
+      if (scan_code_ == 0) {
+         XLOGD_WARN("rejecting IR key for BLE pairing, no valid scan data (key status=%s)", ctrlm_key_status_str(key_status));
+         return;
+      }
+
       const uint8_t commandCode = (scan_code_ >> 0) & 0xff;
       ctrlm_timestamp_t now = {};
       ctrlm_timestamp_get_monotonic(&now);

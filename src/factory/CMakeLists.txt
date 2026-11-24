@@ -64,7 +64,7 @@ if(THUNDER)
       thunder/ctrlmf_thunder_plugin_display_settings.cpp
    )
 
-   target_link_libraries(ctrlm-fta ThunderCore ThunderPlugins)
+   target_link_libraries(ctrlm-fta ThunderCommon ThunderCore ThunderPlugins)
    if(WPE_FRAMEWORK_COM_SOCKET)
       target_link_libraries(ctrlm-fta ThunderCOM ThunderWebSocket)
    endif()

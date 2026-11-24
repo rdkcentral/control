@@ -208,7 +208,7 @@ endif()
 
 if(THUNDER)
    add_compile_definitions(CTRLM_THUNDER)
-   target_link_libraries(controlMgr ThunderCore ThunderPlugins)
+   target_link_libraries(controlMgr ThunderCommon ThunderCore ThunderPlugins)
    if(WPE_FRAMEWORK_COM_SOCKET)
       target_link_libraries(controlMgr ThunderCOM ThunderWebSocket)
    endif()

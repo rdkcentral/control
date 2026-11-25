@@ -2081,6 +2081,12 @@ void ctrlm_obj_network_ble_t::ind_process_rcu_status(void *data, int size) {
                   controller->setSupportedIrdbs(dqm->rcu_data.irdbs_supported);
                   schedule_status_print();
                   break;
+               case CTRLM_HAL_BLE_PROPERTY_KEYCODE_LIST:
+                  controller->setKeycodeList(dqm->rcu_data.keycode_list, dqm->rcu_data.keycode_list_size);
+                  XLOGD_INFO("Controller <%s> notified keycode list = <%s>", controller->ieee_address_get().to_string().c_str(), controller->keycodeListToString().c_str());
+                  schedule_status_print();
+                  schedule_status_event();
+                  break;
                default:
                   XLOGD_WARN("Unhandled Property: %d !!!!!!!!!!!!!!!!!!!!!!!!", dqm->property_updated);
                   break;
@@ -2247,6 +2253,7 @@ ctrlm_controller_id_t ctrlm_obj_network_ble_t::controller_add(ctrlm_hal_ble_rcu_
       if (rcu_data.wakeup_config != 0xFF) { controller->setWakeupConfig(rcu_data.wakeup_config); }
       if (rcu_data.wakeup_custom_list_size != 0) { controller->setWakeupCustomList(rcu_data.wakeup_custom_list, rcu_data.wakeup_custom_list_size); }
       if (rcu_data.last_wakeup_key != 0xFF) { controller->setLastWakeupKey(rcu_data.last_wakeup_key); }
+      if (rcu_data.keycode_list_size != 0) { controller->setKeycodeList(rcu_data.keycode_list, rcu_data.keycode_list_size); }
 
       controller->db_store();
    }

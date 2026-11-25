@@ -58,6 +58,7 @@ public:
     uint8_t lastKeypress() const override;
     uint8_t advConfig() const override;
     std::vector<uint8_t> advConfigCustomList() const override;
+    std::vector<uint8_t> keycodeList() const override;
     void sendRcuAction(uint8_t action, PendingReply<> &&reply) override;
     void writeAdvertisingConfig(uint8_t config, const std::vector<uint8_t> &customList, PendingReply<> &&reply) override;
 
@@ -100,6 +101,7 @@ private:
     void requestRawBatteryVoltage();
     void requestAdvConfig();
     void requestAdvConfigCustomList();
+    void requestKeycodeList();
     
     void onRawBatteryVoltageChanged(const std::vector<uint8_t> &newValue);
     void onWriteAdvConfigReply(PendingReply<> *reply);
@@ -116,6 +118,7 @@ private:
     std::shared_ptr<BleGattCharacteristic> m_advConfigCustomListCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_assertReportCharacteristic;
     std::shared_ptr<BleGattCharacteristic> m_rawBatteryVoltageCharacteristic;
+    std::shared_ptr<BleGattCharacteristic> m_keycodeListCharacteristic;
 
     StateMachine m_stateMachine;
 
@@ -128,6 +131,7 @@ private:
     uint8_t m_voltagePercentage;
     uint8_t m_advConfig;
     std::vector<uint8_t> m_advConfigCustomList;
+    std::vector<uint8_t> m_keycodeList;
     
     uint8_t m_advConfig_toWrite;
 
@@ -143,6 +147,7 @@ private:
     static const BleUuid m_advConfigCustomListCharUuid;
     static const BleUuid m_assertReportCharUuid;
     static const BleUuid m_rawBatteryVoltageCharUuid;
+    static const BleUuid m_keycodeListCharUuid;
 
 private:
     static const Event::Type StartServiceRequestEvent       = Event::Type(Event::User + 1);

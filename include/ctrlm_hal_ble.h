@@ -26,6 +26,9 @@
 #include "ctrlm_irdb_plugin.h"
 #include "ctrlm_hal.h"
 
+// Max keys in the RCU Keycode List characteristic (64 bytes, first byte is the count)
+#define CTRLM_HAL_BLE_KEYCODE_LIST_MAX_SIZE (63)
+
 
 /// @file ctrlm_hal_ble.h
 ///
@@ -85,6 +88,7 @@ typedef enum {
    CTRLM_HAL_BLE_PROPERTY_WAKEUP_CONFIG,
    CTRLM_HAL_BLE_PROPERTY_WAKEUP_CUSTOM_LIST,
    CTRLM_HAL_BLE_PROPERTY_IRDBS_SUPPORTED,
+   CTRLM_HAL_BLE_PROPERTY_KEYCODE_LIST,
    CTRLM_HAL_BLE_PROPERTY_UNKNOWN
 } ctrlm_hal_ble_RcuProperty_t;
 /// @}
@@ -123,6 +127,8 @@ typedef struct {
    int                           wakeup_custom_list[CTRLM_WAKEUP_CONFIG_LIST_MAX_SIZE];
    int                           wakeup_custom_list_size;
    uint8_t                       irdbs_supported;
+   uint16_t                      keycode_list[CTRLM_HAL_BLE_KEYCODE_LIST_MAX_SIZE]; ///< Linux key codes the RCU can send
+   int                           keycode_list_size;
 } ctrlm_hal_ble_rcu_data_t;
 
 typedef struct {

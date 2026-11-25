@@ -75,6 +75,7 @@ bool ble_uuid_names_init(void)
     BleUuid(BleUuid::AdvertisingConfigCustomList,             std::string("Advertising Config Custom List"));
     BleUuid(BleUuid::AssertReport,                            std::string("Assert Report"));
     BleUuid(BleUuid::RawBatteryVoltage,                       std::string("Raw Battery Voltage"));
+    BleUuid(BleUuid::KeycodeList,                             std::string("Keycode List"));
     BleUuid(BleUuid::InfraredSignalReference,                 std::string("Infrared Signal Reference"));
     BleUuid(BleUuid::InfraredSignalConfiguration,             std::string("Infrared Signal Configuration"));
     BleUuid(BleUuid::FirmwarePacketWindowSize,                std::string("Firmware Packet Window Size"));

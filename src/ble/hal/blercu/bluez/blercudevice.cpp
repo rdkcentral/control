@@ -1074,6 +1074,10 @@ std::vector<uint8_t> BleRcuDeviceBluez::advConfigCustomList() const
 {
     return remoteControlService()->advConfigCustomList();
 }
+std::vector<uint8_t> BleRcuDeviceBluez::keycodeList() const
+{
+    return remoteControlService()->keycodeList();
+}
 void BleRcuDeviceBluez::sendRcuAction(uint8_t action, PendingReply<> &&reply)
 {
     remoteControlService()->sendRcuAction(action, std::move(reply));
@@ -1101,6 +1105,10 @@ void BleRcuDeviceBluez::addAdvConfigChangedSlot(const Slot<uint8_t> &func)
 void BleRcuDeviceBluez::addAdvConfigCustomListChangedSlot(const Slot<const std::vector<uint8_t> &> &func)
 {
     remoteControlService()->addAdvConfigCustomListChangedSlot(func);
+}
+void BleRcuDeviceBluez::addKeycodeListChangedSlot(const Slot<const std::vector<uint8_t> &> &func)
+{
+    remoteControlService()->addKeycodeListChangedSlot(func);
 }
 
 

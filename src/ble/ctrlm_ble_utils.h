@@ -20,6 +20,7 @@
 #define _CTRLM_BLE_UTILS_H_
 
 #include <string.h>
+#include <vector>
 #include <jansson.h>
 #include "ctrlm_hal_ble.h"
 #include "ctrlm_ble_controller.h"
@@ -52,6 +53,7 @@ typedef struct {
 
 uint16_t ctrlm_ble_utils_ConvertUsbKbdCodeToLinux(unsigned char usb_code);
 unsigned char ctrlm_ble_utils_ConvertLinuxCodeToUsbKdb(uint16_t linux_code);
+int ctrlm_ble_utils_ParseKeycodeList(const std::vector<uint8_t> &raw, uint16_t *linux_codes, int max_size);
 
 std::string ctrlm_ble_utils_BuildDBusDeviceObjectPath(const char *path_base, unsigned long long ieee_address);
 unsigned long long ctrlm_ble_utils_GetIEEEAddressFromObjPath(std::string obj_path);

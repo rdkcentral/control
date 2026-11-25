@@ -144,6 +144,7 @@ public:
     uint8_t lastKeypress() const override;
     uint8_t advConfig() const override;
     std::vector<uint8_t> advConfigCustomList() const override;
+    std::vector<uint8_t> keycodeList() const override;
     void sendRcuAction(uint8_t action, PendingReply<> &&reply) override;
     void writeAdvertisingConfig(uint8_t config, const std::vector<uint8_t> &customList, PendingReply<> &&reply) override;
     void addUnpairReasonChangedSlot(const Slot<uint8_t> &func) override;
@@ -151,6 +152,7 @@ public:
     void addLastKeypressChangedSlot(const Slot<uint8_t> &func) override;
     void addAdvConfigChangedSlot(const Slot<uint8_t> &func) override;
     void addAdvConfigCustomListChangedSlot(const Slot<const std::vector<uint8_t> &> &func) override;
+    void addKeycodeListChangedSlot(const Slot<const std::vector<uint8_t> &> &func) override;
 
     // Voice Service
     uint8_t audioGainLevel() const override;

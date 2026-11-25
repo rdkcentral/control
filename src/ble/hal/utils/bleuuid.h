@@ -105,6 +105,7 @@ public:
         AdvertisingConfigCustomList = 0xed06,
         AssertReport = 0xed07,
         RawBatteryVoltage = 0xed08,
+        KeycodeList = 0xed09,  // TODO: UUID assumed, will get the correct UUID before merge
     };
 
     enum DescriptorType {

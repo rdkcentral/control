@@ -55,6 +55,7 @@ namespace rcp_net_status_json_keys
     constexpr char const* WAKEUP_KEY_CODE      = "wakeupKeyCode";
     constexpr char const* WAKEUP_CONFIG        = "wakeupConfig";
     constexpr char const* WAKEUP_CUSTOM_LIST   = "wakeupCustomList";
+    constexpr char const* KEYCODE_LIST         = "keyCodeList";
     constexpr char const* CUSTOM_KEYS          = "customKeys";
     constexpr char const* CONTROLLER_ID        = "controllerId";
     constexpr char const* PERCENT_COMPLETE     = "percentComplete";
@@ -100,6 +101,7 @@ private:
     int                       wakeup_key_code_    = 0;
     ctrlm_rcu_wakeup_config_t wakeup_config_      = CTRLM_RCU_WAKEUP_CONFIG_INVALID;
     std::vector<uint16_t>     wakeup_custom_list_;
+    std::vector<uint16_t>     keycode_list_;
     std::string               upgrade_session_id_ = "";
 };
 

@@ -43,6 +43,7 @@ ctrlm_rcp_ipc_controller_status_t::ctrlm_rcp_ipc_controller_status_t(const ctrlm
     wakeup_key_code_((CTRLM_KEY_CODE_INVALID == controller.get_last_wakeup_key()) ? -1 : controller.get_last_wakeup_key()),
     wakeup_config_(controller.get_wakeup_config()),
     wakeup_custom_list_(controller.get_wakeup_custom_list()),
+    keycode_list_(controller.get_keycode_list()),
     upgrade_session_id_(controller.get_upgrade_session_uuid())
 {
 }
@@ -85,6 +86,13 @@ json_t *ctrlm_rcp_ipc_controller_status_t::to_json() const
         for (size_t j = 0; j < wakeup_custom_list_.size(); j++) {
             err |= json_array_append_new(wakeup_custom_array, json_integer(wakeup_custom_list_[j]));
         }
+    }
+
+    // Always present, an empty list means the remote doesn't report its keys
+    json_t *keycode_array = json_array();
+    err |= json_object_set_new_nocheck(remote_data, KEYCODE_LIST, keycode_array);
+    for (auto code : keycode_list_) {
+        err |= json_array_append_new(keycode_array, json_integer(code));
     }
     return (err) ? NULL : remote_data;
 }

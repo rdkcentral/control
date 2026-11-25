@@ -554,6 +554,18 @@ bool ctrlm_ble_rcu_interface_t::handleAddedDevice(const BleAddress &address)
         };
     device->addAdvConfigCustomListChangedSlot(Slot<const std::vector<uint8_t> &>(m_isAlive, advConfigCustomListChangedSlot));
 
+    auto keycodeListChangedSlot = [this, address](const std::vector<uint8_t> &list)
+        {
+            XLOGD_DEBUG("BLE RCU keycode list read.");
+
+            ctrlm_hal_ble_RcuStatusData_t params;
+            params.property_updated = CTRLM_HAL_BLE_PROPERTY_KEYCODE_LIST;
+            params.rcu_data.ieee_address = address.toUInt64();
+            params.rcu_data.keycode_list_size = ctrlm_ble_utils_ParseKeycodeList(list, params.rcu_data.keycode_list, CTRLM_HAL_BLE_KEYCODE_LIST_MAX_SIZE);
+            m_rcuStatusChangedSlots.invoke(&params);
+        };
+    device->addKeycodeListChangedSlot(Slot<const std::vector<uint8_t> &>(m_isAlive, keycodeListChangedSlot));
+
 
     auto audioStreamingChangedSlot = [this, address](bool streaming)
         {
@@ -739,6 +751,8 @@ ctrlm_hal_ble_rcu_data_t ctrlm_ble_rcu_interface_t::getAllDeviceProperties(uint6
         }
         ret.wakeup_custom_list_size = idx;
     }
+
+    ret.keycode_list_size = ctrlm_ble_utils_ParseKeycodeList(device->keycodeList(), ret.keycode_list, CTRLM_HAL_BLE_KEYCODE_LIST_MAX_SIZE);
 
     // IR Service
     ret.irdbs_supported = device->irSupport();

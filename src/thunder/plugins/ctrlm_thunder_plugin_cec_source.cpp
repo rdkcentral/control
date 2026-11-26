@@ -19,9 +19,9 @@
 #include "ctrlm_thunder_plugin_cec_source.h"
 #include "ctrlm_log.h"
 #include "ctrlm_thunder_helpers.h"
-#include <Thunder/core/core.h>
-#include <Thunder/websocket/websocket.h>
-#include <Thunder/plugins/plugins.h>
+#include <core/core.h>
+#include <websocket/websocket.h>
+#include <plugins/plugins.h>
 #include <glib.h>
 #include <sstream>
 

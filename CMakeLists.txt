@@ -51,6 +51,25 @@ option(XRSR_SDT "Enable XRSR_SDT" OFF)
 option(ENABLE_ASYNC_SRVR_MSG "Enable Asynchronous Server Messaging Feature" OFF)
 option(ENABLE_AVS_WITH_SDT "Enable SDT Based AVS Support" OFF)
 
+if(THUNDER)
+   find_package(Thunder QUIET)
+   if(Thunder_FOUND)
+      set(CTRLM_FRAMEWORK_NAMESPACE Thunder)
+      set(CTRLM_FRAMEWORK_SERVICE_UNIT "thunder.service")
+      set(CTRLM_FRAMEWORK_LIBRARIES ThunderCommon ThunderCore ThunderPlugins)
+   else()
+      find_package(WPEFramework QUIET)
+      if(NOT WPEFramework_FOUND)
+         message(FATAL_ERROR "Neither Thunder nor WPEFramework found in sysroot")
+      endif()
+      set(CTRLM_FRAMEWORK_NAMESPACE WPEFramework)
+      set(CTRLM_FRAMEWORK_SERVICE_UNIT "wpeframework.service")
+      set(CTRLM_FRAMEWORK_LIBRARIES WPEFrameworkCore WPEFrameworkPlugins)
+      add_compile_definitions(CTRLM_USE_WPEFRAMEWORK Thunder=WPEFramework)
+   endif()
+   add_compile_definitions(CTRLM_FRAMEWORK_SERVICE_UNIT=\"${CTRLM_FRAMEWORK_SERVICE_UNIT}\")
+endif()
+
 # BUILD SYSTEM
 set(STAGING_BINDIR_NATIVE, "invalid" CACHE PATH "staging bin dir native")
 set(BUILD_SYSTEM "NONE" CACHE STRING "Specify the Build System being used")
@@ -117,7 +136,7 @@ include_directories( ${CMAKE_CURRENT_BINARY_DIR}
                      ${CMAKE_SYSROOT}/usr/include/rdk/ds-rpc
                      ${CMAKE_SYSROOT}/usr/include/rdk/ds-hal
                      ${CMAKE_SYSROOT}/usr/include/rdk/halif/ds-hal
-                     ${CMAKE_SYSROOT}/usr/include/Thunder
+                     ${CMAKE_SYSROOT}/usr/include/${CTRLM_FRAMEWORK_NAMESPACE}
                      ${CMAKE_SYSROOT}/usr/include/breakpad
                    )
 
@@ -208,16 +227,16 @@ endif()
 
 if(THUNDER)
    add_compile_definitions(CTRLM_THUNDER)
-   target_link_libraries(controlMgr ThunderCommon ThunderCore ThunderPlugins)
+   target_link_libraries(controlMgr ${CTRLM_FRAMEWORK_LIBRARIES})
    if(WPE_FRAMEWORK_COM_SOCKET)
-      target_link_libraries(controlMgr ThunderCOM ThunderWebSocket)
+      target_link_libraries(controlMgr ${CTRLM_FRAMEWORK_NAMESPACE}COM ${CTRLM_FRAMEWORK_NAMESPACE}WebSocket)
    endif()
    if(WPE_FRAMEWORK_PROTO_TRACING)
-      target_link_libraries(controlMgr ThunderProtocols ThunderTracing)
+      target_link_libraries(controlMgr ${CTRLM_FRAMEWORK_NAMESPACE}Protocols ${CTRLM_FRAMEWORK_NAMESPACE}Tracing)
    endif()
    if(THUNDER_SECURITY)
       add_compile_definitions(THUNDER_SECURITY)
-      target_link_libraries(controlMgr ThunderSecurityUtil)
+      target_link_libraries(controlMgr ${CTRLM_FRAMEWORK_NAMESPACE}SecurityUtil)
    endif()
    if(AUTH_ENABLED)
       add_compile_definitions(AUTH_ENABLED)

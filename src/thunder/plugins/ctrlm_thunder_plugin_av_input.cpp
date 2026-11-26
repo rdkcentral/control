@@ -18,9 +18,9 @@
 */
 #include "ctrlm_thunder_plugin_av_input.h"
 #include "ctrlm_log.h"
-#include <Thunder/core/core.h>
-#include <Thunder/websocket/websocket.h>
-#include <Thunder/plugins/plugins.h>
+#include <core/core.h>
+#include <websocket/websocket.h>
+#include <plugins/plugins.h>
 #include <glib.h>
 
 using namespace Thunder;

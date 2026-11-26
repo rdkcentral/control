@@ -18,9 +18,9 @@
 */
 #include "ctrlm_thunder_plugin_authservice.h"
 #include "ctrlm_log.h"
-#include <Thunder/core/core.h>
-#include <Thunder/websocket/websocket.h>
-#include <Thunder/plugins/plugins.h>
+#include <core/core.h>
+#include <websocket/websocket.h>
+#include <plugins/plugins.h>
 
 using namespace Thunder;
 using namespace AuthService;

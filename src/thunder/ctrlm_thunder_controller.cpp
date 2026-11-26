@@ -18,15 +18,21 @@
 */
 #include "ctrlm_thunder_controller.h"
 #include "ctrlm_thunder_log.h"
-#include <Thunder/core/core.h>
-#include <Thunder/websocket/websocket.h>
-#include <Thunder/plugins/plugins.h>
+#include <core/core.h>
+#include <websocket/websocket.h>
+#include <plugins/plugins.h>
 #include <secure_wrapper.h>
 #include "ctrlm_thunder_helpers.h"
 #include <glib.h>
 #include "safec_lib.h"
 #ifdef THUNDER_SECURITY
 #include <securityagent/SecurityTokenUtil.h>
+#endif
+
+#ifdef CTRLM_USE_WPEFRAMEWORK
+using ThunderMetadata = Thunder::PluginHost::MetaData;
+#else
+using ThunderMetadata = Thunder::PluginHost::Metadata;
 #endif
 
 #define THUNDER_CONTROLLER_OPEN_RETRY_MAX      (15)
@@ -117,8 +123,8 @@ plugin_state_t ctrlm_thunder_controller_t::get_plugin_state(std::string callsign
     plugin_state_t ret = PLUGIN_INVALID;
     auto clientObject = (JSONRPC::LinkType<Core::JSON::IElement>*)controller_client;
     if(clientObject) {
-        Core::JSON::ArrayType<PluginHost::Metadata::Service> response;
-        uint32_t thunderRet = clientObject->Get<Core::JSON::ArrayType<PluginHost::Metadata::Service> >(CALL_TIMEOUT, std::string("status@") + callsign, response);
+        Core::JSON::ArrayType<ThunderMetadata::Service> response;
+        uint32_t thunderRet = clientObject->Get<Core::JSON::ArrayType<ThunderMetadata::Service> >(CALL_TIMEOUT, std::string("status@") + callsign, response);
         if(thunderRet == Core::ERROR_NONE) {
             if(response[0].JSONState == PluginHost::IShell::ACTIVATED) {
                 ret = PLUGIN_ACTIVATED;
@@ -218,7 +224,7 @@ std::string ctrlm_thunder_controller_t::get_security_token() {
 }
 
 bool ctrlm_thunder_controller_t::is_thunder_active() {
-   return Thunder::Helpers::is_systemd_process_active("thunder.service");
+   return Thunder::Helpers::is_systemd_process_active(CTRLM_FRAMEWORK_SERVICE_UNIT);
 }
 
 bool ctrlm_thunder_controller_t::open_controller() {

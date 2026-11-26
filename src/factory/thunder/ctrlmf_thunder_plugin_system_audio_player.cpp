@@ -20,9 +20,9 @@
 #include <ctrlm_log.h>
 #include <rdkx_logger.h>
 #include "ctrlmf_thunder_plugin_system_audio_player.h"
-#include <Thunder/core/core.h>
-#include <Thunder/websocket/websocket.h>
-#include <Thunder/plugins/plugins.h>
+#include <core/core.h>
+#include <websocket/websocket.h>
+#include <plugins/plugins.h>
 
 using namespace Thunder;
 using namespace SystemAudioPlayer;

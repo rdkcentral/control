@@ -26,7 +26,7 @@
 #include <websocket/websocket.h>
 #include <plugins/plugins.h>
 
-#ifdef CTRLM_USE_WPEFRAMEWORK
+#if (THUNDER_VERSION < 5)
 using ThunderMetadata = Thunder::PluginHost::MetaData;
 #else
 using ThunderMetadata = Thunder::PluginHost::Metadata;

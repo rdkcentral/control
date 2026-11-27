@@ -48,6 +48,7 @@ const BleUuid GattRemoteControlService::m_advConfigCharUuid(BleUuid::Advertising
 const BleUuid GattRemoteControlService::m_advConfigCustomListCharUuid(BleUuid::AdvertisingConfigCustomList);
 const BleUuid GattRemoteControlService::m_assertReportCharUuid(BleUuid::AssertReport);
 const BleUuid GattRemoteControlService::m_rawBatteryVoltageCharUuid(BleUuid::RawBatteryVoltage);
+const BleUuid GattRemoteControlService::m_keycodeListCharUuid(BleUuid::KeycodeList);
 
 using namespace std;
 
@@ -156,6 +157,12 @@ bool GattRemoteControlService::start(const shared_ptr<const BleGattService> &gat
             XLOGD_WARN("Failed to get advertising config custom list characteristic, check that remote firmware supports this feature.  Continuing anyway...");
         }
     }
+    if (!m_keycodeListCharacteristic || !m_keycodeListCharacteristic->isValid()) {
+        m_keycodeListCharacteristic = gattService->characteristic(m_keycodeListCharUuid);
+        if (!m_keycodeListCharacteristic || !m_keycodeListCharacteristic->isValid()) {
+            XLOGD_WARN("Failed to get keycode list characteristic, check that remote firmware supports this feature.  Continuing anyway...");
+        }
+    }
     if (!m_unpairReasonCharacteristic || !m_unpairReasonCharacteristic->isValid()) {
         m_unpairReasonCharacteristic = gattService->characteristic(m_unpairReasonCharUuid);
         if (!m_unpairReasonCharacteristic || !m_unpairReasonCharacteristic->isValid()) {
@@ -244,6 +251,7 @@ void GattRemoteControlService::onEnteredState(int state)
         m_rcuActionCharacteristic.reset();
         m_assertReportCharacteristic.reset();
         m_rawBatteryVoltageCharacteristic.reset();
+        m_keycodeListCharacteristic.reset();
 
 
     } else if (state == RetrieveInitialValuesState) {
@@ -251,6 +259,7 @@ void GattRemoteControlService::onEnteredState(int state)
         requestLastKeypress();  // request this value first so that it gets evented up as soon as possible
         requestAdvConfig();
         requestAdvConfigCustomList();
+        requestKeycodeList();
         requestUnpairReason();
         requestRawBatteryVoltage();
     
@@ -694,6 +703,43 @@ void GattRemoteControlService::requestAdvConfigCustomList()
 /*!
     \internal
 
+    Sends a request to org.bluez.GattCharacteristic1.Value() to get the value
+    propery of the characteristic which contains the list of HID keycodes the
+    RCU can send.  The characteristic is read-only and static, so it is only
+    read once when the service starts.
+
+ */
+void GattRemoteControlService::requestKeycodeList()
+{
+    // lambda invoked when the request returns
+    auto replyHandler = [this](PendingReply<std::vector<uint8_t>> *reply)
+        {
+            // check for errors
+            if (reply->isError()) {
+                XLOGD_ERROR("Failed to read keycode list due to <%s>", reply->errorMessage().c_str());
+            } else {
+                m_keycodeList = reply->result();
+                XLOGD_DEBUG("Successfully read keycode list characteristic");
+
+                m_keycodeListChangedSlots.invoke(m_keycodeList);
+            }
+        };
+
+
+    if (m_keycodeListCharacteristic && m_keycodeListCharacteristic->isValid()) {
+
+        // send a request to the bluez daemon to read the characteristic
+        m_keycodeListCharacteristic->readValue(PendingReply<std::vector<uint8_t>>(m_isAlive, replyHandler));
+
+    } else {
+        XLOGD_WARN("Keycode list characteristic is not valid, check that the remote firmware version supports this feature.");
+    }
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    \internal
+
     Internal slot called when a notification from the remote device is sent
     due to raw battery voltage changing.
  */
@@ -984,4 +1030,14 @@ uint8_t GattRemoteControlService::advConfig() const
 vector<uint8_t> GattRemoteControlService::advConfigCustomList() const
 {
     return m_advConfigCustomList;
+}
+
+// -----------------------------------------------------------------------------
+/*!
+    \overload
+
+ */
+vector<uint8_t> GattRemoteControlService::keycodeList() const
+{
+    return m_keycodeList;
 }

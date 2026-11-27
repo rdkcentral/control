@@ -19,6 +19,8 @@
 
 #include "ctrlm_ble_utils.h"
 
+#include <algorithm>
+#include <vector>
 #include "ctrlm.h"
 #include "ctrlm_log.h"
 #include "ctrlm_hal.h"
@@ -50,6 +52,34 @@ static const unsigned char hid_keyboard_to_linux[256] = {
 
 uint16_t ctrlm_ble_utils_ConvertUsbKbdCodeToLinux(unsigned char usb_code) {
     return hid_keyboard_to_linux[usb_code] ? hid_keyboard_to_linux[usb_code] : CTRLM_KEY_CODE_INVALID;
+}
+
+// Converts the raw Keycode List characteristic (byte 0 = count, then HID codes, 0x00 padded) to unique Linux key codes.
+// Returns the number of codes written to linux_codes.
+int ctrlm_ble_utils_ParseKeycodeList(const std::vector<uint8_t> &raw, uint16_t *linux_codes, int max_size) {
+    if (raw.empty() || linux_codes == NULL || max_size <= 0) {
+        return 0;
+    }
+
+    // Don't trust the count byte, clamp it to the data actually received
+    size_t count = std::min<size_t>(raw[0], raw.size() - 1);
+    int    size  = 0;
+
+    for (size_t i = 1; i <= count && size < max_size; i++) {
+        if (raw[i] == 0x00) {
+            break; // 0x00 is invalid per spec, treat it as the end of the list
+        }
+        uint16_t code = ctrlm_ble_utils_ConvertUsbKbdCodeToLinux(raw[i]);
+        if (code == CTRLM_KEY_CODE_INVALID) {
+            XLOGD_WARN("HID code 0x%02X has no linux key code mapping, skipping", raw[i]);
+            continue;
+        }
+        // Different HID codes can map to the same linux code
+        if (std::find(linux_codes, linux_codes + size, code) == linux_codes + size) {
+            linux_codes[size++] = code;
+        }
+    }
+    return size;
 }
 unsigned char ctrlm_ble_utils_ConvertLinuxCodeToUsbKdb(uint16_t linux_code) {
     for (unsigned int i = 0; i < sizeof(hid_keyboard_to_linux)/sizeof(hid_keyboard_to_linux[0]); i++) {

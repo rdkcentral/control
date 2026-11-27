@@ -491,6 +491,25 @@ std::string ctrlm_obj_controller_ble_t::wakeupCustomListToString() {
   return oss.str();
 }
 
+void ctrlm_obj_controller_ble_t::setKeycodeList(const uint16_t *list, int size) {
+   if (NULL == list) {
+      XLOGD_ERROR("list is NULL");
+      return;
+   }
+   keycode_list_.assign(list, list + size);
+}
+vector<uint16_t> ctrlm_obj_controller_ble_t::get_keycode_list() const {
+   return keycode_list_;
+}
+
+std::string ctrlm_obj_controller_ble_t::keycodeListToString() const {
+  std::ostringstream oss;
+  for (size_t i = 0; i < keycode_list_.size(); i++) {
+    oss << (i ? "," : "") << keycode_list_[i];
+  }
+  return oss.str();
+}
+
 bool ctrlm_obj_controller_ble_t::is_stale(time_t stale_time_threshold) const {
    time_t last_activity_time = this->last_activity_time_get();
    if(last_activity_time > 0 && last_activity_time < stale_time_threshold) {
@@ -677,6 +696,7 @@ void ctrlm_obj_controller_ble_t::print_status() {
    if (wakeup_config_ == CTRLM_RCU_WAKEUP_CONFIG_CUSTOM) {
    XLOGD_INFO("Wakeup Config Custom List    : %s", wakeupCustomListToString().c_str());
    }
+   XLOGD_INFO("Keycode List                 : %s", keycode_list_.empty() ? "NOT SUPPORTED" : keycodeListToString().c_str());
    XLOGD_INFO("");
 
    ctrlm_irdb_interface_t *irdb = ctrlm_main_irdb_get();

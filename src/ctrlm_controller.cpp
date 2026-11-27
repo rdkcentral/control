@@ -330,6 +330,11 @@ ctrlm_rcu_wakeup_config_t ctrlm_obj_controller_t::get_wakeup_config() const {
     return CTRLM_RCU_WAKEUP_CONFIG_INVALID;
 }
 
+std::vector<uint16_t> ctrlm_obj_controller_t::get_keycode_list() const {
+    // No warning, this is called for every controller on each status event and an empty list means unknown
+    return {};
+}
+
 std::vector<uint16_t> ctrlm_obj_controller_t::get_wakeup_custom_list() const {
     XLOGD_WARN("not implemented.");
     return {};

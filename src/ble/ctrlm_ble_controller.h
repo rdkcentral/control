@@ -123,6 +123,10 @@ public:
    virtual std::vector<uint16_t>    get_wakeup_custom_list() const;
    std::string                      wakeupCustomListToString();
 
+   void                             setKeycodeList(const uint16_t *list, int size);
+   virtual std::vector<uint16_t>    get_keycode_list() const;
+   std::string                      keycodeListToString() const;
+
    void                             setUpgradePaused(bool paused);
    bool                             getUpgradePaused();
    bool                             getUpgradePauseSupported(void);
@@ -191,6 +195,7 @@ private:
 
    ctrlm_rcu_wakeup_config_t               wakeup_config_        = CTRLM_RCU_WAKEUP_CONFIG_INVALID;
    std::vector<uint16_t>                   wakeup_custom_list_;
+   std::vector<uint16_t>                   keycode_list_;
 
    uint8_t                                 irdbs_supported_;
 

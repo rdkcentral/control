@@ -48,6 +48,7 @@ public:
     virtual uint8_t lastKeypress() const = 0;
     virtual uint8_t advConfig() const = 0;
     virtual std::vector<uint8_t> advConfigCustomList() const = 0;
+    virtual std::vector<uint8_t> keycodeList() const = 0;
     virtual void sendRcuAction(uint8_t action, PendingReply<> &&reply) = 0;
     virtual void writeAdvertisingConfig(uint8_t config, const std::vector<uint8_t> &customList, PendingReply<> &&reply) = 0;
 
@@ -76,6 +77,10 @@ public:
     {
         m_advConfigCustomListChangedSlots.addSlot(func);
     }
+    inline void addKeycodeListChangedSlot(const Slot<const std::vector<uint8_t> &> &func)
+    {
+        m_keycodeListChangedSlots.addSlot(func);
+    }
 
 protected:
     Slots<uint8_t> m_unpairReasonChangedSlots;
@@ -84,6 +89,7 @@ protected:
     Slots<const std::vector<uint8_t> &> m_rawBatteryVoltageChangedSlots;
     Slots<uint8_t> m_advConfigChangedSlots;
     Slots<const std::vector<uint8_t> &> m_advConfigCustomListChangedSlots;
+    Slots<const std::vector<uint8_t> &> m_keycodeListChangedSlots;
 };
 
 #endif // !defined(BLERCUREMOTECONTROLSERVICE_H)

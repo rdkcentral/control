@@ -57,7 +57,8 @@ python3 -m pip install jsonref
 
 git clone --depth 1 --filter=blob:none --branch develop https://github.com/rdkcentral/xr-voice-sdk.git
 
-git clone --depth 1 --filter=blob:none https://github.com/rdkcentral/entservices-testframework.git
+# Pinned: develop (2.1.0+) removed Tests/mocks/devicesettings.h, which cov_build.sh force-includes
+git clone --depth 1 --filter=blob:none --branch 2.0.12 https://github.com/rdkcentral/entservices-testframework.git
 
 git clone --depth 1 --filter=blob:none --sparse --branch develop https://github.com/rdkcentral/iarmmgrs.git
 git -C iarmmgrs sparse-checkout set hal

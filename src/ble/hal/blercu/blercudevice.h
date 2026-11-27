@@ -125,6 +125,7 @@ public:
     virtual uint8_t lastKeypress() const = 0;
     virtual uint8_t advConfig() const = 0;
     virtual std::vector<uint8_t> advConfigCustomList() const = 0;
+    virtual std::vector<uint8_t> keycodeList() const = 0;
     virtual void sendRcuAction(uint8_t action, PendingReply<> &&reply) = 0;
     virtual void writeAdvertisingConfig(uint8_t config, const std::vector<uint8_t> &customList, PendingReply<> &&reply) = 0;
     virtual void addUnpairReasonChangedSlot(const Slot<uint8_t> &func) = 0;
@@ -132,6 +133,7 @@ public:
     virtual void addLastKeypressChangedSlot(const Slot<uint8_t> &func) = 0;
     virtual void addAdvConfigChangedSlot(const Slot<uint8_t> &func) = 0;
     virtual void addAdvConfigCustomListChangedSlot(const Slot<const std::vector<uint8_t> &> &func) = 0;
+    virtual void addKeycodeListChangedSlot(const Slot<const std::vector<uint8_t> &> &func) = 0;
 
     // Voice Service
     virtual uint8_t audioGainLevel() const = 0;
